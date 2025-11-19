@@ -1,276 +1,434 @@
-// ---------------------------------------------------------
+// =========================================================
 // 1) Conexión a Supabase (solo ANON KEY)
-// ---------------------------------------------------------
-const SUPABASE_URL = "https://eucsnyavekdejiezofri.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1Y3NueWF2ZWtkZWppZXpvZnJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTI2OTcsImV4cCI6MjA3OTEyODY5N30.PWSBOHTrQF28J_4wtwWCarHh7vDgXAV6XpsH2ek-8uk";
+// =========================================================
+const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY"; // solo la anon key
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ---------------------------------------------------------
-// 2) Registrar actividad en historial
-// ---------------------------------------------------------
+// Cache local de clientes para editar rápido
+let clientesCache = [];
+
+// =========================================================
+// 2) Utilidades
+// =========================================================
+function formatearFecha(fechaISO) {
+  if (!fechaISO) return "";
+  const d = new Date(fechaISO);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatearFechaSoloDia(fechaISO) {
+  if (!fechaISO) return "";
+  const d = new Date(fechaISO);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-AR");
+}
+
+function resetFormulario() {
+  document.getElementById("formCliente").reset();
+  document.getElementById("clienteId").value = "";
+  document.getElementById("tituloForm").textContent = "Nuevo cliente";
+  document.getElementById("btnGuardar").textContent = "Guardar";
+}
+
+// =========================================================
+// 3) ACTIVIDADES (historial)
+// =========================================================
 async function agregarActividad(clienteId, descripcion) {
-  await supabaseClient.from("actividades").insert([
+  if (!clienteId) return;
+
+  const { error } = await supabaseClient.from("actividades").insert([
     {
       cliente_id: clienteId,
       descripcion,
     },
   ]);
+
+  if (error) {
+    console.error("Error agregando actividad:", error);
+    alert("No se pudo registrar la actividad.");
+  }
 }
 
-// ---------------------------------------------------------
-// 3) Obtener historial por cliente
-// ---------------------------------------------------------
-async function obtenerHistorial(clienteId) {
-  const { data } = await supabaseClient
-    .from("actividades")
-    .select("*")
-    .eq("cliente_id", clienteId)
-    .order("fecha", { ascending: false });
-
-  return data || [];
-}
-
-// ---------------------------------------------------------
-// 4) Cargar clientes
-// ---------------------------------------------------------
+// =========================================================
+// 4) CARGA DE CLIENTES + HISTORIAL (optimizado)
+// =========================================================
 async function cargarClientes() {
-  const lista = document.getElementById("lista");
-  const contador = document.getElementById("contador");
+  const listaDiv = document.getElementById("lista");
+  listaDiv.innerHTML = "<p>Cargando...</p>";
 
-  const { data, error } = await supabaseClient
+  // Filtros
+  const filtroNombre = document.getElementById("filtroNombre").value.trim();
+  const filtroRubro = document.getElementById("filtroRubro").value.trim();
+  const filtroEstado = document.getElementById("filtroEstado").value;
+
+  let query = supabaseClient
     .from("clientes")
     .select("id, nombre, telefono, rubro, estado, fecha_proximo_contacto, notas")
+    .eq("activo", true)
     .order("id", { ascending: true });
+
+  if (filtroEstado && filtroEstado !== "Todos") {
+    query = query.eq("estado", filtroEstado);
+  }
+
+  if (filtroNombre) {
+    query = query.ilike("nombre", `%${filtroNombre}%`);
+  }
+
+  if (filtroRubro) {
+    query = query.ilike("rubro", `%${filtroRubro}%`);
+  }
+
+  const { data: clientes, error } = await query;
 
   if (error) {
     console.error("Error cargando clientes:", error);
+    listaDiv.innerHTML = "<p>Error al cargar clientes.</p>";
     return;
   }
 
-  lista.innerHTML = "";
-  contador.innerText = `(${data.length})`;
+  clientesCache = clientes || [];
+  document.getElementById("contador").textContent = `(${clientesCache.length})`;
 
-  for (const c of data) {
-    const historial = await obtenerHistorial(c.id);
+  if (!clientesCache.length) {
+    listaDiv.innerHTML = "<p>No hay clientes cargados.</p>";
+    return;
+  }
 
+  // Cargar actividades para TODOS los clientes en una sola consulta
+  const ids = clientesCache.map((c) => c.id);
+  const { data: actividades, error: errorAct } = await supabaseClient
+    .from("actividades")
+    .select("id, cliente_id, fecha, descripcion")
+    .in("cliente_id", ids)
+    .order("fecha", { ascending: false });
+
+  if (errorAct) {
+    console.error("Error cargando actividades:", errorAct);
+  }
+
+  const actividadesPorCliente = {};
+  (actividades || []).forEach((a) => {
+    if (!actividadesPorCliente[a.cliente_id]) {
+      actividadesPorCliente[a.cliente_id] = [];
+    }
+    actividadesPorCliente[a.cliente_id].push(a);
+  });
+
+  // Render de tarjetas
+  listaDiv.innerHTML = "";
+  clientesCache.forEach((cliente) => {
     const card = document.createElement("div");
     card.className = "card";
+    card.dataset.id = cliente.id;
+
+    const actividadesCliente = actividadesPorCliente[cliente.id] || [];
+
+    // Tags de estado y rubro
+    const claseEstado = `tag-estado-${cliente.estado.replace(/\s+/g, "")}`;
 
     card.innerHTML = `
-      <div class="top">
-        <div class="info">
-          <h3>${c.nombre}</h3>
-          <p><strong>Teléfono:</strong> ${c.telefono || "-"}</p>
-          <p><strong>Rubro:</strong> ${c.rubro || "-"}</p>
-          <p><strong>Estado:</strong> ${c.estado}</p>
-          <p><strong>Próximo contacto:</strong> ${c.fecha_proximo_contacto || "-"}</p>
-          <p><strong>Notas:</strong> ${c.notas || "-"}</p>
+      <div class="card-top">
+        <div>
+          <div class="card-main-title">${cliente.nombre || "(Sin nombre)"}</div>
+          <div class="card-meta">
+            ${cliente.telefono ? `📞 ${cliente.telefono} · ` : ""}
+            ${cliente.fecha_proximo_contacto
+              ? `📅 Próximo contacto: ${formatearFechaSoloDia(
+                  cliente.fecha_proximo_contacto
+                )}`
+              : ""}
+          </div>
+          <div class="card-tags">
+            <span class="tag ${claseEstado}">Estado: ${cliente.estado}</span>
+            ${
+              cliente.rubro
+                ? `<span class="tag">Rubro: ${cliente.rubro}</span>`
+                : ""
+            }
+          </div>
+          ${
+            cliente.notas
+              ? `<div class="card-notas"><strong>Notas:</strong> ${cliente.notas}</div>`
+              : ""
+          }
         </div>
-
-        <div class="actions">
-          <button class="edit" data-id="${c.id}">Editar</button>
-          <button class="delete" data-id="${c.id}">Eliminar</button>
+        <div class="card-buttons">
+          <button class="btn-actividad" data-action="actividad" data-id="${
+            cliente.id
+          }">+ Actividad</button>
+          <button class="btn-edit" data-action="editar" data-id="${
+            cliente.id
+          }">Editar</button>
+          <button class="btn-delete" data-action="eliminar" data-id="${
+            cliente.id
+          }">Eliminar</button>
         </div>
       </div>
 
       <div class="historial">
-        <h4>Historial</h4>
-        ${historial
-          .map(
-            h => `
-          <div>${h.fecha.substring(0, 16)} — ${h.descripcion}</div>`
-          )
-          .join("")}
-        <button class="addAct" data-id="${c.id}">Agregar actividad</button>
+        <div class="historial-header">
+          <strong>Historial (${actividadesCliente.length})</strong>
+        </div>
+        <div class="historial-list">
+          ${
+            actividadesCliente.length
+              ? actividadesCliente
+                  .map(
+                    (a) => `
+            <div>
+              <div>${a.descripcion}</div>
+              <div class="historial-fecha">${formatearFecha(a.fecha)}</div>
+            </div>`
+                  )
+                  .join("")
+              : "<div>No hay actividades registradas.</div>"
+          }
+        </div>
       </div>
     `;
 
-    lista.appendChild(card);
-  }
-
-  activarBotones();
+    listaDiv.appendChild(card);
+  });
 }
 
-// ---------------------------------------------------------
-// 5) Guardar cliente (INSERT / UPDATE)
-// ---------------------------------------------------------
+// =========================================================
+// 5) GUARDAR / EDITAR CLIENTE
+// =========================================================
 async function guardarCliente(e) {
   e.preventDefault();
 
-  const id = document.getElementById("clienteId").value;
+  const id = document.getElementById("clienteId").value || null;
+  const nombre = document.getElementById("nombre").value.trim();
+  const telefono = document.getElementById("telefono").value.trim();
+  const rubro = document.getElementById("rubro").value.trim();
+  const estado = document.getElementById("estado").value;
+  const fechaProx = document.getElementById("fecha_proximo_contacto").value;
+  const notas = document.getElementById("notas").value.trim();
+
+  if (!nombre) {
+    alert("El nombre es obligatorio.");
+    return;
+  }
 
   const payload = {
-    nombre: document.getElementById("nombre").value,
-    telefono: document.getElementById("telefono").value,
-    rubro: document.getElementById("rubro").value,
-    estado: document.getElementById("estado").value,
-    fecha_proximo_contacto: document.getElementById("fecha_proximo_contacto").value,
-    notas: document.getElementById("notas").value,
+    nombre,
+    telefono: telefono || null,
+    rubro: rubro || null,
+    estado,
+    fecha_proximo_contacto: fechaProx || null,
+    notas: notas || null,
   };
 
   let error;
   let newId = id;
 
   if (id) {
-    const res = await supabaseClient
+    // UPDATE
+    const { error: errUpdate } = await supabaseClient
       .from("clientes")
       .update(payload)
       .eq("id", id);
 
-    error = res.error;
+    error = errUpdate;
+    if (!error) {
+      await agregarActividad(id, "Cliente actualizado");
+    }
   } else {
-    const res = await supabaseClient.from("clientes").insert([payload]).select("id");
-    error = res.error;
-    newId = res.data?.[0]?.id;
+    // INSERT
+    const { data, error: errInsert } = await supabaseClient
+      .from("clientes")
+      .insert([payload])
+      .select("id")
+      .single();
+
+    error = errInsert;
+    if (!error && data && data.id) {
+      newId = data.id;
+      await agregarActividad(newId, "Cliente creado");
+    }
   }
 
   if (error) {
     console.error("Error guardando cliente:", error);
-    alert("No se pudo guardar el cliente");
+    alert("No se pudo guardar el cliente.");
     return;
   }
 
-  await agregarActividad(newId, id ? "Cliente actualizado" : "Cliente creado");
-
-  document.getElementById("clienteForm").reset();
-  document.getElementById("clienteId").value = "";
-
+  resetFormulario();
   cargarClientes();
 }
 
-// ---------------------------------------------------------
-// 6) Editar cliente
-// ---------------------------------------------------------
-async function editarCliente(id) {
-  const { data, error } = await supabaseClient
-    .from("clientes")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) return;
-
-  document.getElementById("clienteId").value = data.id;
-  document.getElementById("nombre").value = data.nombre;
-  document.getElementById("telefono").value = data.telefono || "";
-  document.getElementById("rubro").value = data.rubro || "";
-  document.getElementById("estado").value = data.estado;
-  document.getElementById("fecha_proximo_contacto").value = data.fecha_proximo_contacto || "";
-  document.getElementById("notas").value = data.notas || "";
-}
-
-// ---------------------------------------------------------
-// 7) Eliminar
-// ---------------------------------------------------------
+// =========================================================
+// 6) ELIMINAR CLIENTE (borrado lógico)
+// =========================================================
 async function eliminarCliente(id) {
-  if (!confirm("¿Eliminar cliente?")) return;
+  if (!confirm("¿Seguro que querés marcar como eliminado este cliente?")) return;
 
-  const { error } = await supabaseClient.from("clientes").delete().eq("id", id);
+  const { error } = await supabaseClient
+    .from("clientes")
+    .update({ activo: false })
+    .eq("id", id);
 
   if (error) {
-    console.error("Error eliminando:", error);
-    alert("No se pudo eliminar");
+    console.error("Error eliminando cliente:", error);
+    alert("No se pudo eliminar el cliente.");
     return;
   }
 
   await agregarActividad(id, "Cliente eliminado");
-
   cargarClientes();
 }
 
-// ---------------------------------------------------------
-// 8) Activar botones
-// ---------------------------------------------------------
-function activarBotones() {
-  document.querySelectorAll(".edit").forEach(btn =>
-    btn.addEventListener("click", () => editarCliente(btn.dataset.id))
-  );
+// =========================================================
+// 7) EDITAR CLIENTE (rellenar formulario)
+// =========================================================
+function editarCliente(id) {
+  const cliente = clientesCache.find((c) => String(c.id) === String(id));
+  if (!cliente) return;
 
-  document.querySelectorAll(".delete").forEach(btn =>
-    btn.addEventListener("click", () => eliminarCliente(btn.dataset.id))
-  );
+  document.getElementById("clienteId").value = cliente.id;
+  document.getElementById("nombre").value = cliente.nombre || "";
+  document.getElementById("telefono").value = cliente.telefono || "";
+  document.getElementById("rubro").value = cliente.rubro || "";
+  document.getElementById("estado").value = cliente.estado || "Nuevo";
+  document.getElementById("fecha_proximo_contacto").value =
+    cliente.fecha_proximo_contacto || "";
+  document.getElementById("notas").value = cliente.notas || "";
 
-  document.querySelectorAll(".addAct").forEach(btn =>
-    btn.addEventListener("click", async () => {
-      const texto = prompt("Descripción de la actividad:");
-      if (!texto) return;
-      await agregarActividad(btn.dataset.id, texto);
-      cargarClientes();
-    })
-  );
+  document.getElementById("tituloForm").textContent = "Editar cliente";
+  document.getElementById("btnGuardar").textContent = "Actualizar";
 }
 
-// ---------------------------------------------------------
-// 9) Descargar modelo Excel
-// ---------------------------------------------------------
+// =========================================================
+// 8) AGREGAR ACTIVIDAD MANUAL DESDE LA TARJETA
+// =========================================================
+async function agregarActividadDesdeCard(id) {
+  const texto = prompt("Descripción de la actividad:");
+  if (!texto || !texto.trim()) return;
+
+  await agregarActividad(id, texto.trim());
+  cargarClientes();
+}
+
+// =========================================================
+// 9) EXCEL: DESCARGAR MODELO
+// =========================================================
 function descargarModeloExcel() {
   const wb = XLSX.utils.book_new();
 
+  // Estructura de columnas
   const data = [
-    ["nombre", "telefono", "rubro", "estado", "fecha_proximo_contacto", "notas"],
-    ["Juan Pérez", "1133445566", "Kiosco", "Nuevo", "2025-01-10", "Cliente potencial"],
-    ["María", "1133557799", "Vinoteca", "En seguimiento", "2025-02-01", "Enviar propuesta"],
+    [
+      "nombre",
+      "telefono",
+      "rubro",
+      "estado",
+      "fecha_proximo_contacto (YYYY-MM-DD)",
+      "notas",
+    ],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, "modelo");
+  XLSX.utils.book_append_sheet(wb, ws, "Clientes");
 
   XLSX.writeFile(wb, "modelo_clientes.xlsx");
 }
 
-// ---------------------------------------------------------
-// 10) Importar desde Excel
-// ---------------------------------------------------------
-function importarDesdeExcel(file) {
+// =========================================================
+// 10) EXCEL: IMPORTAR CLIENTES
+// =========================================================
+async function importarDesdeExcel(file) {
   const reader = new FileReader();
-
-  reader.onload = async e => {
+  reader.onload = async (e) => {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { type: "array" });
 
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
 
-    if (!rows.length) return alert("El archivo está vacío.");
+    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-    const payloads = rows.map(r => ({
-      nombre: r.nombre || null,
-      telefono: r.telefono || null,
-      rubro: r.rubro || "Sin definir",
-      estado: r.estado || "Nuevo",
-      fecha_proximo_contacto: r.fecha_proximo_contacto || null,
-      notas: r.notas || null,
-    }));
-
-    const { error } = await supabaseClient.from("clientes").insert(payloads);
-
-    if (error) {
-      console.error("Error importando Excel:", error);
-      alert("Error importando el archivo.");
+    if (!json.length) {
+      alert("El archivo no tiene datos.");
       return;
     }
 
-    alert("Clientes importados correctamente.");
+    const registros = json.map((row) => ({
+      nombre: (row.nombre || "").toString().trim(),
+      telefono: row.telefono ? row.telefono.toString().trim() : null,
+      rubro: row.rubro ? row.rubro.toString().trim() : null,
+      estado: row.estado && row.estado.trim()
+        ? row.estado.trim()
+        : "Nuevo",
+      fecha_proximo_contacto:
+        row["fecha_proximo_contacto (YYYY-MM-DD)"] || null,
+      notas: row.notas ? row.notas.toString().trim() : null,
+    }));
+
+    const registrosValidos = registros.filter((r) => r.nombre);
+
+    if (!registrosValidos.length) {
+      alert("No se encontraron filas válidas (con nombre).");
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from("clientes")
+      .insert(registrosValidos);
+
+    if (error) {
+      console.error("Error importando desde Excel:", error);
+      alert("Hubo un error al importar los clientes.");
+      return;
+    }
+
+    alert(`Se importaron ${registrosValidos.length} clientes.`);
     cargarClientes();
   };
 
   reader.readAsArrayBuffer(file);
 }
 
-// ---------------------------------------------------------
-// 11) Inicialización
-// ---------------------------------------------------------
+// =========================================================
+// 11) EVENTOS DOM
+// =========================================================
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("clienteForm").addEventListener("submit", guardarCliente);
-  document.getElementById("btnCancel").addEventListener("click", () => document.getElementById("clienteForm").reset());
-  document.getElementById("btnRefresh").addEventListener("click", cargarClientes);
+  // Guardar / editar
+  document
+    .getElementById("formCliente")
+    .addEventListener("submit", guardarCliente);
 
-  document.getElementById("btnDescargarModelo").addEventListener("click", descargarModeloExcel);
+  // Cancelar edición
+  document
+    .getElementById("btnCancelarEdicion")
+    .addEventListener("click", resetFormulario);
 
+  // Filtros
+  document
+    .getElementById("btnAplicarFiltros")
+    .addEventListener("click", cargarClientes);
+
+  // Excel: descargar modelo
+  document
+    .getElementById("btnDescargarModelo")
+    .addEventListener("click", descargarModeloExcel);
+
+  // Excel: importar
   const inputExcel = document.getElementById("inputExcel");
-  document.getElementById("btnImportarExcel").addEventListener("click", () => inputExcel.click());
+  document
+    .getElementById("btnImportarExcel")
+    .addEventListener("click", () => inputExcel.click());
+
   inputExcel.addEventListener("change", () => {
     if (inputExcel.files.length === 1) {
       importarDesdeExcel(inputExcel.files[0]);
@@ -278,5 +436,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Delegación de eventos para las tarjetas (editar / eliminar / actividad)
+  document.getElementById("lista").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+
+    if (action === "editar") {
+      editarCliente(id);
+    } else if (action === "eliminar") {
+      eliminarCliente(id);
+    } else if (action === "actividad") {
+      agregarActividadDesdeCard(id);
+    }
+  });
+
+  // Carga inicial
   cargarClientes();
 });
