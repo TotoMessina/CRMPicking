@@ -67,6 +67,7 @@ async function cargarClientes() {
 
   // Filtros
   const filtroNombre = document.getElementById("filtroNombre").value.trim();
+  const filtroTelefono = document.getElementById("filtroTelefono").value.trim();
   const filtroRubro = document.getElementById("filtroRubro").value.trim();
   const filtroEstado = document.getElementById("filtroEstado").value;
 
@@ -82,6 +83,11 @@ async function cargarClientes() {
 
   if (filtroNombre) {
     query = query.ilike("nombre", `%${filtroNombre}%`);
+  }
+
+  if (filtroTelefono) {
+    // búsqueda parcial por teléfono
+    query = query.ilike("telefono", `%${filtroTelefono}%`);
   }
 
   if (filtroRubro) {
@@ -142,11 +148,13 @@ async function cargarClientes() {
           <div class="card-main-title">${cliente.nombre || "(Sin nombre)"}</div>
           <div class="card-meta">
             ${cliente.telefono ? `📞 ${cliente.telefono} · ` : ""}
-            ${cliente.fecha_proximo_contacto
-              ? `📅 Próximo contacto: ${formatearFechaSoloDia(
-                  cliente.fecha_proximo_contacto
-                )}`
-              : ""}
+            ${
+              cliente.fecha_proximo_contacto
+                ? `📅 Próximo contacto: ${formatearFechaSoloDia(
+                    cliente.fecha_proximo_contacto
+                  )}`
+                : ""
+            }
           </div>
           <div class="card-tags">
             <span class="tag ${claseEstado}">Estado: ${cliente.estado}</span>
@@ -223,7 +231,7 @@ async function guardarCliente(e) {
   const payload = {
     nombre,
     telefono: telefono || null,
-    rubro: rubro || null,
+    rubro: rubro || "Sin definir",
     estado,
     fecha_proximo_contacto: fechaProx || null,
     notas: notas || null,
@@ -260,7 +268,7 @@ async function guardarCliente(e) {
 
   if (error) {
     console.error("Error guardando cliente:", error);
-    alert("No se pudo guardar el cliente.");
+    alert("No se pudo guardar el cliente.\n\n" + error.message);
     return;
   }
 
@@ -345,7 +353,7 @@ function descargarModeloExcel() {
 }
 
 // =========================================================
-// 10) EXCEL: IMPORTAR CLIENTES
+// 10) EXCEL: IMPORTAR CLIENTES (corregido rubro/estado)
 // =========================================================
 async function importarDesdeExcel(file) {
   const reader = new FileReader();
@@ -364,27 +372,21 @@ async function importarDesdeExcel(file) {
     }
 
     const registros = json.map((row) => {
-      // nombre (obligatorio)
       const nombre = (row.nombre || "").toString().trim();
 
-      // teléfono (opcional)
       const telefono = row.telefono
         ? row.telefono.toString().trim()
         : null;
 
-      // rubro: si está vacío, usamos "Sin definir"
       let rubro = row.rubro ? row.rubro.toString().trim() : "";
       if (!rubro) rubro = "Sin definir";
 
-      // estado: si no viene, usamos "Nuevo"
       let estado = row.estado ? row.estado.toString().trim() : "";
       if (!estado) estado = "Nuevo";
 
-      // fecha de próximo contacto
       const fecha_proximo_contacto =
         row["fecha_proximo_contacto (YYYY-MM-DD)"] || null;
 
-      // notas
       const notas = row.notas ? row.notas.toString().trim() : null;
 
       return {
@@ -397,7 +399,6 @@ async function importarDesdeExcel(file) {
       };
     });
 
-    // Solo filas con nombre
     const registrosValidos = registros.filter((r) => r.nombre);
 
     if (!registrosValidos.length) {
@@ -440,6 +441,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("btnAplicarFiltros")
     .addEventListener("click", cargarClientes);
+
+  // Podrías agregar búsqueda inmediata al presionar Enter:
+  ["filtroNombre", "filtroTelefono", "filtroRubro"].forEach((id) => {
+    const el = document.getElementById(id);
+    el.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        cargarClientes();
+      }
+    });
+  });
 
   // Excel: descargar modelo
   document
