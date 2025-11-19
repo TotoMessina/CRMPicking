@@ -1,0 +1,103 @@
+:root {
+    --bg: #f7f8fb;
+    --card: #fff;
+    --accent: #1f6feb;
+}
+
+* {
+    box-sizing: border-box;
+    font-family: Inter, system-ui;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: #111;
+}
+
+.container {
+    max-width: 900px;
+    margin: 24px auto;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 12px;
+}
+
+.controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+input, select, textarea, button {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+button {
+    cursor: pointer;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+}
+
+.form-box {
+    background: var(--card);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 6px #0001;
+}
+
+#lista-clientes {
+    list-style: none;
+    padding: 0;
+}
+
+#lista-clientes .card {
+    background: var(--card);
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px #0001;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#lista-clientes .info {
+    max-width: 70%;
+}
+
+#lista-clientes .estado {
+    font-weight: bold;
+}
+
+.card button {
+    background: #d33;
+}
+
+.card button.edit {
+    background: #1f6feb;
+}
+
+:root{--bg:#f7f8fb;--card:#fff;--accent:#1f6feb}
+*{box-sizing:border-box;font-family:Inter,system-ui}
+body{margin:0;background:var(--bg);color:#111}
+.container{max-width:900px;margin:24px auto;padding:20px}
+h1{margin-bottom:12px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+input,select,textarea,button{padding:10px;border:1px solid #ccc;border-radius:8px}
+button{cursor:pointer;background:var(--accent);color:#fff;border:none}
+.form-box{background:var(--card);padding:16px;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 6px #0001}
+#lista .card{background:var(--card);padding:12px;border-radius:12px;margin-bottom:10px;box-shadow:0 2px 4px #0001;display:block}
+.card .top{display:flex;justify-content:space-between;align-items:center}
+.card button{background:#d33;margin-left:6px}
+.card button.edit{background:#1f6feb}
+.historial{margin-top:10px;padding:10px;background:#f3f4f6;border-radius:8px;font-size:14px}
+.historial div{margin-bottom:4px;border-bottom:1px solid #ddd;padding-bottom:4px}
+

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CRM con Supabase</title>
+<link rel="stylesheet" href="styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<main class="container">
+<h1>CRM con Supabase</h1>
+
+<section class="controls">
+<button id="btnDescargarModelo">Descargar modelo</button>
+<input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none">
+<button id="btnImportarExcel">Importar Excel</button>
+<input id="search" placeholder="Buscar por nombre o teléfono" />
+<select id="filterEstado">
+<option value="">Filtrar por estado</option>
+<option value="Nuevo">Nuevo</option>
+<option value="En seguimiento">En seguimiento</option>
+<option value="Ganado">Ganado</option>
+<option value="Perdido">Perdido</option>
+</select>
+<select id="filterRubro">
+<option value="">Filtrar por rubro</option>
+<option value="Kiosco">Kiosco</option>
+<option value="Almacen">Almacén</option>
+<option value="Autoservicio">Autoservicio</option>
+<option value="Carniceria">Carnicería</option>
+<option value="Verduleria">Verdulería</option>
+<option value="Vinoteca">Vinoteca</option>
+<option value="Sin definir">Sin definir</option>
+</select>
+<button id="btnRefresh">Refrescar</button>
+</section>
+
+<section class="form-box">
+<h2>Agregar / Editar cliente</h2>
+<form id="clienteForm">
+<input type="hidden" id="clienteId">
+
+<input id="nombre" placeholder="Nombre" required />
+<input id="telefono" placeholder="Teléfono" />
+
+<select id="rubro" required>
+<option value="">Rubro</option>
+<option value="Kiosco">Kiosco</option>
+<option value="Almacen">Almacén</option>
+<option value="Autoservicio">Autoservicio</option>
+<option value="Carniceria">Carnicería</option>
+<option value="Verduleria">Verdulería</option>
+<option value="Vinoteca">Vinoteca</option>
+<option value="Sin definir">Sin definir</option>
+</select>
+
+<select id="estado">
+<option value="Nuevo">Nuevo</option>
+<option value="En seguimiento">En seguimiento</option>
+<option value="Ganado">Ganado</option>
+<option value="Perdido">Perdido</option>
+</select>
+
+<input id="fecha_proximo_contacto" type="date" />
+<textarea id="notas" placeholder="Notas"></textarea>
+
+<div class="actions">
+<button type="submit">Guardar</button>
+<button type="button" id="btnCancel">Cancelar</button>
+</div>
+</form>
+</section>
+
+<section>
+<h2>Clientes <span id="contador">(0)</span></h2>
+<div id="lista"></div>
+</section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
