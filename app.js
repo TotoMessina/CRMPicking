@@ -363,18 +363,41 @@ async function importarDesdeExcel(file) {
       return;
     }
 
-    const registros = json.map((row) => ({
-      nombre: (row.nombre || "").toString().trim(),
-      telefono: row.telefono ? row.telefono.toString().trim() : null,
-      rubro: row.rubro ? row.rubro.toString().trim() : null,
-      estado: row.estado && row.estado.trim()
-        ? row.estado.trim()
-        : "Nuevo",
-      fecha_proximo_contacto:
-        row["fecha_proximo_contacto (YYYY-MM-DD)"] || null,
-      notas: row.notas ? row.notas.toString().trim() : null,
-    }));
+    const registros = json.map((row) => {
+      // nombre (obligatorio)
+      const nombre = (row.nombre || "").toString().trim();
 
+      // teléfono (opcional)
+      const telefono = row.telefono
+        ? row.telefono.toString().trim()
+        : null;
+
+      // rubro: si está vacío, usamos "Sin definir"
+      let rubro = row.rubro ? row.rubro.toString().trim() : "";
+      if (!rubro) rubro = "Sin definir";
+
+      // estado: si no viene, usamos "Nuevo"
+      let estado = row.estado ? row.estado.toString().trim() : "";
+      if (!estado) estado = "Nuevo";
+
+      // fecha de próximo contacto
+      const fecha_proximo_contacto =
+        row["fecha_proximo_contacto (YYYY-MM-DD)"] || null;
+
+      // notas
+      const notas = row.notas ? row.notas.toString().trim() : null;
+
+      return {
+        nombre,
+        telefono,
+        rubro,
+        estado,
+        fecha_proximo_contacto,
+        notas,
+      };
+    });
+
+    // Solo filas con nombre
     const registrosValidos = registros.filter((r) => r.nombre);
 
     if (!registrosValidos.length) {
@@ -388,7 +411,7 @@ async function importarDesdeExcel(file) {
 
     if (error) {
       console.error("Error importando desde Excel:", error);
-      alert("Hubo un error al importar los clientes.");
+      alert("Hubo un error al importar los clientes.\n\n" + error.message);
       return;
     }
 
