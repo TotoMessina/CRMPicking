@@ -2,12 +2,16 @@
 // 1) Conexión a Supabase (solo ANON KEY)
 // =========================================================
 const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY"; // solo la anon key
+const SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY"; // solo la anon key
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Cache local de clientes para editar rápido
 let clientesCache = [];
+
+// Usuario que está usando la app (se toma del select y se guarda en localStorage)
+let usuarioActual = localStorage.getItem("usuarioActual") || "";
 
 // =========================================================
 // 2) Utilidades
@@ -49,6 +53,7 @@ async function agregarActividad(clienteId, descripcion) {
     {
       cliente_id: clienteId,
       descripcion,
+      usuario: usuarioActual || null,
     },
   ]);
 
@@ -114,7 +119,7 @@ async function cargarClientes() {
   const ids = clientesCache.map((c) => c.id);
   const { data: actividades, error: errorAct } = await supabaseClient
     .from("actividades")
-    .select("id, cliente_id, fecha, descripcion")
+    .select("id, cliente_id, fecha, descripcion, usuario")
     .in("cliente_id", ids)
     .order("fecha", { ascending: false });
 
@@ -186,8 +191,11 @@ async function cargarClientes() {
       <div class="historial">
         <div class="historial-header">
           <strong>Historial (${actividadesCliente.length})</strong>
+          <button class="btn-toggle-historial" data-action="toggle-historial" data-id="${
+            cliente.id
+          }">Ver historial</button>
         </div>
-        <div class="historial-list">
+        <div class="historial-list" style="display:none">
           ${
             actividadesCliente.length
               ? actividadesCliente
@@ -195,7 +203,14 @@ async function cargarClientes() {
                     (a) => `
             <div>
               <div>${a.descripcion}</div>
-              <div class="historial-fecha">${formatearFecha(a.fecha)}</div>
+              <div class="historial-fecha">
+                ${formatearFecha(a.fecha)}
+                ${
+                  a.usuario
+                    ? ` · <strong>${a.usuario}</strong>`
+                    : ""
+                }
+              </div>
             </div>`
                   )
                   .join("")
@@ -321,6 +336,11 @@ function editarCliente(id) {
 // 8) AGREGAR ACTIVIDAD MANUAL DESDE LA TARJETA
 // =========================================================
 async function agregarActividadDesdeCard(id) {
+  if (!usuarioActual) {
+    alert("Seleccioná un usuario arriba antes de registrar actividades.");
+    return;
+  }
+
   const texto = prompt("Descripción de la actividad:");
   if (!texto || !texto.trim()) return;
 
@@ -442,7 +462,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("btnAplicarFiltros")
     .addEventListener("click", cargarClientes);
 
-  // Podrías agregar búsqueda inmediata al presionar Enter:
+  // Buscar al presionar Enter
   ["filtroNombre", "filtroTelefono", "filtroRubro"].forEach((id) => {
     const el = document.getElementById(id);
     el.addEventListener("keypress", (e) => {
@@ -471,7 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Delegación de eventos para las tarjetas (editar / eliminar / actividad)
+  // Delegación de eventos para las tarjetas (editar / eliminar / actividad / toggle historial)
   document.getElementById("lista").addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
@@ -485,8 +505,29 @@ document.addEventListener("DOMContentLoaded", () => {
       eliminarCliente(id);
     } else if (action === "actividad") {
       agregarActividadDesdeCard(id);
+    } else if (action === "toggle-historial") {
+      const card = btn.closest(".card");
+      if (!card) return;
+      const listaHist = card.querySelector(".historial-list");
+      if (!listaHist) return;
+      const visible = listaHist.style.display !== "none";
+      listaHist.style.display = visible ? "none" : "block";
+      btn.textContent = visible ? "Ver historial" : "Ocultar historial";
     }
   });
+
+  // Selector de usuario actual
+  const selUsuario = document.getElementById("usuarioActual");
+  if (selUsuario) {
+    if (usuarioActual) {
+      selUsuario.value = usuarioActual;
+    }
+
+    selUsuario.addEventListener("change", () => {
+      usuarioActual = selUsuario.value || "";
+      localStorage.setItem("usuarioActual", usuarioActual);
+    });
+  }
 
   // Carga inicial
   cargarClientes();
