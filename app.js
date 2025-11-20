@@ -3,30 +3,31 @@
 // =========================================================
 const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
 const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY"; // solo la anon key
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Cache local de clientes para editar rápido
+// Cache local de clientes
 let clientesCache = [];
 
-// Usuario que está usando la app (se toma del select y se guarda en localStorage)
+// Usuario actual y tema
 let usuarioActual = localStorage.getItem("usuarioActual") || "";
-
 const THEME_KEY = "crm_theme";
 
-function applyTheme(theme) {
-  const root = document.documentElement;
-  root.setAttribute("data-theme", theme);
+// Solo estos usuarios pueden guardar / registrar historial
+const allowedUsers = [
+  "Toto",
+  "Ruben",
+  "Tincho(B)",
+  "Fran",
+  "Ari",
+  "Nati",
+  "Dani",
+  "Otro",
+];
 
-  localStorage.setItem(THEME_KEY, theme);
-
-  const btn = document.getElementById("btnToggleTheme");
-  if (btn) {
-    btn.textContent =
-      theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
-  }
-}
+// Modal actividad
+let clienteActividadID = null;
 
 // =========================================================
 // 2) Utilidades
@@ -58,11 +59,85 @@ function resetFormulario() {
   document.getElementById("btnGuardar").textContent = "Guardar";
 }
 
+// Tema
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.setAttribute("data-theme", theme);
+  localStorage.setItem(THEME_KEY, theme);
+
+  const btn = document.getElementById("btnToggleTheme");
+  if (btn) {
+    btn.textContent =
+      theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
+  }
+}
+
+// Usuario válido
+function isUsuarioValido() {
+  return !!usuarioActual && allowedUsers.includes(usuarioActual);
+}
+
+function asegurarUsuarioValido() {
+  if (!isUsuarioValido()) {
+    alert(
+      "Para poder guardar clientes o registrar historial tenés que seleccionar un usuario válido (Toto, Ruben, Tincho(B), Fran, Ari, Nati, Dani u Otro) en el selector de arriba."
+    );
+    return false;
+  }
+  return true;
+}
+
+// Convierte cualquier formato de fecha Excel → YYYY-MM-DD
+function excelDateToYMD(value) {
+  if (!value && value !== 0) return null;
+
+  // Caso 1: número de fecha de Excel (por ejemplo 45231)
+  if (typeof value === "number") {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30)); // 1899-12-30
+    const date = new Date(excelEpoch.getTime() + value * 86400000);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString().split("T")[0];
+  }
+
+  // Caso 2: objeto Date real
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().split("T")[0];
+  }
+
+  // Caso 3: string
+  if (typeof value === "string") {
+    const clean = value.trim();
+    if (!clean) return null;
+
+    // Ya está en formato YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+
+    // dd/mm/yyyy
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(clean)) {
+      const [d, m, y] = clean.split("/");
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+
+    // Intentar parseo estándar
+    const d = new Date(clean);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toISOString().split("T")[0];
+    }
+  }
+
+  return null;
+}
+
 // =========================================================
 // 3) ACTIVIDADES (historial)
 // =========================================================
 async function agregarActividad(clienteId, descripcion) {
   if (!clienteId) return;
+
+  // Por seguridad, no registramos historial si no hay usuario válido
+  if (!isUsuarioValido()) {
+    return;
+  }
 
   const { error } = await supabaseClient.from("actividades").insert([
     {
@@ -79,7 +154,7 @@ async function agregarActividad(clienteId, descripcion) {
 }
 
 // =========================================================
-// 4) CARGA DE CLIENTES + HISTORIAL (optimizado)
+// 4) CARGA DE CLIENTES + HISTORIAL + RUBROS PARA FILTRO
 // =========================================================
 async function cargarClientes() {
   const listaDiv = document.getElementById("lista");
@@ -88,9 +163,56 @@ async function cargarClientes() {
   // Filtros
   const filtroNombre = document.getElementById("filtroNombre").value.trim();
   const filtroTelefono = document.getElementById("filtroTelefono").value.trim();
-  const filtroRubro = document.getElementById("filtroRubro").value.trim();
+  const filtroRubro = document.getElementById("filtroRubro").value; // select
   const filtroEstado = document.getElementById("filtroEstado").value;
 
+  // --- Actualizar opciones del filtro de rubro desde TODOS los clientes activos ---
+  try {
+    const { data: rubrosData, error: errRubros } = await supabaseClient
+      .from("clientes")
+      .select("rubro")
+      .eq("activo", true);
+
+    if (!errRubros) {
+      const selectRubro = document.getElementById("filtroRubro");
+      if (selectRubro) {
+        const prev = selectRubro.value;
+        const rubrosSet = new Set(
+          (rubrosData || [])
+            .map((c) => c.rubro)
+            .filter((r) => r && r.toString().trim() !== "")
+        );
+
+        selectRubro.innerHTML = "";
+        const optTodos = document.createElement("option");
+        optTodos.value = "";
+        optTodos.textContent = "Todos los rubros";
+        selectRubro.appendChild(optTodos);
+
+        const rubrosOrdenados = Array.from(rubrosSet).sort((a, b) =>
+          a.localeCompare(b, "es", { sensitivity: "base" })
+        );
+
+        rubrosOrdenados.forEach((r) => {
+          const opt = document.createElement("option");
+          opt.value = r;
+          opt.textContent = r;
+          selectRubro.appendChild(opt);
+        });
+
+        // restaurar selección si sigue existiendo
+        if (prev && rubrosSet.has(prev)) {
+          selectRubro.value = prev;
+        }
+      }
+    } else {
+      console.error("Error cargando rubros para filtro:", errRubros);
+    }
+  } catch (e) {
+    console.error("Error inesperado cargando rubros:", e);
+  }
+
+  // --- Cargar clientes según filtros ---
   let query = supabaseClient
     .from("clientes")
     .select("id, nombre, telefono, rubro, estado, fecha_proximo_contacto, notas")
@@ -106,12 +228,11 @@ async function cargarClientes() {
   }
 
   if (filtroTelefono) {
-    // búsqueda parcial por teléfono
     query = query.ilike("telefono", `%${filtroTelefono}%`);
   }
 
   if (filtroRubro) {
-    query = query.ilike("rubro", `%${filtroRubro}%`);
+    query = query.eq("rubro", filtroRubro);
   }
 
   const { data: clientes, error } = await query;
@@ -158,8 +279,6 @@ async function cargarClientes() {
     card.dataset.id = cliente.id;
 
     const actividadesCliente = actividadesPorCliente[cliente.id] || [];
-
-    // Tags de estado y rubro
     const claseEstado = `tag-estado-${cliente.estado.replace(/\s+/g, "")}`;
 
     card.innerHTML = `
@@ -245,6 +364,8 @@ async function cargarClientes() {
 async function guardarCliente(e) {
   e.preventDefault();
 
+  if (!asegurarUsuarioValido()) return;
+
   const id = document.getElementById("clienteId").value || null;
   const nombre = document.getElementById("nombre").value.trim();
   const telefono = document.getElementById("telefono").value.trim();
@@ -271,7 +392,6 @@ async function guardarCliente(e) {
   let newId = id;
 
   if (id) {
-    // UPDATE
     const { error: errUpdate } = await supabaseClient
       .from("clientes")
       .update(payload)
@@ -282,7 +402,6 @@ async function guardarCliente(e) {
       await agregarActividad(id, "Cliente actualizado");
     }
   } else {
-    // INSERT
     const { data, error: errInsert } = await supabaseClient
       .from("clientes")
       .insert([payload])
@@ -310,6 +429,8 @@ async function guardarCliente(e) {
 // 6) ELIMINAR CLIENTE (borrado lógico)
 // =========================================================
 async function eliminarCliente(id) {
+  if (!asegurarUsuarioValido()) return;
+
   if (!confirm("¿Seguro que querés marcar como eliminado este cliente?")) return;
 
   const { error } = await supabaseClient
@@ -338,7 +459,8 @@ function editarCliente(id) {
   document.getElementById("nombre").value = cliente.nombre || "";
   document.getElementById("telefono").value = cliente.telefono || "";
   document.getElementById("rubro").value = cliente.rubro || "";
-  document.getElementById("estado").value = cliente.estado || "Nuevo";
+  document.getElementById("estado").value =
+    cliente.estado || "1 - Cliente relevado";
   document.getElementById("fecha_proximo_contacto").value =
     cliente.fecha_proximo_contacto || "";
   document.getElementById("notas").value = cliente.notas || "";
@@ -348,10 +470,8 @@ function editarCliente(id) {
 }
 
 // =========================================================
-// 8) AGREGAR ACTIVIDAD MANUAL DESDE LA TARJETA
+// 8) MODAL DE ACTIVIDAD
 // =========================================================
-let clienteActividadID = null;
-
 function abrirModalActividad(clienteId) {
   clienteActividadID = clienteId;
   document.getElementById("actividadTexto").value = "";
@@ -364,12 +484,9 @@ function cerrarModalActividad() {
 }
 
 async function guardarActividadDesdeModal() {
-  const texto = document.getElementById("actividadTexto").value.trim();
+  if (!asegurarUsuarioValido()) return;
 
-  if (!usuarioActual) {
-    alert("Seleccioná un usuario arriba antes de registrar actividades.");
-    return;
-  }
+  const texto = document.getElementById("actividadTexto").value.trim();
 
   if (!texto) {
     alert("La actividad no puede estar vacía.");
@@ -381,8 +498,8 @@ async function guardarActividadDesdeModal() {
   cargarClientes();
 }
 
-// Evento desde el botón "+ Actividad"
 async function agregarActividadDesdeCard(id) {
+  if (!asegurarUsuarioValido()) return;
   abrirModalActividad(id);
 }
 
@@ -392,7 +509,6 @@ async function agregarActividadDesdeCard(id) {
 function descargarModeloExcel() {
   const wb = XLSX.utils.book_new();
 
-  // Estructura de columnas
   const data = [
     [
       "nombre",
@@ -411,7 +527,107 @@ function descargarModeloExcel() {
 }
 
 // =========================================================
-// 10) EXCEL: IMPORTAR CLIENTES (corregido rubro/estado)
+// 9 bis) EXCEL: EXPORTAR CLIENTES + HISTORIAL
+// =========================================================
+async function exportarExcel() {
+  const { data: clientes, error: errCli } = await supabaseClient
+    .from("clientes")
+    .select(
+      "id, nombre, telefono, rubro, estado, fecha_proximo_contacto, notas"
+    )
+    .eq("activo", true)
+    .order("id", { ascending: true });
+
+  if (errCli) {
+    console.error("Error obteniendo clientes para exportar:", errCli);
+    alert("No se pudieron obtener los clientes para exportar.");
+    return;
+  }
+
+  const ids = (clientes || []).map((c) => c.id);
+  let actividades = [];
+
+  if (ids.length) {
+    const { data: acts, error: errAct } = await supabaseClient
+      .from("actividades")
+      .select("cliente_id, fecha, descripcion, usuario")
+      .in("cliente_id", ids)
+      .order("fecha", { ascending: true });
+
+    if (errAct) {
+      console.error("Error obteniendo actividades:", errAct);
+    }
+
+    actividades = acts || [];
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // Hoja Clientes
+  const dataClientes = [
+    [
+      "id",
+      "nombre",
+      "telefono",
+      "rubro",
+      "estado",
+      "fecha_proximo_contacto",
+      "notas",
+    ],
+  ];
+
+  (clientes || []).forEach((c) => {
+    dataClientes.push([
+      c.id,
+      c.nombre || "",
+      c.telefono || "",
+      c.rubro || "",
+      c.estado || "",
+      c.fecha_proximo_contacto || "",
+      c.notas || "",
+    ]);
+  });
+
+  const wsClientes = XLSX.utils.aoa_to_sheet(dataClientes);
+  XLSX.utils.book_append_sheet(wb, wsClientes, "Clientes");
+
+  // Hoja Historial
+  const clientePorId = {};
+  (clientes || []).forEach((c) => {
+    clientePorId[c.id] = c;
+  });
+
+  const dataHist = [
+    [
+      "cliente_id",
+      "nombre_cliente",
+      "telefono_cliente",
+      "fecha",
+      "usuario",
+      "descripcion",
+    ],
+  ];
+
+  actividades.forEach((a) => {
+    const cli = clientePorId[a.cliente_id] || {};
+    dataHist.push([
+      a.cliente_id,
+      cli.nombre || "",
+      cli.telefono || "",
+      a.fecha || "",
+      a.usuario || "",
+      a.descripcion || "",
+    ]);
+  });
+
+  const wsHist = XLSX.utils.aoa_to_sheet(dataHist);
+  XLSX.utils.book_append_sheet(wb, wsHist, "Historial");
+
+  XLSX.writeFile(wb, "crm_clientes_historial.xlsx");
+}
+
+// =========================================================
+// 10) EXCEL: IMPORTAR CLIENTES (maneja duplicados por teléfono)
 // =========================================================
 async function importarDesdeExcel(file) {
   const reader = new FileReader();
@@ -440,10 +656,12 @@ async function importarDesdeExcel(file) {
       if (!rubro) rubro = "Sin definir";
 
       let estado = row.estado ? row.estado.toString().trim() : "";
-      if (!estado) estado = "Nuevo";
+      if (!estado) estado = "1 - Cliente relevado";
 
-      const fecha_proximo_contacto =
-        row["fecha_proximo_contacto (YYYY-MM-DD)"] || null;
+      // Conversión robusta de fecha
+      const fecha_proximo_contacto = excelDateToYMD(
+        row["fecha_proximo_contacto (YYYY-MM-DD)"]
+      );
 
       const notas = row.notas ? row.notas.toString().trim() : null;
 
@@ -464,17 +682,161 @@ async function importarDesdeExcel(file) {
       return;
     }
 
-    const { error } = await supabaseClient
-      .from("clientes")
-      .insert(registrosValidos);
+    const gruposPorTelefono = new Map();
+    const sinTelefono = [];
 
-    if (error) {
-      console.error("Error importando desde Excel:", error);
-      alert("Hubo un error al importar los clientes.\n\n" + error.message);
-      return;
+    for (const r of registrosValidos) {
+      if (!r.telefono) {
+        sinTelefono.push(r);
+      } else {
+        if (!gruposPorTelefono.has(r.telefono)) {
+          gruposPorTelefono.set(r.telefono, []);
+        }
+        gruposPorTelefono.get(r.telefono).push(r);
+      }
     }
 
-    alert(`Se importaron ${registrosValidos.length} clientes.`);
+    const telefonos = Array.from(gruposPorTelefono.keys());
+
+    let existentes = [];
+    if (telefonos.length) {
+      const { data: existentesData, error: errorExist } = await supabaseClient
+        .from("clientes")
+        .select("id, telefono, notas")
+        .in("telefono", telefonos);
+
+      if (errorExist) {
+        console.error("Error leyendo clientes existentes:", errorExist);
+        alert(
+          "No se pudo verificar teléfonos existentes.\n\n" +
+            errorExist.message
+        );
+        return;
+      }
+
+      existentes = existentesData || [];
+    }
+
+    const existentesMap = new Map();
+    for (const c of existentes) {
+      existentesMap.set(c.telefono, c);
+    }
+
+    const nuevosParaInsertar = [];
+    const duplicadosEnExistentes = [];
+    const fusionadosDesdeExcel = [];
+
+    for (const [telefono, rows] of gruposPorTelefono.entries()) {
+      const existente = existentesMap.get(telefono);
+
+      if (existente) {
+        duplicadosEnExistentes.push({ telefono, rows, existente });
+      } else {
+        const base = { ...rows[0] };
+
+        if (rows.length > 1) {
+          let extraNotas = "";
+          rows.forEach((r, idx) => {
+            const detalle =
+              `Registro ${idx + 1} del Excel: ` +
+              `${r.nombre || "Sin nombre"} · Rubro: ${r.rubro || "-"} · Estado: ${
+                r.estado || "-"
+              }` +
+              (r.fecha_proximo_contacto
+                ? ` · Próx. contacto: ${r.fecha_proximo_contacto}`
+                : "") +
+              (r.notas ? ` · Notas: ${r.notas}` : "");
+            extraNotas += `\n• ${detalle}`;
+          });
+
+          if (extraNotas) {
+            base.notas = (base.notas || "") + "\n\n" + extraNotas;
+          }
+
+          fusionadosDesdeExcel.push({
+            telefono,
+            cantidad: rows.length,
+          });
+        }
+
+        nuevosParaInsertar.push(base);
+      }
+    }
+
+    nuevosParaInsertar.push(...sinTelefono);
+
+    let insertError = null;
+    let insertCount = 0;
+
+    if (nuevosParaInsertar.length) {
+      const { error, count } = await supabaseClient
+        .from("clientes")
+        .insert(nuevosParaInsertar, { count: "exact" });
+
+      insertError = error;
+      if (!error) {
+        insertCount = count ?? nuevosParaInsertar.length;
+      }
+    }
+
+    let updatedCount = 0;
+    const hoy = new Date().toLocaleDateString("es-AR");
+
+    for (const dup of duplicadosEnExistentes) {
+      const { existente, rows, telefono } = dup;
+
+      let textoExtra = existente.notas ? existente.notas + "\n\n" : "";
+      textoExtra += `Importación Excel (${hoy}) para teléfono ${telefono}:\n`;
+
+      rows.forEach((r, idx) => {
+        textoExtra += `• ${idx + 1}) ${r.nombre || "Sin nombre"} · Rubro: ${
+          r.rubro || "-"
+        } · Estado: ${r.estado || "-"}`;
+        if (r.fecha_proximo_contacto) {
+          textoExtra += ` · Próx. contacto: ${r.fecha_proximo_contacto}`;
+        }
+        if (r.notas) {
+          textoExtra += ` · Notas: ${r.notas}`;
+        }
+        textoExtra += "\n";
+      });
+
+      const { error: updErr } = await supabaseClient
+        .from("clientes")
+        .update({ notas: textoExtra })
+        .eq("id", existente.id);
+
+      if (!updErr) {
+        updatedCount++;
+      } else {
+        console.error("Error actualizando notas por duplicado:", updErr);
+      }
+    }
+
+    if (insertError) {
+      console.error("Error importando desde Excel:", insertError);
+      alert(
+        "Ocurrió un error al importar algunos clientes.\n\n" +
+          insertError.message
+      );
+    }
+
+    const totalDuplicados = duplicadosEnExistentes.reduce(
+      (acc, d) => acc + d.rows.length,
+      0
+    );
+
+    let msg = `Importación completada.\n\nClientes nuevos cargados: ${insertCount}`;
+
+    if (totalDuplicados) {
+      msg += `\nRegistros con teléfono ya existente en la BD: ${totalDuplicados}.\nSe agregaron como notas al cliente correspondiente.`;
+    }
+
+    if (fusionadosDesdeExcel.length) {
+      msg += `\n\nTeléfonos repetidos dentro del mismo Excel (fusionados en 1 cliente): ${fusionadosDesdeExcel.length}.`;
+    }
+
+    alert(msg);
     cargarClientes();
   };
 
@@ -485,6 +847,45 @@ async function importarDesdeExcel(file) {
 // 11) EVENTOS DOM
 // =========================================================
 document.addEventListener("DOMContentLoaded", () => {
+  // Tema
+  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
+  applyTheme(savedTheme);
+
+  const btnTheme = document.getElementById("btnToggleTheme");
+  if (btnTheme) {
+    btnTheme.addEventListener("click", () => {
+      const current =
+        document.documentElement.getAttribute("data-theme") || "light";
+      const next = current === "light" ? "dark" : "light";
+      applyTheme(next);
+    });
+  }
+
+  // Selector de usuario actual
+  const selUsuario = document.getElementById("usuarioActual");
+  if (selUsuario) {
+    if (usuarioActual && allowedUsers.includes(usuarioActual)) {
+      selUsuario.value = usuarioActual;
+    } else {
+      usuarioActual = "";
+      localStorage.removeItem("usuarioActual");
+      selUsuario.value = "";
+    }
+
+    selUsuario.addEventListener("change", () => {
+      const value = selUsuario.value || "";
+      if (value && !allowedUsers.includes(value)) {
+        alert("Seleccioná uno de los usuarios habilitados.");
+        selUsuario.value = "";
+        usuarioActual = "";
+        localStorage.removeItem("usuarioActual");
+      } else {
+        usuarioActual = value;
+        localStorage.setItem("usuarioActual", usuarioActual);
+      }
+    });
+  }
+
   // Guardar / editar
   document
     .getElementById("formCliente")
@@ -500,8 +901,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("btnAplicarFiltros")
     .addEventListener("click", cargarClientes);
 
-  // Buscar al presionar Enter
-  ["filtroNombre", "filtroTelefono", "filtroRubro"].forEach((id) => {
+  ["filtroNombre", "filtroTelefono"].forEach((id) => {
     const el = document.getElementById(id);
     el.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
@@ -511,24 +911,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-    // TEMA (claro / oscuro)
-  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
-  applyTheme(savedTheme);
-
-  const btnTheme = document.getElementById("btnToggleTheme");
-  if (btnTheme) {
-    btnTheme.addEventListener("click", () => {
-      const current =
-        document.documentElement.getAttribute("data-theme") || "light";
-      const next = current === "light" ? "dark" : "light";
-      applyTheme(next);
-    });
-  }
-
   // Excel: descargar modelo
   document
     .getElementById("btnDescargarModelo")
     .addEventListener("click", descargarModeloExcel);
+
+  // Excel: exportar
+  const btnExportar = document.getElementById("btnExportarExcel");
+  if (btnExportar) {
+    btnExportar.addEventListener("click", exportarExcel);
+  }
 
   // Excel: importar
   const inputExcel = document.getElementById("inputExcel");
@@ -543,7 +935,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Delegación de eventos para las tarjetas (editar / eliminar / actividad / toggle historial)
+  // Delegación de eventos para tarjetas
   document.getElementById("lista").addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
@@ -568,28 +960,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Selector de usuario actual
-  const selUsuario = document.getElementById("usuarioActual");
-  if (selUsuario) {
-    if (usuarioActual) {
-      selUsuario.value = usuarioActual;
-    }
-
-    selUsuario.addEventListener("change", () => {
-      usuarioActual = selUsuario.value || "";
-      localStorage.setItem("usuarioActual", usuarioActual);
-    });
-  }
-
   // Modal actividades
-  document.getElementById("btnGuardarActividad")
+  document
+    .getElementById("btnGuardarActividad")
     .addEventListener("click", guardarActividadDesdeModal);
 
-  document.getElementById("btnCerrarActividad")
+  document
+    .getElementById("btnCerrarActividad")
     .addEventListener("click", cerrarModalActividad);
 
-  // Permitir cerrar tocando fondo oscuro
-  document.getElementById("actividadModal")
+  document
+    .getElementById("actividadModal")
     .addEventListener("click", (e) => {
       if (e.target.id === "actividadModal") cerrarModalActividad();
     });

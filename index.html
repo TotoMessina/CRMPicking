@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CRM de PickingUp</title>
+  <title>CRM de PickingUp!</title>
   <link rel="stylesheet" href="styles.css" />
   <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -12,10 +12,12 @@
   <main class="container">
     <h1>CRM de PickingUp!</h1>
 
-    <!-- Controles superiores (Excel, filtros) -->
+    <!-- Controles superiores (Excel, filtros, usuario, tema) -->
     <section class="controls">
       <button id="btnDescargarModelo">Descargar modelo Excel</button>
       <button id="btnImportarExcel">Importar clientes desde Excel</button>
+      <button id="btnExportarExcel">Exportar Excel</button>
+      <a href="estadisticas.html" class="btn-link">Ver estadísticas</a>
       <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none" />
 
       <!-- Selector de usuario actual -->
@@ -23,7 +25,7 @@
         <option value="">Seleccionar usuario...</option>
         <option value="Toto">Toto</option>
         <option value="Ruben">Ruben</option>
-        <option value="Tincho(B)">Tincho de la B</option>
+        <option value="Tincho(B)">Tincho(B)</option>
         <option value="Fran">Fran</option>
         <option value="Ari">Ari</option>
         <option value="Nati">Nati</option>
@@ -31,7 +33,7 @@
         <option value="Otro">Otro</option>
       </select>
 
-      <!-- NUEVO: botón para modo día / noche -->
+      <!-- Toggle tema -->
       <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
         Modo noche 🌙
       </button>
@@ -39,13 +41,16 @@
       <div class="filters">
         <input type="text" id="filtroNombre" placeholder="Buscar por nombre..." />
         <input type="text" id="filtroTelefono" placeholder="Buscar por teléfono..." />
-        <input type="text" id="filtroRubro" placeholder="Filtrar por rubro..." />
+        <select id="filtroRubro">
+          <option value="">Todos los rubros</option>
+        </select>
         <select id="filtroEstado">
           <option value="Todos">Todos los estados</option>
-          <option value="Nuevo">Nuevo</option>
-          <option value="En seguimiento">En seguimiento</option>
-          <option value="Ganado">Ganado</option>
-          <option value="Perdido">Perdido</option>
+          <option value="1 - Cliente relevado">1 - Cliente relevado</option>
+          <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
+          <option value="3 - Primer ingreso">3 - Primer ingreso</option>
+          <option value="4 - Local Visitado Activo">4 - Local Visitado Activo</option>
+          <option value="5 - Local completo">5 - Local completo</option>
         </select>
         <button id="btnAplicarFiltros">Aplicar filtros</button>
       </div>
@@ -76,10 +81,11 @@
           <div class="field">
             <label for="estado">Estado</label>
             <select id="estado">
-              <option value="Nuevo">Nuevo</option>
-              <option value="En seguimiento">En seguimiento</option>
-              <option value="Ganado">Ganado</option>
-              <option value="Perdido">Perdido</option>
+              <option value="1 - Cliente relevado">1 - Cliente relevado</option>
+              <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
+              <option value="3 - Primer ingreso">3 - Primer ingreso</option>
+              <option value="4 - Local Visitado Activo">4 - Local Visitado Activo</option>
+              <option value="5 - Local completo">5 - Local completo</option>
             </select>
           </div>
 
@@ -113,7 +119,6 @@
     <div class="modal-content">
       <h3>Nueva actividad</h3>
       <textarea id="actividadTexto" rows="6" placeholder="Escribí la actividad... (se permiten saltos de línea)"></textarea>
-
       <div class="modal-actions">
         <button id="btnGuardarActividad">Guardar</button>
         <button id="btnCerrarActividad" class="btn-secundario">Cancelar</button>

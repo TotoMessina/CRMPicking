@@ -496,3 +496,55 @@ textarea {
   gap: 8px;
   margin-top: 12px;
 }
+
+/* Estados específicos (nuevos) */
+.tag-estado-1-Clienterelevado {
+  background: #fee2e2;
+  color: #b91c1c; /* rojo */
+}
+
+.tag-estado-2-LocalVisitadoNoActivo {
+  background: #ffedd5;
+  color: #c2410c; /* naranja */
+}
+
+.tag-estado-3-Primeringreso {
+  background: #fef9c3;
+  color: #a16207; /* amarillo */
+}
+
+.tag-estado-4-LocalVisitadoActivo {
+  background: #dbeafe;
+  color: #1d4ed8; /* azul */
+}
+
+.tag-estado-5-Localcompleto {
+  background: #dcfce7;
+  color: #15803d; /* verde */
+}
+
+/* Botón/link "Ver estadísticas" */
+.btn-link {
+  text-decoration: none;
+  display: inline-block;
+  padding: 8px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  font-size: 14px;
+  background: var(--bg-soft);
+  color: var(--text);
+  white-space: nowrap;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.08s;
+}
+
+.btn-link:hover {
+  background: var(--card-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+}
+
+.texto-resumen {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
