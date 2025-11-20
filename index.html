@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CRM con Supabase</title>
+  <title>CRM de PickingUp</title>
   <link rel="stylesheet" href="styles.css" />
   <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <main class="container">
-    <h1>CRM con Supabase</h1>
+    <h1>CRM de PickingUp!</h1>
 
     <!-- Controles superiores (Excel, filtros) -->
     <section class="controls">
@@ -18,18 +18,23 @@
       <button id="btnImportarExcel">Importar clientes desde Excel</button>
       <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none" />
 
-      <!-- Selector de usuario actual (solo estos valores) -->
+      <!-- Selector de usuario actual -->
       <select id="usuarioActual">
         <option value="">Seleccionar usuario...</option>
         <option value="Toto">Toto</option>
         <option value="Ruben">Ruben</option>
-        <option value="Tincho(B)">Tincho(B)</option>
+        <option value="Tincho(B)">Tincho de la B</option>
         <option value="Fran">Fran</option>
         <option value="Ari">Ari</option>
         <option value="Nati">Nati</option>
         <option value="Dani">Dani</option>
         <option value="Otro">Otro</option>
       </select>
+
+      <!-- NUEVO: botón para modo día / noche -->
+      <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
+        Modo noche 🌙
+      </button>
 
       <div class="filters">
         <input type="text" id="filtroNombre" placeholder="Buscar por nombre..." />

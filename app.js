@@ -13,6 +13,21 @@ let clientesCache = [];
 // Usuario que está usando la app (se toma del select y se guarda en localStorage)
 let usuarioActual = localStorage.getItem("usuarioActual") || "";
 
+const THEME_KEY = "crm_theme";
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.setAttribute("data-theme", theme);
+
+  localStorage.setItem(THEME_KEY, theme);
+
+  const btn = document.getElementById("btnToggleTheme");
+  if (btn) {
+    btn.textContent =
+      theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
+  }
+}
+
 // =========================================================
 // 2) Utilidades
 // =========================================================
@@ -495,6 +510,20 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+
+    // TEMA (claro / oscuro)
+  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
+  applyTheme(savedTheme);
+
+  const btnTheme = document.getElementById("btnToggleTheme");
+  if (btnTheme) {
+    btnTheme.addEventListener("click", () => {
+      const current =
+        document.documentElement.getAttribute("data-theme") || "light";
+      const next = current === "light" ? "dark" : "light";
+      applyTheme(next);
+    });
+  }
 
   // Excel: descargar modelo
   document
