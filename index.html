@@ -103,6 +103,19 @@
     </section>
   </main>
 
+  <!-- MODAL PARA ACTIVIDADES -->
+  <div id="actividadModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h3>Nueva actividad</h3>
+      <textarea id="actividadTexto" rows="6" placeholder="Escribí la actividad... (se permiten saltos de línea)"></textarea>
+
+      <div class="modal-actions">
+        <button id="btnGuardarActividad">Guardar</button>
+        <button id="btnCerrarActividad" class="btn-secundario">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- XLSX para Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js"></script>

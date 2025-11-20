@@ -335,17 +335,40 @@ function editarCliente(id) {
 // =========================================================
 // 8) AGREGAR ACTIVIDAD MANUAL DESDE LA TARJETA
 // =========================================================
-async function agregarActividadDesdeCard(id) {
+let clienteActividadID = null;
+
+function abrirModalActividad(clienteId) {
+  clienteActividadID = clienteId;
+  document.getElementById("actividadTexto").value = "";
+  document.getElementById("actividadModal").style.display = "flex";
+}
+
+function cerrarModalActividad() {
+  document.getElementById("actividadModal").style.display = "none";
+  clienteActividadID = null;
+}
+
+async function guardarActividadDesdeModal() {
+  const texto = document.getElementById("actividadTexto").value.trim();
+
   if (!usuarioActual) {
     alert("Seleccioná un usuario arriba antes de registrar actividades.");
     return;
   }
 
-  const texto = prompt("Descripción de la actividad:");
-  if (!texto || !texto.trim()) return;
+  if (!texto) {
+    alert("La actividad no puede estar vacía.");
+    return;
+  }
 
-  await agregarActividad(id, texto.trim());
+  await agregarActividad(clienteActividadID, texto);
+  cerrarModalActividad();
   cargarClientes();
+}
+
+// Evento desde el botón "+ Actividad"
+async function agregarActividadDesdeCard(id) {
+  abrirModalActividad(id);
 }
 
 // =========================================================
@@ -528,6 +551,19 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem("usuarioActual", usuarioActual);
     });
   }
+
+  // Modal actividades
+  document.getElementById("btnGuardarActividad")
+    .addEventListener("click", guardarActividadDesdeModal);
+
+  document.getElementById("btnCerrarActividad")
+    .addEventListener("click", cerrarModalActividad);
+
+  // Permitir cerrar tocando fondo oscuro
+  document.getElementById("actividadModal")
+    .addEventListener("click", (e) => {
+      if (e.target.id === "actividadModal") cerrarModalActividad();
+    });
 
   // Carga inicial
   cargarClientes();
