@@ -7,7 +7,7 @@ const SUPABASE_KEY =
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Cache local de clientes
+// Cache local de clientes (solo de la página actual)
 let clientesCache = [];
 
 // Usuario actual y tema
@@ -33,7 +33,7 @@ let clienteActividadID = null;
 let agendaMode = "todos"; // 'todos' | 'vencidos' | 'fecha'
 let agendaDate = null; // 'YYYY-MM-DD' cuando mode === 'fecha'
 
-// Paginación
+// Paginación (en el FRONT)
 let currentPage = 1;
 let pageSize = 25;
 let totalPages = 1;
@@ -210,7 +210,7 @@ function renderAgendaCalendario() {
 }
 
 // =========================================================
-// Paginación UI
+// Paginación UI (se hace sobre el array ya ordenado)
 // =========================================================
 function updatePaginationUI() {
   const pageInfo = document.getElementById("pageInfo");
@@ -294,7 +294,7 @@ async function agregarActividad(clienteId, descripcion) {
 }
 
 // =========================================================
-// 4) CARGA DE CLIENTES + HISTORIAL + RUBROS PARA FILTRO
+// 4) CARGA DE CLIENTES + HISTORIAL + RUBROS (orden global por historial)
 // =========================================================
 async function cargarClientes() {
   const listaDiv = document.getElementById("lista");
@@ -366,7 +366,7 @@ async function cargarClientes() {
     console.error("Error inesperado cargando rubros:", e);
   }
 
-  // --- Cargar clientes según filtros ---
+  // --- Cargar clientes según filtros (SIN range: traemos TODOS los filtrados) ---
   let query = supabaseClient
     .from("clientes")
     .select(
@@ -398,13 +398,10 @@ async function cargarClientes() {
     query = query.eq("rubro", filtroRubro);
   }
 
-  // Paginación: calcular rango
-  const from = (currentPage - 1) * pageSize;
-  const to = from + pageSize - 1;
+  // Orden base por id (después ordenamos por historial en el front)
+  query = query.order("id", { ascending: true });
 
-  query = query.order("id", { ascending: true }).range(from, to);
-
-  const { data: clientes, error, count } = await query;
+  const { data: clientesAll, error, count } = await query;
 
   if (error) {
     console.error("Error cargando clientes:", error);
@@ -412,27 +409,24 @@ async function cargarClientes() {
     return;
   }
 
-  totalClientes = count || 0;
-  totalPages = totalClientes > 0 ? Math.ceil(totalClientes / pageSize) : 1;
-  if (currentPage > totalPages) {
-    currentPage = totalPages;
-  }
-  updatePaginationUI();
+  const clientes = clientesAll || [];
+  totalClientes = count ?? clientes.length ?? 0;
 
-  clientesCache = clientes || [];
-  document.getElementById("contador").textContent = `(${totalClientes})`;
-
-  if (!clientesCache.length) {
+  if (!clientes.length) {
+    clientesCache = [];
+    totalPages = 1;
+    updatePaginationUI();
+    document.getElementById("contador").textContent = `(0)`;
     listaDiv.innerHTML = "<p>No hay clientes cargados.</p>";
     return;
   }
 
-  // Cargar actividades para TODOS los clientes de esta página en una sola consulta
-  const ids = clientesCache.map((c) => c.id);
+  // --- Cargar actividades de TODOS los clientes filtrados ---
+  const idsAll = clientes.map((c) => c.id);
   const { data: actividades, error: errorAct } = await supabaseClient
     .from("actividades")
     .select("id, cliente_id, fecha, descripcion, usuario")
-    .in("cliente_id", ids)
+    .in("cliente_id", idsAll)
     .order("fecha", { ascending: false });
 
   if (errorAct) {
@@ -440,7 +434,7 @@ async function cargarClientes() {
   }
 
   const actividadesPorCliente = {};
-  const lastActivityMap = {}; // para ordenar por última modificación
+  const lastActivityMap = {}; // última fecha de actividad por cliente
 
   (actividades || []).forEach((a) => {
     if (!actividadesPorCliente[a.cliente_id]) {
@@ -457,8 +451,8 @@ async function cargarClientes() {
     }
   });
 
-  // Ordenar los clientes de la página por última actividad (más reciente primero)
-  clientesCache.sort((a, b) => {
+  // --- Orden global por última actividad (más reciente primero) ---
+  clientes.sort((a, b) => {
     const da = lastActivityMap[a.id];
     const db = lastActivityMap[b.id];
 
@@ -469,9 +463,24 @@ async function cargarClientes() {
     return a.id - b.id;
   });
 
-  // Render de tarjetas
+  // --- Paginación sobre el array ya ordenado ---
+  totalPages = totalClientes > 0 ? Math.ceil(totalClientes / pageSize) : 1;
+  if (currentPage > totalPages) {
+    currentPage = totalPages;
+  }
+  if (currentPage < 1) currentPage = 1;
+
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const clientesPagina = clientes.slice(start, end);
+
+  clientesCache = clientesPagina;
+  updatePaginationUI();
+  document.getElementById("contador").textContent = `(${totalClientes})`;
+
+  // --- Render de tarjetas para la página actual ---
   listaDiv.innerHTML = "";
-  clientesCache.forEach((cliente) => {
+  clientesPagina.forEach((cliente) => {
     const card = document.createElement("div");
     card.className = "card";
     card.dataset.id = cliente.id;
