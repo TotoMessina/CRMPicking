@@ -548,3 +548,104 @@ textarea {
   color: var(--text-muted);
   margin-bottom: 10px;
 }
+
+/* ===========================
+   AGENDA / CALENDARIO CRM
+   =========================== */
+
+.agenda-calendar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  margin-top: 10px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.03);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ocultar scrollbar gordo en algunos navegadores */
+.agenda-calendar::-webkit-scrollbar {
+  height: 4px;
+}
+.agenda-calendar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.agenda-calendar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+.agenda-chip {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: #333;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease,
+    border-color 0.15s ease;
+}
+
+.agenda-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.14);
+}
+
+/* Estado activo (chip seleccionado) */
+.agenda-chip--active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 4px 10px rgba(31, 111, 235, 0.35);
+}
+
+/* Diferenciar un poco cada tipo de chip cuando NO está activo */
+.agenda-chip[data-mode="todos"] {
+  font-weight: 500;
+}
+
+.agenda-chip[data-mode="vencidos"] {
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #b91c1c;
+  background: rgba(254, 226, 226, 0.7);
+}
+
+.agenda-chip--active[data-mode="vencidos"] {
+  background: #ef4444;
+  border-color: #b91c1c;
+}
+
+.agenda-chip[data-mode="fecha"] {
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* El "Hoy" queda un poquito más marcado */
+.agenda-chip[data-mode="fecha"]:first-of-type {
+  font-weight: 600;
+}
+
+/* En mobile que no quede todo apretado */
+@media (max-width: 640px) {
+  .agenda-calendar {
+    margin-top: 8px;
+    padding: 6px 4px;
+  }
+
+  .agenda-chip {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+}

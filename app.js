@@ -29,6 +29,10 @@ const allowedUsers = [
 // Modal actividad
 let clienteActividadID = null;
 
+// Agenda de próximos contactos (filtro por fecha)
+let agendaMode = "todos";      // 'todos' | 'vencidos' | 'fecha'
+let agendaDate = null;         // 'YYYY-MM-DD' cuando mode === 'fecha'
+
 // =========================================================
 // 2) Utilidades
 // =========================================================
@@ -129,6 +133,76 @@ function excelDateToYMD(value) {
 }
 
 // =========================================================
+// Agenda / calendario de próximos contactos
+// =========================================================
+function setAgendaMode(mode, date = null) {
+  agendaMode = mode;
+  agendaDate = date;
+
+  const chips = document.querySelectorAll(".agenda-chip");
+  chips.forEach((chip) => {
+    const chipMode = chip.dataset.mode;
+    const chipDate = chip.dataset.date || null;
+    const isActive =
+      chipMode === mode && (mode !== "fecha" || chipDate === date);
+    chip.classList.toggle("agenda-chip--active", isActive);
+  });
+
+  cargarClientes();
+}
+
+function renderAgendaCalendario() {
+  const cont = document.getElementById("agendaCalendario");
+  if (!cont) return;
+
+  cont.innerHTML = "";
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const hoyYMD = hoy.toISOString().split("T")[0];
+
+  // Chip "Todos"
+  const btnTodos = document.createElement("button");
+  btnTodos.textContent = "Todos";
+  btnTodos.className = "agenda-chip";
+  btnTodos.dataset.mode = "todos";
+  btnTodos.addEventListener("click", () => setAgendaMode("todos", null));
+  cont.appendChild(btnTodos);
+
+  // Chip "Vencidos"
+  const btnVencidos = document.createElement("button");
+  btnVencidos.textContent = "Vencidos";
+  btnVencidos.className = "agenda-chip";
+  btnVencidos.dataset.mode = "vencidos";
+  btnVencidos.addEventListener("click", () => setAgendaMode("vencidos", null));
+  cont.appendChild(btnVencidos);
+
+  // Chips "Hoy" + próximos 6 días
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(hoy);
+    d.setDate(hoy.getDate() + i);
+
+    const ymd = d.toISOString().split("T")[0];
+    const labelDate = d.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+
+    const btn = document.createElement("button");
+    btn.className = "agenda-chip";
+    btn.dataset.mode = "fecha";
+    btn.dataset.date = ymd;
+    btn.innerHTML = (i === 0 ? "Hoy<br>" : "") + labelDate;
+
+    btn.addEventListener("click", () => setAgendaMode("fecha", ymd));
+    cont.appendChild(btn);
+  }
+
+  // Arrancar viendo todos
+  setAgendaMode("todos", null);
+}
+
+// =========================================================
 // 3) ACTIVIDADES (historial)
 // =========================================================
 async function agregarActividad(clienteId, descripcion) {
@@ -165,6 +239,11 @@ async function cargarClientes() {
   const filtroTelefono = document.getElementById("filtroTelefono").value.trim();
   const filtroRubro = document.getElementById("filtroRubro").value; // select
   const filtroEstado = document.getElementById("filtroEstado").value;
+
+  // Fechas para aplicar filtros de agenda
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const hoyStr = hoy.toISOString().split("T")[0];
 
   // --- Actualizar opciones del filtro de rubro desde TODOS los clientes activos ---
   try {
@@ -216,8 +295,14 @@ async function cargarClientes() {
   let query = supabaseClient
     .from("clientes")
     .select("id, nombre, telefono, rubro, estado, fecha_proximo_contacto, notas")
-    .eq("activo", true)
-    .order("id", { ascending: true });
+    .eq("activo", true);
+
+  // Filtro de agenda según calendario
+  if (agendaMode === "fecha" && agendaDate) {
+    query = query.eq("fecha_proximo_contacto", agendaDate);
+  } else if (agendaMode === "vencidos") {
+    query = query.lt("fecha_proximo_contacto", hoyStr);
+  }
 
   if (filtroEstado && filtroEstado !== "Todos") {
     query = query.eq("estado", filtroEstado);
@@ -234,6 +319,9 @@ async function cargarClientes() {
   if (filtroRubro) {
     query = query.eq("rubro", filtroRubro);
   }
+
+  // Orden base por id (luego reordenamos por historial en el front)
+  query = query.order("id", { ascending: true });
 
   const { data: clientes, error } = await query;
 
@@ -264,11 +352,33 @@ async function cargarClientes() {
   }
 
   const actividadesPorCliente = {};
+  const lastActivityMap = {}; // para ordenar por última modificación
+
   (actividades || []).forEach((a) => {
     if (!actividadesPorCliente[a.cliente_id]) {
       actividadesPorCliente[a.cliente_id] = [];
     }
     actividadesPorCliente[a.cliente_id].push(a);
+
+    const d = new Date(a.fecha);
+    if (!Number.isNaN(d.getTime())) {
+      const prev = lastActivityMap[a.cliente_id];
+      if (!prev || d > prev) {
+        lastActivityMap[a.cliente_id] = d;
+      }
+    }
+  });
+
+  // 🔽 Ordenar clientes por última actividad de historial (más reciente primero)
+  clientesCache.sort((a, b) => {
+    const da = lastActivityMap[a.id];
+    const db = lastActivityMap[b.id];
+
+    if (da && db) return db - da; // más reciente primero
+    if (da && !db) return -1;     // con actividad va antes
+    if (!da && db) return 1;
+    // si ninguno tiene historial, ordenar por id asc
+    return a.id - b.id;
   });
 
   // Render de tarjetas
@@ -975,6 +1085,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.target.id === "actividadModal") cerrarModalActividad();
     });
 
-  // Carga inicial
+  // Render agenda y carga inicial
+  renderAgendaCalendario();
   cargarClientes();
 });
