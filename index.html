@@ -14,13 +14,7 @@
 
     <!-- Controles superiores (Excel, filtros, usuario, tema) -->
     <section class="controls">
-      <button id="btnDescargarModelo">Descargar modelo Excel</button>
-      <button id="btnImportarExcel">Importar clientes desde Excel</button>
-      <button id="btnExportarExcel">Exportar Excel</button>
-      <a href="estadisticas.html" class="btn-link">Ver estadísticas</a>
-      <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none" />
-
-      <!-- Selector de usuario actual -->
+      <!-- Selector de usuario actual (header) -->
       <select id="usuarioActual">
         <option value="">Seleccionar usuario...</option>
         <option value="Toto">Toto</option>
@@ -32,12 +26,15 @@
         <option value="Dani">Dani</option>
         <option value="Otro">Otro</option>
       </select>
-
+      <a href="estadisticas.html" class="btn-link">Ver estadísticas</a>
+      <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none" />
+      
+      
       <!-- Toggle tema -->
       <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
         Modo noche 🌙
       </button>
-
+      
       <div class="filters">
         <input type="text" id="filtroNombre" placeholder="Buscar por nombre..." />
         <input type="text" id="filtroTelefono" placeholder="Buscar por teléfono..." />
@@ -54,11 +51,14 @@
         </select>
         <button id="btnAplicarFiltros">Aplicar filtros</button>
       </div>
-
+      
       <!-- Agenda / calendario de próximos contactos -->
+      <button id="btnDescargarModelo">Descargar modelo Excel</button>
+      <button id="btnImportarExcel">Importar clientes desde Excel</button>
+      <button id="btnExportarExcel">Exportar Excel</button>
       <div id="agendaCalendario" class="agenda-calendar"></div>
     </section>
-
+    
     <!-- Formulario de alta/edición de cliente -->
     <section class="form-box">
       <h2 id="tituloForm">Nuevo cliente</h2>
@@ -115,6 +115,17 @@
       <h2>Clientes <span id="contador">(0)</span></h2>
       <div id="lista"></div>
     </section>
+          <!-- Paginación -->
+      <div class="pagination">
+        <label for="pageSize">Por página:</label>
+        <select id="pageSize">
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+        </select>
+        <button id="btnPrevPagina" class="btn-secundario">&laquo; Anterior</button>
+        <span id="pageInfo">Página 0 de 1</span>
+        <button id="btnNextPagina" class="btn-secundario">Siguiente &raquo;</button>
+      </div>
   </main>
 
   <!-- MODAL PARA ACTIVIDADES -->
@@ -125,6 +136,28 @@
       <div class="modal-actions">
         <button id="btnGuardarActividad">Guardar</button>
         <button id="btnCerrarActividad" class="btn-secundario">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SELECCIÓN DE USUARIO (obligatorio al entrar) -->
+  <div id="usuarioModal" class="modal" style="display:flex;">
+    <div class="modal-content">
+      <h3>Seleccionar usuario</h3>
+      <p>Elegí quién está usando el CRM:</p>
+      <select id="usuarioModalSelect">
+        <option value="">Seleccionar usuario...</option>
+        <option value="Toto">Toto</option>
+        <option value="Ruben">Ruben</option>
+        <option value="Tincho(B)">Tincho(B)</option>
+        <option value="Fran">Fran</option>
+        <option value="Ari">Ari</option>
+        <option value="Nati">Nati</option>
+        <option value="Dani">Dani</option>
+        <option value="Otro">Otro</option>
+      </select>
+      <div class="modal-actions">
+        <button id="btnGuardarUsuario">Confirmar</button>
       </div>
     </div>
   </div>

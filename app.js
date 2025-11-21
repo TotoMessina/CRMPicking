@@ -30,8 +30,14 @@ const allowedUsers = [
 let clienteActividadID = null;
 
 // Agenda de próximos contactos (filtro por fecha)
-let agendaMode = "todos";      // 'todos' | 'vencidos' | 'fecha'
-let agendaDate = null;         // 'YYYY-MM-DD' cuando mode === 'fecha'
+let agendaMode = "todos"; // 'todos' | 'vencidos' | 'fecha'
+let agendaDate = null; // 'YYYY-MM-DD' cuando mode === 'fecha'
+
+// Paginación
+let currentPage = 1;
+let pageSize = 25;
+let totalPages = 1;
+let totalClientes = 0;
 
 // =========================================================
 // 2) Utilidades
@@ -138,6 +144,7 @@ function excelDateToYMD(value) {
 function setAgendaMode(mode, date = null) {
   agendaMode = mode;
   agendaDate = date;
+  currentPage = 1; // al cambiar agenda, volvemos a la página 1
 
   const chips = document.querySelectorAll(".agenda-chip");
   chips.forEach((chip) => {
@@ -203,6 +210,65 @@ function renderAgendaCalendario() {
 }
 
 // =========================================================
+// Paginación UI
+// =========================================================
+function updatePaginationUI() {
+  const pageInfo = document.getElementById("pageInfo");
+  const btnPrev = document.getElementById("btnPrevPagina");
+  const btnNext = document.getElementById("btnNextPagina");
+  const pageSizeSelect = document.getElementById("pageSize");
+
+  if (pageInfo) {
+    const mostrarPagina = totalClientes > 0 ? currentPage : 0;
+    pageInfo.textContent = `Página ${mostrarPagina} de ${totalPages}`;
+  }
+  if (btnPrev) {
+    btnPrev.disabled = currentPage <= 1;
+  }
+  if (btnNext) {
+    btnNext.disabled = currentPage >= totalPages || totalClientes === 0;
+  }
+  if (pageSizeSelect && Number(pageSizeSelect.value) !== pageSize) {
+    pageSizeSelect.value = String(pageSize);
+  }
+}
+
+// =========================================================
+// Modal selección de usuario (obligatorio al entrar)
+// =========================================================
+function initUsuarioModal() {
+  const modal = document.getElementById("usuarioModal");
+  const selModal = document.getElementById("usuarioModalSelect");
+  const btnGuardar = document.getElementById("btnGuardarUsuario");
+  if (!modal || !selModal || !btnGuardar) return;
+
+  // Preseleccionar si ya había un usuario guardado
+  if (usuarioActual && allowedUsers.includes(usuarioActual)) {
+    selModal.value = usuarioActual;
+  }
+
+  modal.style.display = "flex";
+
+  btnGuardar.addEventListener("click", () => {
+    const value = selModal.value;
+    if (!allowedUsers.includes(value)) {
+      alert("Seleccioná un usuario para continuar.");
+      return;
+    }
+    usuarioActual = value;
+    localStorage.setItem("usuarioActual", usuarioActual);
+
+    // Sincronizar con el selector de arriba
+    const selHeader = document.getElementById("usuarioActual");
+    if (selHeader) {
+      selHeader.value = usuarioActual;
+    }
+
+    modal.style.display = "none";
+  });
+}
+
+// =========================================================
 // 3) ACTIVIDADES (historial)
 // =========================================================
 async function agregarActividad(clienteId, descripcion) {
@@ -233,6 +299,15 @@ async function agregarActividad(clienteId, descripcion) {
 async function cargarClientes() {
   const listaDiv = document.getElementById("lista");
   listaDiv.innerHTML = "<p>Cargando...</p>";
+
+  // Asegurar que pageSize toma el valor del select si existe
+  const pageSizeSelect = document.getElementById("pageSize");
+  if (pageSizeSelect) {
+    const val = Number(pageSizeSelect.value);
+    if (!Number.isNaN(val) && (val === 25 || val === 50)) {
+      pageSize = val;
+    }
+  }
 
   // Filtros
   const filtroNombre = document.getElementById("filtroNombre").value.trim();
@@ -294,7 +369,10 @@ async function cargarClientes() {
   // --- Cargar clientes según filtros ---
   let query = supabaseClient
     .from("clientes")
-    .select("id, nombre, telefono, rubro, estado, fecha_proximo_contacto, notas")
+    .select(
+      "id, nombre, telefono, rubro, estado, fecha_proximo_contacto, notas",
+      { count: "exact" }
+    )
     .eq("activo", true);
 
   // Filtro de agenda según calendario
@@ -320,10 +398,13 @@ async function cargarClientes() {
     query = query.eq("rubro", filtroRubro);
   }
 
-  // Orden base por id (luego reordenamos por historial en el front)
-  query = query.order("id", { ascending: true });
+  // Paginación: calcular rango
+  const from = (currentPage - 1) * pageSize;
+  const to = from + pageSize - 1;
 
-  const { data: clientes, error } = await query;
+  query = query.order("id", { ascending: true }).range(from, to);
+
+  const { data: clientes, error, count } = await query;
 
   if (error) {
     console.error("Error cargando clientes:", error);
@@ -331,15 +412,22 @@ async function cargarClientes() {
     return;
   }
 
+  totalClientes = count || 0;
+  totalPages = totalClientes > 0 ? Math.ceil(totalClientes / pageSize) : 1;
+  if (currentPage > totalPages) {
+    currentPage = totalPages;
+  }
+  updatePaginationUI();
+
   clientesCache = clientes || [];
-  document.getElementById("contador").textContent = `(${clientesCache.length})`;
+  document.getElementById("contador").textContent = `(${totalClientes})`;
 
   if (!clientesCache.length) {
     listaDiv.innerHTML = "<p>No hay clientes cargados.</p>";
     return;
   }
 
-  // Cargar actividades para TODOS los clientes en una sola consulta
+  // Cargar actividades para TODOS los clientes de esta página en una sola consulta
   const ids = clientesCache.map((c) => c.id);
   const { data: actividades, error: errorAct } = await supabaseClient
     .from("actividades")
@@ -369,13 +457,13 @@ async function cargarClientes() {
     }
   });
 
-  // 🔽 Ordenar clientes por última actividad de historial (más reciente primero)
+  // Ordenar los clientes de la página por última actividad (más reciente primero)
   clientesCache.sort((a, b) => {
     const da = lastActivityMap[a.id];
     const db = lastActivityMap[b.id];
 
     if (da && db) return db - da; // más reciente primero
-    if (da && !db) return -1;     // con actividad va antes
+    if (da && !db) return -1; // con actividad va antes
     if (!da && db) return 1;
     // si ninguno tiene historial, ordenar por id asc
     return a.id - b.id;
@@ -449,11 +537,7 @@ async function cargarClientes() {
               <div>${a.descripcion}</div>
               <div class="historial-fecha">
                 ${formatearFecha(a.fecha)}
-                ${
-                  a.usuario
-                    ? ` · <strong>${a.usuario}</strong>`
-                    : ""
-                }
+                ${a.usuario ? ` · <strong>${a.usuario}</strong>` : ""}
               </div>
             </div>`
                   )
@@ -971,14 +1055,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Selector de usuario actual
+  // Selector de usuario actual (header)
   const selUsuario = document.getElementById("usuarioActual");
   if (selUsuario) {
     if (usuarioActual && allowedUsers.includes(usuarioActual)) {
       selUsuario.value = usuarioActual;
     } else {
-      usuarioActual = "";
-      localStorage.removeItem("usuarioActual");
       selUsuario.value = "";
     }
 
@@ -1009,13 +1091,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // Filtros
   document
     .getElementById("btnAplicarFiltros")
-    .addEventListener("click", cargarClientes);
+    .addEventListener("click", () => {
+      currentPage = 1;
+      cargarClientes();
+    });
 
   ["filtroNombre", "filtroTelefono"].forEach((id) => {
     const el = document.getElementById(id);
     el.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
+        currentPage = 1;
         cargarClientes();
       }
     });
@@ -1044,6 +1130,39 @@ document.addEventListener("DOMContentLoaded", () => {
       inputExcel.value = "";
     }
   });
+
+  // Paginación: eventos
+  const pageSizeSelect = document.getElementById("pageSize");
+  if (pageSizeSelect) {
+    pageSizeSelect.addEventListener("change", () => {
+      const val = Number(pageSizeSelect.value);
+      if (!Number.isNaN(val) && (val === 25 || val === 50)) {
+        pageSize = val;
+        currentPage = 1;
+        cargarClientes();
+      }
+    });
+  }
+
+  const btnPrev = document.getElementById("btnPrevPagina");
+  if (btnPrev) {
+    btnPrev.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        cargarClientes();
+      }
+    });
+  }
+
+  const btnNext = document.getElementById("btnNextPagina");
+  if (btnNext) {
+    btnNext.addEventListener("click", () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        cargarClientes();
+      }
+    });
+  }
 
   // Delegación de eventos para tarjetas
   document.getElementById("lista").addEventListener("click", (e) => {
@@ -1088,4 +1207,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Render agenda y carga inicial
   renderAgendaCalendario();
   cargarClientes();
+
+  // Mostrar modal de selección de usuario (obligatorio al entrar)
+  initUsuarioModal();
 });
