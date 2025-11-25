@@ -67,6 +67,8 @@ function resetFormulario() {
   document.getElementById("clienteId").value = "";
   document.getElementById("tituloForm").textContent = "Nuevo cliente";
   document.getElementById("btnGuardar").textContent = "Guardar";
+  const horaInput = document.getElementById("hora_proximo_contacto");
+  if (horaInput) horaInput.value = "";
 }
 
 // Tema
@@ -166,7 +168,6 @@ function renderAgendaCalendario() {
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-  const hoyYMD = hoy.toISOString().split("T")[0];
 
   // Chip "Todos"
   const btnTodos = document.createElement("button");
@@ -242,7 +243,6 @@ function initUsuarioModal() {
   const btnGuardar = document.getElementById("btnGuardarUsuario");
   if (!modal || !selModal || !btnGuardar) return;
 
-  // Preseleccionar si ya había un usuario guardado
   if (usuarioActual && allowedUsers.includes(usuarioActual)) {
     selModal.value = usuarioActual;
   }
@@ -258,7 +258,6 @@ function initUsuarioModal() {
     usuarioActual = value;
     localStorage.setItem("usuarioActual", usuarioActual);
 
-    // Sincronizar con el selector de arriba
     const selHeader = document.getElementById("usuarioActual");
     if (selHeader) {
       selHeader.value = usuarioActual;
@@ -273,11 +272,7 @@ function initUsuarioModal() {
 // =========================================================
 async function agregarActividad(clienteId, descripcion) {
   if (!clienteId) return;
-
-  // Por seguridad, no registramos historial si no hay usuario válido
-  if (!isUsuarioValido()) {
-    return;
-  }
+  if (!isUsuarioValido()) return;
 
   const { error } = await supabaseClient.from("actividades").insert([
     {
@@ -300,7 +295,7 @@ async function cargarClientes() {
   const listaDiv = document.getElementById("lista");
   listaDiv.innerHTML = "<p>Cargando...</p>";
 
-  // Asegurar que pageSize toma el valor del select si existe
+  // pageSize desde el select
   const pageSizeSelect = document.getElementById("pageSize");
   if (pageSizeSelect) {
     const val = Number(pageSizeSelect.value);
@@ -309,18 +304,16 @@ async function cargarClientes() {
     }
   }
 
-  // Filtros
   const filtroNombre = document.getElementById("filtroNombre").value.trim();
   const filtroTelefono = document.getElementById("filtroTelefono").value.trim();
-  const filtroRubro = document.getElementById("filtroRubro").value; // select
+  const filtroRubro = document.getElementById("filtroRubro").value;
   const filtroEstado = document.getElementById("filtroEstado").value;
 
-  // Fechas para aplicar filtros de agenda
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const hoyStr = hoy.toISOString().split("T")[0];
 
-  // --- Actualizar opciones del filtro de rubro desde TODOS los clientes activos ---
+  // --- Rubros para el filtro ---
   try {
     const { data: rubrosData, error: errRubros } = await supabaseClient
       .from("clientes")
@@ -354,7 +347,6 @@ async function cargarClientes() {
           selectRubro.appendChild(opt);
         });
 
-        // restaurar selección si sigue existiendo
         if (prev && rubrosSet.has(prev)) {
           selectRubro.value = prev;
         }
@@ -366,16 +358,15 @@ async function cargarClientes() {
     console.error("Error inesperado cargando rubros:", e);
   }
 
-  // --- Cargar clientes según filtros (SIN range: traemos TODOS los filtrados) ---
+  // --- Cargar clientes filtrados (todos, sin range) ---
   let query = supabaseClient
     .from("clientes")
     .select(
-      "id, nombre, telefono, rubro, estado, fecha_proximo_contacto, notas",
+      "id, nombre, telefono, rubro, estado, fecha_proximo_contacto, hora_proximo_contacto, notas",
       { count: "exact" }
     )
     .eq("activo", true);
 
-  // Filtro de agenda según calendario
   if (agendaMode === "fecha" && agendaDate) {
     query = query.eq("fecha_proximo_contacto", agendaDate);
   } else if (agendaMode === "vencidos") {
@@ -385,20 +376,16 @@ async function cargarClientes() {
   if (filtroEstado && filtroEstado !== "Todos") {
     query = query.eq("estado", filtroEstado);
   }
-
   if (filtroNombre) {
     query = query.ilike("nombre", `%${filtroNombre}%`);
   }
-
   if (filtroTelefono) {
     query = query.ilike("telefono", `%${filtroTelefono}%`);
   }
-
   if (filtroRubro) {
     query = query.eq("rubro", filtroRubro);
   }
 
-  // Orden base por id (después ordenamos por historial en el front)
   query = query.order("id", { ascending: true });
 
   const { data: clientesAll, error, count } = await query;
@@ -421,7 +408,7 @@ async function cargarClientes() {
     return;
   }
 
-  // --- Cargar actividades de TODOS los clientes filtrados ---
+  // --- Actividades de todos los clientes filtrados ---
   const idsAll = clientes.map((c) => c.id);
   const { data: actividades, error: errorAct } = await supabaseClient
     .from("actividades")
@@ -434,7 +421,7 @@ async function cargarClientes() {
   }
 
   const actividadesPorCliente = {};
-  const lastActivityMap = {}; // última fecha de actividad por cliente
+  const lastActivityMap = {};
 
   (actividades || []).forEach((a) => {
     if (!actividadesPorCliente[a.cliente_id]) {
@@ -451,23 +438,20 @@ async function cargarClientes() {
     }
   });
 
-  // --- Orden global por última actividad (más reciente primero) ---
+  // --- Orden global por última actividad ---
   clientes.sort((a, b) => {
     const da = lastActivityMap[a.id];
     const db = lastActivityMap[b.id];
 
-    if (da && db) return db - da; // más reciente primero
-    if (da && !db) return -1; // con actividad va antes
+    if (da && db) return db - da;
+    if (da && !db) return -1;
     if (!da && db) return 1;
-    // si ninguno tiene historial, ordenar por id asc
     return a.id - b.id;
   });
 
-  // --- Paginación sobre el array ya ordenado ---
+  // --- Paginación en front ---
   totalPages = totalClientes > 0 ? Math.ceil(totalClientes / pageSize) : 1;
-  if (currentPage > totalPages) {
-    currentPage = totalPages;
-  }
+  if (currentPage > totalPages) currentPage = totalPages;
   if (currentPage < 1) currentPage = 1;
 
   const start = (currentPage - 1) * pageSize;
@@ -478,7 +462,7 @@ async function cargarClientes() {
   updatePaginationUI();
   document.getElementById("contador").textContent = `(${totalClientes})`;
 
-  // --- Render de tarjetas para la página actual ---
+  // --- Render tarjetas ---
   listaDiv.innerHTML = "";
   clientesPagina.forEach((cliente) => {
     const card = document.createElement("div");
@@ -488,19 +472,24 @@ async function cargarClientes() {
     const actividadesCliente = actividadesPorCliente[cliente.id] || [];
     const claseEstado = `tag-estado-${cliente.estado.replace(/\s+/g, "")}`;
 
+    const textoFecha =
+      cliente.fecha_proximo_contacto
+        ? `📅 Próximo contacto: ${formatearFechaSoloDia(
+            cliente.fecha_proximo_contacto
+          )}`
+        : "";
+    const textoHora =
+      cliente.hora_proximo_contacto
+        ? ` a las ${cliente.hora_proximo_contacto.slice(0, 5)}`
+        : "";
+
     card.innerHTML = `
       <div class="card-top">
         <div>
           <div class="card-main-title">${cliente.nombre || "(Sin nombre)"}</div>
           <div class="card-meta">
             ${cliente.telefono ? `📞 ${cliente.telefono} · ` : ""}
-            ${
-              cliente.fecha_proximo_contacto
-                ? `📅 Próximo contacto: ${formatearFechaSoloDia(
-                    cliente.fecha_proximo_contacto
-                  )}`
-                : ""
-            }
+            ${textoFecha}${textoHora}
           </div>
           <div class="card-tags">
             <span class="tag ${claseEstado}">Estado: ${cliente.estado}</span>
@@ -575,6 +564,8 @@ async function guardarCliente(e) {
   const rubro = document.getElementById("rubro").value.trim();
   const estado = document.getElementById("estado").value;
   const fechaProx = document.getElementById("fecha_proximo_contacto").value;
+  const horaProxInput = document.getElementById("hora_proximo_contacto");
+  const horaProx = horaProxInput ? horaProxInput.value : "";
   const notas = document.getElementById("notas").value.trim();
 
   if (!nombre) {
@@ -588,6 +579,7 @@ async function guardarCliente(e) {
     rubro: rubro || "Sin definir",
     estado,
     fecha_proximo_contacto: fechaProx || null,
+    hora_proximo_contacto: horaProx || null,
     notas: notas || null,
   };
 
@@ -666,6 +658,10 @@ function editarCliente(id) {
     cliente.estado || "1 - Cliente relevado";
   document.getElementById("fecha_proximo_contacto").value =
     cliente.fecha_proximo_contacto || "";
+  const horaInput = document.getElementById("hora_proximo_contacto");
+  if (horaInput) {
+    horaInput.value = cliente.hora_proximo_contacto || "";
+  }
   document.getElementById("notas").value = cliente.notas || "";
 
   document.getElementById("tituloForm").textContent = "Editar cliente";
@@ -719,6 +715,7 @@ function descargarModeloExcel() {
       "rubro",
       "estado",
       "fecha_proximo_contacto (YYYY-MM-DD)",
+      "hora_proximo_contacto (HH:MM)",
       "notas",
     ],
   ];
@@ -736,7 +733,7 @@ async function exportarExcel() {
   const { data: clientes, error: errCli } = await supabaseClient
     .from("clientes")
     .select(
-      "id, nombre, telefono, rubro, estado, fecha_proximo_contacto, notas"
+      "id, nombre, telefono, rubro, estado, fecha_proximo_contacto, hora_proximo_contacto, notas"
     )
     .eq("activo", true)
     .order("id", { ascending: true });
@@ -775,6 +772,7 @@ async function exportarExcel() {
       "rubro",
       "estado",
       "fecha_proximo_contacto",
+      "hora_proximo_contacto",
       "notas",
     ],
   ];
@@ -787,6 +785,7 @@ async function exportarExcel() {
       c.rubro || "",
       c.estado || "",
       c.fecha_proximo_contacto || "",
+      c.hora_proximo_contacto || "",
       c.notas || "",
     ]);
   });
@@ -861,10 +860,13 @@ async function importarDesdeExcel(file) {
       let estado = row.estado ? row.estado.toString().trim() : "";
       if (!estado) estado = "1 - Cliente relevado";
 
-      // Conversión robusta de fecha
       const fecha_proximo_contacto = excelDateToYMD(
         row["fecha_proximo_contacto (YYYY-MM-DD)"]
       );
+
+      const hora_proximo_contacto = row["hora_proximo_contacto (HH:MM)"]
+        ? row["hora_proximo_contacto (HH:MM)"].toString().trim()
+        : null;
 
       const notas = row.notas ? row.notas.toString().trim() : null;
 
@@ -874,6 +876,7 @@ async function importarDesdeExcel(file) {
         rubro,
         estado,
         fecha_proximo_contacto,
+        hora_proximo_contacto,
         notas,
       };
     });
@@ -1217,6 +1220,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAgendaCalendario();
   cargarClientes();
 
-  // Mostrar modal de selección de usuario (obligatorio al entrar)
+  // Modal selección de usuario
   initUsuarioModal();
 });
