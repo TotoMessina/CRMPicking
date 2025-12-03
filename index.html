@@ -45,9 +45,10 @@
           <option value="Todos">Todos los estados</option>
           <option value="1 - Cliente relevado">1 - Cliente relevado</option>
           <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-          <option value="3 - Primer ingreso">3 - Primer ingreso</option>
-          <option value="4 - Local Visitado Activo">4 - Local Visitado Activo</option>
-          <option value="5 - Local completo">5 - Local completo</option>
+          <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
+          <option value="4 - Local Creado">4 - Local Creado</option>
+          <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
+          <option value="6 - Local No Interesado">6 - Local No Interesado</option>
         </select>
         <button id="btnAplicarFiltros">Aplicar filtros</button>
       </div>
@@ -86,15 +87,26 @@
             <select id="estado">
               <option value="1 - Cliente relevado">1 - Cliente relevado</option>
               <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-              <option value="3 - Primer ingreso">3 - Primer ingreso</option>
-              <option value="4 - Local Visitado Activo">4 - Local Visitado Activo</option>
-              <option value="5 - Local completo">5 - Local completo</option>
+              <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
+              <option value="4 - Local Creado">4 - Local Creado</option>
+              <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
+              <option value="6 - Local No Interesado">6 - Local No Interesado</option>
             </select>
           </div>
 
           <div class="field">
             <label for="fecha_proximo_contacto">Próximo contacto</label>
-            <input type="date" id="fecha_proximo_contacto" />
+            <div class="field-date-wrapper">
+              <input type="date" id="fecha_proximo_contacto" />
+              <button
+                type="button"
+                id="btnPickFecha"
+                class="btn-secundario btn-date-picker"
+                title="Abrir calendario"
+              >
+                📅
+              </button>
+            </div>
           </div>
 
           <div class="field">

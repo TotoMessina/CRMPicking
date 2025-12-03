@@ -33,6 +33,9 @@ let clienteActividadID = null;
 let agendaMode = "todos"; // 'todos' | 'vencidos' | 'fecha'
 let agendaDate = null; // 'YYYY-MM-DD' cuando mode === 'fecha'
 
+// Stats de agenda (para tooltips y contadores)
+let agendaStats = { vencidos: 0, fechas: {} };
+
 // Paginación (en el FRONT)
 let currentPage = 1;
 let pageSize = 25;
@@ -55,8 +58,16 @@ function formatearFecha(fechaISO) {
   });
 }
 
+// Evitar desfase de 1 día por zona horaria
 function formatearFechaSoloDia(fechaISO) {
   if (!fechaISO) return "";
+
+  // Si viene como "YYYY-MM-DD" (date puro de Postgres), no usamos new Date
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaISO)) {
+    const [y, m, d] = fechaISO.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
   const d = new Date(fechaISO);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString("es-AR");
@@ -131,9 +142,9 @@ function excelDateToYMD(value) {
     }
 
     // Intentar parseo estándar
-    const d = new Date(clean);
-    if (!Number.isNaN(d.getTime())) {
-      return d.toISOString().split("T")[0];
+    const d2 = new Date(clean);
+    if (!Number.isNaN(d2.getTime())) {
+      return d2.toISOString().split("T")[0];
     }
   }
 
@@ -146,7 +157,7 @@ function excelDateToYMD(value) {
 function setAgendaMode(mode, date = null) {
   agendaMode = mode;
   agendaDate = date;
-  currentPage = 1; // al cambiar agenda, volvemos a la página 1
+  currentPage = 1;
 
   const chips = document.querySelectorAll(".agenda-chip");
   chips.forEach((chip) => {
@@ -174,6 +185,7 @@ function renderAgendaCalendario() {
   btnTodos.textContent = "Todos";
   btnTodos.className = "agenda-chip";
   btnTodos.dataset.mode = "todos";
+  btnTodos.dataset.labelBase = btnTodos.textContent;
   btnTodos.addEventListener("click", () => setAgendaMode("todos", null));
   cont.appendChild(btnTodos);
 
@@ -182,6 +194,7 @@ function renderAgendaCalendario() {
   btnVencidos.textContent = "Vencidos";
   btnVencidos.className = "agenda-chip";
   btnVencidos.dataset.mode = "vencidos";
+  btnVencidos.dataset.labelBase = btnVencidos.textContent;
   btnVencidos.addEventListener("click", () => setAgendaMode("vencidos", null));
   cont.appendChild(btnVencidos);
 
@@ -201,13 +214,89 @@ function renderAgendaCalendario() {
     btn.dataset.mode = "fecha";
     btn.dataset.date = ymd;
     btn.innerHTML = (i === 0 ? "Hoy<br>" : "") + labelDate;
+    btn.dataset.labelBase = btn.innerHTML;
 
     btn.addEventListener("click", () => setAgendaMode("fecha", ymd));
     cont.appendChild(btn);
   }
 
-  // Arrancar viendo todos
+  // Selección inicial
   setAgendaMode("todos", null);
+}
+
+// Aplica los stats (cantidades) en tooltips y contadores
+function aplicarStatsAgendaAChips() {
+  const cont = document.getElementById("agendaCalendario");
+  if (!cont) return;
+
+  const chips = cont.querySelectorAll(".agenda-chip");
+  const totalFechados = Object.values(agendaStats.fechas || {}).reduce(
+    (acc, n) => acc + n,
+    0
+  );
+
+  chips.forEach((chip) => {
+    const mode = chip.dataset.mode;
+    const base = chip.dataset.labelBase || chip.innerHTML;
+
+    if (mode === "todos") {
+      chip.title = totalFechados
+        ? `${totalFechados} clientes con fecha de contacto asignada`
+        : "Ningún cliente tiene fecha de contacto asignada";
+      chip.innerHTML = base;
+    } else if (mode === "vencidos") {
+      const n = agendaStats.vencidos || 0;
+      chip.title = n
+        ? `${n} clientes con contacto vencido`
+        : "Sin contactos vencidos";
+      chip.innerHTML = n
+        ? `${base} <span class="agenda-count">(${n})</span>`
+        : base;
+    } else if (mode === "fecha") {
+      const date = chip.dataset.date;
+      const n =
+        (agendaStats.fechas && agendaStats.fechas[date]) || 0;
+      chip.title = n
+        ? `${n} clientes con contacto este día`
+        : "Sin clientes con contacto este día";
+      chip.innerHTML = n
+        ? `${base} <span class="agenda-count">(${n})</span>`
+        : base;
+    }
+  });
+}
+
+// Carga stats desde la BD y aplica a chips
+async function cargarAgendaStats() {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const hoyStr = hoy.toISOString().split("T")[0];
+
+  const { data, error } = await supabaseClient
+    .from("clientes")
+    .select("fecha_proximo_contacto")
+    .eq("activo", true)
+    .not("fecha_proximo_contacto", "is", null);
+
+  if (error) {
+    console.error("Error cargando stats de agenda:", error);
+    agendaStats = { vencidos: 0, fechas: {} };
+    aplicarStatsAgendaAChips();
+    return;
+  }
+
+  const stats = { vencidos: 0, fechas: {} };
+
+  (data || []).forEach((c) => {
+    const f = c.fecha_proximo_contacto;
+    if (!f) return;
+    if (f < hoyStr) stats.vencidos++;
+    if (!stats.fechas[f]) stats.fechas[f] = 0;
+    stats.fechas[f]++;
+  });
+
+  agendaStats = stats;
+  aplicarStatsAgendaAChips();
 }
 
 // =========================================================
@@ -617,7 +706,8 @@ async function guardarCliente(e) {
   }
 
   resetFormulario();
-  cargarClientes();
+  await cargarClientes();
+  await cargarAgendaStats();
 }
 
 // =========================================================
@@ -640,7 +730,8 @@ async function eliminarCliente(id) {
   }
 
   await agregarActividad(id, "Cliente eliminado");
-  cargarClientes();
+  await cargarClientes();
+  await cargarAgendaStats();
 }
 
 // =========================================================
@@ -672,20 +763,29 @@ function editarCliente(id) {
 // 8) MODAL DE ACTIVIDAD
 // =========================================================
 function abrirModalActividad(clienteId) {
-  clienteActividadID = clienteId;
-  document.getElementById("actividadTexto").value = "";
-  document.getElementById("actividadModal").style.display = "flex";
+  clienteActividadID = clienteId || null;
+  const txt = document.getElementById("actividadTexto");
+  if (txt) txt.value = "";
+  const modal = document.getElementById("actividadModal");
+  if (modal) modal.style.display = "flex";
 }
 
 function cerrarModalActividad() {
-  document.getElementById("actividadModal").style.display = "none";
+  const modal = document.getElementById("actividadModal");
+  if (modal) modal.style.display = "none";
   clienteActividadID = null;
 }
 
 async function guardarActividadDesdeModal() {
+  if (!clienteActividadID) {
+    cerrarModalActividad();
+    return;
+  }
+
   if (!asegurarUsuarioValido()) return;
 
-  const texto = document.getElementById("actividadTexto").value.trim();
+  const txt = document.getElementById("actividadTexto");
+  const texto = txt ? txt.value.trim() : "";
 
   if (!texto) {
     alert("La actividad no puede estar vacía.");
@@ -694,7 +794,8 @@ async function guardarActividadDesdeModal() {
 
   await agregarActividad(clienteActividadID, texto);
   cerrarModalActividad();
-  cargarClientes();
+  await cargarClientes();
+  await cargarAgendaStats();
 }
 
 async function agregarActividadDesdeCard(id) {
@@ -1043,7 +1144,8 @@ async function importarDesdeExcel(file) {
     }
 
     alert(msg);
-    cargarClientes();
+    await cargarClientes();
+    await cargarAgendaStats();
   };
 
   reader.readAsArrayBuffer(file);
@@ -1201,23 +1303,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Modal actividades
-  document
-    .getElementById("btnGuardarActividad")
-    .addEventListener("click", guardarActividadDesdeModal);
-
-  document
-    .getElementById("btnCerrarActividad")
-    .addEventListener("click", cerrarModalActividad);
-
-  document
-    .getElementById("actividadModal")
-    .addEventListener("click", (e) => {
-      if (e.target.id === "actividadModal") cerrarModalActividad();
+  // Botón para abrir el calendario del próximo contacto
+  const inputFecha = document.getElementById("fecha_proximo_contacto");
+  const btnPickFecha = document.getElementById("btnPickFecha");
+  if (inputFecha && btnPickFecha) {
+    btnPickFecha.addEventListener("click", () => {
+      if (typeof inputFecha.showPicker === "function") {
+        inputFecha.showPicker();
+      } else {
+        inputFecha.focus();
+      }
     });
+  }
 
-  // Render agenda y carga inicial
+  // Modal actividades
+  const btnGuardarAct = document.getElementById("btnGuardarActividad");
+  if (btnGuardarAct) {
+    btnGuardarAct.addEventListener("click", guardarActividadDesdeModal);
+  }
+
+  const btnCerrarAct = document.getElementById("btnCerrarActividad");
+  if (btnCerrarAct) {
+    btnCerrarAct.addEventListener("click", cerrarModalActividad);
+  }
+
+  const actividadModal = document.getElementById("actividadModal");
+  if (actividadModal) {
+    actividadModal.addEventListener("click", (e) => {
+      if (e.target.id === "actividadModal") {
+        cerrarModalActividad();
+      }
+    });
+  }
+
+  // Render agenda, stats y carga inicial
   renderAgendaCalendario();
+  cargarAgendaStats();
   cargarClientes();
 
   // Modal selección de usuario
