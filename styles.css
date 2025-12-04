@@ -679,3 +679,51 @@ textarea {
   width: 16px;
   height: 16px;
 }
+
+.card-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-phone .phone-link,
+.card-phone .wa-link {
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.card-phone .wa-link {
+  opacity: 0.8;
+}
+
+.card-phone .wa-link:hover {
+  opacity: 1;
+}
+
+/* Acciones rápidas */
+.card-quick-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.card-quick-actions .quick-label {
+  color: var(--text-muted);
+}
+
+.card-quick-actions .btn-quick {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #111;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.card-quick-actions .btn-quick:hover {
+  background: #e5e7eb;
+}

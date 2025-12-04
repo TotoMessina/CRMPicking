@@ -13,6 +13,7 @@ let clientesCache = [];
 // Usuario actual y tema
 let usuarioActual = localStorage.getItem("usuarioActual") || "";
 const THEME_KEY = "crm_theme";
+const FILTERS_KEY = "crm_filters";
 
 // Solo estos usuarios pueden guardar / registrar historial
 const allowedUsers = [
@@ -163,6 +164,50 @@ function excelDateToYMD(value) {
   }
 
   return null;
+}
+
+function saveFilters() {
+  const filtroNombre = document.getElementById("filtroNombre");
+  const filtroTelefono = document.getElementById("filtroTelefono");
+  const filtroRubro = document.getElementById("filtroRubro");
+  const filtroEstado = document.getElementById("filtroEstado");
+
+  const data = {
+    nombre: filtroNombre ? filtroNombre.value : "",
+    telefono: filtroTelefono ? filtroTelefono.value : "",
+    rubro: filtroRubro ? filtroRubro.value : "",
+    estado: filtroEstado ? filtroEstado.value : "Todos",
+  };
+
+  localStorage.setItem(FILTERS_KEY, JSON.stringify(data));
+}
+
+function loadFilters() {
+  const raw = localStorage.getItem(FILTERS_KEY);
+  if (!raw) return;
+  try {
+    const f = JSON.parse(raw);
+
+    const filtroNombre = document.getElementById("filtroNombre");
+    const filtroTelefono = document.getElementById("filtroTelefono");
+    const filtroRubro = document.getElementById("filtroRubro");
+    const filtroEstado = document.getElementById("filtroEstado");
+
+    if (filtroNombre && typeof f.nombre === "string") {
+      filtroNombre.value = f.nombre;
+    }
+    if (filtroTelefono && typeof f.telefono === "string") {
+      filtroTelefono.value = f.telefono;
+    }
+    if (filtroRubro && typeof f.rubro === "string") {
+      filtroRubro.value = f.rubro;
+    }
+    if (filtroEstado && typeof f.estado === "string") {
+      filtroEstado.value = f.estado;
+    }
+  } catch (e) {
+    console.warn("No se pudieron cargar filtros desde localStorage:", e);
+  }
 }
 
 // =========================================================
@@ -620,12 +665,36 @@ async function cargarClientes() {
         ? ` a las ${cliente.hora_proximo_contacto.slice(0, 5)}`
         : "";
 
+    // Teléfono clickeable
+    let phoneHTML = "";
+    if (cliente.telefono) {
+      const telDigits = cliente.telefono.replace(/\D/g, "");
+      // Si no arranca con 54, le agregamos 54 (Argentina)
+      const waNumber = telDigits.startsWith("54")
+        ? telDigits
+        : "54" + telDigits;
+
+      phoneHTML = `
+        <span class="card-phone">
+          <a href="tel:${telDigits}" class="phone-link">📞 ${cliente.telefono}</a>
+          <a href="https://wa.me/${waNumber}"
+            class="wa-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Abrir WhatsApp">
+            💬
+          </a>
+        </span>
+      `;
+    }
+
     card.innerHTML = `
       <div class="card-top">
         <div>
           <div class="card-main-title">${cliente.nombre || "(Sin nombre)"}</div>
           <div class="card-meta">
-            ${cliente.telefono ? `📞 ${cliente.telefono} · ` : ""}
+            ${phoneHTML}
+            ${textoFecha || textoHora ? " · " : ""}
             ${textoFecha}${textoHora}
           </div>
           <div class="card-tags">
@@ -641,6 +710,21 @@ async function cargarClientes() {
               ? `<div class="card-notas"><strong>Notas:</strong> ${cliente.notas}</div>`
               : ""
           }
+
+          <!-- Acciones rápidas de próximo contacto -->
+          <div class="card-quick-actions">
+            <span class="quick-label">Próximo contacto rápido:</span>
+            <button class="btn-quick" data-action="prox-hoy" data-id="${
+              cliente.id
+            }">Hoy</button>
+            <button class="btn-quick" data-action="prox-maniana" data-id="${
+              cliente.id
+            }">Mañana</button>
+            <button class="btn-quick" data-action="prox-sinfecha" data-id="${
+              cliente.id
+            }">Sin fecha</button>
+          </div>
+
         </div>
         <div class="card-buttons">
           <button class="btn-actividad" data-action="actividad" data-id="${
@@ -876,6 +960,49 @@ async function guardarActividadDesdeModal() {
 async function agregarActividadDesdeCard(id) {
   if (!asegurarUsuarioValido()) return;
   abrirModalActividad(id);
+}
+
+async function actualizarProximoContactoRapido(clienteId, tipo) {
+  if (!asegurarUsuarioValido()) return;
+
+  let fecha = null;
+  let descripcionActividad = "";
+
+  if (tipo === "hoy" || tipo === "maniana") {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    if (tipo === "maniana") {
+      d.setDate(d.getDate() + 1);
+    }
+    fecha = d.toISOString().split("T")[0];
+    descripcionActividad =
+      tipo === "hoy"
+        ? "Próximo contacto marcado para hoy."
+        : "Próximo contacto marcado para mañana.";
+  } else if (tipo === "sinfecha") {
+    fecha = null;
+    descripcionActividad = "Cliente marcado sin próximo contacto.";
+  }
+
+  const payload = {
+    fecha_proximo_contacto: fecha,
+    hora_proximo_contacto: null,
+  };
+
+  const { error } = await supabaseClient
+    .from("clientes")
+    .update(payload)
+    .eq("id", clienteId);
+
+  if (error) {
+    console.error("Error en acción rápida de contacto:", error);
+    alert("No se pudo actualizar el próximo contacto.");
+    return;
+  }
+
+  await agregarActividad(clienteId, descripcionActividad);
+  await cargarClientes();
+  await cargarAgendaStats();
 }
 
 // =========================================================
@@ -1281,6 +1408,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("btnAplicarFiltros")
     .addEventListener("click", () => {
+      saveFilters();
       currentPage = 1;
       cargarClientes();
     });
@@ -1290,6 +1418,7 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
+        saveFilters();
         currentPage = 1;
         cargarClientes();
       }
@@ -1375,6 +1504,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const visible = listaHist.style.display !== "none";
       listaHist.style.display = visible ? "none" : "block";
       btn.textContent = visible ? "Ver historial" : "Ocultar historial";
+    } else if (action === "prox-hoy") {
+      actualizarProximoContactoRapido(id, "hoy");
+    } else if (action === "prox-maniana") {
+      actualizarProximoContactoRapido(id, "maniana");
+    } else if (action === "prox-sinfecha") {
+      actualizarProximoContactoRapido(id, "sinfecha");
     }
   });
 
@@ -1431,6 +1566,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  loadFilters();
 
   // Render agenda, stats y carga inicial
   renderAgendaCalendario();
