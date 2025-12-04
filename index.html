@@ -61,8 +61,14 @@
     </section>
     
     <!-- Formulario de alta/edición de cliente -->
-    <section class="form-box">
-      <h2 id="tituloForm">Nuevo cliente</h2>
+    <section class="form-box" id="formClienteBox">
+      <div class="form-box-header">
+        <h2 id="tituloForm">Nuevo cliente</h2>
+        <button type="button" id="btnToggleForm" class="btn-secundario form-toggle">
+          Ocultar formulario
+        </button>
+      </div>
+
       <form id="formCliente">
         <input type="hidden" id="clienteId" />
 
@@ -87,7 +93,7 @@
             <select id="estado">
               <option value="1 - Cliente relevado">1 - Cliente relevado</option>
               <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-              <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
+              <option value="3 - Primer ingreso">3 - Primer ingreso</option>
               <option value="4 - Local Creado">4 - Local Creado</option>
               <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
               <option value="6 - Local No Interesado">6 - Local No Interesado</option>
@@ -96,14 +102,9 @@
 
           <div class="field">
             <label for="fecha_proximo_contacto">Próximo contacto</label>
-            <div class="field-date-wrapper">
+            <div class="field-inline">
               <input type="date" id="fecha_proximo_contacto" />
-              <button
-                type="button"
-                id="btnPickFecha"
-                class="btn-secundario btn-date-picker"
-                title="Abrir calendario"
-              >
+              <button type="button" id="btnPickFecha" class="btn-secundario btn-small">
                 📅
               </button>
             </div>
@@ -114,9 +115,8 @@
             <input type="time" id="hora_proximo_contacto" />
           </div>
 
-          <!-- NUEVO: marcar como contactado y listo -->
-          <div class="field field-checkbox">
-            <label class="checkbox-inline">
+          <div class="field">
+            <label>
               <input type="checkbox" id="sin_proximo_contacto" />
               Marcar como contactado y sin próximo contacto
             </label>

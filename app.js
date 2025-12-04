@@ -14,6 +14,7 @@ let clientesCache = [];
 let usuarioActual = localStorage.getItem("usuarioActual") || "";
 const THEME_KEY = "crm_theme";
 const FILTERS_KEY = "crm_filters";
+const FORM_VIS_KEY = "crm_form_visible";
 
 // Solo estos usuarios pueden guardar / registrar historial
 const allowedUsers = [
@@ -208,6 +209,53 @@ function loadFilters() {
   } catch (e) {
     console.warn("No se pudieron cargar filtros desde localStorage:", e);
   }
+}
+
+function setFormVisible(visible) {
+  const box = document.getElementById("formClienteBox");
+  const form = document.getElementById("formCliente");
+  const btn = document.getElementById("btnToggleForm");
+  if (!box || !form || !btn) return;
+
+  if (visible) {
+    box.classList.remove("form-box--collapsed");
+    form.style.display = "block";
+    btn.textContent = "Ocultar formulario";
+  } else {
+    box.classList.add("form-box--collapsed");
+    form.style.display = "none";
+    btn.textContent = "Mostrar formulario";
+  }
+
+  localStorage.setItem(FORM_VIS_KEY, visible ? "1" : "0");
+}
+
+function initFormVisibility() {
+  const box = document.getElementById("formClienteBox");
+  const form = document.getElementById("formCliente");
+  const btn = document.getElementById("btnToggleForm");
+  if (!box || !form || !btn) return;
+
+  // Leer estado guardado (default: visible)
+  const saved = localStorage.getItem(FORM_VIS_KEY);
+  const visible = saved === null ? true : saved === "1";
+
+  // Aplicar estado inicial
+  if (!visible) {
+    box.classList.add("form-box--collapsed");
+    form.style.display = "none";
+    btn.textContent = "Mostrar formulario";
+  } else {
+    box.classList.remove("form-box--collapsed");
+    form.style.display = "block";
+    btn.textContent = "Ocultar formulario";
+  }
+
+  // Toggle al hacer click
+  btn.addEventListener("click", () => {
+    const isVisible = form.style.display !== "none";
+    setFormVisible(!isVisible);
+  });
 }
 
 // =========================================================
@@ -1132,222 +1180,118 @@ async function exportarExcel() {
 }
 
 // =========================================================
-// 10) EXCEL: IMPORTAR CLIENTES (maneja duplicados por teléfono)
+// 10) EXCEL: IMPORTAR CLIENTES (UPSERT POR TELÉFONO)
 // =========================================================
 async function importarDesdeExcel(file) {
   const reader = new FileReader();
+
   reader.onload = async (e) => {
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: "array" });
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
 
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
 
-    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      // Lee todas las filas como objetos { nombre, telefono, rubro, estado, ... }
+      const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-    if (!json.length) {
-      alert("El archivo no tiene datos.");
-      return;
-    }
+      if (!json.length) {
+        alert("El archivo no tiene datos.");
+        return;
+      }
 
-    const registros = json.map((row) => {
-      const nombre = (row.nombre || "").toString().trim();
+      // Mapeo de filas de Excel -> estructura de la tabla `clientes`
+      const registros = json.map((row) => {
+        const nombre = (row.nombre || "").toString().trim();
 
-      const telefono = row.telefono
-        ? row.telefono.toString().trim()
-        : null;
+        const telefono = row.telefono
+          ? row.telefono.toString().trim()
+          : "";
 
-      let rubro = row.rubro ? row.rubro.toString().trim() : "";
-      if (!rubro) rubro = "Sin definir";
+        let rubro = row.rubro ? row.rubro.toString().trim() : "";
+        if (!rubro) rubro = "Sin definir";
 
-      let estado = row.estado ? row.estado.toString().trim() : "";
-      if (!estado) estado = "1 - Cliente relevado";
+        let estado = row.estado ? row.estado.toString().trim() : "";
+        if (!estado) estado = "1 - Cliente relevado";
 
-      const fecha_proximo_contacto = excelDateToYMD(
-        row["fecha_proximo_contacto (YYYY-MM-DD)"]
+        const fecha_proximo_contacto = excelDateToYMD(
+          row["fecha_proximo_contacto (YYYY-MM-DD)"]
+        );
+
+        const hora_proximo_contacto = row["hora_proximo_contacto (HH:MM)"]
+          ? row["hora_proximo_contacto (HH:MM)"].toString().trim()
+          : null;
+
+        const notas = row.notas ? row.notas.toString().trim() : null;
+
+        return {
+          nombre,
+          telefono,
+          rubro,
+          estado,
+          fecha_proximo_contacto,
+          hora_proximo_contacto,
+          notas,
+        };
+      });
+
+      // Solo consideramos filas con NOMBRE y TELÉFONO (clave para upsert)
+      const registrosValidos = registros.filter(
+        (r) => r.nombre && r.telefono
       );
 
-      const hora_proximo_contacto = row["hora_proximo_contacto (HH:MM)"]
-        ? row["hora_proximo_contacto (HH:MM)"].toString().trim()
-        : null;
+      const omitidosSinTelefono = registros.filter(
+        (r) => r.nombre && !r.telefono
+      ).length;
 
-      const notas = row.notas ? row.notas.toString().trim() : null;
-
-      return {
-        nombre,
-        telefono,
-        rubro,
-        estado,
-        fecha_proximo_contacto,
-        hora_proximo_contacto,
-        notas,
-      };
-    });
-
-    const registrosValidos = registros.filter((r) => r.nombre);
-
-    if (!registrosValidos.length) {
-      alert("No se encontraron filas válidas (con nombre).");
-      return;
-    }
-
-    const gruposPorTelefono = new Map();
-    const sinTelefono = [];
-
-    for (const r of registrosValidos) {
-      if (!r.telefono) {
-        sinTelefono.push(r);
-      } else {
-        if (!gruposPorTelefono.has(r.telefono)) {
-          gruposPorTelefono.set(r.telefono, []);
-        }
-        gruposPorTelefono.get(r.telefono).push(r);
-      }
-    }
-
-    const telefonos = Array.from(gruposPorTelefono.keys());
-
-    let existentes = [];
-    if (telefonos.length) {
-      const { data: existentesData, error: errorExist } = await supabaseClient
-        .from("clientes")
-        .select("id, telefono, notas")
-        .in("telefono", telefonos);
-
-      if (errorExist) {
-        console.error("Error leyendo clientes existentes:", errorExist);
+      if (!registrosValidos.length) {
         alert(
-          "No se pudo verificar teléfonos existentes.\n\n" +
-            errorExist.message
+          "No se encontraron filas válidas (deben tener al menos nombre y teléfono)."
         );
         return;
       }
 
-      existentes = existentesData || [];
-    }
-
-    const existentesMap = new Map();
-    for (const c of existentes) {
-      existentesMap.set(c.telefono, c);
-    }
-
-    const nuevosParaInsertar = [];
-    const duplicadosEnExistentes = [];
-    const fusionadosDesdeExcel = [];
-
-    for (const [telefono, rows] of gruposPorTelefono.entries()) {
-      const existente = existentesMap.get(telefono);
-
-      if (existente) {
-        duplicadosEnExistentes.push({ telefono, rows, existente });
-      } else {
-        const base = { ...rows[0] };
-
-        if (rows.length > 1) {
-          let extraNotas = "";
-          rows.forEach((r, idx) => {
-            const detalle =
-              `Registro ${idx + 1} del Excel: ` +
-              `${r.nombre || "Sin nombre"} · Rubro: ${r.rubro || "-"} · Estado: ${
-                r.estado || "-"
-              }` +
-              (r.fecha_proximo_contacto
-                ? ` · Próx. contacto: ${r.fecha_proximo_contacto}`
-                : "") +
-              (r.notas ? ` · Notas: ${r.notas}` : "");
-            extraNotas += `\n• ${detalle}`;
-          });
-
-          if (extraNotas) {
-            base.notas = (base.notas || "") + "\n\n" + extraNotas;
-          }
-
-          fusionadosDesdeExcel.push({
-            telefono,
-            cantidad: rows.length,
-          });
-        }
-
-        nuevosParaInsertar.push(base);
-      }
-    }
-
-    nuevosParaInsertar.push(...sinTelefono);
-
-    let insertError = null;
-    let insertCount = 0;
-
-    if (nuevosParaInsertar.length) {
-      const { error, count } = await supabaseClient
+      // UPSERT por teléfono:
+      // - Si el teléfono ya existe en `clientes`, se ACTUALIZAN los campos.
+      // - Si no existe, se INSERTA un nuevo cliente.
+      const { error } = await supabaseClient
         .from("clientes")
-        .insert(nuevosParaInsertar, { count: "exact" });
+        .upsert(registrosValidos, {
+          onConflict: "telefono", // clave única en la tabla
+        });
 
-      insertError = error;
-      if (!error) {
-        insertCount = count ?? nuevosParaInsertar.length;
+      if (error) {
+        console.error(
+          "Error importando desde Excel:",
+          error,
+          "JSON:",
+          JSON.stringify(error)
+        );
+        alert(
+          "Hubo un error al importar los clientes.\n\n" +
+            (error.message || JSON.stringify(error))
+        );
+        return;
       }
-    }
 
-    let updatedCount = 0;
-    const hoy = new Date().toLocaleDateString("es-AR");
-
-    for (const dup of duplicadosEnExistentes) {
-      const { existente, rows, telefono } = dup;
-
-      let textoExtra = existente.notas ? existente.notas + "\n\n" : "";
-      textoExtra += `Importación Excel (${hoy}) para teléfono ${telefono}:\n`;
-
-      rows.forEach((r, idx) => {
-        textoExtra += `• ${idx + 1}) ${r.nombre || "Sin nombre"} · Rubro: ${
-          r.rubro || "-"
-        } · Estado: ${r.estado || "-"}`;
-        if (r.fecha_proximo_contacto) {
-          textoExtra += ` · Próx. contacto: ${r.fecha_proximo_contacto}`;
-        }
-        if (r.notas) {
-          textoExtra += ` · Notas: ${r.notas}`;
-        }
-        textoExtra += "\n";
-      });
-
-      const { error: updErr } = await supabaseClient
-        .from("clientes")
-        .update({ notas: textoExtra })
-        .eq("id", existente.id);
-
-      if (!updErr) {
-        updatedCount++;
-      } else {
-        console.error("Error actualizando notas por duplicado:", updErr);
+      let msg = `Importación completada.\n\nClientes insertados/actualizados según teléfono: ${registrosValidos.length}.`;
+      if (omitidosSinTelefono > 0) {
+        msg += `\nFilas con nombre pero SIN teléfono (omitidas): ${omitidosSinTelefono}.`;
       }
-    }
 
-    if (insertError) {
-      console.error("Error importando desde Excel:", insertError);
+      alert(msg);
+
+      // Refrescamos la UI
+      await cargarClientes();
+      await cargarAgendaStats();
+    } catch (err) {
+      console.error("Error inesperado importando Excel:", err);
       alert(
-        "Ocurrió un error al importar algunos clientes.\n\n" +
-          insertError.message
+        "Ocurrió un error inesperado al importar el Excel.\n\n" +
+          (err.message || String(err))
       );
     }
-
-    const totalDuplicados = duplicadosEnExistentes.reduce(
-      (acc, d) => acc + d.rows.length,
-      0
-    );
-
-    let msg = `Importación completada.\n\nClientes nuevos cargados: ${insertCount}`;
-
-    if (totalDuplicados) {
-      msg += `\nRegistros con teléfono ya existente en la BD: ${totalDuplicados}.\nSe agregaron como notas al cliente correspondiente.`;
-    }
-
-    if (fusionadosDesdeExcel.length) {
-      msg += `\n\nTeléfonos repetidos dentro del mismo Excel (fusionados en 1 cliente): ${fusionadosDesdeExcel.length}.`;
-    }
-
-    alert(msg);
-    await cargarClientes();
-    await cargarAgendaStats();
   };
 
   reader.readAsArrayBuffer(file);
@@ -1357,7 +1301,9 @@ async function importarDesdeExcel(file) {
 // 11) EVENTOS DOM
 // =========================================================
 document.addEventListener("DOMContentLoaded", () => {
-  // Tema
+  // =========================================================
+  // 1) TEMA (claro / oscuro)
+  // =========================================================
   const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
 
@@ -1371,47 +1317,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Selector de usuario actual (header)
-  const selUsuario = document.getElementById("usuarioActual");
-  if (selUsuario) {
-    if (usuarioActual && allowedUsers.includes(usuarioActual)) {
-      selUsuario.value = usuarioActual;
-    } else {
-      selUsuario.value = "";
-    }
+  // =========================================================
+  // 2) VISIBILIDAD DEL FORMULARIO (colapsable)
+  // =========================================================
+  initFormVisibility();
 
-    selUsuario.addEventListener("change", () => {
-      const value = selUsuario.value || "";
-      if (value && !allowedUsers.includes(value)) {
-        alert("Seleccioná uno de los usuarios habilitados.");
-        selUsuario.value = "";
-        usuarioActual = "";
-        localStorage.removeItem("usuarioActual");
-      } else {
-        usuarioActual = value;
-        localStorage.setItem("usuarioActual", usuarioActual);
-      }
-    });
-  }
+  // =========================================================
+  // 3) SELECCIÓN OBLIGATORIA DE USUARIO
+  // =========================================================
+  const usuarioModal = document.getElementById("usuarioModal");
+  const usuarioSelectModal = document.getElementById("usuarioModalSelect");
+  const usuarioDropdown = document.getElementById("usuarioActual");
 
-  // Guardar / editar
-  document
-    .getElementById("formCliente")
-    .addEventListener("submit", guardarCliente);
+  document.getElementById("btnGuardarUsuario").addEventListener("click", () => {
+    const val = usuarioSelectModal.value;
+    if (!val) return alert("Debés seleccionar un usuario.");
+    window.usuarioActualSeleccionado = val;
+    usuarioDropdown.value = val;
+    usuarioModal.style.display = "none";
+  });
 
-  // Cancelar edición
-  document
-    .getElementById("btnCancelarEdicion")
-    .addEventListener("click", resetFormulario);
+  usuarioDropdown.addEventListener("change", () => {
+    const val = usuarioDropdown.value;
+    if (!val) return;
+    window.usuarioActualSeleccionado = val;
+  });
 
-  // Filtros
-  document
-    .getElementById("btnAplicarFiltros")
-    .addEventListener("click", () => {
-      saveFilters();
-      currentPage = 1;
-      cargarClientes();
-    });
+  // =========================================================
+  // 4) FILTROS (cargar desde localStorage + guardar)
+  // =========================================================
+  loadFilters();
+
+  document.getElementById("btnAplicarFiltros").addEventListener("click", () => {
+    saveFilters();
+    currentPage = 1;
+    cargarClientes();
+  });
 
   ["filtroNombre", "filtroTelefono"].forEach((id) => {
     const el = document.getElementById(id);
@@ -1425,22 +1366,41 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Excel: descargar modelo
-  document
-    .getElementById("btnDescargarModelo")
-    .addEventListener("click", descargarModeloExcel);
-
-  // Excel: exportar
-  const btnExportar = document.getElementById("btnExportarExcel");
-  if (btnExportar) {
-    btnExportar.addEventListener("click", exportarExcel);
+  // =========================================================
+  // 5) PAGINACIÓN
+  // =========================================================
+  const pageSizeSelect = document.getElementById("pageSize");
+  if (pageSizeSelect) {
+    pageSizeSelect.addEventListener("change", () => {
+      currentPage = 1;
+      renderAgendaCalendario();
+      cargarClientes();
+    });
   }
 
-  // Excel: importar
+  document.getElementById("btnPrevPagina").addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      cargarClientes();
+    }
+  });
+
+  document.getElementById("btnNextPagina").addEventListener("click", () => {
+    currentPage++;
+    cargarClientes();
+  });
+
+  // =========================================================
+  // 6) EXCEL: DESCARGAR MODELO / IMPORTAR / EXPORTAR
+  // =========================================================
+  document.getElementById("btnDescargarModelo").addEventListener("click", () => {
+    descargarModeloExcel();
+  });
+
   const inputExcel = document.getElementById("inputExcel");
-  document
-    .getElementById("btnImportarExcel")
-    .addEventListener("click", () => inputExcel.click());
+  document.getElementById("btnImportarExcel").addEventListener("click", () => {
+    inputExcel.click();
+  });
 
   inputExcel.addEventListener("change", () => {
     if (inputExcel.files.length === 1) {
@@ -1449,40 +1409,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Paginación: eventos
-  const pageSizeSelect = document.getElementById("pageSize");
-  if (pageSizeSelect) {
-    pageSizeSelect.addEventListener("change", () => {
-      const val = Number(pageSizeSelect.value);
-      if (!Number.isNaN(val) && (val === 25 || val === 50)) {
-        pageSize = val;
-        currentPage = 1;
-        cargarClientes();
-      }
-    });
-  }
+  document.getElementById("btnExportarExcel").addEventListener("click", () => {
+    exportarExcel();
+  });
 
-  const btnPrev = document.getElementById("btnPrevPagina");
-  if (btnPrev) {
-    btnPrev.addEventListener("click", () => {
-      if (currentPage > 1) {
-        currentPage--;
-        cargarClientes();
-      }
-    });
-  }
-
-  const btnNext = document.getElementById("btnNextPagina");
-  if (btnNext) {
-    btnNext.addEventListener("click", () => {
-      if (currentPage < totalPages) {
-        currentPage++;
-        cargarClientes();
-      }
-    });
-  }
-
-  // Delegación de eventos para tarjetas
+  // =========================================================
+  // 7) TARJETAS (editar / eliminar / actividad / historial / acciones rápidas)
+  // =========================================================
   document.getElementById("lista").addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
@@ -1492,11 +1425,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (action === "editar") {
       editarCliente(id);
-    } else if (action === "eliminar") {
+
+      // Cuando edita, mostramos el formulario automáticamente
+      setFormVisible(true);
+    }
+
+    else if (action === "eliminar") {
       eliminarCliente(id);
-    } else if (action === "actividad") {
+    }
+
+    else if (action === "actividad") {
       agregarActividadDesdeCard(id);
-    } else if (action === "toggle-historial") {
+    }
+
+    else if (action === "toggle-historial") {
       const card = btn.closest(".card");
       if (!card) return;
       const listaHist = card.querySelector(".historial-list");
@@ -1504,50 +1446,33 @@ document.addEventListener("DOMContentLoaded", () => {
       const visible = listaHist.style.display !== "none";
       listaHist.style.display = visible ? "none" : "block";
       btn.textContent = visible ? "Ver historial" : "Ocultar historial";
-    } else if (action === "prox-hoy") {
+    }
+
+    else if (action === "prox-hoy") {
       actualizarProximoContactoRapido(id, "hoy");
-    } else if (action === "prox-maniana") {
+    }
+
+    else if (action === "prox-maniana") {
       actualizarProximoContactoRapido(id, "maniana");
-    } else if (action === "prox-sinfecha") {
+    }
+
+    else if (action === "prox-sinfecha") {
       actualizarProximoContactoRapido(id, "sinfecha");
     }
   });
 
-  // Botón para abrir el calendario del próximo contacto
-  const inputFecha = document.getElementById("fecha_proximo_contacto");
-  const btnPickFecha = document.getElementById("btnPickFecha");
-  if (inputFecha && btnPickFecha) {
-    btnPickFecha.addEventListener("click", () => {
-      if (typeof inputFecha.showPicker === "function") {
-        inputFecha.showPicker();
-      } else {
-        inputFecha.focus();
-      }
-    });
-  }
+  // =========================================================
+  // 8) FORMULARIO: GUARDAR CLIENTE Y CANCELAR EDICIÓN
+  // =========================================================
+  document.getElementById("formCliente").addEventListener("submit", guardarCliente);
 
-  // Checkbox "sin próximo contacto" → deshabilitar / habilitar fecha/hora
-  const horaInput = document.getElementById("hora_proximo_contacto");
-  const chkSinProx = document.getElementById("sin_proximo_contacto");
-  if (chkSinProx) {
-    chkSinProx.addEventListener("change", () => {
-      if (chkSinProx.checked) {
-        if (inputFecha) {
-          inputFecha.value = "";
-          inputFecha.disabled = true;
-        }
-        if (horaInput) {
-          horaInput.value = "";
-          horaInput.disabled = true;
-        }
-      } else {
-        if (inputFecha) inputFecha.disabled = false;
-        if (horaInput) horaInput.disabled = false;
-      }
-    });
-  }
+  document.getElementById("btnCancelarEdicion").addEventListener("click", () => {
+    resetFormulario();
+  });
 
-  // Modal actividades
+  // =========================================================
+  // 9) MODAL DE ACTIVIDAD (guardar / cerrar)
+  // =========================================================
   const btnGuardarAct = document.getElementById("btnGuardarActividad");
   if (btnGuardarAct) {
     btnGuardarAct.addEventListener("click", guardarActividadDesdeModal);
@@ -1567,13 +1492,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  loadFilters();
+  // =========================================================
+  // 10) BOTÓN: MOVER VENCIDOS A SIN FECHA
+  // =========================================================
+  const btnVencidos = document.getElementById("btnVencidosASinFecha");
+  if (btnVencidos) {
+    btnVencidos.addEventListener("click", async () => {
+      if (!asegurarUsuarioValido()) return;
 
-  // Render agenda, stats y carga inicial
+      const confirmed = confirm(
+        "¿Seguro que querés mover TODOS los contactos vencidos a ‘Sin Fecha’?"
+      );
+      if (!confirmed) return;
+
+      await moverVencidosASinFecha();
+    });
+  }
+
+  // =========================================================
+  // 11) INICIAR AGENDA / ESTADÍSTICAS / CLIENTES
+  // =========================================================
   renderAgendaCalendario();
   cargarAgendaStats();
   cargarClientes();
-
-  // Modal selección de usuario
-  initUsuarioModal();
 });

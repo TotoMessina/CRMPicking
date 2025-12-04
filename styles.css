@@ -855,3 +855,35 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+.form-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.form-toggle {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.form-box.form-box--collapsed {
+  padding-bottom: 8px;
+}
+
+.form-box.form-box--collapsed form {
+  display: none;
+}
+
+.field-inline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+}
