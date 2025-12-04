@@ -727,3 +727,131 @@ textarea {
 .card-quick-actions .btn-quick:hover {
   background: #e5e7eb;
 }
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.stats-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.stat-card h2 {
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+
+.stat-number--danger {
+  color: #b91c1c;
+}
+
+.stat-caption {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.stats-section {
+  margin-top: 24px;
+}
+
+.stats-section-header h2 {
+  margin: 0 0 4px;
+}
+
+.stats-section-subtitle {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.stats-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr);
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.stats-chart-box {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.stats-list-box {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.stats-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stats-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.stats-list li:last-child {
+  border-bottom: none;
+}
+
+.stats-list-label {
+  color: var(--text-muted);
+}
+
+.stats-list-value {
+  font-weight: 500;
+}
+
+.stats-agenda-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.stats-agenda-list li {
+  margin-bottom: 4px;
+}
+
+@media (max-width: 768px) {
+  .stats-layout {
+    grid-template-columns: 1fr;
+  }
+}

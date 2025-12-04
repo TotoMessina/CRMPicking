@@ -1,12 +1,52 @@
-// Misma config de Supabase
+// =========================================================
+// 1) Conexión a Supabase
+// =========================================================
 const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
 
-const supabaseStats = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Tema consistente con el CRM
 const THEME_KEY = "crm_theme";
 
+// Config de estados (mismo texto que usás en el CRM)
+const ESTADOS_CONFIG = [
+  {
+    value: "1 - Cliente relevado",
+    label: "1 - Cliente relevado",
+    color: "#ef4444", // rojo
+  },
+  {
+    value: "2 - Local Visitado No Activo",
+    label: "2 - Local Visitado No Activo",
+    color: "#f97316", // naranja
+  },
+  {
+    value: "3 - Primer ingreso",
+    label: "3 - Primer ingreso",
+    color: "#eab308", // amarillo
+  },
+  {
+    value: "4 - Local Creado",
+    label: "4 - Local Creado",
+    color: "#3b82f6", // azul medio
+  },
+  {
+    value: "5 - Local Visitado Activo",
+    label: "5 - Local Visitado Activo",
+    color: "#0ea5e9", // celeste
+  },
+  {
+    value: "6 - Local No Interesado",
+    label: "6 - Local No Interesado",
+    color: "#6b7280", // gris
+  },
+];
+
+// =========================================================
+// 2) Utilidades de tema
+// =========================================================
 function applyTheme(theme) {
   const root = document.documentElement;
   root.setAttribute("data-theme", theme);
@@ -19,26 +59,227 @@ function applyTheme(theme) {
   }
 }
 
-// Estados “oficiales” en el orden que queremos mostrar
-const ESTADOS_OFICIALES = [
-  "1 - Cliente relevado",
-  "2 - Local Visitado No Activo",
-  "3 - Primer ingreso",
-  "4 - Local Visitado Activo",
-  "5 - Local completo",
-];
+// =========================================================
+// 3) Carga de estadísticas
+// =========================================================
+async function cargarEstadisticas() {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const hoyStr = hoy.toISOString().split("T")[0];
 
-// Colores a juego con los tags
-const ESTADOS_COLORES = [
-  "#b91c1c", // rojo
-  "#c2410c", // naranja
-  "#a16207", // amarillo amarronado
-  "#1d4ed8", // azul
-  "#15803d", // verde
-];
+  // Traemos todos los clientes activos
+  const { data: clientes, error } = await supabaseClient
+    .from("clientes")
+    .select(
+      "id, rubro, estado, fecha_proximo_contacto"
+    )
+    .eq("activo", true);
 
+  if (error) {
+    console.error("Error cargando estadísticas:", error);
+    alert("No se pudieron cargar las estadísticas.");
+    return;
+  }
+
+  const lista = clientes || [];
+  const totalClientes = lista.length;
+
+  // Mapas de conteo
+  const rubrosCount = new Map();
+  const estadosCount = new Map();
+
+  let conFecha = 0;
+  let vencidos = 0;
+  let sinFecha = 0;
+
+  for (const c of lista) {
+    // Rubro
+    const rubroKey = (c.rubro || "Sin definir").trim() || "Sin definir";
+    rubrosCount.set(rubroKey, (rubrosCount.get(rubroKey) || 0) + 1);
+
+    // Estado
+    const estadoKey = c.estado || "Sin estado";
+    estadosCount.set(estadoKey, (estadosCount.get(estadoKey) || 0) + 1);
+
+    // Agenda
+    if (c.fecha_proximo_contacto) {
+      conFecha++;
+      if (c.fecha_proximo_contacto < hoyStr) {
+        vencidos++;
+      }
+    } else {
+      sinFecha++;
+    }
+  }
+
+  // Actualizar tarjetas resumen
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(value);
+  };
+
+  setText("statTotalClientes", totalClientes);
+  setText("statConFecha", conFecha);
+  setText("statVencidos", vencidos);
+  setText("statSinFecha", sinFecha);
+
+  setText("statConFechaText", conFecha);
+  setText("statVencidosText", vencidos);
+  setText("statSinFechaText", sinFecha);
+
+  // Dibujar gráficos
+  dibujarChartRubros(rubrosCount);
+  dibujarChartEstados(estadosCount);
+}
+
+// =========================================================
+// 4) Gráfico de Rubros (torta)
+// =========================================================
+function dibujarChartRubros(rubrosCount) {
+  const canvas = document.getElementById("chartRubros");
+  if (!canvas) return;
+
+  const labels = Array.from(rubrosCount.keys());
+  const data = Array.from(rubrosCount.values());
+
+  // Paleta simple, se repite si hay muchos rubros
+  const baseColors = [
+    "#3b82f6",
+    "#22c55e",
+    "#f97316",
+    "#eab308",
+    "#a855f7",
+    "#ec4899",
+    "#6366f1",
+    "#14b8a6",
+    "#f43f5e",
+    "#6b7280",
+  ];
+  const backgroundColor = labels.map((_, i) => baseColors[i % baseColors.length]);
+
+  new Chart(canvas, {
+    type: "pie",
+    data: {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor,
+        },
+      ],
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: "bottom",
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const label = ctx.label || "";
+              const value = ctx.raw || 0;
+              const total = data.reduce((acc, n) => acc + n, 0) || 1;
+              const perc = ((value * 100) / total).toFixed(1);
+              return `${label}: ${value} (${perc}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Lista textual
+  const listaRubros = document.getElementById("listaRubros");
+  if (listaRubros) {
+    listaRubros.innerHTML = "";
+    const total = data.reduce((acc, n) => acc + n, 0) || 1;
+
+    labels.forEach((label, idx) => {
+      const value = data[idx];
+      const perc = ((value * 100) / total).toFixed(1);
+
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="stats-list-label">${label}</span>
+        <span class="stats-list-value">${value} (${perc}%)</span>`;
+      listaRubros.appendChild(li);
+    });
+  }
+}
+
+// =========================================================
+// 5) Gráfico de Estados (barras)
+// =========================================================
+function dibujarChartEstados(estadosCount) {
+  const canvas = document.getElementById("chartEstados");
+  if (!canvas) return;
+
+  // Respetar el orden configurado de estados
+  const labels = ESTADOS_CONFIG.map((e) => e.label);
+  const data = ESTADOS_CONFIG.map(
+    (e) => estadosCount.get(e.value) || 0
+  );
+  const backgroundColor = ESTADOS_CONFIG.map((e) => e.color);
+
+  new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const value = ctx.raw || 0;
+              return `${value} cliente${value === 1 ? "" : "s"}`;
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Lista textual
+  const listaEstados = document.getElementById("listaEstados");
+  if (listaEstados) {
+    listaEstados.innerHTML = "";
+    const total = data.reduce((acc, n) => acc + n, 0) || 1;
+
+    labels.forEach((label, idx) => {
+      const value = data[idx];
+      const perc = ((value * 100) / total).toFixed(1);
+
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="stats-list-label">${label}</span>
+        <span class="stats-list-value">${value} (${perc}%)</span>`;
+      listaEstados.appendChild(li);
+    });
+  }
+}
+
+// =========================================================
+// 6) DOMContentLoaded
+// =========================================================
 document.addEventListener("DOMContentLoaded", () => {
-  // Tema
+  // Tema inicial
   const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
 
@@ -52,170 +293,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Cargar estadísticas
   cargarEstadisticas();
 });
-
-async function cargarEstadisticas() {
-  const { data: clientes, error } = await supabaseStats
-    .from("clientes")
-    .select("id, rubro, estado")
-    .eq("activo", true);
-
-  if (error) {
-    console.error("Error cargando clientes para estadísticas:", error);
-    alert("No se pudieron cargar las estadísticas.");
-    return;
-  }
-
-  const rubrosCount = {};
-  const estadosCount = {};
-
-  (clientes || []).forEach((c) => {
-    const rubro = c.rubro || "Sin definir";
-    rubrosCount[rubro] = (rubrosCount[rubro] || 0) + 1;
-
-    const estado = c.estado || "Sin estado";
-    estadosCount[estado] = (estadosCount[estado] || 0) + 1;
-  });
-
-  dibujarRubros(rubrosCount, clientes.length);
-  dibujarEstados(estadosCount, clientes.length);
-}
-
-function dibujarRubros(rubrosCount, totalClientes) {
-  const ctx = document.getElementById("chartRubros").getContext("2d");
-
-  const labels = Object.keys(rubrosCount);
-  const data = labels.map((l) => rubrosCount[l]);
-
-  const total = totalClientes || 0;
-
-  const resumen = document.getElementById("resumenRubros");
-  if (total === 0) {
-    resumen.textContent = "No hay clientes activos cargados.";
-  } else {
-    const partes = labels.map((l) => {
-      const cant = rubrosCount[l];
-      const pct = ((cant / total) * 100).toFixed(1);
-      return `${l}: ${cant} clientes (${pct}%)`;
-    });
-    resumen.textContent = partes.join(" · ");
-  }
-
-  // Colores suaves random-ish
-  const colors = labels.map((_, i) => {
-    const palette = [
-      "#38bdf8",
-      "#22c55e",
-      "#facc15",
-      "#f97316",
-      "#a855f7",
-      "#f97373",
-    ];
-    return palette[i % palette.length];
-  });
-
-  new Chart(ctx, {
-    type: "pie",
-    data: {
-      labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: colors,
-        },
-      ],
-    },
-    options: {
-      plugins: {
-        legend: {
-          display: true,
-          position: "bottom",
-          labels: {
-            color: "#6b7280",
-          },
-        },
-      },
-    },
-  });
-}
-
-function dibujarEstados(estadosCount, totalClientes) {
-  const ctx = document.getElementById("chartEstados").getContext("2d");
-
-  // Aseguramos que los estados oficiales salgan en orden fijo
-  const labels = [];
-  const data = [];
-  const bgColors = [];
-
-  ESTADOS_OFICIALES.forEach((estado, idx) => {
-    labels.push(estado);
-    data.push(estadosCount[estado] || 0);
-    bgColors.push(ESTADOS_COLORES[idx]);
-  });
-
-  // Si hubiera estados viejos o raros, los sumamos aparte como “Otros”
-  const otrosEstados = Object.keys(estadosCount).filter(
-    (e) => !ESTADOS_OFICIALES.includes(e)
-  );
-  let otrosTotal = 0;
-  otrosEstados.forEach((e) => {
-    otrosTotal += estadosCount[e];
-  });
-  if (otrosTotal > 0) {
-    labels.push("Otros estados");
-    data.push(otrosTotal);
-    bgColors.push("#6b7280");
-  }
-
-  const total = totalClientes || 0;
-  const resumen = document.getElementById("resumenEstados");
-
-  if (total === 0) {
-    resumen.textContent = "No hay clientes activos cargados.";
-  } else {
-    const partes = labels.map((l, idx) => {
-      const cant = data[idx];
-      if (!cant) return null;
-      const pct = ((cant / total) * 100).toFixed(1);
-      return `${l}: ${cant} clientes (${pct}%)`;
-    }).filter(Boolean);
-
-    resumen.textContent = partes.join(" · ");
-  }
-
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: bgColors,
-        },
-      ],
-    },
-    options: {
-      plugins: {
-        legend: {
-          display: false,
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: "#6b7280",
-            font: { size: 11 },
-          },
-        },
-        y: {
-          beginAtZero: true,
-          ticks: {
-            color: "#6b7280",
-            precision: 0,
-          },
-        },
-      },
-    },
-  });
-}

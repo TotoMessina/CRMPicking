@@ -3,36 +3,109 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Estadísticas CRM</title>
+  <title>Estadísticas CRM - PickingUp!</title>
   <link rel="stylesheet" href="styles.css" />
   <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <main class="container">
-    <h1>Estadísticas CRM</h1>
+    <header class="stats-header">
+      <h1>Estadísticas del CRM</h1>
+      <div class="stats-header-actions">
+        <a href="index.html" class="btn-link">← Volver al CRM</a>
+        <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
+          Modo noche 🌙
+        </button>
+      </div>
+    </header>
 
-    <section class="controls">
-      <a href="index.html" class="btn-link">Volver al CRM</a>
-      <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
-        Modo noche 🌙
-      </button>
+    <!-- Tarjetas resumen -->
+    <section class="stats-summary">
+      <div class="stat-card">
+        <h2>Total clientes activos</h2>
+        <p id="statTotalClientes" class="stat-number">-</p>
+        <p class="stat-caption">Clientes con estado activo en el CRM</p>
+      </div>
+
+      <div class="stat-card">
+        <h2>Con próximo contacto</h2>
+        <p id="statConFecha" class="stat-number">-</p>
+        <p class="stat-caption">Tienen fecha agendada</p>
+      </div>
+
+      <div class="stat-card">
+        <h2>Contactos vencidos</h2>
+        <p id="statVencidos" class="stat-number stat-number--danger">-</p>
+        <p class="stat-caption">Fecha de contacto anterior a hoy</p>
+      </div>
+
+      <div class="stat-card">
+        <h2>Sin próximo contacto</h2>
+        <p id="statSinFecha" class="stat-number">-</p>
+        <p class="stat-caption">Marcados como contactados / sin agenda</p>
+      </div>
     </section>
 
-    <!-- Panel de rubros -->
-    <section class="form-box">
-      <h2>Distribución por Rubro</h2>
-      <p id="resumenRubros" class="texto-resumen"></p>
-      <canvas id="chartRubros" height="160"></canvas>
+    <!-- Clientes por rubro -->
+    <section class="stats-section">
+      <div class="stats-section-header">
+        <h2>Distribución por rubro</h2>
+        <p class="stats-section-subtitle">
+          Muestra cuántos clientes activos tenés en cada rubro.
+        </p>
+      </div>
+      <div class="stats-layout">
+        <div class="stats-chart-box">
+          <canvas id="chartRubros"></canvas>
+        </div>
+        <div class="stats-list-box">
+          <h3>Detalle por rubro</h3>
+          <ul id="listaRubros" class="stats-list"></ul>
+        </div>
+      </div>
     </section>
 
-    <!-- Panel de estados -->
-    <section class="form-box">
-      <h2>Estados de Clientes</h2>
-      <p id="resumenEstados" class="texto-resumen"></p>
-      <canvas id="chartEstados" height="160"></canvas>
+    <!-- Clientes por estado -->
+    <section class="stats-section">
+      <div class="stats-section-header">
+        <h2>Clientes por estado</h2>
+        <p class="stats-section-subtitle">
+          Estados comerciales según la última situación registrada.
+        </p>
+      </div>
+      <div class="stats-layout">
+        <div class="stats-chart-box">
+          <canvas id="chartEstados"></canvas>
+        </div>
+        <div class="stats-list-box">
+          <h3>Detalle por estado</h3>
+          <ul id="listaEstados" class="stats-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Agenda de contactos (texto) -->
+    <section class="stats-section">
+      <div class="stats-section-header">
+        <h2>Resumen de agenda</h2>
+      </div>
+      <ul class="stats-agenda-list">
+        <li>
+          Clientes con próximo contacto asignado:
+          <strong id="statConFechaText">-</strong>
+        </li>
+        <li>
+          Clientes con contacto vencido:
+          <strong id="statVencidosText">-</strong>
+        </li>
+        <li>
+          Clientes sin próximo contacto:
+          <strong id="statSinFechaText">-</strong>
+        </li>
+      </ul>
     </section>
   </main>
 
