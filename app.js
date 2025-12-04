@@ -30,11 +30,11 @@ const allowedUsers = [
 let clienteActividadID = null;
 
 // Agenda de próximos contactos (filtro por fecha)
-let agendaMode = "todos"; // 'todos' | 'vencidos' | 'fecha'
+let agendaMode = "todos"; // 'todos' | 'vencidos' | 'fecha' | 'sin_fecha'
 let agendaDate = null; // 'YYYY-MM-DD' cuando mode === 'fecha'
 
 // Stats de agenda (para tooltips y contadores)
-let agendaStats = { vencidos: 0, fechas: {} };
+let agendaStats = { vencidos: 0, fechas: {}, sinFecha: 0 };
 
 // Paginación (en el FRONT)
 let currentPage = 1;
@@ -78,8 +78,22 @@ function resetFormulario() {
   document.getElementById("clienteId").value = "";
   document.getElementById("tituloForm").textContent = "Nuevo cliente";
   document.getElementById("btnGuardar").textContent = "Guardar";
+
+  const inputFecha = document.getElementById("fecha_proximo_contacto");
   const horaInput = document.getElementById("hora_proximo_contacto");
-  if (horaInput) horaInput.value = "";
+  const chkSinProx = document.getElementById("sin_proximo_contacto");
+
+  if (inputFecha) {
+    inputFecha.value = "";
+    inputFecha.disabled = false;
+  }
+  if (horaInput) {
+    horaInput.value = "";
+    horaInput.disabled = false;
+  }
+  if (chkSinProx) {
+    chkSinProx.checked = false;
+  }
 }
 
 // Tema
@@ -198,6 +212,15 @@ function renderAgendaCalendario() {
   btnVencidos.addEventListener("click", () => setAgendaMode("vencidos", null));
   cont.appendChild(btnVencidos);
 
+  // NUEVO: Chip "Sin fecha" (ya contactados / sin próximo contacto)
+  const btnSinFecha = document.createElement("button");
+  btnSinFecha.textContent = "Sin fecha de contacto proximo";
+  btnSinFecha.className = "agenda-chip";
+  btnSinFecha.dataset.mode = "sin_fecha";
+  btnSinFecha.dataset.labelBase = btnSinFecha.textContent;
+  btnSinFecha.addEventListener("click", () => setAgendaMode("sin_fecha", null));
+  cont.appendChild(btnSinFecha);
+
   // Chips "Hoy" + próximos 6 días
   for (let i = 0; i < 7; i++) {
     const d = new Date(hoy);
@@ -252,6 +275,14 @@ function aplicarStatsAgendaAChips() {
       chip.innerHTML = n
         ? `${base} <span class="agenda-count">(${n})</span>`
         : base;
+    } else if (mode === "sin_fecha") {
+      const n = agendaStats.sinFecha || 0;
+      chip.title = n
+        ? `${n} clientes sin próximo contacto asignado`
+        : "Ningún cliente está marcado sin próximo contacto";
+      chip.innerHTML = n
+        ? `${base} <span class="agenda-count">(${n})</span>`
+        : base;
     } else if (mode === "fecha") {
       const date = chip.dataset.date;
       const n =
@@ -272,6 +303,7 @@ async function cargarAgendaStats() {
   hoy.setHours(0, 0, 0, 0);
   const hoyStr = hoy.toISOString().split("T")[0];
 
+  // Clientes CON fecha de próximo contacto
   const { data, error } = await supabaseClient
     .from("clientes")
     .select("fecha_proximo_contacto")
@@ -280,12 +312,12 @@ async function cargarAgendaStats() {
 
   if (error) {
     console.error("Error cargando stats de agenda:", error);
-    agendaStats = { vencidos: 0, fechas: {} };
+    agendaStats = { vencidos: 0, fechas: {}, sinFecha: 0 };
     aplicarStatsAgendaAChips();
     return;
   }
 
-  const stats = { vencidos: 0, fechas: {} };
+  const stats = { vencidos: 0, fechas: {}, sinFecha: 0 };
 
   (data || []).forEach((c) => {
     const f = c.fecha_proximo_contacto;
@@ -294,6 +326,20 @@ async function cargarAgendaStats() {
     if (!stats.fechas[f]) stats.fechas[f] = 0;
     stats.fechas[f]++;
   });
+
+  // NUEVO: clientes SIN fecha de próximo contacto (ya contactados / sin agenda)
+  const { count: sinFechaCount, error: errSinFecha } = await supabaseClient
+    .from("clientes")
+    .select("id", { count: "exact", head: true })
+    .eq("activo", true)
+    .is("fecha_proximo_contacto", null);
+
+  if (errSinFecha) {
+    console.error("Error cargando cantidad sin fecha:", errSinFecha);
+    stats.sinFecha = 0;
+  } else {
+    stats.sinFecha = sinFechaCount || 0;
+  }
 
   agendaStats = stats;
   aplicarStatsAgendaAChips();
@@ -460,6 +506,8 @@ async function cargarClientes() {
     query = query.eq("fecha_proximo_contacto", agendaDate);
   } else if (agendaMode === "vencidos") {
     query = query.lt("fecha_proximo_contacto", hoyStr);
+  } else if (agendaMode === "sin_fecha") {
+    query = query.is("fecha_proximo_contacto", null);
   }
 
   if (filtroEstado && filtroEstado !== "Todos") {
@@ -656,6 +704,8 @@ async function guardarCliente(e) {
   const horaProxInput = document.getElementById("hora_proximo_contacto");
   const horaProx = horaProxInput ? horaProxInput.value : "";
   const notas = document.getElementById("notas").value.trim();
+  const chkSinProx = document.getElementById("sin_proximo_contacto");
+  const sinProximo = chkSinProx ? chkSinProx.checked : false;
 
   if (!nombre) {
     alert("El nombre es obligatorio.");
@@ -672,6 +722,11 @@ async function guardarCliente(e) {
     notas: notas || null,
   };
 
+  if (sinProximo) {
+    payload.fecha_proximo_contacto = null;
+    payload.hora_proximo_contacto = null;
+  }
+
   let error;
   let newId = id;
 
@@ -683,7 +738,12 @@ async function guardarCliente(e) {
 
     error = errUpdate;
     if (!error) {
-      await agregarActividad(id, "Cliente actualizado");
+      await agregarActividad(
+        id,
+        sinProximo
+          ? "Cliente actualizado y marcado sin próximo contacto."
+          : "Cliente actualizado"
+      );
     }
   } else {
     const { data, error: errInsert } = await supabaseClient
@@ -695,7 +755,12 @@ async function guardarCliente(e) {
     error = errInsert;
     if (!error && data && data.id) {
       newId = data.id;
-      await agregarActividad(newId, "Cliente creado");
+      await agregarActividad(
+        newId,
+        sinProximo
+          ? "Cliente creado y marcado sin próximo contacto."
+          : "Cliente creado"
+      );
     }
   }
 
@@ -754,6 +819,16 @@ function editarCliente(id) {
     horaInput.value = cliente.hora_proximo_contacto || "";
   }
   document.getElementById("notas").value = cliente.notas || "";
+
+  const chkSinProx = document.getElementById("sin_proximo_contacto");
+  const inputFecha = document.getElementById("fecha_proximo_contacto");
+
+  const sinProxStored =
+    !cliente.fecha_proximo_contacto && !cliente.hora_proximo_contacto;
+
+  if (chkSinProx) chkSinProx.checked = sinProxStored;
+  if (inputFecha) inputFecha.disabled = sinProxStored;
+  if (horaInput) horaInput.disabled = sinProxStored;
 
   document.getElementById("tituloForm").textContent = "Editar cliente";
   document.getElementById("btnGuardar").textContent = "Actualizar";
@@ -851,7 +926,7 @@ async function exportarExcel() {
   if (ids.length) {
     const { data: acts, error: errAct } = await supabaseClient
       .from("actividades")
-      .select("cliente_id, fecha, descripcion, usuario")
+      .select("cliente_id, fecha, usuario, descripcion")
       .in("cliente_id", ids)
       .order("fecha", { ascending: true });
 
@@ -1312,6 +1387,27 @@ document.addEventListener("DOMContentLoaded", () => {
         inputFecha.showPicker();
       } else {
         inputFecha.focus();
+      }
+    });
+  }
+
+  // Checkbox "sin próximo contacto" → deshabilitar / habilitar fecha/hora
+  const horaInput = document.getElementById("hora_proximo_contacto");
+  const chkSinProx = document.getElementById("sin_proximo_contacto");
+  if (chkSinProx) {
+    chkSinProx.addEventListener("change", () => {
+      if (chkSinProx.checked) {
+        if (inputFecha) {
+          inputFecha.value = "";
+          inputFecha.disabled = true;
+        }
+        if (horaInput) {
+          horaInput.value = "";
+          horaInput.disabled = true;
+        }
+      } else {
+        if (inputFecha) inputFecha.disabled = false;
+        if (horaInput) horaInput.disabled = false;
       }
     });
   }

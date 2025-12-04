@@ -663,3 +663,19 @@ textarea {
   min-width: 40px;
 }
 
+.field-checkbox {
+  grid-column: 1 / -1;
+}
+
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.checkbox-inline input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
