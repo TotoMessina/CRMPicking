@@ -107,6 +107,94 @@
         </li>
       </ul>
     </section>
+    <section class="stats-section">
+      <div class="stats-section-header">
+        <h2>Resumen de agenda</h2>
+      </div>
+      <ul class="stats-agenda-list">
+        <li>
+          Clientes con próximo contacto asignado:
+          <strong id="statConFechaText">-</strong>
+        </li>
+        <li>
+          Clientes con contacto vencido:
+          <strong id="statVencidosText">-</strong>
+        </li>
+        <li>
+          Clientes sin próximo contacto:
+          <strong id="statSinFechaText">-</strong>
+        </li>
+        <!-- NUEVO: detalle por plazo -->
+        <li>
+          Próximos contactos para <strong>hoy</strong>:
+          <strong id="statProxHoy">-</strong>
+        </li>
+        <li>
+          Próximos contactos en los <strong>próximos 7 días</strong> (sin contar hoy):
+          <strong id="statProx7">-</strong>
+        </li>
+        <li>
+          Próximos contactos a partir de <strong>8+ días</strong>:
+          <strong id="statProxFuturo">-</strong>
+        </li>
+      </ul>
+    </section>
+    <section class="stats-section">
+      <div class="stats-section-header">
+        <h2>Clientes por responsable</h2>
+        <p class="stats-section-subtitle">
+          Distribución de la cartera de clientes según el responsable asignado.
+        </p>
+      </div>
+      <div class="stats-layout">
+        <div class="stats-chart-box">
+          <canvas id="chartResponsables"></canvas>
+        </div>
+        <div class="stats-list-box">
+          <h3>Detalle por responsable</h3>
+          <ul id="listaResponsables" class="stats-list"></ul>
+        </div>
+      </div>
+    </section>
+    <section class="stats-section">
+      <div class="stats-section-header">
+        <h2>Actividad reciente</h2>
+        <p class="stats-section-subtitle">
+          Basado en el historial de actividades de los últimos 30 días.
+        </p>
+      </div>
+
+      <ul class="stats-agenda-list">
+        <li>
+          Actividades registradas en los últimos <strong>7 días</strong>:
+          <strong id="statAct7">-</strong>
+        </li>
+        <li>
+          Actividades registradas en los últimos <strong>30 días</strong>:
+          <strong id="statAct30">-</strong>
+        </li>
+        <li>
+          Clientes con actividad en los últimos <strong>30 días</strong>:
+          <strong id="statClientesActivos30">-</strong>
+        </li>
+        <li>
+          Clientes sin actividad hace <strong>30+ días</strong>:
+          <strong id="statClientesDormidos30">-</strong>
+        </li>
+        <li>
+          Clientes sin historial de actividades:
+          <strong id="statSinHistorial">-</strong>
+        </li>
+      </ul>
+
+      <div class="stats-layout">
+        <div class="stats-list-box">
+          <h3>Actividades por usuario (últimos 30 días)</h3>
+          <ul id="listaActividadUsuarios" class="stats-list"></ul>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <script src="stats.js"></script>

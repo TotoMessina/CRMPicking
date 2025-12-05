@@ -6,6 +6,7 @@
   /* Colores base (modo claro) */
   --bg: #f5f7fb;
   --bg-elevated: #ffffff;
+  --card: #ffffff;
   --text: #111827;
   --text-muted: #6b7280;
   --border: #e5e7eb;
@@ -26,6 +27,7 @@
 [data-theme="dark"] {
   --bg: #020617;
   --bg-elevated: #020617;
+  --card: #020617;
   --text: #e5e7eb;
   --text-muted: #9ca3af;
   --border: #1f2937;
@@ -318,7 +320,6 @@ textarea {
   color: #1d4ed8;
 }
 
-/* Colores por estado */
 /* Estados de cliente - colores de tags */
 
 .tag-estado-1-Clienterelevado {
@@ -347,8 +348,8 @@ textarea {
 }
 
 .tag-estado-6-LocalNoInteresado {
-  background: #e5e7eb;   /* violeta */
-  color: #7a02aa;
+  background: #e5e7eb;   /* gris */
+  color: #374151;
 }
 
 .card-buttons {
@@ -406,7 +407,7 @@ textarea {
 .historial-list div {
   padding: 4px 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.35);
-  white-space: pre-line; /* RESPETA LOS SALTOS DE LÍNEA DEL HISTORIAL */
+  white-space: pre-line; /* respeta saltos de línea */
 }
 
 .historial-list div:last-child {
@@ -513,6 +514,12 @@ textarea {
 
 .agenda-chip[data-mode="fecha"]:first-of-type {
   font-weight: 600; /* Hoy un poco más marcado */
+}
+
+/* contador sobre chip */
+.agenda-count {
+  font-weight: 600;
+  margin-left: 4px;
 }
 
 /* ===========================
@@ -633,20 +640,9 @@ textarea {
   }
 }
 
-.field-date-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.field-date-wrapper input[type="date"] {
-  flex: 1;
-}
-
-.btn-date-picker {
-  padding-inline: 10px;
-  min-width: 40px;
-}
+/* ===========================
+   CAMPOS ESPECIALES FORM
+   =========================== */
 
 .field-date-wrapper {
   display: flex;
@@ -679,6 +675,10 @@ textarea {
   width: 16px;
   height: 16px;
 }
+
+/* ===========================
+   TELÉFONO / WHATSAPP
+   =========================== */
 
 .card-phone {
   display: inline-flex;
@@ -728,6 +728,10 @@ textarea {
   background: #e5e7eb;
 }
 
+/* ===========================
+   ESTADÍSTICAS (estadisticas.html)
+   =========================== */
+
 .stats-header {
   display: flex;
   justify-content: space-between;
@@ -753,7 +757,34 @@ textarea {
   background: var(--card);
   border-radius: 12px;
   padding: 12px 14px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.stat-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 55%);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+.stat-card:hover::after {
+  opacity: 1;
 }
 
 .stat-card h2 {
@@ -762,9 +793,10 @@ textarea {
 }
 
 .stat-number {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 26px;
+  font-weight: 700;
   margin: 0 0 2px;
+  letter-spacing: 0.02em;
 }
 
 .stat-number--danger {
@@ -802,14 +834,16 @@ textarea {
   background: var(--card);
   border-radius: 12px;
   padding: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.4);
 }
 
 .stats-list-box {
   background: var(--card);
   border-radius: 12px;
   padding: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.4);
 }
 
 .stats-list {
@@ -854,7 +888,21 @@ textarea {
   .stats-layout {
     grid-template-columns: 1fr;
   }
+
+  .stats-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stats-header-actions {
+    align-self: stretch;
+    justify-content: space-between;
+  }
 }
+
+/* ===========================
+   FORM HEADER / TOGGLE
+   =========================== */
 
 .form-box-header {
   display: flex;
@@ -877,6 +925,10 @@ textarea {
   display: none;
 }
 
+/* ===========================
+   CAMPOS EN LÍNEA / BOTONES
+   =========================== */
+
 .field-inline {
   display: flex;
   gap: 6px;
@@ -887,6 +939,8 @@ textarea {
   padding: 4px 8px;
   font-size: 12px;
 }
+
+/* Tag responsable */
 
 .tag-responsable {
   background: rgba(80, 120, 255, 0.12);
