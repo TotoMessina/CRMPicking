@@ -180,6 +180,7 @@ function excelDateToYMD(value) {
 function saveFilters() {
   const filtroNombre = document.getElementById("filtroNombre");
   const filtroTelefono = document.getElementById("filtroTelefono");
+  const filtroDireccion = document.getElementById("filtroDireccion");
   const filtroRubro = document.getElementById("filtroRubro");
   const filtroEstado = document.getElementById("filtroEstado");
   const filtroResponsable = document.getElementById("filtroResponsable");
@@ -187,6 +188,7 @@ function saveFilters() {
   const data = {
     nombre: filtroNombre ? filtroNombre.value : "",
     telefono: filtroTelefono ? filtroTelefono.value : "",
+    direccion: filtroDireccion ? filtroDireccion.value : "",
     rubro: filtroRubro ? filtroRubro.value : "",
     estado: filtroEstado ? filtroEstado.value : "Todos",
     responsable: filtroResponsable ? filtroResponsable.value : "",
@@ -203,6 +205,7 @@ function loadFilters() {
 
     const filtroNombre = document.getElementById("filtroNombre");
     const filtroTelefono = document.getElementById("filtroTelefono");
+    const filtroDireccion = document.getElementById("filtroDireccion");
     const filtroRubro = document.getElementById("filtroRubro");
     const filtroEstado = document.getElementById("filtroEstado");
     const filtroResponsable = document.getElementById("filtroResponsable");
@@ -212,6 +215,9 @@ function loadFilters() {
     }
     if (filtroTelefono && typeof f.telefono === "string") {
       filtroTelefono.value = f.telefono;
+    }
+    if (filtroDireccion && typeof f.direccion === "string") {
+      filtroDireccion.value = f.direccion;
     }
     if (filtroRubro && typeof f.rubro === "string") {
       filtroRubro.value = f.rubro;
@@ -544,7 +550,6 @@ async function cargarClientes() {
   const listaDiv = document.getElementById("lista");
   listaDiv.innerHTML = "<p>Cargando...</p>";
 
-  // pageSize desde el select
   const pageSizeSelect = document.getElementById("pageSize");
   if (pageSizeSelect) {
     const val = Number(pageSizeSelect.value);
@@ -557,6 +562,9 @@ async function cargarClientes() {
   const filtroTelefono = document
     .getElementById("filtroTelefono")
     .value.trim();
+  const filtroDireccion = document.getElementById("filtroDireccion")
+    ? document.getElementById("filtroDireccion").value.trim()
+    : "";
   const filtroRubro = document.getElementById("filtroRubro").value;
   const filtroEstado = document.getElementById("filtroEstado").value;
   const filtroResponsable = document.getElementById("filtroResponsable")
@@ -612,11 +620,11 @@ async function cargarClientes() {
     console.error("Error inesperado cargando rubros:", e);
   }
 
-  // --- Cargar clientes filtrados (todos, sin range) ---
+  // --- Cargar clientes filtrados ---
   let query = supabaseClient
     .from("clientes")
     .select(
-      "id, nombre, telefono, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas",
+      "id, nombre, telefono, direccion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas",
       { count: "exact" }
     )
     .eq("activo", true);
@@ -637,6 +645,9 @@ async function cargarClientes() {
   }
   if (filtroTelefono) {
     query = query.ilike("telefono", `%${filtroTelefono}%`);
+  }
+  if (filtroDireccion) {
+    query = query.ilike("direccion", `%${filtroDireccion}%`);
   }
   if (filtroRubro) {
     query = query.eq("rubro", filtroRubro);
@@ -731,6 +742,7 @@ async function cargarClientes() {
     const actividadesCliente = actividadesPorCliente[cliente.id] || [];
     const claseEstado = `tag-estado-${cliente.estado.replace(/\s+/g, "")}`;
     const responsable = cliente.responsable || "";
+    const direccion = cliente.direccion || "";
 
     const textoFecha =
       cliente.fecha_proximo_contacto
@@ -765,6 +777,11 @@ async function cargarClientes() {
       `;
     }
 
+    // Dirección (si existe)
+    const direccionHTML = direccion
+      ? `<div class="card-meta-line">📍 ${direccion}</div>`
+      : "";
+
     card.innerHTML = `
       <div class="card-top">
         <div>
@@ -774,6 +791,7 @@ async function cargarClientes() {
             ${textoFecha || textoHora ? " · " : ""}
             ${textoFecha}${textoHora}
           </div>
+          ${direccionHTML}
           <div class="card-tags">
             <span class="tag ${claseEstado}">Estado: ${cliente.estado}</span>
             ${
@@ -793,7 +811,6 @@ async function cargarClientes() {
               : ""
           }
 
-          <!-- Acciones rápidas de próximo contacto -->
           <div class="card-quick-actions">
             <span class="quick-label">Próximo contacto rápido:</span>
             <button class="btn-quick" data-action="prox-hoy" data-id="${
@@ -864,6 +881,7 @@ async function guardarCliente(e) {
   const id = document.getElementById("clienteId").value || null;
   const nombre = document.getElementById("nombre").value.trim();
   const telefono = document.getElementById("telefono").value.trim();
+  const direccion = document.getElementById("direccion").value.trim();
   const rubro = document.getElementById("rubro").value.trim();
   const estado = document.getElementById("estado").value;
   const responsableSelect = document.getElementById("responsable");
@@ -883,6 +901,7 @@ async function guardarCliente(e) {
   const payload = {
     nombre,
     telefono: telefono || null,
+    direccion: direccion || null,
     rubro: rubro || "Sin definir",
     estado,
     responsable: responsable || null,
@@ -978,6 +997,7 @@ function editarCliente(id) {
   document.getElementById("clienteId").value = cliente.id;
   document.getElementById("nombre").value = cliente.nombre || "";
   document.getElementById("telefono").value = cliente.telefono || "";
+  document.getElementById("direccion").value = cliente.direccion || "";
   document.getElementById("rubro").value = cliente.rubro || "";
   document.getElementById("estado").value =
     cliente.estado || "1 - Cliente relevado";
@@ -1008,6 +1028,7 @@ function editarCliente(id) {
   document.getElementById("tituloForm").textContent = "Editar cliente";
   document.getElementById("btnGuardar").textContent = "Actualizar";
 }
+
 
 // =========================================================
 // 8) MODAL DE ACTIVIDAD

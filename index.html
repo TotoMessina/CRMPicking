@@ -35,40 +35,60 @@
         Modo noche 🌙
       </button>
       
-      <div class="filters">
-        <input type="text" id="filtroNombre" placeholder="Buscar por nombre..." />
-        <input type="text" id="filtroTelefono" placeholder="Buscar por teléfono..." />
+    <div class="filters">
+      <input
+        type="text"
+        id="filtroNombre"
+        placeholder="Buscar por nombre."
+      />
+      <input
+        type="text"
+        id="filtroTelefono"
+        placeholder="Buscar por teléfono."
+      />
+      <!-- NUEVO: filtro por dirección -->
+      <input
+        type="text"
+        id="filtroDireccion"
+        placeholder="Buscar por dirección."
+      />
+      <!-- FIN NUEVO -->
 
-        <select id="filtroRubro">
-          <option value="">Todos los rubros</option>
-        </select>
+      <select id="filtroRubro">
+        <option value="">Todos los rubros</option>
+      </select>
 
-        <select id="filtroEstado">
-          <option value="Todos">Todos los estados</option>
-          <option value="1 - Cliente relevado">1 - Cliente relevado</option>
-          <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-          <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
-          <option value="4 - Local Creado">4 - Local Creado</option>
-          <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
-          <option value="6 - Local No Interesado">6 - Local No Interesado</option>
-        </select>
+      <select id="filtroEstado">
+        <option value="Todos">Todos los estados</option>
+        <option value="1 - Cliente relevado">1 - Cliente relevado</option>
+        <option value="2 - Local Visitado No Activo">
+          2 - Local Visitado No Activo
+        </option>
+        <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
+        <option value="4 - Local Creado">4 - Local Creado</option>
+        <option value="5 - Local Visitado Activo">
+          5 - Local Visitado Activo
+        </option>
+        <option value="6 - Local No Interesado">
+          6 - Local No Interesado
+        </option>
+      </select>
 
-        <!-- NUEVO: filtro por responsable -->
-        <select id="filtroResponsable">
-          <option value="">Todos los responsables</option>
-          <option value="Toto">Toto</option>
-          <option value="Ruben">Ruben</option>
-          <option value="Tincho(B)">Tincho(B)</option>
-          <option value="Fran">Fran</option>
-          <option value="Ari">Ari</option>
-          <option value="Nati">Nati</option>
-          <option value="Dani">Dani</option>
-          <option value="Otro">Otro</option>
-        </select>
-        <!-- FIN NUEVO -->
+      <!-- Filtro responsable (si ya lo tenés) -->
+      <select id="filtroResponsable">
+        <option value="">Todos los responsables</option>
+        <option value="Toto">Toto</option>
+        <option value="Ruben">Ruben</option>
+        <option value="Tincho(B)">Tincho(B)</option>
+        <option value="Fran">Fran</option>
+        <option value="Ari">Ari</option>
+        <option value="Nati">Nati</option>
+        <option value="Dani">Dani</option>
+        <option value="Otro">Otro</option>
+      </select>
 
-        <button id="btnAplicarFiltros">Aplicar filtros</button>
-      </div>
+      <button id="btnAplicarFiltros">Aplicar filtros</button>
+    </div>
       
       <!-- Agenda / calendario de próximos contactos -->
       <button id="btnDescargarModelo">Descargar modelo Excel</button>
@@ -100,6 +120,17 @@
             <input type="text" id="telefono" />
           </div>
 
+          <!-- NUEVO: Dirección -->
+          <div class="field">
+            <label for="direccion">Dirección</label>
+            <input
+              type="text"
+              id="direccion"
+              placeholder="Ej: Av. Rivadavia 1234, Haedo"
+            />
+          </div>
+          <!-- FIN NUEVO -->
+
           <div class="field">
             <label for="rubro">Rubro</label>
             <input
@@ -127,7 +158,7 @@
             </select>
           </div>
 
-          <!-- NUEVO CAMPO: RESPONSABLE -->
+          <!-- Responsable (ya existente) -->
           <div class="field">
             <label for="responsable">Responsable</label>
             <select id="responsable">
@@ -142,7 +173,6 @@
               <option value="Otro">Otro</option>
             </select>
           </div>
-          <!-- FIN NUEVO CAMPO -->
 
           <div class="field field-inline">
             <label for="fecha_proximo_contacto">Próximo contacto</label>
