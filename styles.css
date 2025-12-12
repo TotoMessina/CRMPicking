@@ -1688,3 +1688,82 @@ textarea {
   box-shadow: 0 0 0 1px rgba(0,229,255,0.25),
               0 0 18px rgba(0,229,255,0.25);
 }
+
+/* === PEGAR AL FINAL DE styles.css === */
+/* HISTORIAL con scroll interno (se adapta a tu estructura actual) */
+
+.historial-container{
+  max-height: 260px;          /* ajustá: 220/260/320 */
+  overflow-y: auto;
+  padding-right: 8px;
+  margin-top: 10px;
+  scroll-behavior: smooth;
+}
+
+.historial-item{
+  display: grid;
+}
+
+.historial-desc{
+  font-size: 13px;
+}
+
+.historial-fecha{
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.historial-empty{
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  opacity: 0.75;
+}
+
+/* Modo noche */
+:root[data-theme="dark"] .historial-item{
+
+  color: #f3f4f6;
+}
+:root[data-theme="dark"] .historial-empty{
+
+}
+
+/* Hover sutil fluo */
+.historial-item:hover{
+  border-color: rgba(0,229,255,0.35);
+  box-shadow: 0 0 0 1px rgba(0,229,255,0.12);
+  background: rgba(0,229,255,0.06);
+}
+
+/* Scrollbar moderno */
+.historial-container::-webkit-scrollbar{ width: 10px; }
+.historial-container::-webkit-scrollbar-track{
+  background: rgba(255,255,255,0.03);
+  border-radius: 999px;
+}
+.historial-container::-webkit-scrollbar-thumb{
+  background: rgba(0,229,255,0.22);
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.03);
+}
+
+/* Light mode track/thumb */
+:root[data-theme="light"] .historial-container::-webkit-scrollbar-track{
+  background: rgba(2,6,23,0.04);
+}
+:root[data-theme="light"] .historial-container::-webkit-scrollbar-thumb{
+  background: rgba(2,6,23,0.22);
+  border: 2px solid rgba(2,6,23,0.04);
+}
+
+/* Firefox */
+.historial-container{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,229,255,0.35) rgba(255,255,255,0.03);
+}
+
+/* (Opcional) en mobile un poco más bajo */
+@media (max-width: 720px){
+  .historial-container{ max-height: 200px; }
+}

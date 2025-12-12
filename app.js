@@ -901,27 +901,30 @@ async function cargarClientes() {
       <div class="historial">
         <div class="historial-header">
           <strong>Historial (${actividadesCliente.length})</strong>
-          <button class="btn-toggle-historial" data-action="toggle-historial" data-id="${
-            cliente.id
-          }">Ver historial</button>
+          <button class="btn-toggle-historial" data-action="toggle-historial" data-id="${cliente.id}">
+            Ver historial
+          </button>
         </div>
+
         <div class="historial-list" style="display:none">
-          ${
-            actividadesCliente.length
-              ? actividadesCliente
-                  .map(
-                    (a) => `
-            <div>
-              <div>${a.descripcion}</div>
-              <div class="historial-fecha">
-                ${formatearFecha(a.fecha)}
-                ${a.usuario ? ` · <strong>${a.usuario}</strong>` : ""}
-              </div>
-            </div>`
-                  )
-                  .join("")
-              : "<div>No hay actividades registradas.</div>"
-          }
+          <div class="historial-container">
+            ${
+              actividadesCliente.length
+                ? actividadesCliente
+                    .map(
+                      (a) => `
+                <div class="historial-item">
+                  <div class="historial-desc">${a.descripcion}</div>
+                  <div class="historial-fecha">
+                    ${formatearFecha(a.fecha)}
+                    ${a.usuario ? ` · <strong>${a.usuario}</strong>` : ""}
+                  </div>
+                </div>`
+                    )
+                    .join("")
+                : `<div class="historial-empty">No hay actividades registradas.</div>`
+            }
+          </div>
         </div>
       </div>
     `;
