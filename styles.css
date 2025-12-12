@@ -1647,3 +1647,44 @@ textarea {
     0 0 0 1px rgba(0, 229, 255, 0.35),
     0 0 18px rgba(0, 229, 255, 0.35);
 }
+
+/* Ocultar/mostrar formulario nuevo cliente */
+.is-hidden {
+  display: none !important;
+}
+/* =========================================================
+   FIX: usuarioActual en modo noche (fondo oscuro)
+   ========================================================= */
+
+:root[data-theme="dark"] #usuarioActual,
+:root[data-theme="dark"] .usuario-actual,
+:root[data-theme="dark"] .user-current,
+:root[data-theme="dark"] .user-info {
+  background: #121212;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #f3f4f6;
+}
+
+/* Si tiene valores internos (labels / values) */
+:root[data-theme="dark"] #usuarioActual *,
+:root[data-theme="dark"] .usuario-actual *,
+:root[data-theme="dark"] .user-current *,
+:root[data-theme="dark"] .user-info * {
+  color: #f3f4f6;
+}
+
+/* Si hay spans de "value" */
+:root[data-theme="dark"] .value,
+:root[data-theme="dark"] .user-value {
+  background: rgba(255,255,255,0.04);
+  color: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+/* Hover sutil fluo (opcional, queda muy bien) */
+:root[data-theme="dark"] #usuarioActual:hover,
+:root[data-theme="dark"] .usuario-actual:hover {
+  box-shadow: 0 0 0 1px rgba(0,229,255,0.25),
+              0 0 18px rgba(0,229,255,0.25);
+}

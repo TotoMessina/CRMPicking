@@ -1605,6 +1605,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ===============================
+  // Formulario: oculto por default + botón "Mostrar formulario"
+  // ===============================
+  const formNuevoCliente = document.getElementById("formNuevoCliente"); // <-- ajustá el ID si es otro
+  const btnToggleFormulario = document.getElementById("btnMostrarFormulario"); // <-- ajustá el ID si es otro
+
+  if (formNuevoCliente && btnToggleFormulario) {
+    // Por defecto: oculto
+    formNuevoCliente.classList.add("is-hidden");
+    btnToggleFormulario.textContent = "Mostrar formulario";
+
+    btnToggleFormulario.addEventListener("click", () => {
+      const isHidden = formNuevoCliente.classList.toggle("is-hidden");
+      btnToggleFormulario.textContent = isHidden ? "Mostrar formulario" : "Ocultar formulario";
+    });
+  }
+
   // 11) Agenda + stats + primera carga
   renderAgendaCalendario(); // esto ya dispara cargarClientes() vía setAgendaMode
   cargarAgendaStats();
