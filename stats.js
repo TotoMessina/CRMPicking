@@ -1,5 +1,5 @@
 // =========================================================
-// 1) Conexión a Supabase
+// CONEXIÓN SUPABASE
 // =========================================================
 const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
 const SUPABASE_KEY =
@@ -10,42 +10,33 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // Tema consistente con el CRM
 const THEME_KEY = "crm_theme";
 
-// Config de estados (mismo texto que usás en el CRM / BD)
+// Normalización suave para evitar “3 - Primer ingreso” vs “3 - Primer Ingreso”
+function normalizeEstado(v) {
+  if (!v) return "Sin estado";
+  const s = String(v).trim();
+  if (s.toLowerCase() === "3 - primer ingreso") return "3 - Primer Ingreso";
+  return s;
+}
+
+// Config de estados para el gráfico (colores se ajustan en modo noche)
 const ESTADOS_CONFIG = [
-  {
-    value: "1 - Cliente relevado",
-    label: "1 - Cliente relevado",
-    color: "#ef4444", // rojo
-  },
-  {
-    value: "2 - Local Visitado No Activo",
-    label: "2 - Local Visitado No Activo",
-    color: "#f97316", // naranja
-  },
-  {
-    value: "3 - Primer Ingreso",
-    label: "3 - Primer Ingreso",
-    color: "#eab308", // amarillo
-  },
-  {
-    value: "4 - Local Creado",
-    label: "4 - Local Creado",
-    color: "#3b82f6", // azul medio
-  },
-  {
-    value: "5 - Local Visitado Activo",
-    label: "5 - Local Visitado Activo",
-    color: "#0ea5e9", // celeste
-  },
-  {
-    value: "6 - Local No Interesado",
-    label: "6 - Local No Interesado",
-    color: "#6b7280", // gris
-  },
+  { value: "1 - Cliente relevado", label: "1 - Cliente relevado", color: "#ef4444" },
+  { value: "2 - Local Visitado No Activo", label: "2 - Local Visitado No Activo", color: "#f97316" },
+  { value: "3 - Primer Ingreso", label: "3 - Primer Ingreso", color: "#eab308" },
+  { value: "4 - Local Creado", label: "4 - Local Creado", color: "#3b82f6" },
+  { value: "5 - Local Visitado Activo", label: "5 - Local Visitado Activo", color: "#0ea5e9" },
+  { value: "6 - Local No Interesado", label: "6 - Local No Interesado", color: "#6b7280" },
 ];
 
+const charts = {
+  rubros: null,
+  estados: null,
+  responsables: null,
+  promedioResp: null,
+};
+
 // =========================================================
-// 2) Utilidades de tema
+// THEME
 // =========================================================
 function applyTheme(theme) {
   const root = document.documentElement;
@@ -53,48 +44,122 @@ function applyTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
 
   const btn = document.getElementById("btnToggleTheme");
-  if (btn) {
-    btn.textContent = theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
-  }
+  if (btn) btn.textContent = theme === "dark" ? "Modo día" : "Modo noche";
 }
 
 // =========================================================
-// 3) Carga de estadísticas
+// CHART.JS THEME (SOLO COLORES / CONTRASTE)
+// =========================================================
+function getCssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+function isDarkTheme() {
+  return (document.documentElement.getAttribute("data-theme") || "light") === "dark";
+}
+
+// Paleta fluo (solo para modo noche)
+function getFluoPalette(n) {
+  const base = [
+    "#00E5FF", // cyan
+    "#A3FF12", // lime
+    "#FF2BD6", // magenta
+    "#7C3CFF", // violet
+    "#3B82F6", // blue
+    "#FF9F1C", // orange
+    "#22FFB8", // mint
+    "#FF3D3D", // red
+    "#FFD400", // yellow
+    "#00A3FF", // sky
+  ];
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(base[i % base.length]);
+  return out;
+}
+
+function applyChartTheme() {
+  const dark = isDarkTheme();
+
+  const text = getCssVar("--text", dark ? "#f3f4f6" : "#0b1220");
+  const border = dark ? "rgba(255,255,255,0.10)" : "rgba(2,6,23,0.10)";
+  const grid = dark ? "rgba(0,229,255,0.10)" : "rgba(2,6,23,0.10)";
+
+  Chart.defaults.color = text;
+  Chart.defaults.borderColor = border;
+  Chart.defaults.scale.grid.color = grid;
+  Chart.defaults.scale.ticks.color = text;
+  Chart.defaults.plugins.legend.labels.color = text;
+
+  Chart.defaults.plugins.tooltip.backgroundColor = dark ? "rgba(12,12,12,0.95)" : "rgba(255,255,255,0.98)";
+  Chart.defaults.plugins.tooltip.borderColor = dark ? "rgba(0,229,255,0.45)" : "rgba(2,6,23,0.18)";
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.titleColor = text;
+  Chart.defaults.plugins.tooltip.bodyColor = text;
+
+  Chart.defaults.animation.duration = 550;
+}
+
+// =========================================================
+// HELPERS UI
+// =========================================================
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = String(value);
+}
+
+function destroyChart(key) {
+  const ch = charts[key];
+  if (ch && typeof ch.destroy === "function") ch.destroy();
+  charts[key] = null;
+}
+
+// =========================================================
+// LOAD STATS
 // =========================================================
 async function cargarEstadisticas() {
+  applyChartTheme();
+
+  // Reset charts to avoid overlay
+  destroyChart("rubros");
+  destroyChart("estados");
+  destroyChart("responsables");
+  destroyChart("promedioResp");
+
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const hoyStr = hoy.toISOString().split("T")[0];
 
-  // Rango para actividad reciente
   const hace7 = new Date(hoy);
   hace7.setDate(hoy.getDate() - 7);
+
   const hace30 = new Date(hoy);
   hace30.setDate(hoy.getDate() - 30);
 
+  const dentro7 = new Date(hoy);
+  dentro7.setDate(hoy.getDate() + 7);
+  const dentro7Str = dentro7.toISOString().split("T")[0];
+
   // ==========================
-  // 3.1 Clientes activos
+  // Clientes activos
   // ==========================
-  const { data: clientes, error } = await supabaseClient
+  const { data: clientes, error: errClientes } = await supabaseClient
     .from("clientes")
-    .select(
-      "id, rubro, estado, fecha_proximo_contacto, responsable, ultima_actividad"
-    )
+    .select("id, rubro, estado, fecha_proximo_contacto, responsable, ultima_actividad")
     .eq("activo", true);
 
-  if (error) {
-    console.error("Error cargando estadísticas de clientes:", error);
-    alert("No se pudieron cargar las estadísticas.");
+  if (errClientes) {
+    console.error(errClientes);
+    alert("No se pudieron cargar las estadísticas (clientes).");
     return;
   }
 
   const lista = clientes || [];
   const totalClientes = lista.length;
 
-  // Mapas de conteo
-  const rubrosCount = new Map();
-  const estadosCount = new Map();
-  const responsablesCount = new Map();
+  // Conteos
+  const rubrosCount = new Map();        // rubro -> count
+  const estadosCount = new Map();       // estado -> count
+  const responsablesCount = new Map();  // responsable -> count
 
   // Agenda
   let conFecha = 0;
@@ -104,188 +169,149 @@ async function cargarEstadisticas() {
   let prox7 = 0;
   let proxFuturo = 0;
 
-  // Actividad por cliente (según ultima_actividad)
+  // Salud cartera
   let clientesActivos30 = 0;
   let clientesDormidos30 = 0;
   let clientesSinHistorial = 0;
 
-  // Para comparar fechas de próximo contacto
-  const dentro7 = new Date(hoy);
-  dentro7.setDate(hoy.getDate() + 7);
-  const dentro7Str = dentro7.toISOString().split("T")[0];
-
   for (const c of lista) {
-    // ---------- Rubro ----------
-    const rubroKey = (c.rubro || "Sin definir").trim() || "Sin definir";
+    const rubroKey = (c.rubro || "Sin definir").toString().trim() || "Sin definir";
     rubrosCount.set(rubroKey, (rubrosCount.get(rubroKey) || 0) + 1);
 
-    // ---------- Estado ----------
-    const estadoKey = c.estado || "Sin estado";
+    const estadoKey = normalizeEstado(c.estado);
     estadosCount.set(estadoKey, (estadosCount.get(estadoKey) || 0) + 1);
 
-    // ---------- Responsable ----------
-    const respKey = c.responsable || "Sin responsable";
-    responsablesCount.set(
-      respKey,
-      (responsablesCount.get(respKey) || 0) + 1
-    );
+    const respKey = (c.responsable || "Sin responsable").toString().trim() || "Sin responsable";
+    responsablesCount.set(respKey, (responsablesCount.get(respKey) || 0) + 1);
 
-    // ---------- Agenda ----------
+    // Agenda
     const fProx = c.fecha_proximo_contacto;
     if (fProx) {
       conFecha++;
       if (fProx < hoyStr) {
         vencidos++;
+      } else if (fProx === hoyStr) {
+        proxHoy++;
+      } else if (fProx <= dentro7Str) {
+        prox7++;
       } else {
-        if (fProx === hoyStr) {
-          proxHoy++;
-        } else if (fProx <= dentro7Str) {
-          // entre mañana y los próximos 7 días
-          prox7++;
-        } else {
-          proxFuturo++;
-        }
+        proxFuturo++;
       }
     } else {
       sinFecha++;
     }
 
-    // ---------- Actividad (dormidos / sin historial) ----------
+    // Salud cartera
     if (!c.ultima_actividad) {
       clientesSinHistorial++;
       clientesDormidos30++;
     } else {
       const ua = new Date(c.ultima_actividad);
-      if (!Number.isNaN(ua.getTime()) && ua >= hace30) {
-        clientesActivos30++;
-      } else {
-        clientesDormidos30++;
-      }
+      if (!Number.isNaN(ua.getTime()) && ua >= hace30) clientesActivos30++;
+      else clientesDormidos30++;
     }
   }
 
   // ==========================
-  // 3.2 Actividades (últimos 30 días)
+  // Actividades 30 días (para volumen + promedio)
   // ==========================
   let actividades7 = 0;
   let actividades30 = 0;
   const actividadesPorUsuario = new Map();
 
-  const { data: actividades, error: errorAct } = await supabaseClient
+  const { data: actividades, error: errAct } = await supabaseClient
     .from("actividades")
     .select("id, fecha, usuario, cliente_id")
     .gte("fecha", hace30.toISOString());
 
-  if (errorAct) {
-    console.error("Error cargando estadísticas de actividades:", errorAct);
-    // No cortamos: simplemente dejamos las métricas de actividad en 0
+  if (errAct) {
+    console.error(errAct);
+    // seguimos, pero actividades quedan en 0
   } else {
     for (const a of actividades || []) {
       const f = new Date(a.fecha);
       if (Number.isNaN(f.getTime())) continue;
 
       actividades30++;
-      if (f >= hace7) {
-        actividades7++;
-      }
+      if (f >= hace7) actividades7++;
 
-      const userKey = a.usuario || "Sin usuario";
-      actividadesPorUsuario.set(
-        userKey,
-        (actividadesPorUsuario.get(userKey) || 0) + 1
-      );
+      const userKey = (a.usuario || "Sin usuario").toString().trim() || "Sin usuario";
+      actividadesPorUsuario.set(userKey, (actividadesPorUsuario.get(userKey) || 0) + 1);
     }
   }
 
-  // ==========================
-  // 3.3 Actualizar tarjetas resumen
-  // ==========================
-  const setText = (id, value) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = String(value);
-  };
-
-  // Tarjetas principales
+  // KPIs
   setText("statTotalClientes", totalClientes);
   setText("statConFecha", conFecha);
   setText("statVencidos", vencidos);
   setText("statSinFecha", sinFecha);
 
-  // Resumen agenda texto
   setText("statConFechaText", conFecha);
   setText("statVencidosText", vencidos);
   setText("statSinFechaText", sinFecha);
 
-  // Detalle de agenda por plazo
   setText("statProxHoy", proxHoy);
   setText("statProx7", prox7);
   setText("statProxFuturo", proxFuturo);
 
-  // Actividad reciente
   setText("statAct7", actividades7);
   setText("statAct30", actividades30);
+
   setText("statClientesActivos30", clientesActivos30);
   setText("statClientesDormidos30", clientesDormidos30);
   setText("statSinHistorial", clientesSinHistorial);
 
-  // ==========================
-  // 3.4 Dibujar gráficos / listas
-  // ==========================
-  dibujarChartRubros(rubrosCount);
+  // Render charts + lists
+  dibujarChartRubrosOrdenado(rubrosCount);
   dibujarChartEstados(estadosCount);
   dibujarChartResponsables(responsablesCount);
   renderListaActividadUsuarios(actividadesPorUsuario);
+
+  // Promedio por responsable: tabla + gráfico
+  renderPromedioContactosPorResponsable(lista, actividades || [], hace30);
 }
 
 // =========================================================
-// 4) Gráfico de Rubros (torta)
+// RUBROS: PIE ORDENADO (mayor -> menor) + FLUO en DARK
 // =========================================================
-function dibujarChartRubros(rubrosCount) {
+function dibujarChartRubrosOrdenado(rubrosCount) {
   const canvas = document.getElementById("chartRubros");
   if (!canvas) return;
 
-  const labels = Array.from(rubrosCount.keys());
-  const data = Array.from(rubrosCount.values());
+  const ordered = Array.from(rubrosCount.entries()).sort((a, b) => b[1] - a[1]);
+  const labels = ordered.map(([k]) => k);
+  const data = ordered.map(([, v]) => v);
 
-  // Paleta simple, se repite si hay muchos rubros
-  const baseColors = [
-    "#3b82f6",
-    "#22c55e",
-    "#f97316",
-    "#eab308",
-    "#a855f7",
-    "#ec4899",
-    "#6366f1",
-    "#14b8a6",
-    "#f43f5e",
-    "#6b7280",
-  ];
-  const backgroundColor = labels.map((_, i) => baseColors[i % baseColors.length]);
+  const dark = isDarkTheme();
+  const backgroundColor = dark
+    ? getFluoPalette(labels.length)
+    : labels.map((_, i) => ([
+        "#3b82f6", "#22c55e", "#f97316", "#eab308", "#a855f7",
+        "#ec4899", "#6366f1", "#14b8a6", "#f43f5e", "#6b7280",
+      ])[i % 10]);
 
-  new Chart(canvas, {
+  charts.rubros = new Chart(canvas, {
     type: "pie",
     data: {
       labels,
-      datasets: [
-        {
-          data,
-          backgroundColor,
-        },
-      ],
+      datasets: [{
+        data,
+        backgroundColor,
+        borderColor: dark ? "#0c0c0c" : "rgba(255,255,255,0.8)",
+        borderWidth: dark ? 2 : 1,
+      }],
     },
     options: {
+      responsive: true,
       plugins: {
-        legend: {
-          position: "bottom",
-        },
+        legend: { position: "bottom" },
         tooltip: {
           callbacks: {
             label: (ctx) => {
-              const label = ctx.label || "";
               const value = ctx.raw || 0;
               const total = data.reduce((acc, n) => acc + n, 0) || 1;
               const perc = ((value * 100) / total).toFixed(1);
-              return `${label}: ${value} (${perc}%)`;
+              return `${ctx.label}: ${value} (${perc}%)`;
             },
           },
         },
@@ -293,7 +319,6 @@ function dibujarChartRubros(rubrosCount) {
     },
   });
 
-  // Lista textual
   const listaRubros = document.getElementById("listaRubros");
   if (listaRubros) {
     listaRubros.innerHTML = "";
@@ -302,57 +327,47 @@ function dibujarChartRubros(rubrosCount) {
     labels.forEach((label, idx) => {
       const value = data[idx];
       const perc = ((value * 100) / total).toFixed(1);
-
       const li = document.createElement("li");
-      li.innerHTML = `<span class="stats-list-label">${label}</span>
-        <span class="stats-list-value">${value} (${perc}%)</span>`;
+      li.innerHTML = `
+        <span class="stats-list-label">${label}</span>
+        <span class="stats-list-value">${value} <span class="chip">${perc}%</span></span>
+      `;
       listaRubros.appendChild(li);
     });
   }
 }
 
 // =========================================================
-// 5) Gráfico de Estados (barras horizontales)
+// ESTADOS: BAR HORIZONTAL + FLUO en DARK
 // =========================================================
 function dibujarChartEstados(estadosCount) {
   const canvas = document.getElementById("chartEstados");
   if (!canvas) return;
 
-  // Respetar el orden configurado de estados
   const labels = ESTADOS_CONFIG.map((e) => e.label);
   const data = ESTADOS_CONFIG.map((e) => estadosCount.get(e.value) || 0);
-  const backgroundColor = ESTADOS_CONFIG.map((e) => e.color);
 
-  new Chart(canvas, {
+  const dark = isDarkTheme();
+  const backgroundColor = dark
+    ? getFluoPalette(labels.length)
+    : ESTADOS_CONFIG.map((e) => e.color);
+
+  charts.estados = new Chart(canvas, {
     type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          data,
-          backgroundColor,
-        },
-      ],
-    },
+    data: { labels, datasets: [{ data, backgroundColor, borderRadius: 10 }] },
     options: {
+      responsive: true,
       indexAxis: "y",
       scales: {
-        x: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1,
-          },
-        },
+        x: { beginAtZero: true, ticks: { stepSize: 1 } },
       },
       plugins: {
-        legend: {
-          display: false,
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: (ctx) => {
-              const value = ctx.raw || 0;
-              return `${value} cliente${value === 1 ? "" : "s"}`;
+              const v = ctx.raw || 0;
+              return `${v} cliente${v === 1 ? "" : "s"}`;
             },
           },
         },
@@ -360,86 +375,56 @@ function dibujarChartEstados(estadosCount) {
     },
   });
 
-  // Lista textual
-  const listaEstados = document.getElementById("listaEstados");
-  if (listaEstados) {
-    listaEstados.innerHTML = "";
+  const ul = document.getElementById("listaEstados");
+  if (ul) {
+    ul.innerHTML = "";
     const total = data.reduce((acc, n) => acc + n, 0) || 1;
 
     labels.forEach((label, idx) => {
       const value = data[idx];
       const perc = ((value * 100) / total).toFixed(1);
-
       const li = document.createElement("li");
-      li.innerHTML = `<span class="stats-list-label">${label}</span>
-        <span class="stats-list-value">${value} (${perc}%)</span>`;
-      listaEstados.appendChild(li);
+      li.innerHTML = `
+        <span class="stats-list-label">${label}</span>
+        <span class="stats-list-value">${value} <span class="chip">${perc}%</span></span>
+      `;
+      ul.appendChild(li);
     });
   }
 }
 
 // =========================================================
-// 6) Gráfico de Responsables (barras verticales)
+// RESPONSABLES: BAR VERTICAL + FLUO en DARK
 // =========================================================
 function dibujarChartResponsables(responsablesCount) {
   const canvas = document.getElementById("chartResponsables");
   if (!canvas) return;
 
-  const labels = Array.from(responsablesCount.keys());
-  const data = Array.from(responsablesCount.values());
+  const ordered = Array.from(responsablesCount.entries()).sort((a, b) => b[1] - a[1]);
+  const labels = ordered.map(([k]) => k);
+  const data = ordered.map(([, v]) => v);
 
-  if (!labels.length) {
-    // Nada asignado todavía
-    const listaResp = document.getElementById("listaResponsables");
-    if (listaResp) {
-      listaResp.innerHTML =
-        "<li>No hay responsables asignados a clientes todavía.</li>";
-    }
-    return;
-  }
+  const dark = isDarkTheme();
+  const backgroundColor = dark
+    ? getFluoPalette(labels.length)
+    : labels.map((_, i) => ([
+        "#6366f1", "#22c55e", "#f97316", "#eab308", "#a855f7",
+        "#ec4899", "#0ea5e9", "#f43f5e", "#6b7280",
+      ])[i % 9]);
 
-  const baseColors = [
-    "#6366f1",
-    "#22c55e",
-    "#f97316",
-    "#eab308",
-    "#a855f7",
-    "#ec4899",
-    "#0ea5e9",
-    "#f43f5e",
-    "#6b7280",
-  ];
-  const backgroundColor = labels.map((_, i) => baseColors[i % baseColors.length]);
-
-  new Chart(canvas, {
+  charts.responsables = new Chart(canvas, {
     type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          data,
-          backgroundColor,
-        },
-      ],
-    },
+    data: { labels, datasets: [{ data, backgroundColor, borderRadius: 10 }] },
     options: {
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1,
-          },
-        },
-      },
+      responsive: true,
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
       plugins: {
-        legend: {
-          display: false,
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: (ctx) => {
-              const value = ctx.raw || 0;
-              return `${value} cliente${value === 1 ? "" : "s"}`;
+              const v = ctx.raw || 0;
+              return `${v} cliente${v === 1 ? "" : "s"}`;
             },
           },
         },
@@ -447,74 +432,165 @@ function dibujarChartResponsables(responsablesCount) {
     },
   });
 
-  // Lista textual
-  const listaResp = document.getElementById("listaResponsables");
-  if (listaResp) {
-    listaResp.innerHTML = "";
+  const ul = document.getElementById("listaResponsables");
+  if (ul) {
+    ul.innerHTML = "";
     const total = data.reduce((acc, n) => acc + n, 0) || 1;
 
     labels.forEach((label, idx) => {
       const value = data[idx];
       const perc = ((value * 100) / total).toFixed(1);
-
       const li = document.createElement("li");
-      li.innerHTML = `<span class="stats-list-label">${label}</span>
-        <span class="stats-list-value">${value} (${perc}%)</span>`;
-      listaResp.appendChild(li);
+      li.innerHTML = `
+        <span class="stats-list-label">${label}</span>
+        <span class="stats-list-value">${value} <span class="chip">${perc}%</span></span>
+      `;
+      ul.appendChild(li);
     });
   }
 }
 
 // =========================================================
-// 7) Lista de actividades por usuario (últimos 30 días)
+// ACTIVIDAD POR USUARIO (LISTA)
 // =========================================================
 function renderListaActividadUsuarios(actividadesPorUsuario) {
-  const lista = document.getElementById("listaActividadUsuarios");
-  if (!lista) return;
+  const ul = document.getElementById("listaActividadUsuarios");
+  if (!ul) return;
 
-  lista.innerHTML = "";
+  ul.innerHTML = "";
 
   if (!actividadesPorUsuario || actividadesPorUsuario.size === 0) {
     const li = document.createElement("li");
     li.textContent = "No hay actividades registradas en los últimos 30 días.";
-    lista.appendChild(li);
+    ul.appendChild(li);
     return;
   }
 
-  // Ordenar por cantidad desc
-  const entries = Array.from(actividadesPorUsuario.entries()).sort(
-    (a, b) => b[1] - a[1]
-  );
-
-  const totalActs = entries.reduce((acc, [, n]) => acc + n, 0) || 1;
+  const entries = Array.from(actividadesPorUsuario.entries()).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((acc, [, v]) => acc + v, 0) || 1;
 
   entries.forEach(([usuario, cant]) => {
-    const perc = ((cant * 100) / totalActs).toFixed(1);
+    const perc = ((cant * 100) / total).toFixed(1);
     const li = document.createElement("li");
-    li.innerHTML = `<span class="stats-list-label">${usuario}</span>
-      <span class="stats-list-value">${cant} (${perc}%)</span>`;
-    lista.appendChild(li);
+    li.innerHTML = `
+      <span class="stats-list-label">${usuario}</span>
+      <span class="stats-list-value">${cant} <span class="chip">${perc}%</span></span>
+    `;
+    ul.appendChild(li);
   });
 }
 
 // =========================================================
-// 8) DOMContentLoaded
+// PROMEDIO CONTACTOS POR RESPONSABLE: TABLA + GRÁFICO
+// - promedio = contactos_30d / clientes_asignados
+// - incluye clientes con 0 contactos
+// - FLUO en DARK
+// =========================================================
+function renderPromedioContactosPorResponsable(clientes, actividades30, desdeFecha) {
+  const tbody = document.getElementById("tablaPromedioResponsable");
+  const canvas = document.getElementById("chartPromedioResponsable");
+  if (!tbody) return;
+
+  // Mapa cliente_id -> responsable
+  const clienteAResp = new Map();
+  // Mapa responsable -> Set(cliente_id)
+  const respAClientes = new Map();
+
+  (clientes || []).forEach((c) => {
+    const resp = (c.responsable || "Sin responsable").toString().trim() || "Sin responsable";
+    clienteAResp.set(c.id, resp);
+    if (!respAClientes.has(resp)) respAClientes.set(resp, new Set());
+    respAClientes.get(resp).add(c.id);
+  });
+
+  // Mapa responsable -> contactos en rango
+  const respAContactos = new Map();
+  (actividades30 || []).forEach((a) => {
+    const f = new Date(a.fecha);
+    if (Number.isNaN(f.getTime())) return;
+    if (desdeFecha && f < desdeFecha) return;
+
+    const resp = clienteAResp.get(a.cliente_id) || "Sin responsable";
+    respAContactos.set(resp, (respAContactos.get(resp) || 0) + 1);
+  });
+
+  // Construimos filas + dataset
+  const rows = [];
+  for (const [resp, setIds] of respAClientes.entries()) {
+    const clientesAsignados = setIds.size;
+    const contactos = respAContactos.get(resp) || 0;
+    const promedio = clientesAsignados > 0 ? contactos / clientesAsignados : 0;
+    rows.push({ resp, clientesAsignados, contactos, promedio });
+  }
+
+  // Orden visual: por promedio desc, y si empatan por contactos desc
+  rows.sort((a, b) => (b.promedio - a.promedio) || (b.contactos - a.contactos) || a.resp.localeCompare(b.resp, "es"));
+
+  // Render tabla
+  tbody.innerHTML = "";
+  rows.forEach((r) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.resp}</td>
+      <td>${r.clientesAsignados}</td>
+      <td>${r.contactos}</td>
+      <td>${r.promedio.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Render chart
+  if (!canvas) return;
+
+  const labels = rows.map((r) => r.resp);
+  const data = rows.map((r) => Number(r.promedio.toFixed(2)));
+
+  const dark = isDarkTheme();
+  const barColor = dark ? "#00E5FF" : "#3b82f6";
+
+  charts.promedioResp = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Promedio de contactos", data, backgroundColor: barColor, borderRadius: 10 }
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 0.5 } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: (ctx) => `Promedio: ${ctx.raw}` },
+        },
+      },
+    },
+  });
+}
+
+// =========================================================
+// INIT
 // =========================================================
 document.addEventListener("DOMContentLoaded", () => {
-  // Tema inicial
   const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
+  applyChartTheme();
 
   const btnTheme = document.getElementById("btnToggleTheme");
   if (btnTheme) {
     btnTheme.addEventListener("click", () => {
-      const current =
-        document.documentElement.getAttribute("data-theme") || "light";
-      const next = current === "light" ? "dark" : "light";
-      applyTheme(next);
+      const current = document.documentElement.getAttribute("data-theme") || "light";
+      applyTheme(current === "light" ? "dark" : "light");
+      applyChartTheme();
+      cargarEstadisticas();
     });
   }
 
-  // Cargar estadísticas
+  const btnRefresh = document.getElementById("btnRefrescarStats");
+  if (btnRefresh) btnRefresh.addEventListener("click", () => cargarEstadisticas());
+
   cargarEstadisticas();
 });

@@ -3,198 +3,222 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Estadísticas CRM - PickingUp!</title>
+  <title>Estadísticas CRM</title>
+
   <link rel="stylesheet" href="styles.css" />
+
   <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
-  <main class="container">
-    <header class="stats-header">
-      <h1>Estadísticas del CRM</h1>
-      <div class="stats-header-actions">
-        <a href="index.html" class="btn-link">← Volver al CRM</a>
-        <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
-          Modo noche 🌙
-        </button>
+  <main class="container stats-dashboard">
+    <header class="stats-topbar">
+      <div class="stats-topbar-left">
+        <div class="stats-title">
+          <h1>Estadísticas</h1>
+          <p class="stats-subtitle">Vista ejecutiva del CRM: cartera, agenda y actividad.</p>
+        </div>
+      </div>
+
+      <div class="stats-topbar-actions">
+        <a href="index.html" class="btn-link">Volver al CRM</a>
+        <button type="button" id="btnRefrescarStats" class="btn-secundario">Actualizar</button>
+        <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo noche</button>
       </div>
     </header>
 
-    <!-- Tarjetas resumen -->
-    <section class="stats-summary">
-      <div class="stat-card">
-        <h2>Total clientes activos</h2>
-        <p id="statTotalClientes" class="stat-number">-</p>
-        <p class="stat-caption">Clientes con estado activo en el CRM</p>
-      </div>
+    <!-- KPIs -->
+    <section class="kpi-grid">
+      <article class="kpi-card">
+        <div class="kpi-label">Clientes activos</div>
+        <div class="kpi-value" id="statTotalClientes">-</div>
+        <div class="kpi-meta">Base activa del CRM</div>
+      </article>
 
-      <div class="stat-card">
-        <h2>Con próximo contacto</h2>
-        <p id="statConFecha" class="stat-number">-</p>
-        <p class="stat-caption">Tienen fecha agendada</p>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-label">Agenda: con fecha</div>
+        <div class="kpi-value" id="statConFecha">-</div>
+        <div class="kpi-meta">Tienen próximo contacto</div>
+      </article>
 
-      <div class="stat-card">
-        <h2>Contactos vencidos</h2>
-        <p id="statVencidos" class="stat-number stat-number--danger">-</p>
-        <p class="stat-caption">Fecha de contacto anterior a hoy</p>
-      </div>
+      <article class="kpi-card kpi-danger">
+        <div class="kpi-label">Agenda: vencidos</div>
+        <div class="kpi-value" id="statVencidos">-</div>
+        <div class="kpi-meta">Fecha anterior a hoy</div>
+      </article>
 
-      <div class="stat-card">
-        <h2>Sin próximo contacto</h2>
-        <p id="statSinFecha" class="stat-number">-</p>
-        <p class="stat-caption">Marcados como contactados / sin agenda</p>
-      </div>
+      <article class="kpi-card">
+        <div class="kpi-label">Agenda: sin fecha</div>
+        <div class="kpi-value" id="statSinFecha">-</div>
+        <div class="kpi-meta">Sin próximo contacto</div>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-label">Actividades 7 días</div>
+        <div class="kpi-value" id="statAct7">-</div>
+        <div class="kpi-meta">Historial reciente</div>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-label">Actividades 30 días</div>
+        <div class="kpi-value" id="statAct30">-</div>
+        <div class="kpi-meta">Volumen mensual</div>
+      </article>
     </section>
 
-    <!-- Clientes por rubro -->
-    <section class="stats-section">
-      <div class="stats-section-header">
-        <h2>Distribución por rubro</h2>
-        <p class="stats-section-subtitle">
-          Muestra cuántos clientes activos tenés en cada rubro.
-        </p>
-      </div>
-      <div class="stats-layout">
-        <div class="stats-chart-box">
+    <!-- 2 columnas: Agenda + Salud -->
+    <section class="panel-grid-2">
+      <article class="panel">
+        <header class="panel-header">
+          <h2>Agenda</h2>
+          <p>Distribución de próximos contactos.</p>
+        </header>
+
+        <div class="agenda-cards">
+          <div class="mini-kpi">
+            <div class="mini-kpi-label">Hoy</div>
+            <div class="mini-kpi-value" id="statProxHoy">-</div>
+          </div>
+          <div class="mini-kpi">
+            <div class="mini-kpi-label">Próx. 7 días</div>
+            <div class="mini-kpi-value" id="statProx7">-</div>
+          </div>
+          <div class="mini-kpi">
+            <div class="mini-kpi-label">8+ días</div>
+            <div class="mini-kpi-value" id="statProxFuturo">-</div>
+          </div>
+        </div>
+
+        <div class="muted-block">
+          Con fecha: <strong id="statConFechaText">-</strong> ·
+          Vencidos: <strong id="statVencidosText">-</strong> ·
+          Sin fecha: <strong id="statSinFechaText">-</strong>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel-header">
+          <h2>Salud de la cartera</h2>
+          <p>Clientes activos vs dormidos en 30 días.</p>
+        </header>
+
+        <div class="health-grid">
+          <div class="mini-kpi">
+            <div class="mini-kpi-label">Clientes activos 30 días</div>
+            <div class="mini-kpi-value" id="statClientesActivos30">-</div>
+          </div>
+          <div class="mini-kpi">
+            <div class="mini-kpi-label">Clientes dormidos 30+ días</div>
+            <div class="mini-kpi-value" id="statClientesDormidos30">-</div>
+          </div>
+          <div class="mini-kpi">
+            <div class="mini-kpi-label">Sin historial</div>
+            <div class="mini-kpi-value" id="statSinHistorial">-</div>
+          </div>
+        </div>
+
+        <div class="muted-block">
+          Nota: “Sin historial” se considera dormido para el corte de 30 días.
+        </div>
+      </article>
+    </section>
+
+    <!-- Grillas de charts -->
+    <section class="panel-grid-2">
+      <article class="panel">
+        <header class="panel-header">
+          <h2>Rubros</h2>
+          <p>Torta ordenada de mayor a menor. Lista también ordenada.</p>
+        </header>
+
+        <div class="chart-box">
           <canvas id="chartRubros"></canvas>
         </div>
-        <div class="stats-list-box">
-          <h3>Detalle por rubro</h3>
+
+        <div class="list-box">
+          <h3>Detalle</h3>
           <ul id="listaRubros" class="stats-list"></ul>
         </div>
-      </div>
-    </section>
+      </article>
 
-    <!-- Clientes por estado -->
-    <section class="stats-section">
-      <div class="stats-section-header">
-        <h2>Clientes por estado</h2>
-        <p class="stats-section-subtitle">
-          Estados comerciales según la última situación registrada.
-        </p>
-      </div>
-      <div class="stats-layout">
-        <div class="stats-chart-box">
+      <article class="panel">
+        <header class="panel-header">
+          <h2>Estados</h2>
+          <p>Distribución comercial por estado.</p>
+        </header>
+
+        <div class="chart-box">
           <canvas id="chartEstados"></canvas>
         </div>
-        <div class="stats-list-box">
-          <h3>Detalle por estado</h3>
+
+        <div class="list-box">
+          <h3>Detalle</h3>
           <ul id="listaEstados" class="stats-list"></ul>
         </div>
-      </div>
+      </article>
     </section>
 
-    <!-- Agenda de contactos (texto) -->
-    <section class="stats-section">
-      <div class="stats-section-header">
-        <h2>Resumen de agenda</h2>
-      </div>
-      <ul class="stats-agenda-list">
-        <li>
-          Clientes con próximo contacto asignado:
-          <strong id="statConFechaText">-</strong>
-        </li>
-        <li>
-          Clientes con contacto vencido:
-          <strong id="statVencidosText">-</strong>
-        </li>
-        <li>
-          Clientes sin próximo contacto:
-          <strong id="statSinFechaText">-</strong>
-        </li>
-      </ul>
-    </section>
-    <section class="stats-section">
-      <div class="stats-section-header">
-        <h2>Resumen de agenda</h2>
-      </div>
-      <ul class="stats-agenda-list">
-        <li>
-          Clientes con próximo contacto asignado:
-          <strong id="statConFechaText">-</strong>
-        </li>
-        <li>
-          Clientes con contacto vencido:
-          <strong id="statVencidosText">-</strong>
-        </li>
-        <li>
-          Clientes sin próximo contacto:
-          <strong id="statSinFechaText">-</strong>
-        </li>
-        <!-- NUEVO: detalle por plazo -->
-        <li>
-          Próximos contactos para <strong>hoy</strong>:
-          <strong id="statProxHoy">-</strong>
-        </li>
-        <li>
-          Próximos contactos en los <strong>próximos 7 días</strong> (sin contar hoy):
-          <strong id="statProx7">-</strong>
-        </li>
-        <li>
-          Próximos contactos a partir de <strong>8+ días</strong>:
-          <strong id="statProxFuturo">-</strong>
-        </li>
-      </ul>
-    </section>
-    <section class="stats-section">
-      <div class="stats-section-header">
-        <h2>Clientes por responsable</h2>
-        <p class="stats-section-subtitle">
-          Distribución de la cartera de clientes según el responsable asignado.
-        </p>
-      </div>
-      <div class="stats-layout">
-        <div class="stats-chart-box">
+    <section class="panel-grid-2">
+      <article class="panel">
+        <header class="panel-header">
+          <h2>Responsables</h2>
+          <p>Cartera asignada por responsable.</p>
+        </header>
+
+        <div class="chart-box">
           <canvas id="chartResponsables"></canvas>
         </div>
-        <div class="stats-list-box">
-          <h3>Detalle por responsable</h3>
+
+        <div class="list-box">
+          <h3>Detalle</h3>
           <ul id="listaResponsables" class="stats-list"></ul>
         </div>
-      </div>
-    </section>
-    <section class="stats-section">
-      <div class="stats-section-header">
-        <h2>Actividad reciente</h2>
-        <p class="stats-section-subtitle">
-          Basado en el historial de actividades de los últimos 30 días.
-        </p>
-      </div>
+      </article>
 
-      <ul class="stats-agenda-list">
-        <li>
-          Actividades registradas en los últimos <strong>7 días</strong>:
-          <strong id="statAct7">-</strong>
-        </li>
-        <li>
-          Actividades registradas en los últimos <strong>30 días</strong>:
-          <strong id="statAct30">-</strong>
-        </li>
-        <li>
-          Clientes con actividad en los últimos <strong>30 días</strong>:
-          <strong id="statClientesActivos30">-</strong>
-        </li>
-        <li>
-          Clientes sin actividad hace <strong>30+ días</strong>:
-          <strong id="statClientesDormidos30">-</strong>
-        </li>
-        <li>
-          Clientes sin historial de actividades:
-          <strong id="statSinHistorial">-</strong>
-        </li>
-      </ul>
+      <article class="panel">
+        <header class="panel-header">
+          <h2>Promedio de contactos por responsable</h2>
+          <p>Contactos (30 días) / clientes asignados (incluye 0 contactos).</p>
+        </header>
 
-      <div class="stats-layout">
-        <div class="stats-list-box">
-          <h3>Actividades por usuario (últimos 30 días)</h3>
-          <ul id="listaActividadUsuarios" class="stats-list"></ul>
+        <div class="chart-box">
+          <canvas id="chartPromedioResponsable"></canvas>
         </div>
+
+        <div class="table-box">
+          <table class="table-modern">
+            <thead>
+              <tr>
+                <th>Responsable</th>
+                <th>Clientes</th>
+                <th>Contactos (30d)</th>
+                <th>Promedio</th>
+              </tr>
+            </thead>
+            <tbody id="tablaPromedioResponsable"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <header class="panel-header">
+        <h2>Actividad por usuario</h2>
+        <p>Distribución de actividades registradas en los últimos 30 días.</p>
+      </header>
+
+      <div class="list-box">
+        <h3>Detalle</h3>
+        <ul id="listaActividadUsuarios" class="stats-list"></ul>
       </div>
     </section>
 
+    <footer class="stats-footer">
+      <span class="muted">CRM Stats</span>
+    </footer>
   </main>
 
   <script src="stats.js"></script>

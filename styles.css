@@ -948,3 +948,702 @@ textarea {
   color: #3040a0;
   font-weight: 500;
 }
+
+.muted {
+  font-size: 12px;
+  color: #777;
+  margin-left: 8px;
+}
+
+/* =========================================================
+   STATS DASHBOARD MODERN UI (append al final de styles.css)
+   ========================================================= */
+
+:root {
+  --dash-bg: var(--bg, #0b0f19);
+  --dash-card: var(--card, #0f172a);
+  --dash-text: var(--text, #e5e7eb);
+  --dash-muted: var(--muted, rgba(229, 231, 235, 0.72));
+  --dash-border: var(--border, rgba(255, 255, 255, 0.10));
+  --dash-shadow: 0 12px 30px rgba(0,0,0,.18);
+  --dash-radius: 18px;
+}
+
+[data-theme="light"] {
+  --dash-bg: var(--bg, #f6f7fb);
+  --dash-card: var(--card, #ffffff);
+  --dash-text: var(--text, #0b1220);
+  --dash-muted: var(--muted, rgba(11, 18, 32, 0.62));
+  --dash-border: var(--border, rgba(11, 18, 32, 0.10));
+  --dash-shadow: 0 12px 30px rgba(2,6,23,.08);
+}
+
+.stats-dashboard {
+  padding-top: 18px;
+  padding-bottom: 28px;
+}
+
+.stats-topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.stats-title h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: var(--dash-text);
+}
+
+.stats-subtitle {
+  margin: 6px 0 0 0;
+  color: var(--dash-muted);
+  font-size: 13px;
+}
+
+.stats-topbar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.kpi-card {
+  background: var(--dash-card);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius);
+  box-shadow: var(--dash-shadow);
+  padding: 14px 14px 12px;
+  min-height: 92px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(1200px 200px at 10% 10%, rgba(99,102,241,.12), transparent 50%),
+              radial-gradient(900px 200px at 90% 10%, rgba(34,197,94,.10), transparent 50%);
+  pointer-events: none;
+}
+
+.kpi-danger::before {
+  background: radial-gradient(1200px 220px at 10% 10%, rgba(239,68,68,.16), transparent 50%),
+              radial-gradient(900px 220px at 90% 10%, rgba(245,158,11,.10), transparent 50%);
+}
+
+.kpi-label {
+  color: var(--dash-muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.kpi-value {
+  color: var(--dash-text);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  position: relative;
+  z-index: 1;
+}
+
+.kpi-meta {
+  margin-top: 4px;
+  color: var(--dash-muted);
+  font-size: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.panel {
+  background: var(--dash-card);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius);
+  box-shadow: var(--dash-shadow);
+  padding: 14px;
+}
+
+.panel-header h2 {
+  margin: 0;
+  color: var(--dash-text);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.panel-header p {
+  margin: 6px 0 0 0;
+  color: var(--dash-muted);
+  font-size: 12.5px;
+}
+
+.panel-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.chart-box {
+  margin-top: 12px;
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255,255,255,0.02);
+}
+
+[data-theme="light"] .chart-box {
+  background: rgba(2,6,23,0.02);
+}
+
+.list-box {
+  margin-top: 12px;
+}
+
+.list-box h3 {
+  margin: 0 0 10px 0;
+  color: var(--dash-text);
+  font-size: 13px;
+}
+
+.stats-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.stats-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+}
+
+[data-theme="light"] .stats-list li {
+  background: rgba(2,6,23,0.02);
+}
+
+.stats-list-label {
+  color: var(--dash-text);
+  font-size: 12.5px;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-list-value {
+  color: var(--dash-muted);
+  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--dash-border);
+  color: var(--dash-text);
+  background: rgba(99,102,241,0.10);
+  font-size: 11px;
+}
+
+.table-box {
+  margin-top: 12px;
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.table-modern {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-modern thead th {
+  text-align: left;
+  font-size: 12px;
+  color: var(--dash-muted);
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--dash-border);
+  background: rgba(255,255,255,0.02);
+}
+
+[data-theme="light"] .table-modern thead th {
+  background: rgba(2,6,23,0.02);
+}
+
+.table-modern tbody td {
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--dash-border);
+  color: var(--dash-text);
+  font-size: 12.5px;
+}
+
+.table-modern tbody tr:hover td {
+  background: rgba(99,102,241,0.06);
+}
+
+.muted-block {
+  margin-top: 12px;
+  color: var(--dash-muted);
+  font-size: 12px;
+  border: 1px dashed var(--dash-border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+}
+
+[data-theme="light"] .muted-block {
+  background: rgba(2,6,23,0.02);
+}
+
+.agenda-cards,
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.mini-kpi {
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+}
+
+[data-theme="light"] .mini-kpi {
+  background: rgba(2,6,23,0.02);
+}
+
+.mini-kpi-label {
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+
+.mini-kpi-value {
+  margin-top: 6px;
+  color: var(--dash-text);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.stats-footer {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--dash-border);
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .stats-topbar { align-items: flex-start; flex-direction: column; }
+  .panel-grid-2 { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agenda-cards, .health-grid { grid-template-columns: 1fr; }
+  .stats-list-label { max-width: 62%; }
+}
+
+.list-box .stats-list {
+  max-height: 320px;          /* ajustá si querés: 260 / 300 / 380 */
+  overflow: auto;
+  padding-right: 6px;         /* espacio para scrollbar */
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar (Chrome/Edge/Safari) */
+.list-box .stats-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.list-box .stats-list::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+  border-radius: 999px;
+}
+
+.list-box .stats-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.14);
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.03);
+}
+
+[data-theme="light"] .list-box .stats-list::-webkit-scrollbar-track {
+  background: rgba(2,6,23,0.04);
+}
+
+[data-theme="light"] .list-box .stats-list::-webkit-scrollbar-thumb {
+  background: rgba(2,6,23,0.18);
+  border: 2px solid rgba(2,6,23,0.04);
+}
+
+/* Firefox */
+.list-box .stats-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.18) rgba(255,255,255,0.03);
+}
+
+[data-theme="light"] .list-box .stats-list {
+  scrollbar-color: rgba(2,6,23,0.22) rgba(2,6,23,0.04);
+}
+
+/* =========================================================
+   NIGHT MODE UPGRADE (más negro + acentos fluo)
+   Pegalo al final de styles.css
+   ========================================================= */
+
+/* Base: modo noche más profundo */
+:root[data-theme="dark"] {
+  --bg: #0c0c0c;
+  --card: #121212;
+  --text: #f3f4f6;
+  --muted: rgba(243, 244, 246, 0.66);
+  --border: rgba(255, 255, 255, 0.10);
+
+  /* Acentos fluo (para chips, hover, glow) */
+  --accent: #00e5ff;     /* cyan fluo */
+  --accent-2: #a3ff12;   /* lime fluo */
+  --accent-3: #ff2bd6;   /* magenta fluo */
+  --accent-4: #7c3cff;   /* violeta más intenso */
+
+  /* Sombras más limpias */
+  --dash-shadow: 0 16px 40px rgba(0,0,0,.55);
+}
+
+/* Ajuste fino del dashboard en dark */
+:root[data-theme="dark"] .stats-dashboard {
+  background: var(--bg);
+}
+
+/* Panels y KPIs: contraste más nítido */
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .kpi-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border-color: rgba(255,255,255,0.10);
+  box-shadow: var(--dash-shadow);
+}
+
+/* Glow moderno en KPIs (más fluo, menos pastel) */
+:root[data-theme="dark"] .kpi-card::before {
+  background:
+    radial-gradient(900px 220px at 12% 12%, rgba(0,229,255,.18), transparent 55%),
+    radial-gradient(900px 220px at 88% 12%, rgba(163,255,18,.12), transparent 55%),
+    radial-gradient(900px 260px at 50% 120%, rgba(255,43,214,.08), transparent 55%);
+}
+
+/* KPI peligro: rojo más fluo */
+:root[data-theme="dark"] .kpi-danger::before {
+  background:
+    radial-gradient(900px 240px at 15% 15%, rgba(255,45,85,.18), transparent 55%),
+    radial-gradient(900px 240px at 85% 15%, rgba(255,179,0,.10), transparent 55%);
+}
+
+/* Caja de gráficos con look más “OLED” */
+:root[data-theme="dark"] .chart-box {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.10);
+}
+
+/* List items: más contraste + hover con glow fluo */
+:root[data-theme="dark"] .stats-list li,
+:root[data-theme="dark"] .mini-kpi,
+:root[data-theme="dark"] .muted-block {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.10);
+}
+
+:root[data-theme="dark"] .stats-list li:hover {
+  border-color: rgba(0,229,255,0.35);
+  box-shadow: 0 0 0 1px rgba(0,229,255,0.18), 0 14px 35px rgba(0,0,0,.45);
+}
+
+/* Chips: acento fluo real */
+:root[data-theme="dark"] .chip {
+  border-color: rgba(0,229,255,0.35);
+  background: rgba(0,229,255,0.10);
+  color: var(--text);
+}
+
+/* Tabla: header más oscuro y hover con acento */
+:root[data-theme="dark"] .table-modern thead th {
+  background: rgba(255,255,255,0.03);
+  border-bottom-color: rgba(255,255,255,0.10);
+}
+
+:root[data-theme="dark"] .table-modern tbody tr:hover td {
+  background: rgba(0,229,255,0.06);
+}
+
+/* Botones: un toque más “neón” en dark */
+:root[data-theme="dark"] .btn-secundario,
+:root[data-theme="dark"] .btn-link {
+  border-color: rgba(255,255,255,0.14);
+}
+
+:root[data-theme="dark"] .btn-secundario:hover {
+  border-color: rgba(0,229,255,0.40);
+  box-shadow: 0 0 0 1px rgba(0,229,255,0.18);
+}
+
+/* Scrollbar más acorde al nuevo dark */
+:root[data-theme="dark"] .list-box .stats-list::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+}
+
+:root[data-theme="dark"] .list-box .stats-list::-webkit-scrollbar-thumb {
+  background: rgba(0,229,255,0.22);
+  border: 2px solid rgba(255,255,255,0.03);
+}
+
+/* Firefox scrollbar */
+:root[data-theme="dark"] .list-box .stats-list {
+  scrollbar-color: rgba(0,229,255,0.28) rgba(255,255,255,0.03);
+}
+
+/* =========================================================
+   INDEX / APP NIGHT MODE (más negro + fluo, no pastel)
+   Pegalo al final de styles.css
+   ========================================================= */
+
+:root[data-theme="dark"] body {
+  background: #0c0c0c;
+  color: var(--text, #f3f4f6);
+}
+
+/* Contenedor principal */
+:root[data-theme="dark"] .container {
+  background: transparent;
+}
+
+/* Tarjetas (clientes / paneles) */
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .modal-content,
+:root[data-theme="dark"] .form-card,
+:root[data-theme="dark"] .stats-section,
+:root[data-theme="dark"] .stat-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 16px 40px rgba(0,0,0,.55);
+}
+
+/* Inputs */
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea {
+  background: rgba(255,255,255,0.03);
+  color: var(--text, #f3f4f6);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+  color: rgba(243,244,246,0.45);
+}
+
+/* Focus fluo (cyan) */
+:root[data-theme="dark"] input:focus,
+:root[data-theme="dark"] select:focus,
+:root[data-theme="dark"] textarea:focus {
+  outline: none;
+  border-color: rgba(0,229,255,0.45);
+  box-shadow: 0 0 0 3px rgba(0,229,255,0.16);
+}
+
+/* Botones */
+:root[data-theme="dark"] button,
+:root[data-theme="dark"] .btn-secundario {
+  background: rgba(255,255,255,0.03);
+  color: var(--text, #f3f4f6);
+  border: 1px solid rgba(255,255,255,0.14);
+}
+
+:root[data-theme="dark"] button:hover,
+:root[data-theme="dark"] .btn-secundario:hover {
+  border-color: rgba(0,229,255,0.45);
+  box-shadow: 0 0 0 1px rgba(0,229,255,0.18);
+}
+
+/* Links */
+:root[data-theme="dark"] a,
+:root[data-theme="dark"] .btn-link {
+  color: var(--accent, #00e5ff);
+}
+
+/* Divisores / textos apagados */
+:root[data-theme="dark"] .muted,
+:root[data-theme="dark"] .help-text,
+:root[data-theme="dark"] .subtitle,
+:root[data-theme="dark"] .card-meta {
+  color: rgba(243,244,246,0.65);
+}
+
+/* Modal overlay (más elegante) */
+:root[data-theme="dark"] .modal,
+:root[data-theme="dark"] .overlay {
+  background: rgba(0,0,0,0.72);
+}
+
+/* Chips / badges (si los usás en index) */
+:root[data-theme="dark"] .chip {
+  border-color: rgba(0,229,255,0.35);
+  background: rgba(0,229,255,0.10);
+  color: var(--text, #f3f4f6);
+}
+
+/* Hover en items / filas (si existe lista/tabla) */
+:root[data-theme="dark"] .row:hover,
+:root[data-theme="dark"] .table-modern tbody tr:hover td {
+  background: rgba(0,229,255,0.06);
+}
+
+/* Pegalo al final de styles.css (opcional, solo refuerza el “glow” de los charts en dark) */
+:root[data-theme="dark"] .chart-box canvas {
+  filter: drop-shadow(0 0 12px rgba(0,229,255,0.20));
+}
+
+/* =========================================================
+   INDEX – PASTILLAS Y BOTONES FLUO (MODO NOCHE)
+   ========================================================= */
+
+/* ---------- VARIABLES FLUO ---------- */
+:root[data-theme="dark"] {
+  --fluo-cyan: #00e5ff;
+  --fluo-lime: #a3ff12;
+  --fluo-magenta: #ff2bd6;
+  --fluo-violet: #7c3cff;
+  --fluo-orange: #ff9f1c;
+  --fluo-red: #ff3d3d;
+}
+
+/* =========================================================
+   PASTILLAS (estado / responsable / rubro)
+   ========================================================= */
+
+/* Base común de pastillas */
+:root[data-theme="dark"] .badge,
+:root[data-theme="dark"] .chip,
+:root[data-theme="dark"] .pill,
+:root[data-theme="dark"] .tag {
+  background: rgba(0, 229, 255, 0.10);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  color: #f3f4f6;
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.15);
+}
+
+/* Hover más fluo */
+:root[data-theme="dark"] .badge:hover,
+:root[data-theme="dark"] .chip:hover,
+:root[data-theme="dark"] .pill:hover,
+:root[data-theme="dark"] .tag:hover {
+  box-shadow:
+    0 0 0 1px rgba(0, 229, 255, 0.35),
+    0 0 18px rgba(0, 229, 255, 0.35);
+}
+
+/* ---------- Estados (si usás clases por estado) ---------- */
+:root[data-theme="dark"] .estado-1 { /* Relevado */
+  background: rgba(255, 61, 61, 0.12);
+  border-color: rgba(255, 61, 61, 0.45);
+}
+
+:root[data-theme="dark"] .estado-2 { /* No activo */
+  background: rgba(255, 159, 28, 0.14);
+  border-color: rgba(255, 159, 28, 0.45);
+}
+
+:root[data-theme="dark"] .estado-3 { /* Primer ingreso */
+  background: rgba(163, 255, 18, 0.14);
+  border-color: rgba(163, 255, 18, 0.55);
+}
+
+:root[data-theme="dark"] .estado-4 { /* Local creado */
+  background: rgba(0, 229, 255, 0.14);
+  border-color: rgba(0, 229, 255, 0.55);
+}
+
+:root[data-theme="dark"] .estado-5 { /* Activo */
+  background: rgba(34, 255, 184, 0.14);
+  border-color: rgba(34, 255, 184, 0.55);
+}
+
+:root[data-theme="dark"] .estado-6 { /* No interesado */
+  background: rgba(124, 60, 255, 0.14);
+  border-color: rgba(124, 60, 255, 0.55);
+}
+
+/* =========================================================
+   BOTONES (+ actividad / editar / eliminar)
+   ========================================================= */
+
+/* Base botones acción */
+:root[data-theme="dark"] .btn-accion,
+:root[data-theme="dark"] .btn-editar,
+:root[data-theme="dark"] .btn-actividad {
+  background: rgba(0, 229, 255, 0.10);
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  color: #f3f4f6;
+}
+
+/* Hover botones acción */
+:root[data-theme="dark"] .btn-accion:hover,
+:root[data-theme="dark"] .btn-editar:hover,
+:root[data-theme="dark"] .btn-actividad:hover {
+  background: rgba(0, 229, 255, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(0, 229, 255, 0.35),
+    0 0 22px rgba(0, 229, 255, 0.45);
+}
+
+/* ---------- Botón eliminar (rojo fluo) ---------- */
+:root[data-theme="dark"] .btn-eliminar {
+  background: rgba(255, 61, 61, 0.14);
+  border: 1px solid rgba(255, 61, 61, 0.55);
+  color: #fff;
+}
+
+:root[data-theme="dark"] .btn-eliminar:hover {
+  background: rgba(255, 61, 61, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(255, 61, 61, 0.45),
+    0 0 22px rgba(255, 61, 61, 0.55);
+}
+
+/* ---------- Icon buttons (si usás íconos solos) ---------- */
+:root[data-theme="dark"] .icon-btn {
+  border-color: rgba(0, 229, 255, 0.45);
+}
+
+:root[data-theme="dark"] .icon-btn:hover {
+  box-shadow:
+    0 0 0 1px rgba(0, 229, 255, 0.35),
+    0 0 18px rgba(0, 229, 255, 0.35);
+}
