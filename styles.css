@@ -1725,9 +1725,6 @@ textarea {
 
   color: #f3f4f6;
 }
-:root[data-theme="dark"] .historial-empty{
-
-}
 
 /* Hover sutil fluo */
 .historial-item:hover{
@@ -1766,4 +1763,57 @@ textarea {
 /* (Opcional) en mobile un poco más bajo */
 @media (max-width: 720px){
   .historial-container{ max-height: 200px; }
+}
+
+/* =========================================================
+   FIX: inputs/selects blancos en modo noche (Index + modales)
+   ========================================================= */
+
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea {
+  background: rgba(255,255,255,0.04) !important;
+  color: #f3f4f6 !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+}
+
+/* Placeholder visible en dark */
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+  color: rgba(243,244,246,0.45) !important;
+}
+
+/* Focus con borde fluo */
+:root[data-theme="dark"] input:focus,
+:root[data-theme="dark"] select:focus,
+:root[data-theme="dark"] textarea:focus {
+  outline: none !important;
+  border-color: rgba(0,229,255,0.50) !important;
+  box-shadow: 0 0 0 3px rgba(0,229,255,0.16) !important;
+}
+
+/* IMPORTANTÍSIMO: las opciones del dropdown (la lista) */
+:root[data-theme="dark"] select option {
+  background: #121212 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Si algún contenedor fuerza fondo blanco (por ejemplo form rows) */
+:root[data-theme="dark"] .form-row input,
+:root[data-theme="dark"] .form-row select,
+:root[data-theme="dark"] .form-row textarea,
+:root[data-theme="dark"] .modal-content input,
+:root[data-theme="dark"] .modal-content select,
+:root[data-theme="dark"] .modal-content textarea {
+  background: rgba(255,255,255,0.04) !important;
+  color: #f3f4f6 !important;
+  border-color: rgba(255,255,255,0.14) !important;
+}
+
+/* Quita estilos nativos blancos raros en algunos browsers */
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea {
+  -webkit-appearance: none;
+  appearance: none;
 }

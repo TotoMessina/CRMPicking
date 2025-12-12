@@ -946,7 +946,8 @@ async function guardarCliente(e) {
   const telefono = document.getElementById("telefono").value.trim();
   const direccion = document.getElementById("direccion").value.trim();
   const rubro = document.getElementById("rubro").value.trim();
-  const estado = document.getElementById("estado").value;
+  const estadoRaw = document.getElementById("estado").value;
+  const estado = ESTADOS_VALIDOS_MAP[estadoRaw] || estadoRaw || "1 - Cliente relevado";
   const responsableSelect = document.getElementById("responsable");
   const responsable = responsableSelect ? responsableSelect.value : "";
   const fechaProx = document.getElementById("fecha_proximo_contacto").value;
@@ -1062,8 +1063,9 @@ function editarCliente(id) {
   document.getElementById("telefono").value = cliente.telefono || "";
   document.getElementById("direccion").value = cliente.direccion || "";
   document.getElementById("rubro").value = cliente.rubro || "";
+  const estadoEditRaw = cliente.estado || "1 - Cliente relevado";
   document.getElementById("estado").value =
-    cliente.estado || "1 - Cliente relevado";
+    ESTADOS_VALIDOS_MAP[estadoEditRaw] || estadoEditRaw;
 
   const responsableSelect = document.getElementById("responsable");
   if (responsableSelect) {
