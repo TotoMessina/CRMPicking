@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendario CRM</title>
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- FullCalendar -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+  <main class="container calendar-page">
+    <header class="calendar-topbar">
+      <div class="calendar-title">
+        <h1>Calendario</h1>
+        <p>Eventos multi-usuario + contactos editables. Arrastrá para mover; eventos internos se pueden redimensionar.</p>
+      </div>
+
+      <div class="calendar-actions">
+        <a href="index.html" class="btn-link">Volver</a>
+        <button id="btnNuevoEvento" class="btn-secundario">+ Evento</button>
+        <button id="btnToggleTheme" class="btn-secundario">Modo noche</button>
+      </div>
+    </header>
+
+    <section class="calendar-toolbar">
+      <div class="calendar-filters">
+        <label class="field">
+          <span class="field-label">Usuario</span>
+          <select id="filtroUsuarioCalendar">
+            <option value="">Todos</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Mostrar</span>
+          <select id="filtroTipo">
+            <option value="todos">Contactos + Eventos</option>
+            <option value="contactos">Solo contactos</option>
+            <option value="internos">Solo eventos</option>
+          </select>
+        </label>
+
+        <button id="btnRefrescarCalendar" class="btn-secundario">Actualizar</button>
+      </div>
+
+      <div class="calendar-legend">
+        <span class="legend-item"><span class="dot dot-contacto"></span> Contacto</span>
+        <span class="legend-item"><span class="dot dot-interno"></span> Evento</span>
+      </div>
+    </section>
+
+    <section class="panel calendar-shell">
+      <div id="calendar"></div>
+    </section>
+
+    <!-- Modal -->
+    <div id="modalEvento" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitulo">Nuevo</h2>
+          <button class="btn-close" id="btnCerrarModal">×</button>
+        </div>
+
+        <form id="formEvento" class="form-grid">
+          <input type="hidden" id="modalKind" value="evento"> <!-- evento | contacto -->
+          <input type="hidden" id="eventoId" value="">
+          <input type="hidden" id="clienteId" value="">
+
+          <label class="field">
+            <span class="field-label">Título</span>
+            <input id="evTitulo" type="text" required />
+          </label>
+
+          <label class="field">
+            <span class="field-label" id="labelDesc">Descripción</span>
+            <textarea id="evDesc" rows="8"></textarea>
+          </label>
+
+          <!-- SOLO EVENTOS INTERNOS -->
+          <div class="form-row-2" id="rowTipoColor">
+            <label class="field">
+              <span class="field-label">Tipo</span>
+              <select id="evTipo">
+                <option value="interno">Evento interno</option>
+                <option value="contacto">Contacto (manual)</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Color</span>
+              <input id="evColor" type="color" value="#FF2BD6" />
+            </label>
+          </div>
+
+          <!-- Checklist de usuarios (multi) -->
+          <div class="field" id="rowUsuariosChecklist">
+            <div class="field-label-row">
+              <span class="field-label">Usuarios que lo ven</span>
+              <div class="field-actions">
+                <button type="button" id="btnSelectAllUsers" class="btn-mini">Seleccionar todos</button>
+                <button type="button" id="btnClearAllUsers" class="btn-mini">Limpiar</button>
+              </div>
+            </div>
+
+            <div id="usuariosChecklist" class="checklist"></div>
+            <div class="muted mini-hint">Tip: si no seleccionás ninguno, el evento queda “general” (visible solo si filtrás en “Todos”).</div>
+          </div>
+
+          <div class="form-row-2">
+            <label class="field">
+              <span class="field-label">Inicio</span>
+              <input id="evInicio" type="datetime-local" required />
+            </label>
+
+            <label class="field">
+              <span class="field-label">Fin</span>
+              <input id="evFin" type="datetime-local" />
+            </label>
+          </div>
+
+          <label class="field inline" id="rowAllDay">
+            <input id="evAllDay" type="checkbox" />
+            <span>Todo el día</span>
+          </label>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn-primario">Guardar</button>
+            <button type="button" id="btnEliminarEvento" class="btn-delete">Eliminar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="stats-footer">
+      <span class="muted">Calendario CRM</span>
+    </footer>
+  </main>
+
+  <script src="calendario.js"></script>
+</body>
+</html>
