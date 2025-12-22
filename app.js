@@ -701,7 +701,7 @@ async function cargarClientes() {
   let query = supabaseClient
     .from("clientes")
     .select(
-      "id, nombre, telefono, direccion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad",
+      "id, nombre, telefono, mail, direccion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad",
       { count: "exact" }
     )
     .eq("activo", true);
@@ -851,6 +851,7 @@ async function cargarClientes() {
             ${textoFecha || textoHora ? " · " : ""}
             ${textoFecha}${textoHora}
           </div>
+          
           ${direccionHTML}
           <div class="card-tags">
             <span class="tag ${claseEstado}">Estado: ${cliente.estado}</span>
@@ -944,6 +945,7 @@ async function guardarCliente(e) {
   const id = document.getElementById("clienteId").value || null;
   const nombre = document.getElementById("nombre").value.trim();
   const telefono = document.getElementById("telefono").value.trim();
+  const mail = document.getElementById("mail") ? document.getElementById("mail").value.trim() : "";
   const direccion = document.getElementById("direccion").value.trim();
   const rubro = document.getElementById("rubro").value.trim();
   const estadoRaw = document.getElementById("estado").value;
@@ -965,6 +967,7 @@ async function guardarCliente(e) {
   const payload = {
     nombre,
     telefono: telefono || null,
+    mail: mail || null,
     direccion: direccion || null,
     rubro: rubro || "Sin definir",
     estado,
@@ -1061,6 +1064,8 @@ function editarCliente(id) {
   document.getElementById("clienteId").value = cliente.id;
   document.getElementById("nombre").value = cliente.nombre || "";
   document.getElementById("telefono").value = cliente.telefono || "";
+  const mailInput = document.getElementById("mail");
+  if (mailInput) mailInput.value = cliente.mail || "";
   document.getElementById("direccion").value = cliente.direccion || "";
   document.getElementById("rubro").value = cliente.rubro || "";
   const estadoEditRaw = cliente.estado || "1 - Cliente relevado";

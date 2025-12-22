@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mapa de Clientes</title>
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Fix: modal arriba del mapa (blindado) -->
+  <style>
+    .backdrop{ position:fixed; inset:0; z-index:99999 !important; }
+    .modal{ position:relative; z-index:100000 !important; }
+    #mapaLeaflet{ height:70vh; min-height:420px; }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar__left">
+      <h1>Mapa de Clientes</h1>
+      <p>Click en el mapa para crear. Click en el punto para editar. Color por rubro.</p>
+    </div>
+    <div class="topbar__right">
+    <a href="index.html" class="btn-link">CRM</a>
+    <a href="calendario.html" class="btn-link">Calendario</a>
+    <a href="estadisticas.html" class="btn-link">Estadísticas</a>
+
+    <button id="btnTrack" class="btn">Ver mi ubicación</button>
+    <button id="btnHere" class="btn primary">Registrar aquí</button>
+
+    <button id="btnReload" class="btn">Recargar</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="mapCard">
+      <div class="mapHeader">
+        <div>
+          <h2>Mapa</h2>
+          <small>Se guardan lat/lng dentro de <code>public.clientes</code>.</small>
+        </div>
+        <div class="mapLegend">
+          <span class="dot"></span> Cliente
+        </div>
+      </div>
+
+      <div id="mapaLeaflet" class="map" aria-label="Mapa Leaflet"></div>
+    </section>
+
+    <aside class="listCard">
+      <div class="listHeader">
+        <h2>Locales cargados</h2>
+        <div class="searchRow">
+          <input id="q" class="input" placeholder="Buscar por nombre, rubro, responsable, dirección..." />
+        </div>
+      </div>
+
+      <div id="list" class="list"></div>
+    </aside>
+  </main>
+
+  <!-- Modal -->
+  <div id="modalBackdrop" class="backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h3 id="modalTitle">Nuevo local</h3>
+        <button id="btnClose" class="iconBtn" aria-label="Cerrar">×</button>
+      </div>
+
+      <form id="form" class="form">
+        <div class="grid">
+          <label class="field">
+            <span>Nombre</span>
+            <input name="nombre" class="input" required />
+          </label>
+
+          <label class="field">
+            <span>Apellido</span>
+            <input name="apellido" class="input" />
+          </label>
+
+          <label class="field">
+            <span>Número de celular</span>
+            <input name="telefono" class="input" required placeholder="+54 11 ..." />
+          </label>
+
+          <label class="field">
+            <span>Mail</span>
+            <input name="mail" class="input" type="email" />
+          </label>
+
+          <label class="field full">
+            <span>Dirección</span>
+            <input name="direccion" class="input" required />
+          </label>
+
+          <label class="field">
+            <span>Rubro</span>
+            <input name="rubro" class="input" required placeholder="Ej: Almacén, Ferretería..." />
+          </label>
+
+          <label class="field">
+            <span>Responsable</span>
+            <input name="responsable" class="input" required placeholder="Ej: Ari / Nati / Dani" />
+          </label>
+
+          <label class="field">
+            <span>Cuándo se contactó</span>
+            <input name="fecha_contacto" class="input" type="date" />
+          </label>
+        </div>
+
+        <div class="modalFooter">
+          <div id="status" class="status"></div>
+          <div class="footerActions">
+            <button type="button" id="btnDelete" class="btn danger hidden">Eliminar</button>
+            <button type="submit" class="btn primary" id="btnSave">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="mapa.js"></script>
+</body>
+</html>
