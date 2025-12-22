@@ -1,61 +1,68 @@
 /* =========================================================
-   mapa.js — Leaflet + Supabase + CRUD + Tracking ubicación
-   Requiere (en mapa.html):
-   - Leaflet CDN
-   - Supabase CDN (@supabase/supabase-js@2) => window.supabase global
-========================================================= */
+   MAPA CRM (Leaflet + Supabase)
+   - Crear: click en mapa o "Registrar donde estoy"
+   - Editar/Eliminar: click en marcador
+   - Color por ESTADO (mismos nombres que el CRM)
+   - Tema: usa localStorage crm_theme (igual que tu app)
+   ========================================================= */
 
-/* =========================
-   SUPABASE CONFIG (CDN)
-   - Pegá acá tu URL y tu anon key del MISMO proyecto.
-========================= */
+// ========= SUPABASE (copiá los tuyos si difieren) =========
+// En tus archivos se usa este patrón:
 const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
+const SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
 
-if (!window.supabase) {
-  throw new Error("Supabase no está cargado. Asegurate de incluir el CDN antes de mapa.js.");
-}
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/* =========================
-   DOM
-========================= */
-const listEl = document.getElementById("list");
-const qEl = document.getElementById("q");
-const btnReload = document.getElementById("btnReload");
+// ========= THEME (igual que Stats/Calendario) =========
+const THEME_KEY = "crm_theme";
 
-const btnTrack = document.getElementById("btnTrack"); // "Ver mi ubicación"
-const btnHere = document.getElementById("btnHere");   // "Registrar aquí"
+// ========= ESTADOS (exactos de tu CRM) =========
+const ESTADOS = [
+  "1 - Cliente relevado",
+  "2 - Local Visitado No Activo",
+  "3 - Primer Ingreso",
+  "4 - Local Creado",
+  "5 - Local Visitado Activo",
+  "6 - Local No Interesado",
+];
 
-const modalBackdrop = document.getElementById("modalBackdrop");
-const btnClose = document.getElementById("btnClose");
-const form = document.getElementById("form");
-const statusEl = document.getElementById("status");
-const btnSave = document.getElementById("btnSave");
-const btnDelete = document.getElementById("btnDelete");
-const modalTitle = document.getElementById("modalTitle");
+// Mapeo de colores (alineado con tu styles.css en dark: fluo-red/orange/lime/cyan/mint/violet)
+const ESTADO_COLOR = {
+  "1 - Cliente relevado": "#ff3d3d", // red
+  "2 - Local Visitado No Activo": "#ff9f1c", // orange
+  "3 - Primer Ingreso": "#ffef16ff", // lime
+  "4 - Local Creado": "#7700ffff", // cyan
+  "5 - Local Visitado Activo": "#22ff34ff", // mint
+  "6 - Local No Interesado": "#5f5f5fff", // violet
+};
 
-/* =========================
-   STATE
-========================= */
-let records = [];
-let pendingLatLng = null;  // {lat,lng} para create/update
-let editingId = null;      // id del cliente (asumo bigint/int; si es uuid también sirve)
-
+// ========= Leaflet/map state =========
 let map;
 let markersLayer;
-
-// Tracking ubicación
 let myMarker = null;
 let myAccuracyCircle = null;
-let lastMyLatLng = null;   // {lat,lng}
-let geoWatchId = null;
 
-/* =========================
-   HELPERS
-========================= */
-function escapeHtml(str) {
-  return String(str ?? "")
+let lastKnownPos = null; // {lat, lng, accuracy, ts}
+let recordsCache = []; // clientes
+
+// ========= DOM =========
+const elModal = document.getElementById("modalCliente");
+const elForm = document.getElementById("formClienteMapa");
+const elModalTitle = document.getElementById("modalTitle");
+const elBtnCerrarModal = document.getElementById("btnCerrarModal");
+const elBtnEliminar = document.getElementById("btnEliminar");
+const elBtnGuardar = document.getElementById("btnGuardar");
+const elCoordHint = document.getElementById("coordHint");
+
+const btnToggleTheme = document.getElementById("btnToggleTheme");
+const btnUbicarme = document.getElementById("btnUbicarme");
+const btnRegistrarAqui = document.getElementById("btnRegistrarAqui");
+const btnRefrescar = document.getElementById("btnRefrescar");
+
+// ========= Helpers =========
+function escapeHtml(v) {
+  return String(v ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -63,444 +70,445 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
-function formatDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = String(iso).split("-");
-  if (!y || !m || !d) return String(iso);
-  return `${d}/${m}/${y}`;
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem(THEME_KEY, theme);
+  if (btnToggleTheme) btnToggleTheme.textContent = theme === "dark" ? "Modo día" : "Modo noche";
 }
 
-function todayISO() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+function getTheme() {
+  return document.documentElement.getAttribute("data-theme") || "light";
 }
 
-function colorFromRubro(rubro) {
-  const s = (rubro || "").trim().toLowerCase();
-  let hash = 0;
-  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
-  const hue = hash % 360;
-  return `hsl(${hue} 75% 55%)`;
+function toggleTheme() {
+  const next = getTheme() === "light" ? "dark" : "light";
+  applyTheme(next);
+  // opcional: re-render markers para asegurar contraste (acá no hace falta)
 }
 
-/* =========================
-   MODAL
-========================= */
-function openModal(mode) {
-  modalBackdrop.classList.remove("hidden");
-  statusEl.textContent = "";
+function normalizeEstado(raw) {
+  if (!raw) return "Sin estado";
 
-  if (mode === "create") {
-    modalTitle.textContent = "Nuevo local";
-    btnDelete.classList.add("hidden");
+  const s = String(raw).trim();
+
+  // Normalizaciones que ya aparecen en tu app (por compatibilidad)
+  if (s.toLowerCase() === "3 - primer ingreso") return "3 - Primer Ingreso";
+  if (s === "3 - Primer ingreso") return "3 - Primer Ingreso";
+
+  // Si viene sólo "1".."6" lo convertimos a etiqueta CRM
+  if (/^[1-6]$/.test(s)) return ESTADOS[Number(s) - 1];
+
+  // Si viene "1 - Cliente relevado" etc lo dejamos
+  return s;
+}
+
+function colorFromEstado(estadoRaw) {
+  const est = normalizeEstado(estadoRaw);
+  return ESTADO_COLOR[est] || "#94a3b8";
+}
+
+function iconForEstado(estadoRaw) {
+  const color = colorFromEstado(estadoRaw);
+  return L.divIcon({
+    className: "",
+    html: `<div class="marker-dot" style="background:${color};"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -10],
+  });
+}
+
+function setModalOpen(open) {
+  elModal.style.display = open ? "flex" : "none";
+  elModal.setAttribute("aria-hidden", open ? "false" : "true");
+}
+
+function setCoordsHint(lat, lng) {
+  if (!elCoordHint) return;
+  if (typeof lat === "number" && typeof lng === "number") {
+    elCoordHint.textContent = `Lat/Lng: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
   } else {
-    modalTitle.textContent = "Editar local";
-    btnDelete.classList.remove("hidden");
+    elCoordHint.textContent = "Lat/Lng: -";
   }
+}
 
-  // Default fecha contacto
-  if (!form.elements["fecha_contacto"].value) {
-    form.elements["fecha_contacto"].value = todayISO();
+function getFormValue(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : "";
+}
+function setFormValue(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.value = v ?? "";
+}
+
+function currentISODate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// ========= Legend =========
+function renderLegend() {
+  const legend = document.getElementById("legend");
+  if (!legend) return;
+  legend.innerHTML = "";
+
+  for (const est of ESTADOS) {
+    const dot = document.createElement("span");
+    dot.className = "legend-dot";
+    dot.style.background = colorFromEstado(est);
+
+    const item = document.createElement("span");
+    item.className = "legend-item";
+    item.appendChild(dot);
+    item.appendChild(document.createTextNode(est));
+
+    legend.appendChild(item);
   }
-
-  form.elements["nombre"].focus();
 }
 
-function closeModal() {
-  modalBackdrop.classList.add("hidden");
-  form.reset();
-  statusEl.textContent = "";
-  pendingLatLng = null;
-  editingId = null;
-}
-
-function fillForm(rec) {
-  form.elements["nombre"].value = rec.nombre || "";
-  form.elements["apellido"].value = rec.apellido || "";
-  form.elements["telefono"].value = rec.telefono || "";
-  form.elements["mail"].value = rec.mail || "";
-  form.elements["direccion"].value = rec.direccion || "";
-  form.elements["rubro"].value = rec.rubro || "";
-  form.elements["responsable"].value = rec.responsable || "";
-  form.elements["fecha_contacto"].value = rec.fecha_contacto || "";
-}
-
-/* =========================
-   LEAFLET INIT
-========================= */
+// ========= Map init =========
 function initMap() {
-  // Centro default: Buenos Aires
-  map = L.map("mapaLeaflet").setView([-34.6037, -58.3816], 12);
+  map = L.map("map", {
+    zoomControl: true,
+  }).setView([-34.62, -58.44], 12); // fallback (CABA) - se ajusta con "Ubicarme"
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors"
+    attribution: "&copy; OpenStreetMap",
   }).addTo(map);
 
   markersLayer = L.layerGroup().addTo(map);
 
-  // Click en mapa => crear en ese punto
   map.on("click", (e) => {
-    pendingLatLng = { lat: e.latlng.lat, lng: e.latlng.lng };
-    editingId = null;
-    form.reset();
-    openModal("create");
+    openCreateModalAt(e.latlng.lat, e.latlng.lng);
   });
 }
 
-function renderMarkers() {
-  markersLayer.clearLayers();
+// ========= Geolocation =========
+function updateMyLocationMarker(pos) {
+  const { lat, lng, accuracy } = pos;
 
-  records.forEach((rec) => {
-    const lat = Number(rec.lat);
-    const lng = Number(rec.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-    const color = colorFromRubro(rec.rubro);
-    const marker = L.circleMarker([lat, lng], {
-      radius: 8,
-      color,
-      fillColor: color,
-      fillOpacity: 0.9,
-      weight: 2
-    });
-
-    marker.bindTooltip(
-      `${escapeHtml(rec.nombre)} ${escapeHtml(rec.apellido || "")} • ${escapeHtml(rec.rubro)}`,
-      { direction: "top", opacity: 0.95 }
-    );
-
-    // Click marker => editar
-    marker.on("click", () => {
-      editingId = rec.id;
-      pendingLatLng = { lat, lng };
-      fillForm(rec);
-      openModal("edit");
-    });
-
-    marker.addTo(markersLayer);
-  });
-}
-
-/* =========================
-   LIST UI
-========================= */
-function renderList(filterText = "") {
-  const ft = filterText.trim().toLowerCase();
-  const filtered = !ft
-    ? records
-    : records.filter(r => {
-        const blob = `${r.nombre} ${r.apellido} ${r.rubro} ${r.responsable} ${r.direccion} ${r.mail} ${r.telefono}`.toLowerCase();
-        return blob.includes(ft);
-      });
-
-  if (!filtered.length) {
-    listEl.innerHTML = `<div class="meta" style="padding:10px;">Sin registros con ubicación.</div>`;
-    return;
-  }
-
-  listEl.innerHTML = filtered.map(r => {
-    const c = colorFromRubro(r.rubro);
-    return `
-      <div class="cardRow" id="row-${escapeHtml(r.id)}">
-        <h4>
-          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:8px;vertical-align:middle;"></span>
-          ${escapeHtml(r.nombre)} ${escapeHtml(r.apellido || "")}
-        </h4>
-        <div class="meta">
-          <div><b>Rubro:</b> ${escapeHtml(r.rubro)}</div>
-          <div><b>Responsable:</b> ${escapeHtml(r.responsable)}</div>
-          <div><b>Tel:</b> ${escapeHtml(r.telefono || "")} • <b>Mail:</b> ${escapeHtml(r.mail || "")}</div>
-          <div><b>Dirección:</b> ${escapeHtml(r.direccion || "")}</div>
-          <div><b>Fecha contacto:</b> ${escapeHtml(formatDate(r.fecha_contacto || ""))}</div>
-        </div>
-        <div class="actions">
-          <button class="btn" data-action="zoom" data-id="${escapeHtml(r.id)}">Ver</button>
-          <button class="btn" data-action="edit" data-id="${escapeHtml(r.id)}">Editar</button>
-          <button class="btn danger" data-action="delete" data-id="${escapeHtml(r.id)}">Eliminar</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  listEl.querySelectorAll("button[data-action]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.id; // puede ser number o uuid, lo tratamos como string
-      const action = btn.dataset.action;
-      const rec = records.find(x => String(x.id) === String(id));
-      if (!rec) return;
-
-      if (action === "zoom") {
-        const lat = Number(rec.lat);
-        const lng = Number(rec.lng);
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-          map.setView([lat, lng], Math.max(map.getZoom(), 16), { animate: true });
-        }
-      }
-
-      if (action === "edit") {
-        editingId = rec.id;
-        pendingLatLng = { lat: Number(rec.lat), lng: Number(rec.lng) };
-        fillForm(rec);
-        openModal("edit");
-      }
-
-      if (action === "delete") {
-        await deleteRecordFlow(rec.id);
-      }
-    });
-  });
-}
-
-/* =========================
-   SUPABASE OPS (tabla clientes)
-========================= */
-async function loadRecords() {
-  const { data, error } = await sb
-    .from("clientes")
-    .select("id,nombre,apellido,telefono,mail,direccion,rubro,responsable,fecha_contacto,lat,lng,created_at")
-    .not("lat", "is", null)
-    .not("lng", "is", null)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error(error);
-    listEl.innerHTML = `<div class="meta" style="padding:10px;">Error cargando: ${escapeHtml(error.message)}</div>`;
-    return;
-  }
-
-  records = data || [];
-  renderMarkers();
-  renderList(qEl.value);
-}
-
-async function insertRecord(payload) {
-  const { data, error } = await sb
-    .from("clientes")
-    .insert(payload)
-    .select("id,nombre,apellido,telefono,mail,direccion,rubro,responsable,fecha_contacto,lat,lng,created_at")
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-async function updateRecord(id, payload) {
-  const { data, error } = await sb
-    .from("clientes")
-    .update(payload)
-    .eq("id", id)
-    .select("id,nombre,apellido,telefono,mail,direccion,rubro,responsable,fecha_contacto,lat,lng,created_at")
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-async function deleteRecord(id) {
-  const { error } = await sb
-    .from("clientes")
-    .delete()
-    .eq("id", id);
-
-  if (error) throw error;
-}
-
-async function deleteRecordFlow(id) {
-  const ok = confirm("¿Eliminar este local? Esta acción no se puede deshacer.");
-  if (!ok) return;
-
-  try {
-    await deleteRecord(id);
-    records = records.filter(r => String(r.id) !== String(id));
-    renderMarkers();
-    renderList(qEl.value);
-    if (String(editingId) === String(id)) closeModal();
-  } catch (err) {
-    console.error(err);
-    alert(`Error eliminando: ${err.message || "No se pudo eliminar"}`);
-  }
-}
-
-/* =========================
-   TRACKING: tu ubicación en tiempo real
-========================= */
-function setMyLocationOnMap(lat, lng, accuracyMeters) {
-  lastMyLatLng = { lat, lng };
-
-  // Marker de usuario (azul)
-  const color = "hsl(210 90% 55%)";
+  const latlng = [lat, lng];
 
   if (!myMarker) {
-    myMarker = L.circleMarker([lat, lng], {
-      radius: 8,
-      color,
-      fillColor: color,
-      fillOpacity: 1,
-      weight: 2
-    }).addTo(map);
-
-    myMarker.bindTooltip("Tu ubicación", { direction: "top", opacity: 0.95 });
+    myMarker = L.marker(latlng, { title: "Mi ubicación" }).addTo(map);
   } else {
-    myMarker.setLatLng([lat, lng]);
+    myMarker.setLatLng(latlng);
   }
 
-  if (Number.isFinite(accuracyMeters)) {
-    if (!myAccuracyCircle) {
-      myAccuracyCircle = L.circle([lat, lng], {
-        radius: accuracyMeters,
-        weight: 1,
-        opacity: 0.35,
-        fillOpacity: 0.08
-      }).addTo(map);
-    } else {
-      myAccuracyCircle.setLatLng([lat, lng]);
-      myAccuracyCircle.setRadius(accuracyMeters);
-    }
+  if (!myAccuracyCircle) {
+    myAccuracyCircle = L.circle(latlng, {
+      radius: Math.max(accuracy || 0, 10),
+      weight: 1,
+      opacity: 0.5,
+      fillOpacity: 0.08,
+    }).addTo(map);
+  } else {
+    myAccuracyCircle.setLatLng(latlng);
+    myAccuracyCircle.setRadius(Math.max(accuracy || 0, 10));
   }
 }
 
-function startTrackingMyLocation() {
+function locateMe({ center = true } = {}) {
   if (!navigator.geolocation) {
     alert("Tu navegador no soporta geolocalización.");
     return;
   }
 
-  // Toggle: si ya está activo, lo apagamos
-  if (geoWatchId !== null) {
-    navigator.geolocation.clearWatch(geoWatchId);
-    geoWatchId = null;
-    btnTrack && (btnTrack.textContent = "Ver mi ubicación");
-    return;
-  }
+  navigator.geolocation.getCurrentPosition(
+    (p) => {
+      const lat = p.coords.latitude;
+      const lng = p.coords.longitude;
+      const accuracy = p.coords.accuracy;
+      lastKnownPos = { lat, lng, accuracy, ts: Date.now() };
 
-  btnTrack && (btnTrack.textContent = "Detener ubicación");
+      updateMyLocationMarker(lastKnownPos);
 
-  geoWatchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const acc = pos.coords.accuracy;
-
-      setMyLocationOnMap(lat, lng, acc);
-
-      // Centrar cuando arranca o si estás muy lejos (simple)
-      if (map && map.getZoom() < 15) {
-        map.setView([lat, lng], 16, { animate: true });
-      }
+      if (center) map.setView([lat, lng], 16);
     },
     (err) => {
-      geoWatchId = null;
-      btnTrack && (btnTrack.textContent = "Ver mi ubicación");
-      alert("No se pudo obtener tu ubicación: " + (err.message || "error"));
+      console.error(err);
+      alert("No se pudo obtener tu ubicación. Revisá permisos del navegador.");
     },
-    { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 }
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
   );
 }
 
-function openCreateAtMyLocation() {
-  if (!lastMyLatLng) {
-    alert("Todavía no tengo tu ubicación. Tocá primero “Ver mi ubicación”.");
-    return;
-  }
-  pendingLatLng = { ...lastMyLatLng };
-  editingId = null;
-  form.reset();
-  openModal("create");
+// ========= Modal open/fill =========
+function resetModalToCreate(lat, lng) {
+  setFormValue("clienteId", "");
+  setFormValue("lat", lat);
+  setFormValue("lng", lng);
+
+  setFormValue("nombre", "");
+  setFormValue("apellido", "");
+  setFormValue("telefono", "");
+  setFormValue("mail", "");
+  setFormValue("direccion", "");
+  setFormValue("rubro", "");
+  setFormValue("responsable", "");
+  setFormValue("estado", "4 - Local Creado"); // default razonable
+  setFormValue("fecha_contacto", currentISODate());
+
+  elModalTitle.textContent = "Nuevo cliente";
+  elBtnGuardar.textContent = "Guardar";
+  elBtnEliminar.style.display = "none";
+  setCoordsHint(lat, lng);
 }
 
-/* =========================
-   EVENTS
-========================= */
-btnClose?.addEventListener("click", closeModal);
+function fillModalForEdit(rec) {
+  setFormValue("clienteId", rec.id);
+  setFormValue("lat", rec.lat);
+  setFormValue("lng", rec.lng);
 
-modalBackdrop?.addEventListener("click", (e) => {
-  if (e.target === modalBackdrop) closeModal();
-});
+  setFormValue("nombre", rec.nombre ?? "");
+  setFormValue("apellido", rec.apellido ?? "");
+  setFormValue("telefono", rec.telefono ?? "");
+  setFormValue("mail", rec.mail ?? "");
+  setFormValue("direccion", rec.direccion ?? "");
+  setFormValue("rubro", rec.rubro ?? "");
+  setFormValue("responsable", rec.responsable ?? "");
+  setFormValue("estado", normalizeEstado(rec.estado) || "4 - Local Creado");
+  setFormValue("fecha_contacto", rec.fecha_contacto ?? "");
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && modalBackdrop && !modalBackdrop.classList.contains("hidden")) closeModal();
-});
+  elModalTitle.textContent = "Editar cliente";
+  elBtnGuardar.textContent = "Guardar cambios";
+  elBtnEliminar.style.display = "inline-flex";
+  setCoordsHint(Number(rec.lat), Number(rec.lng));
+}
 
-qEl?.addEventListener("input", () => renderList(qEl.value));
+function openCreateModalAt(lat, lng) {
+  resetModalToCreate(lat, lng);
+  setModalOpen(true);
+}
 
-btnReload?.addEventListener("click", loadRecords);
+function openEditModal(rec) {
+  fillModalForEdit(rec);
+  setModalOpen(true);
+}
 
-btnTrack?.addEventListener("click", startTrackingMyLocation);
+// ========= Supabase CRUD =========
+async function loadRecords() {
+  const { data, error } = await supabaseClient
+    .from("clientes")
+    .select("id,nombre,apellido,telefono,mail,direccion,rubro,estado,responsable,fecha_contacto,lat,lng,created_at")
+    .eq("activo", true);
 
-btnHere?.addEventListener("click", openCreateAtMyLocation);
+  if (error) throw error;
 
-btnDelete?.addEventListener("click", async () => {
-  if (!editingId) return;
-  await deleteRecordFlow(editingId);
-});
+  // Sólo los que tienen coords para mapear (si querés mapear sin coords, habría que geocodificar)
+  recordsCache = (data || []).filter(
+    (r) => typeof r.lat === "number" && typeof r.lng === "number"
+  );
 
-form?.addEventListener("submit", async (e) => {
+  renderMarkers();
+}
+
+async function insertRecord(payload) {
+  const { data, error } = await supabaseClient.from("clientes").insert(payload).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateRecord(id, payload) {
+  const { data, error } = await supabaseClient
+    .from("clientes")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteRecord(id) {
+  // Para no romper tu CRM, preferimos soft-delete (activo=false) si existe esa columna
+  // Si tu tabla no tiene "activo", cambiá por .delete()
+  const { error } = await supabaseClient.from("clientes").update({ activo: false }).eq("id", id);
+  if (error) throw error;
+}
+
+// ========= Rendering =========
+function renderMarkers() {
+  markersLayer.clearLayers();
+
+  for (const rec of recordsCache) {
+    const marker = L.marker([rec.lat, rec.lng], {
+      icon: iconForEstado(rec.estado),
+      title: `${rec.nombre ?? ""}`.trim() || "Cliente",
+    });
+
+    const est = normalizeEstado(rec.estado);
+    const popupHtml = `
+      <div style="min-width:240px">
+        <div style="font-weight:700; margin-bottom:6px;">
+          ${escapeHtml(rec.nombre ?? "")} ${escapeHtml(rec.apellido ?? "")}
+        </div>
+        <div><b>Estado:</b> ${escapeHtml(est)}</div>
+        <div><b>Tel:</b> ${escapeHtml(rec.telefono ?? "")}</div>
+        <div><b>Mail:</b> ${escapeHtml(rec.mail ?? "")}</div>
+        <div><b>Dirección:</b> ${escapeHtml(rec.direccion ?? "")}</div>
+        <div><b>Rubro:</b> ${escapeHtml(rec.rubro ?? "")}</div>
+        <div><b>Responsable:</b> ${escapeHtml(rec.responsable ?? "")}</div>
+        <div><b>Contacto:</b> ${escapeHtml(rec.fecha_contacto ?? "")}</div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-secundario" data-action="edit" data-id="${rec.id}">Editar</button>
+        </div>
+      </div>
+    `;
+
+    marker.bindPopup(popupHtml);
+
+    marker.on("popupopen", (ev) => {
+      const node = ev.popup.getElement();
+      if (!node) return;
+      const btn = node.querySelector('button[data-action="edit"]');
+      if (btn) {
+        btn.addEventListener("click", () => {
+          openEditModal(rec);
+          marker.closePopup();
+        });
+      }
+    });
+
+    marker.addTo(markersLayer);
+  }
+}
+
+// ========= Form submit/delete =========
+async function onSubmitForm(e) {
   e.preventDefault();
 
-  btnSave.disabled = true;
-  statusEl.textContent = "Guardando...";
+  const id = getFormValue("clienteId").trim();
+  const lat = Number(getFormValue("lat"));
+  const lng = Number(getFormValue("lng"));
+
+  const nombre = getFormValue("nombre").trim();
+  if (!nombre) {
+    alert("El nombre es obligatorio.");
+    return;
+  }
+
+  const estado = normalizeEstado(getFormValue("estado"));
+  if (!ESTADOS.includes(estado)) {
+    alert("Estado inválido. Elegí uno de la lista.");
+    return;
+  }
+
+  const payload = {
+    nombre,
+    apellido: getFormValue("apellido").trim() || null,
+    telefono: getFormValue("telefono").trim() || null,
+    mail: getFormValue("mail").trim() || null,
+    direccion: getFormValue("direccion").trim() || null,
+    rubro: getFormValue("rubro").trim() || "Sin definir",
+    responsable: getFormValue("responsable").trim() || null,
+    estado,
+    fecha_contacto: getFormValue("fecha_contacto") || null,
+    lat,
+    lng,
+    activo: true,
+  };
 
   try {
-    // Para crear: necesitamos lat/lng; para editar, también (se mantiene)
-    if (!editingId && !pendingLatLng) {
-      throw new Error("No se detectó ubicación. Hacé click en el mapa o usá “Registrar aquí”.");
+    elBtnGuardar.disabled = true;
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      alert("No hay coordenadas válidas (lat/lng).");
+      return;
     }
 
-    const payload = {
-      lat: pendingLatLng?.lat ?? null,
-      lng: pendingLatLng?.lng ?? null,
-
-      nombre: form.elements["nombre"].value.trim(),
-      apellido: form.elements["apellido"].value.trim() || null,
-      telefono: form.elements["telefono"].value.trim(),
-      mail: form.elements["mail"].value.trim() || null,
-      direccion: form.elements["direccion"].value.trim(),
-      rubro: form.elements["rubro"].value.trim(),
-      responsable: form.elements["responsable"].value.trim(),
-      fecha_contacto: form.elements["fecha_contacto"].value || todayISO()
-    };
-
-    // Validación mínima
-    if (!payload.nombre) throw new Error("Nombre requerido");
-    if (!payload.telefono) throw new Error("Teléfono requerido");
-    if (!payload.direccion) throw new Error("Dirección requerida");
-    if (!payload.rubro) throw new Error("Rubro requerido");
-    if (!payload.responsable) throw new Error("Responsable requerido");
-    if (!Number.isFinite(Number(payload.lat)) || !Number.isFinite(Number(payload.lng))) {
-      throw new Error("Ubicación inválida");
-    }
-
-    let saved;
-    if (editingId) {
-      saved = await updateRecord(editingId, payload);
-      records = records.map(r => (String(r.id) === String(saved.id) ? saved : r));
+    if (!id) {
+      await insertRecord(payload);
     } else {
-      saved = await insertRecord(payload);
-      records.unshift(saved);
+      await updateRecord(id, payload);
     }
 
-    renderMarkers();
-    renderList(qEl.value);
-
-    statusEl.textContent = "Guardado.";
-    setTimeout(() => closeModal(), 250);
+    setModalOpen(false);
+    await loadRecords();
   } catch (err) {
     console.error(err);
-    statusEl.textContent = `Error: ${err.message || "No se pudo guardar"}`;
+    alert("No se pudo guardar. Revisá consola (F12) y tu conexión/URL de Supabase.");
   } finally {
-    btnSave.disabled = false;
+    elBtnGuardar.disabled = false;
   }
+}
+
+async function onDeleteClick() {
+  const id = getFormValue("clienteId").trim();
+  if (!id) return;
+
+  const ok = confirm("¿Seguro que querés eliminar este cliente del mapa? (Se marcará como inactivo)");
+  if (!ok) return;
+
+  try {
+    elBtnEliminar.disabled = true;
+    await deleteRecord(id);
+    setModalOpen(false);
+    await loadRecords();
+  } catch (err) {
+    console.error(err);
+    alert("No se pudo eliminar. Revisá consola.");
+  } finally {
+    elBtnEliminar.disabled = false;
+  }
+}
+
+// ========= Init =========
+document.addEventListener("DOMContentLoaded", async () => {
+  // Theme
+  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
+  applyTheme(savedTheme);
+
+  btnToggleTheme?.addEventListener("click", toggleTheme);
+
+  // Modal close
+  elBtnCerrarModal?.addEventListener("click", () => setModalOpen(false));
+  elModal?.addEventListener("click", (ev) => {
+    if (ev.target === elModal) setModalOpen(false);
+  });
+
+  // Form
+  elForm?.addEventListener("submit", onSubmitForm);
+  elBtnEliminar?.addEventListener("click", onDeleteClick);
+
+  // Map
+  initMap();
+  renderLegend();
+
+  // Actions
+  btnUbicarme?.addEventListener("click", () => locateMe({ center: true }));
+  btnRegistrarAqui?.addEventListener("click", () => {
+    if (!lastKnownPos) {
+      locateMe({ center: true });
+      // cuando llega la ubicación, el usuario puede tocar el botón de nuevo
+      alert("Primero obtengamos tu ubicación. Tocá 'Registrar donde estoy' nuevamente.");
+      return;
+    }
+    openCreateModalAt(lastKnownPos.lat, lastKnownPos.lng);
+  });
+
+  btnRefrescar?.addEventListener("click", async () => {
+    try {
+      await loadRecords();
+      alert("Mapa actualizado.");
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo refrescar.");
+    }
+  });
+
+  // Cargar data + ubicar (opcional)
+  try {
+    await loadRecords();
+  } catch (err) {
+    console.error(err);
+    alert("No se pudieron cargar los clientes. Revisá tu URL/KEY de Supabase y tu conexión.");
+  }
+
+  // Ubicación inicial (no obliga)
+  locateMe({ center: false });
 });
-
-/* =========================
-   INIT
-========================= */
-initMap();
-loadRecords();
-
-// Si querés que arranque mostrando tu ubicación automáticamente, descomentá:
-// startTrackingMyLocation();
