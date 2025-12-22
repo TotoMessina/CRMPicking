@@ -1587,3 +1587,698 @@ textarea {
 .table-wrap-soft:hover {
   box-shadow: inset 0 0 0 1px rgba(37,99,235,0.25);
 }
+
+/* =========================================================
+   COMPAT: APP SHELL + SIDEBAR (para Clientes/Consumidores/Stats)
+   Si ya lo tenés, esto solo ajusta consistencia.
+   ========================================================= */
+
+.app-shell{
+  display:flex;
+  min-height:100vh;
+}
+
+.sidebar{
+  width: 260px;
+  flex: 0 0 260px;
+  padding: 14px;
+  border-right: 1px solid rgba(148,163,184,.25);
+  background: rgba(255,255,255,.72);
+  backdrop-filter: blur(14px);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+
+:root[data-theme="dark"] .sidebar{
+  background: rgba(2,6,23,.72);
+  border-right-color: rgba(255,255,255,.10);
+}
+
+.sidebar-brand{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding: 10px;
+  border: 1px solid rgba(148,163,184,.25);
+  border-radius: 16px;
+  background: rgba(255,255,255,.55);
+}
+
+:root[data-theme="dark"] .sidebar-brand{
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.10);
+}
+
+.sidebar-logo{
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight: 900;
+  background: rgba(37,99,235,.12);
+  border: 1px solid rgba(37,99,235,.25);
+}
+
+.sidebar-title{
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.sidebar-subtitle{
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sidebar-nav{
+  margin-top: 12px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.nav-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  text-decoration:none;
+  color: var(--text);
+  border: 1px solid transparent;
+}
+
+.nav-item:hover{
+  background: rgba(37,99,235,.08);
+  border-color: rgba(37,99,235,.18);
+}
+
+.nav-item.active{
+  background: rgba(37,99,235,.12);
+  border-color: rgba(37,99,235,.25);
+  font-weight: 800;
+}
+
+.nav-dot{
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148,163,184,.7);
+}
+
+.nav-item.active .nav-dot{
+  background: rgba(37,99,235,.9);
+}
+
+.sidebar-foot{
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px dashed rgba(148,163,184,.35);
+}
+
+.app-content{
+  flex:1;
+  min-width:0;
+}
+
+/* Responsive: sidebar arriba en móvil */
+@media (max-width: 900px){
+  .app-shell{ flex-direction:column; }
+  .sidebar{
+    position: relative;
+    width: 100%;
+    flex: 0 0 auto;
+    height:auto;
+    border-right: none;
+    border-bottom: 1px solid rgba(148,163,184,.25);
+  }
+}
+
+/* =========================================================
+   CONSUMIDORES: FORM GRID (igual look CRM)
+   ========================================================= */
+
+.form-grid{
+  display:grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.field{
+  grid-column: span 6;
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+}
+
+.field label{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.field-wide{
+  grid-column: span 12;
+}
+
+.form-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-start;
+  margin-top: 4px;
+}
+
+/* Si tu CSS base ya define input/textarea, esto solo armoniza espacios */
+.form-grid input,
+.form-grid select,
+.form-grid textarea{
+  width: 100%;
+}
+
+/* Topbar igual CRM */
+.topbar{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.topbar-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+/* Filtros (compat) */
+.filters{
+  border-radius: 16px;
+  border: 1px solid rgba(148,163,184,.25);
+  background: rgba(255,255,255,.60);
+  padding: 12px;
+  margin-bottom: 12px;
+
+  display:grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 10px;
+}
+
+:root[data-theme="dark"] .filters{
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.10);
+}
+
+.filters > input,
+.filters > select{
+  grid-column: span 3;
+}
+
+.filters-actions{
+  grid-column: span 12;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  flex-wrap:wrap;
+}
+
+.pager{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+@media (max-width: 980px){
+  .field{ grid-column: span 12; }
+  .filters > input,
+  .filters > select{ grid-column: span 6; }
+}
+
+@media (max-width: 640px){
+  .filters > input,
+  .filters > select{ grid-column: span 12; }
+}
+
+/* =========================================================
+   SCROLL INTERNO: HISTORIAL (Clientes y Consumidores)
+   ========================================================= */
+
+.historial-list{
+  max-height: 240px;   /* ajustable */
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.historial-list::-webkit-scrollbar{
+  width: 6px;
+}
+.historial-list::-webkit-scrollbar-track{
+  background: transparent;
+}
+.historial-list::-webkit-scrollbar-thumb{
+  background: rgba(148,163,184,0.6);
+  border-radius: 999px;
+}
+:root[data-theme="dark"] .historial-list::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.25);
+}
+
+/* =========================================================
+   ESTADÍSTICAS: VOLVER A UN LOOK CONSISTENTE CON CRM
+   (Namespaced para NO romper el resto)
+   ========================================================= */
+
+.stats-dashboard .panel{
+  border-radius: 18px;
+  border: 1px solid rgba(148,163,184,.25);
+  background: rgba(255,255,255,.70);
+  box-shadow: 0 10px 30px rgba(15,23,42,.08);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+:root[data-theme="dark"] .stats-dashboard .panel{
+  background: rgba(2,6,23,.72);
+  border-color: rgba(255,255,255,.10);
+  box-shadow: 0 18px 45px rgba(0,0,0,.30);
+}
+
+.stats-dashboard .panel-header{
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid rgba(148,163,184,.18);
+}
+
+:root[data-theme="dark"] .stats-dashboard .panel-header{
+  border-bottom-color: rgba(255,255,255,.10);
+}
+
+.stats-dashboard .panel-header h2{
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 900;
+}
+.stats-dashboard .panel-header p{
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* KPI cards de stats (si tu HTML usa kpi-grid/kpi-card) */
+.stats-dashboard .kpi-grid{
+  display:grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  margin: 12px 0 18px;
+}
+
+.stats-dashboard .kpi-card{
+  grid-column: span 4;
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid rgba(148,163,184,.25);
+  background: rgba(255,255,255,.65);
+  box-shadow: 0 10px 30px rgba(15,23,42,.06);
+  position: relative;
+  overflow:hidden;
+}
+
+:root[data-theme="dark"] .stats-dashboard .kpi-card{
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.10);
+  box-shadow: 0 18px 45px rgba(0,0,0,.25);
+}
+
+.stats-dashboard .kpi-label{
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.stats-dashboard .kpi-value{
+  font-size: 30px;
+  font-weight: 900;
+  margin-top: 6px;
+}
+
+.stats-dashboard .kpi-meta{
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stats-dashboard .panel-grid-2{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@media (max-width: 980px){
+  .stats-dashboard .panel-grid-2{ grid-template-columns: 1fr; }
+  .stats-dashboard .kpi-card{ grid-column: span 6; }
+}
+@media (max-width: 640px){
+  .stats-dashboard .kpi-card{ grid-column: span 12; }
+}
+
+/* Contenedor de charts */
+.stats-dashboard .chart-box{
+  padding: 12px 14px;
+}
+
+.stats-dashboard .list-box,
+.stats-dashboard .table-box{
+  padding: 12px 14px 14px;
+}
+
+.stats-dashboard .list-box h3{
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   ESTADÍSTICAS: SCROLL en listas y tabla (lo que pediste)
+   ========================================================= */
+
+.stats-dashboard .stats-list{
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.stats-dashboard .stats-list::-webkit-scrollbar{ width: 6px; }
+.stats-dashboard .stats-list::-webkit-scrollbar-track{ background: transparent; }
+.stats-dashboard .stats-list::-webkit-scrollbar-thumb{
+  background: rgba(148,163,184,0.6);
+  border-radius: 999px;
+}
+:root[data-theme="dark"] .stats-dashboard .stats-list::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.25);
+}
+
+/* Tabla con scroll vertical si crece */
+.stats-dashboard .table-modern{
+  width:100%;
+  border-collapse: collapse;
+}
+
+.stats-dashboard .table-box{
+  max-height: 260px;
+  overflow: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(148,163,184,.20);
+}
+
+:root[data-theme="dark"] .stats-dashboard .table-box{
+  border-color: rgba(255,255,255,.10);
+}
+
+.stats-dashboard .table-box::-webkit-scrollbar{ width: 6px; height: 6px; }
+.stats-dashboard .table-box::-webkit-scrollbar-thumb{
+  background: rgba(148,163,184,0.6);
+  border-radius: 999px;
+}
+:root[data-theme="dark"] .stats-dashboard .table-box::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.25);
+}
+
+/* =========================================================
+   Micro-ajustes para que no “se vea cambiado” de golpe
+   ========================================================= */
+
+.stats-dashboard .stats-topbar{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stats-dashboard .stats-subtitle{
+  margin: 6px 0 0;
+  color: var(--text-muted);
+}
+
+.stats-dashboard .stats-topbar-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+/* Mini cards dentro de panel (Agenda/Salud) */
+.stats-dashboard .agenda-cards{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 12px 14px 0;
+}
+
+.stats-dashboard .mini-kpi{
+  border-radius: 16px;
+  border: 1px solid rgba(148,163,184,.20);
+  background: rgba(255,255,255,.60);
+  padding: 12px;
+}
+
+:root[data-theme="dark"] .stats-dashboard .mini-kpi{
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.10);
+}
+
+.stats-dashboard .mini-kpi-label{
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.stats-dashboard .mini-kpi-value{
+  font-size: 22px;
+  font-weight: 900;
+  margin-top: 6px;
+}
+
+@media (max-width: 640px){
+  .stats-dashboard .agenda-cards{ grid-template-columns: 1fr; }
+}
+
+/* =========================================================
+   APP SHELL: Sidebar (desktop/tablet) + Bottom nav (mobile)
+   ========================================================= */
+
+:root{
+  --nav-w: 260px;
+  --nav-h-mobile: 66px;
+}
+
+/* Estructura general */
+.app-shell{
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--nav-w) 1fr;
+  gap: 0;
+}
+
+.app-sidebar{
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 14px 12px;
+  border-right: 1px solid var(--line);
+  background:
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--card) 85%, transparent),
+      color-mix(in oklab, var(--card) 65%, transparent)
+    );
+  backdrop-filter: blur(8px);
+}
+
+.app-sidebar__brand{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--card) 85%, transparent);
+}
+
+.app-sidebar__brand .dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 20%, transparent);
+}
+
+.app-sidebar__brand h2{
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+.app-sidebar__brand p{
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.app-nav{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 4px;
+}
+
+.app-nav a{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid transparent;
+  background: transparent;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.app-nav a:hover{
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 20%, transparent);
+}
+
+.app-nav a[aria-current="page"]{
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 26%, transparent);
+  box-shadow: 0 10px 30px color-mix(in oklab, var(--primary) 14%, transparent);
+}
+
+.app-nav .nav-icon{
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--card) 80%, transparent);
+  font-size: 14px;
+}
+
+.app-nav .nav-text{
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.app-nav .nav-text strong{
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.app-nav .nav-text span{
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Área principal */
+.app-main{
+  min-width: 0;
+}
+
+/* Bottom nav (mobile) */
+.bottom-nav{
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--nav-h-mobile);
+  padding: 10px 10px 12px;
+  z-index: 9999;
+  border-top: 1px solid var(--line);
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.bottom-nav__inner{
+  margin: 0 auto;
+  width: min(980px, 100%);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.bottom-nav a{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--muted);
+  border-radius: 14px;
+  border: 1px solid transparent;
+  padding: 8px 8px;
+  font-size: 10.5px;
+  line-height: 1;
+}
+
+.bottom-nav a .nav-icon{
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--card) 80%, transparent);
+  font-size: 14px;
+}
+
+.bottom-nav a[aria-current="page"]{
+  color: var(--text);
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 26%, transparent);
+}
+
+/* Breakpoint: en mobile -> oculto sidebar + muestro bottom-nav */
+@media (max-width: 860px){
+  .app-shell{
+    grid-template-columns: 1fr;
+  }
+  .app-sidebar{
+    display: none;
+  }
+  .bottom-nav{
+    display: block;
+  }
+
+  /* Evita que el bottom-nav tape contenido */
+  .app-main{
+    padding-bottom: calc(var(--nav-h-mobile) + 14px);
+  }
+}
+
+/* Ajuste opcional: container dentro del shell */
+.app-main .container{
+  width: min(1100px, 100%);
+}

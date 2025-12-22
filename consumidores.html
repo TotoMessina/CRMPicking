@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CRM Consumidores</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">PU</div>
+        <div class="sidebar-brand-text">
+          <div class="sidebar-title">PickingUp</div>
+          <div class="sidebar-subtitle">CRM</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="index.html" class="nav-item"><span class="nav-dot"></span><span>Clientes</span></a>
+        <a href="consumidores.html" class="nav-item active" aria-current="page"><span class="nav-dot"></span><span>Consumidores</span></a>
+        <a href="calendario.html" class="nav-item"><span class="nav-dot"></span><span>Calendario</span></a>
+        <a href="mapa.html" class="nav-item"><span class="nav-dot"></span><span>Mapa</span></a>
+        <a href="estadisticas.html" class="nav-item"><span class="nav-dot"></span><span>Estadísticas</span></a>
+      </nav>
+
+      <div class="sidebar-foot muted">Navegación</div>
+    </aside>
+
+    <div class="app-content">
+      <main class="container">
+
+        <header class="topbar">
+          <div>
+            <h1>Consumidores</h1>
+            <p class="muted">CRM B2C con historial, agenda y responsables.</p>
+          </div>
+
+          <div class="topbar-actions">
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
+          </div>
+        </header>
+
+        <section class="panel">
+            <header class="panel-header">
+                <h2>Importación / Exportación</h2>
+            </header>
+
+            <button class="btn-primario" id="btnConsDescargarModelo">Descargar modelo (Excel)</button>
+
+            <label class="btn-secundario" style="cursor:pointer;">
+            Importar Excel
+            <input id="inputConsExcel" type="file" accept=".xlsx,.xls" style="display:none;" />
+            </label>
+
+            <button class="btn-secundario" id="btnConsExportarExcel">Exportar consumidores (Excel)</button>
+
+            <span class="muted" id="consImportStatus">Sin acciones.</span>
+        </section>
+
+        <!-- Form -->
+        <section id="formClienteBox" class="panel">
+            <header class="panel-header">
+                <h2>Alta / Edición</h2>
+            </header>
+
+            <form id="formConsumidor" class="form-grid">
+            <input type="hidden" id="consumidorId" />
+            
+            <div class="field">
+              <label>Nombre *</label>
+              <input id="nombre" required />
+            </div>
+            
+            <div class="field">
+              <label>Teléfono</label>
+              <input id="telefono" />
+            </div>
+            
+            <div class="field">
+                <label>Email</label>
+              <input id="mail" />
+            </div>
+
+            <div class="field">
+                <label>Localidad</label>
+                <input id="localidad" />
+            </div>
+            
+            <div class="field">
+                <label>Barrio</label>
+              <input id="barrio" />
+            </div>
+
+            <div class="field">
+              <label>Edad</label>
+              <input id="edad" type="number" min="0" />
+            </div>
+            
+            <div class="field">
+              <label>Género</label>
+              <select id="genero">
+                  <option value="">Sin definir</option>
+                  <option value="F">F</option>
+                  <option value="M">M</option>
+                  <option value="X">X</option>
+                </select>
+            </div>
+            
+            <div class="field">
+                <label>Estado</label>
+              <select id="estado">
+                  <option value="Lead">Lead</option>
+                <option value="Contactado">Contactado</option>
+                <option value="Interesado">Interesado</option>
+                <option value="Cliente">Cliente</option>
+                <option value="No interesado">No interesado</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label>Responsable</label>
+              <select id="responsable">
+                  <option value="">Sin responsable</option>
+                  <option value="Toto">Toto</option>
+                  <option value="Ruben">Ruben</option>
+                  <option value="Tincho(B)">Tincho(B)</option>
+                  <option value="Fran">Fran</option>
+                  <option value="Ari">Ari</option>
+                  <option value="Nati">Nati</option>
+                  <option value="Dani">Dani</option>
+                  <option value="Otro">Otro</option>
+                </select>
+            </div>
+            
+            <div class="field">
+              <label>Próximo contacto</label>
+              <input id="fecha_proximo_contacto" type="date" />
+            </div>
+            
+            <div class="field">
+              <label>Hora</label>
+              <input id="hora_proximo_contacto" type="time" />
+            </div>
+            
+            <div class="field field-wide">
+              <label>Notas</label>
+              <textarea id="notas" rows="3"></textarea>
+            </div>
+            
+            <div class="form-actions field-wide">
+                <button type="submit" class="btn-primario">Guardar</button>
+                <button type="button" id="btnReset" class="btn-secundario">Limpiar</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Filtros -->
+        <section class="filters">
+          <input id="filtroNombre" placeholder="Buscar por nombre" />
+          <input id="filtroTelefono" placeholder="Buscar por teléfono" />
+          <input id="filtroLocalidad" placeholder="Buscar por localidad" />
+
+          <select id="filtroEstado">
+            <option value="Todos">Todos los estados</option>
+            <option value="Lead">Lead</option>
+            <option value="Contactado">Contactado</option>
+            <option value="Interesado">Interesado</option>
+            <option value="Cliente">Cliente</option>
+            <option value="No interesado">No interesado</option>
+          </select>
+
+          <select id="filtroResponsable">
+            <option value="">Todos los responsables</option>
+            <option value="Toto">Toto</option>
+            <option value="Ruben">Ruben</option>
+            <option value="Tincho(B)">Tincho(B)</option>
+            <option value="Fran">Fran</option>
+            <option value="Ari">Ari</option>
+            <option value="Nati">Nati</option>
+            <option value="Dani">Dani</option>
+            <option value="Otro">Otro</option>
+          </select>
+
+          <div class="filters-actions">
+            <button id="btnAplicarFiltros">Aplicar</button>
+
+            <div class="pager">
+              <button id="btnPrevPagina" class="btn-secundario">◀</button>
+              <span id="pageInfo" class="muted">1/1</span>
+              <button id="btnNextPagina" class="btn-secundario">▶</button>
+
+              <select id="pageSize" class="btn-secundario">
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+          </div>
+        </section>
+        <!-- Listado -->
+        <section class="panel">
+            <header class="panel-header">
+            <h2>Listado</h2>
+            <span class="muted" id="contador">(0)</span>
+          </header>
+
+          <div id="lista"></div>
+        </section>
+
+      </main>
+
+      <script src="consumidores.js"></script>
+    </div>
+  </div>
+</body>
+</html>

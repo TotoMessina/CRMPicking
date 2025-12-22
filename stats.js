@@ -33,6 +33,9 @@ const charts = {
   estados: null,
   responsables: null,
   promedioResp: null,
+
+  // NUEVO: consumidores
+  estadosConsumidores: null,
 };
 
 // =========================================================
@@ -113,6 +116,42 @@ function destroyChart(key) {
   charts[key] = null;
 }
 
+function safeTrim(v, fallback) {
+  const s = (v ?? "").toString().trim();
+  return s || fallback;
+}
+
+// =========================================================
+// HELPERS SUPABASE (para tolerar columnas opcionales)
+// =========================================================
+async function selectWithOptionalActivo(table, columns) {
+  // Intenta filtrar activo=true; si la columna no existe, reintenta sin filtro
+  const r1 = await supabaseClient.from(table).select(columns).eq("activo", true);
+  if (!r1.error) return r1;
+
+  const msg = (r1.error?.message || "").toLowerCase();
+  if (msg.includes("column") && msg.includes("activo") && msg.includes("does not exist")) {
+    return await supabaseClient.from(table).select(columns);
+  }
+
+  // Error real (tabla no existe u otra cosa)
+  return r1;
+}
+
+async function selectConsumidoresConEstado() {
+  // Probamos estado, si falla probamos estado_consumidor
+  const r1 = await selectWithOptionalActivo("consumidores", "id, estado, ultima_actividad, created_at");
+  if (!r1.error) return { ...r1, estadoField: "estado" };
+
+  const msg = (r1.error?.message || "").toLowerCase();
+  if (msg.includes("column") && msg.includes("estado") && msg.includes("does not exist")) {
+    const r2 = await selectWithOptionalActivo("consumidores", "id, estado_consumidor, ultima_actividad, created_at");
+    if (!r2.error) return { ...r2, estadoField: "estado_consumidor" };
+    return { ...r2, estadoField: "estado_consumidor" };
+  }
+  return { ...r1, estadoField: "estado" };
+}
+
 // =========================================================
 // LOAD STATS
 // =========================================================
@@ -124,6 +163,7 @@ async function cargarEstadisticas() {
   destroyChart("estados");
   destroyChart("responsables");
   destroyChart("promedioResp");
+  destroyChart("estadosConsumidores");
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -175,13 +215,13 @@ async function cargarEstadisticas() {
   let clientesSinHistorial = 0;
 
   for (const c of lista) {
-    const rubroKey = (c.rubro || "Sin definir").toString().trim() || "Sin definir";
+    const rubroKey = safeTrim(c.rubro, "Sin definir");
     rubrosCount.set(rubroKey, (rubrosCount.get(rubroKey) || 0) + 1);
 
     const estadoKey = normalizeEstado(c.estado);
     estadosCount.set(estadoKey, (estadosCount.get(estadoKey) || 0) + 1);
 
-    const respKey = (c.responsable || "Sin responsable").toString().trim() || "Sin responsable";
+    const respKey = safeTrim(c.responsable, "Sin responsable");
     responsablesCount.set(respKey, (responsablesCount.get(respKey) || 0) + 1);
 
     // Agenda
@@ -235,12 +275,12 @@ async function cargarEstadisticas() {
       actividades30++;
       if (f >= hace7) actividades7++;
 
-      const userKey = (a.usuario || "Sin usuario").toString().trim() || "Sin usuario";
+      const userKey = safeTrim(a.usuario, "Sin usuario");
       actividadesPorUsuario.set(userKey, (actividadesPorUsuario.get(userKey) || 0) + 1);
     }
   }
 
-  // KPIs
+  // KPIs (Clientes)
   setText("statTotalClientes", totalClientes);
   setText("statConFecha", conFecha);
   setText("statVencidos", vencidos);
@@ -261,7 +301,7 @@ async function cargarEstadisticas() {
   setText("statClientesDormidos30", clientesDormidos30);
   setText("statSinHistorial", clientesSinHistorial);
 
-  // Render charts + lists
+  // Render charts + lists (Clientes)
   dibujarChartRubrosOrdenado(rubrosCount);
   dibujarChartEstados(estadosCount);
   dibujarChartResponsables(responsablesCount);
@@ -269,6 +309,97 @@ async function cargarEstadisticas() {
 
   // Promedio por responsable: tabla + gráfico
   renderPromedioContactosPorResponsable(lista, actividades || [], hace30);
+
+  // =========================================================
+  // NUEVO: CONSUMIDORES FINALES
+  // =========================================================
+  await cargarEstadisticasConsumidores(hace7, hace30);
+}
+
+// =========================================================
+// NUEVO: ESTADÍSTICAS CONSUMIDORES
+// =========================================================
+async function cargarEstadisticasConsumidores(hace7, hace30) {
+  // KPIs placeholders (por si falla)
+  setText("statTotalConsumidores", "-");
+  setText("statConsAct7", "-");
+  setText("statConsAct30", "-");
+
+  // Estados consumidores
+  const estadosConsCount = new Map();
+
+  // 1) Consumidores
+  const resCons = await selectConsumidoresConEstado();
+  if (resCons.error) {
+    console.warn("Consumidores: no se pudo leer tabla/columnas.", resCons.error);
+    // Render “sin datos” en listas si existen
+    renderListaSimpleVacia("listaEstadosConsumidores", "No hay consumidores (o no existe la tabla).");
+    renderListaSimpleVacia("listaActividadUsuariosConsumidores", "No hay actividades de consumidores (o no existe la tabla).");
+    return;
+  }
+
+  const consumidores = resCons.data || [];
+  const estadoField = resCons.estadoField || "estado";
+
+  setText("statTotalConsumidores", consumidores.length);
+
+  for (const c of consumidores) {
+    const rawEstado = c?.[estadoField];
+    const estadoKey = normalizeEstado(rawEstado);
+    estadosConsCount.set(estadoKey, (estadosConsCount.get(estadoKey) || 0) + 1);
+  }
+
+  // 2) Actividades consumidores (30 días)
+  let consAct7 = 0;
+  let consAct30 = 0;
+  const actConsPorUsuario = new Map();
+
+  const { data: actCons, error: errActCons } = await supabaseClient
+    .from("actividades_consumidores")
+    .select("id, fecha, usuario, consumidor_id")
+    .gte("fecha", hace30.toISOString());
+
+  if (errActCons) {
+    console.warn("actividades_consumidores: no se pudo leer.", errActCons);
+  } else {
+    for (const a of actCons || []) {
+      const f = new Date(a.fecha);
+      if (Number.isNaN(f.getTime())) continue;
+
+      consAct30++;
+      if (f >= hace7) consAct7++;
+
+      const userKey = safeTrim(a.usuario, "Sin usuario");
+      actConsPorUsuario.set(userKey, (actConsPorUsuario.get(userKey) || 0) + 1);
+    }
+  }
+
+  setText("statConsAct7", consAct7);
+  setText("statConsAct30", consAct30);
+
+  // Chart + list estados consumidores
+  dibujarChartEstadosGenerico({
+    canvasId: "chartEstadosConsumidores",
+    listId: "listaEstadosConsumidores",
+    titleKind: "consumidor",
+    countMap: estadosConsCount,
+  });
+
+  // Lista actividad consumidores por usuario
+  renderListaActividadUsuariosEn(
+    "listaActividadUsuariosConsumidores",
+    actConsPorUsuario,
+    "No hay actividades de consumidores registradas en los últimos 30 días."
+  );
+}
+
+function renderListaSimpleVacia(listId, msg) {
+  const ul = document.getElementById(listId);
+  if (!ul) return;
+  ul.innerHTML = "";
+  const li = document.createElement("li");
+  li.textContent = msg;
+  ul.appendChild(li);
 }
 
 // =========================================================
@@ -338,7 +469,7 @@ function dibujarChartRubrosOrdenado(rubrosCount) {
 }
 
 // =========================================================
-// ESTADOS: BAR HORIZONTAL + FLUO en DARK
+// ESTADOS (CLIENTES): BAR HORIZONTAL + FLUO en DARK
 // =========================================================
 function dibujarChartEstados(estadosCount) {
   const canvas = document.getElementById("chartEstados");
@@ -376,6 +507,72 @@ function dibujarChartEstados(estadosCount) {
   });
 
   const ul = document.getElementById("listaEstados");
+  if (ul) {
+    ul.innerHTML = "";
+    const total = data.reduce((acc, n) => acc + n, 0) || 1;
+
+    labels.forEach((label, idx) => {
+      const value = data[idx];
+      const perc = ((value * 100) / total).toFixed(1);
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span class="stats-list-label">${label}</span>
+        <span class="stats-list-value">${value} <span class="chip">${perc}%</span></span>
+      `;
+      ul.appendChild(li);
+    });
+  }
+}
+
+// =========================================================
+// NUEVO: ESTADOS GENÉRICO (Consumidores)
+// - Toma los estados reales del Map, los ordena por cantidad
+// - Gráfico bar horizontal + fluo en dark
+// =========================================================
+function dibujarChartEstadosGenerico({ canvasId, listId, titleKind, countMap }) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  const ordered = Array.from((countMap || new Map()).entries()).sort((a, b) => b[1] - a[1]);
+  const labels = ordered.map(([k]) => k);
+  const data = ordered.map(([, v]) => v);
+
+  // Si no hay estados, mostramos vacío
+  if (labels.length === 0) {
+    renderListaSimpleVacia(listId, `No hay estados de ${titleKind} para mostrar.`);
+    return;
+  }
+
+  const dark = isDarkTheme();
+  const backgroundColor = dark ? getFluoPalette(labels.length) : labels.map((_, i) => ([
+    "#3b82f6", "#22c55e", "#f97316", "#eab308", "#a855f7",
+    "#ec4899", "#6366f1", "#14b8a6", "#f43f5e", "#6b7280",
+  ])[i % 10]);
+
+  charts.estadosConsumidores = new Chart(canvas, {
+    type: "bar",
+    data: { labels, datasets: [{ data, backgroundColor, borderRadius: 10 }] },
+    options: {
+      responsive: true,
+      indexAxis: "y",
+      scales: {
+        x: { beginAtZero: true, ticks: { stepSize: 1 } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.raw || 0;
+              return `${v} ${titleKind}${v === 1 ? "" : "es"}`;
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const ul = document.getElementById(listId);
   if (ul) {
     ul.innerHTML = "";
     const total = data.reduce((acc, n) => acc + n, 0) || 1;
@@ -451,17 +648,26 @@ function dibujarChartResponsables(responsablesCount) {
 }
 
 // =========================================================
-// ACTIVIDAD POR USUARIO (LISTA)
+// ACTIVIDAD POR USUARIO (LISTA) - CLIENTES
 // =========================================================
 function renderListaActividadUsuarios(actividadesPorUsuario) {
-  const ul = document.getElementById("listaActividadUsuarios");
+  renderListaActividadUsuariosEn(
+    "listaActividadUsuarios",
+    actividadesPorUsuario,
+    "No hay actividades registradas en los últimos 30 días."
+  );
+}
+
+// NUEVO: versión parametrizable (clientes/consumidores)
+function renderListaActividadUsuariosEn(listId, actividadesPorUsuario, emptyMsg) {
+  const ul = document.getElementById(listId);
   if (!ul) return;
 
   ul.innerHTML = "";
 
   if (!actividadesPorUsuario || actividadesPorUsuario.size === 0) {
     const li = document.createElement("li");
-    li.textContent = "No hay actividades registradas en los últimos 30 días.";
+    li.textContent = emptyMsg || "Sin datos.";
     ul.appendChild(li);
     return;
   }
@@ -497,7 +703,7 @@ function renderPromedioContactosPorResponsable(clientes, actividades30, desdeFec
   const respAClientes = new Map();
 
   (clientes || []).forEach((c) => {
-    const resp = (c.responsable || "Sin responsable").toString().trim() || "Sin responsable";
+    const resp = safeTrim(c.responsable, "Sin responsable");
     clienteAResp.set(c.id, resp);
     if (!respAClientes.has(resp)) respAClientes.set(resp, new Set());
     respAClientes.get(resp).add(c.id);
