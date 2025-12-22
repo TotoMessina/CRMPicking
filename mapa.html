@@ -182,6 +182,38 @@
   </head>
 
   <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="sidebar-logo">PU</div>
+          <div class="sidebar-brand-text">
+            <div class="sidebar-title">PickingUp</div>
+            <div class="sidebar-subtitle">CRM</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Navegación principal">
+          <a href="index.html" class="nav-item">
+            <span class="nav-dot"></span><span>Clientes</span>
+          </a>
+          <a href="calendario.html" class="nav-item">
+            <span class="nav-dot"></span><span>Calendario</span>
+          </a>
+          <a href="mapa.html" class="nav-item active" aria-current="page">
+            <span class="nav-dot"></span><span>Mapa</span>
+          </a>
+          <a href="estadisticas.html" class="nav-item">
+            <span class="nav-dot"></span><span>Estadísticas</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-foot muted">
+          Navegación
+        </div>
+      </aside>
+
+      <div class="app-content">
+
     <main class="container map-page">
       <div class="map-topbar">
         <div>
@@ -190,10 +222,6 @@
         </div>
 
         <div class="map-actions">
-          <a href="index.html" class="btn-link">CRM</a>
-          <a href="calendario.html" class="btn-link">Calendario</a>
-          <a href="estadisticas.html" class="btn-link">Estadísticas</a>
-
           <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
             Modo noche
           </button>
@@ -318,5 +346,8 @@
     ></script>
 
     <script src="mapa.js"></script>
+
+      </div>
+    </div>
   </body>
 </html>

@@ -9,6 +9,38 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="sidebar-logo">PU</div>
+          <div class="sidebar-brand-text">
+            <div class="sidebar-title">PickingUp</div>
+            <div class="sidebar-subtitle">CRM</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Navegación principal">
+          <a href="index.html" class="nav-item active" aria-current="page">
+            <span class="nav-dot"></span><span>Clientes</span>
+          </a>
+          <a href="calendario.html" class="nav-item">
+            <span class="nav-dot"></span><span>Calendario</span>
+          </a>
+          <a href="mapa.html" class="nav-item">
+            <span class="nav-dot"></span><span>Mapa</span>
+          </a>
+          <a href="estadisticas.html" class="nav-item">
+            <span class="nav-dot"></span><span>Estadísticas</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-foot muted">
+          Navegación
+        </div>
+      </aside>
+
+      <div class="app-content">
+
     <main class="container">
       <h1>CRM de PickingUp!</h1>
       
@@ -157,9 +189,6 @@
         <option value="Dani">Dani</option>
         <option value="Otro">Otro</option>
       </select>
-      <a href="calendario.html" class="btn-link">Calendario</a>
-      <a href="mapa.html" class="btn-link">Mapa</a>
-      <a href="estadisticas.html" class="btn-link">Ver estadísticas</a>
       <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none" />
       
       
@@ -220,10 +249,6 @@
         <option value="Otro">Otro</option>
       </select>
 
-      <div class="filters-actions">
-        <button id="btnAplicar">Aplicar filtros</button>
-        <span class="muted">Los filtros se aplican automáticamente</span>
-      </div>
     </div>
       
       <!-- Agenda / calendario de próximos contactos -->
@@ -286,8 +311,12 @@
     </div>
   </div>
 
-  <!-- XLSX para Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Librería XLSX -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <!-- App -->
   <script src="app.js"></script>
-</body>
+
+      </div>
+    </div>
+  </body>
 </html>

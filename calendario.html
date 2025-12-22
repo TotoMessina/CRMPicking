@@ -16,6 +16,38 @@
 </head>
 
 <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="sidebar-logo">PU</div>
+          <div class="sidebar-brand-text">
+            <div class="sidebar-title">PickingUp</div>
+            <div class="sidebar-subtitle">CRM</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Navegación principal">
+          <a href="index.html" class="nav-item">
+            <span class="nav-dot"></span><span>Clientes</span>
+          </a>
+          <a href="calendario.html" class="nav-item active" aria-current="page">
+            <span class="nav-dot"></span><span>Calendario</span>
+          </a>
+          <a href="mapa.html" class="nav-item">
+            <span class="nav-dot"></span><span>Mapa</span>
+          </a>
+          <a href="estadisticas.html" class="nav-item">
+            <span class="nav-dot"></span><span>Estadísticas</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-foot muted">
+          Navegación
+        </div>
+      </aside>
+
+      <div class="app-content">
+
   <main class="container calendar-page">
     <header class="calendar-topbar">
       <div class="calendar-title">
@@ -24,7 +56,6 @@
       </div>
 
       <div class="calendar-actions">
-        <a href="index.html" class="btn-link">Volver</a>
         <button id="btnNuevoEvento" class="btn-secundario">+ Evento</button>
         <button id="btnToggleTheme" class="btn-secundario">Modo noche</button>
       </div>
@@ -145,5 +176,8 @@
   </main>
 
   <script src="calendario.js"></script>
+
+      </div>
+    </div>
 </body>
 </html>

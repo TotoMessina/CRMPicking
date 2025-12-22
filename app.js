@@ -660,9 +660,7 @@ async function ensureRubrosCache() {
 }
 
 // =========================================================
-// 5) CARGA DE CLIENTES + HISTORIAL
-//     - Paginación en Supabase
-//     - Orden por ultima_actividad (DB)
+// 5) CARGA DE CLIENTES + HISTORIAL (FIX: HTML nuevo / IDs opcionales)
 // =========================================================
 async function cargarClientes() {
   const listaDiv = document.getElementById("lista");
@@ -670,34 +668,34 @@ async function cargarClientes() {
 
   listaDiv.innerHTML = "<p>Cargando...</p>";
 
+  // Helpers defensivos (por si el HTML cambió IDs o faltan filtros)
+  const getVal = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value : "";
+  };
+  const getTrim = (id) => (getVal(id) || "").toString().trim();
+
   const pageSizeSelect = document.getElementById("pageSize");
   if (pageSizeSelect) {
     const val = Number(pageSizeSelect.value);
-    if (!Number.isNaN(val) && (val === 25 || val === 50)) {
-      pageSize = val;
-    }
+    if (!Number.isNaN(val) && (val === 25 || val === 50)) pageSize = val;
   }
 
   await ensureRubrosCache();
 
-  const filtroNombre = document.getElementById("filtroNombre").value.trim();
-  const filtroTelefono = document
-    .getElementById("filtroTelefono")
-    .value.trim();
-  const filtroDireccion = document.getElementById("filtroDireccion")
-    ? document.getElementById("filtroDireccion").value.trim()
-    : "";
-  const filtroRubro = document.getElementById("filtroRubro").value;
-  const filtroEstado = document.getElementById("filtroEstado").value;
-  const filtroResponsable = document.getElementById("filtroResponsable")
-    ? document.getElementById("filtroResponsable").value
-    : "";
+  // FIX: antes hacía document.getElementById("filtroNombre").value y si no existe rompía
+  const filtroNombre = getTrim("filtroNombre");
+  const filtroTelefono = getTrim("filtroTelefono");
+  const filtroDireccion = getTrim("filtroDireccion");
+  const filtroRubro = getVal("filtroRubro"); // puede ser ""
+  const filtroEstado = getVal("filtroEstado"); // puede ser "Todos" o ""
+  const filtroResponsable = getVal("filtroResponsable"); // puede ser ""
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const hoyStr = hoy.toISOString().split("T")[0];
 
-  // --- Cargar clientes filtrados ---
+  // --- Query base ---
   let query = supabaseClient
     .from("clientes")
     .select(
@@ -706,6 +704,7 @@ async function cargarClientes() {
     )
     .eq("activo", true);
 
+  // Agenda filter
   if (agendaMode === "fecha" && agendaDate) {
     query = query.eq("fecha_proximo_contacto", agendaDate);
   } else if (agendaMode === "vencidos") {
@@ -714,31 +713,20 @@ async function cargarClientes() {
     query = query.is("fecha_proximo_contacto", null);
   }
 
-  if (filtroEstado && filtroEstado !== "Todos") {
-    query = query.eq("estado", filtroEstado);
-  }
-  if (filtroNombre) {
-    query = query.ilike("nombre", `%${filtroNombre}%`);
-  }
-  if (filtroTelefono) {
-    query = query.ilike("telefono", `%${filtroTelefono}%`);
-  }
-  if (filtroDireccion) {
-    query = query.ilike("direccion", `%${filtroDireccion}%`);
-  }
-  if (filtroRubro) {
-    query = query.eq("rubro", filtroRubro);
-  }
-  if (filtroResponsable) {
-    query = query.eq("responsable", filtroResponsable);
-  }
+  // Filtros UI
+  if (filtroEstado && filtroEstado !== "Todos") query = query.eq("estado", filtroEstado);
+  if (filtroNombre) query = query.ilike("nombre", `%${filtroNombre}%`);
+  if (filtroTelefono) query = query.ilike("telefono", `%${filtroTelefono}%`);
+  if (filtroDireccion) query = query.ilike("direccion", `%${filtroDireccion}%`);
+  if (filtroRubro) query = query.eq("rubro", filtroRubro);
+  if (filtroResponsable) query = query.eq("responsable", filtroResponsable);
 
-  // Ordenamos por ultima_actividad (desc, nulos al final), luego por id
+  // Orden
   query = query
     .order("ultima_actividad", { ascending: false, nullsFirst: false })
     .order("id", { ascending: true });
 
-  // Paginación real en Supabase
+  // Paginación
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize - 1;
 
@@ -757,8 +745,10 @@ async function cargarClientes() {
     clientesCache = [];
     totalPages = 1;
     updatePaginationUI();
+
     const contador = document.getElementById("contador");
     if (contador) contador.textContent = `(0)`;
+
     listaDiv.innerHTML = "<p>No hay clientes cargados.</p>";
     return;
   }
@@ -769,10 +759,11 @@ async function cargarClientes() {
 
   clientesCache = clientes;
   updatePaginationUI();
+
   const contador = document.getElementById("contador");
   if (contador) contador.textContent = `(${totalClientes})`;
 
-  // --- Actividades sólo de los clientes de la página ---
+  // Actividades SOLO para clientes de la página
   const idsPage = clientes.map((c) => c.id);
   let actividadesPorCliente = {};
 
@@ -783,20 +774,16 @@ async function cargarClientes() {
       .in("cliente_id", idsPage)
       .order("fecha", { ascending: false });
 
-    if (errorAct) {
-      console.error("Error cargando actividades:", errorAct);
-    }
+    if (errorAct) console.error("Error cargando actividades:", errorAct);
 
     actividadesPorCliente = {};
     (actividades || []).forEach((a) => {
-      if (!actividadesPorCliente[a.cliente_id]) {
-        actividadesPorCliente[a.cliente_id] = [];
-      }
+      if (!actividadesPorCliente[a.cliente_id]) actividadesPorCliente[a.cliente_id] = [];
       actividadesPorCliente[a.cliente_id].push(a);
     });
   }
 
-  // --- Render tarjetas ---
+  // Render tarjetas
   listaDiv.innerHTML = "";
   clientes.forEach((cliente) => {
     const card = document.createElement("div");
@@ -804,23 +791,21 @@ async function cargarClientes() {
     card.dataset.id = cliente.id;
 
     const actividadesCliente = actividadesPorCliente[cliente.id] || [];
-    const claseEstado = `tag-estado-${cliente.estado.replace(/\s+/g, "")}`;
+    const claseEstado = `tag-estado-${String(cliente.estado || "").replace(/\s+/g, "")}`;
     const responsable = cliente.responsable || "";
     const direccion = cliente.direccion || "";
 
     const textoFecha = cliente.fecha_proximo_contacto
-      ? `📅 Próximo contacto: ${formatearFechaSoloDia(
-          cliente.fecha_proximo_contacto
-        )}`
+      ? `📅 Próximo contacto: ${formatearFechaSoloDia(cliente.fecha_proximo_contacto)}`
       : "";
     const textoHora = cliente.hora_proximo_contacto
-      ? ` a las ${cliente.hora_proximo_contacto.slice(0, 5)}`
+      ? ` a las ${String(cliente.hora_proximo_contacto).slice(0, 5)}`
       : "";
 
     // Teléfono clickeable
     let phoneHTML = "";
     if (cliente.telefono) {
-      const telDigits = cliente.telefono.replace(/\D/g, "");
+      const telDigits = String(cliente.telefono).replace(/\D/g, "");
       const waNumber = telDigits.startsWith("54") ? telDigits : "54" + telDigits;
 
       phoneHTML = `
@@ -837,10 +822,7 @@ async function cargarClientes() {
       `;
     }
 
-    // Dirección
-    const direccionHTML = direccion
-      ? `<div class="card-meta-line">📍 ${direccion}</div>`
-      : "";
+    const direccionHTML = direccion ? `<div class="card-meta-line">📍 ${direccion}</div>` : "";
 
     card.innerHTML = `
       <div class="card-top">
@@ -851,21 +833,15 @@ async function cargarClientes() {
             ${textoFecha || textoHora ? " · " : ""}
             ${textoFecha}${textoHora}
           </div>
-          
+
           ${direccionHTML}
+
           <div class="card-tags">
             <span class="tag ${claseEstado}">Estado: ${cliente.estado}</span>
-            ${
-              cliente.rubro
-                ? `<span class="tag">Rubro: ${cliente.rubro}</span>`
-                : ""
-            }
-            ${
-              responsable
-                ? `<span class="tag tag-responsable">Resp: ${responsable}</span>`
-                : ""
-            }
+            ${cliente.rubro ? `<span class="tag">Rubro: ${cliente.rubro}</span>` : ""}
+            ${responsable ? `<span class="tag tag-responsable">Resp: ${responsable}</span>` : ""}
           </div>
+
           ${
             cliente.notas
               ? `<div class="card-notas"><strong>Notas:</strong> ${cliente.notas}</div>`
@@ -874,28 +850,16 @@ async function cargarClientes() {
 
           <div class="card-quick-actions">
             <span class="quick-label">Próximo contacto rápido:</span>
-            <button class="btn-quick" data-action="prox-hoy" data-id="${
-              cliente.id
-            }">Hoy</button>
-            <button class="btn-quick" data-action="prox-maniana" data-id="${
-              cliente.id
-            }">Mañana</button>
-            <button class="btn-quick" data-action="prox-sinfecha" data-id="${
-              cliente.id
-            }">Sin fecha</button>
+            <button class="btn-quick" data-action="prox-hoy" data-id="${cliente.id}">Hoy</button>
+            <button class="btn-quick" data-action="prox-maniana" data-id="${cliente.id}">Mañana</button>
+            <button class="btn-quick" data-action="prox-sinfecha" data-id="${cliente.id}">Sin fecha</button>
           </div>
-
         </div>
+
         <div class="card-buttons">
-          <button class="btn-actividad" data-action="actividad" data-id="${
-            cliente.id
-          }">+ Actividad</button>
-          <button class="btn-edit" data-action="editar" data-id="${
-            cliente.id
-          }">Editar</button>
-          <button class="btn-delete" data-action="eliminar" data-id="${
-            cliente.id
-          }">Eliminar</button>
+          <button class="btn-actividad" data-action="actividad" data-id="${cliente.id}">+ Actividad</button>
+          <button class="btn-edit" data-action="editar" data-id="${cliente.id}">Editar</button>
+          <button class="btn-delete" data-action="eliminar" data-id="${cliente.id}">Eliminar</button>
         </div>
       </div>
 
