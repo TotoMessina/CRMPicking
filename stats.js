@@ -1,5 +1,20 @@
+/* =========================================================
+   stats.js (PEGAR TAL CUAL) — TODO DEPENDE DEL SELECT DE LAPSO
+   Select único: #statsRange (se inserta en la topbar actions)
+
+   Tablas/columnas (tuyas):
+   - clientes(created_at, activo, rubro, estado, responsable, fecha_proximo_contacto, ultima_actividad)
+   - consumidores(created_at, activo, estado, responsable, ultima_actividad)
+   - actividades(cliente_id, fecha, usuario)
+   - actividades_consumidores(consumidor_id, fecha, usuario)
+
+   Requiere:
+   - Supabase JS (window.supabase)
+   - Chart.js (window.Chart)
+========================================================= */
+
 // =========================================================
-// CONEXIÓN SUPABASE
+// CONEXIÓN SUPABASE (COMO PEDISTE)
 // =========================================================
 const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
 const SUPABASE_KEY =
@@ -7,796 +22,502 @@ const SUPABASE_KEY =
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Tema consistente con el CRM
-const THEME_KEY = "crm_theme";
-
-// Normalización suave para evitar “3 - Primer ingreso” vs “3 - Primer Ingreso”
-function normalizeEstado(v) {
-  if (!v) return "Sin estado";
-  const s = String(v).trim();
-  if (s.toLowerCase() === "3 - primer ingreso") return "3 - Primer Ingreso";
-  return s;
-}
-
-// Config de estados para el gráfico (colores se ajustan en modo noche)
-const ESTADOS_CONFIG = [
-  { value: "1 - Cliente relevado", label: "1 - Cliente relevado", color: "#ef4444" },
-  { value: "2 - Local Visitado No Activo", label: "2 - Local Visitado No Activo", color: "#f97316" },
-  { value: "3 - Primer Ingreso", label: "3 - Primer Ingreso", color: "#eab308" },
-  { value: "4 - Local Creado", label: "4 - Local Creado", color: "#3b82f6" },
-  { value: "5 - Local Visitado Activo", label: "5 - Local Visitado Activo", color: "#0ea5e9" },
-  { value: "6 - Local No Interesado", label: "6 - Local No Interesado", color: "#6b7280" },
-];
-
-const charts = {
-  rubros: null,
-  estados: null,
-  responsables: null,
-  promedioResp: null,
-
-  // NUEVO: consumidores
-  estadosConsumidores: null,
+// =========================================================
+// CONFIG
+// =========================================================
+const CFG = {
+  tables: {
+    clientes: "clientes",
+    consumidores: "consumidores",
+    actividades: "actividades",
+    actividadesConsumidores: "actividades_consumidores"
+  },
+  pageSize: 1000,
+  ranges: [
+    { value: "7d", label: "Lapso: 7 días", days: 7 },
+    { value: "30d", label: "Lapso: 30 días", days: 30 },
+    { value: "60d", label: "Lapso: 60 días", days: 60 },
+    { value: "90d", label: "Lapso: 90 días", days: 90 },
+    { value: "6m", label: "Lapso: 6 meses", days: 182 },
+    { value: "1y", label: "Lapso: 1 año", days: 365 }
+  ],
+  chartMinHeight: 320
 };
 
 // =========================================================
-// THEME
+// STATE (Charts)
 // =========================================================
-function applyTheme(theme) {
-  const root = document.documentElement;
-  root.setAttribute("data-theme", theme);
-  localStorage.setItem(THEME_KEY, theme);
+const CHARTS = {
+  rubros: null,
+  estados: null,
+  responsables: null,
+  promedio: null,
+  altas: null,
+  estadosConsumidores: null
+};
 
-  const btn = document.getElementById("btnToggleTheme");
-  if (btn) btn.textContent = theme === "dark" ? "Modo día" : "Modo noche";
+// =========================================================
+// HELPERS
+// =========================================================
+function $(id) { return document.getElementById(id); }
+function setText(id, val) { const el = $(id); if (el) el.textContent = val; }
+function fmtInt(n) { return (typeof n === "number" && !Number.isNaN(n)) ? n.toLocaleString("es-AR") : "0"; }
+function pad2(n) { return String(n).padStart(2, "0"); }
+function startOfLocalDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function addDays(d, days) { const x = new Date(d); x.setDate(x.getDate() + days); return x; }
+function toLocalDayKey(dateObj) { return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth()+1)}-${pad2(dateObj.getDate())}`; }
+function parseDate(value) { if (!value) return null; const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d; }
+function isoFromLocalStart(dateObj) { return startOfLocalDay(dateObj).toISOString(); }
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
 }
 
 // =========================================================
-// CHART.JS THEME (SOLO COLORES / CONTRASTE)
+// SUPABASE (paginado + count)
 // =========================================================
-function getCssVar(name, fallback) {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-}
-function isDarkTheme() {
-  return (document.documentElement.getAttribute("data-theme") || "light") === "dark";
-}
-
-// Paleta fluo (solo para modo noche)
-function getFluoPalette(n) {
-  const base = [
-    "#00E5FF", // cyan
-    "#A3FF12", // lime
-    "#FF2BD6", // magenta
-    "#7C3CFF", // violet
-    "#3B82F6", // blue
-    "#FF9F1C", // orange
-    "#22FFB8", // mint
-    "#FF3D3D", // red
-    "#FFD400", // yellow
-    "#00A3FF", // sky
-  ];
+async function fetchAll(table, selectCols, applyFiltersFn) {
   const out = [];
-  for (let i = 0; i < n; i++) out.push(base[i % base.length]);
+  let from = 0;
+  while (true) {
+    let q = supabaseClient.from(table).select(selectCols).range(from, from + CFG.pageSize - 1);
+    if (typeof applyFiltersFn === "function") q = applyFiltersFn(q);
+
+    // eslint-disable-next-line no-await-in-loop
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const rows = Array.isArray(data) ? data : [];
+    out.push(...rows);
+
+    if (rows.length < CFG.pageSize) break;
+    from += CFG.pageSize;
+  }
   return out;
 }
 
-function applyChartTheme() {
-  const dark = isDarkTheme();
-
-  const text = getCssVar("--text", dark ? "#f3f4f6" : "#0b1220");
-  const border = dark ? "rgba(255,255,255,0.10)" : "rgba(2,6,23,0.10)";
-  const grid = dark ? "rgba(0,229,255,0.10)" : "rgba(2,6,23,0.10)";
-
-  Chart.defaults.color = text;
-  Chart.defaults.borderColor = border;
-  Chart.defaults.scale.grid.color = grid;
-  Chart.defaults.scale.ticks.color = text;
-  Chart.defaults.plugins.legend.labels.color = text;
-
-  Chart.defaults.plugins.tooltip.backgroundColor = dark ? "rgba(12,12,12,0.95)" : "rgba(255,255,255,0.98)";
-  Chart.defaults.plugins.tooltip.borderColor = dark ? "rgba(0,229,255,0.45)" : "rgba(2,6,23,0.18)";
-  Chart.defaults.plugins.tooltip.borderWidth = 1;
-  Chart.defaults.plugins.tooltip.titleColor = text;
-  Chart.defaults.plugins.tooltip.bodyColor = text;
-
-  Chart.defaults.animation.duration = 550;
+async function countExact(table, applyFiltersFn) {
+  let q = supabaseClient.from(table).select("*", { count: "exact", head: true });
+  if (typeof applyFiltersFn === "function") q = applyFiltersFn(q);
+  const { count, error } = await q;
+  if (error) throw error;
+  return typeof count === "number" ? count : 0;
 }
 
 // =========================================================
-// HELPERS UI
+// GROUP / SERIES
 // =========================================================
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = String(value);
+function groupCount(rows, field, emptyLabel = "Sin dato") {
+  const m = new Map();
+  for (const r of rows) {
+    const raw = r?.[field];
+    const v = raw != null && String(raw).trim() !== "" ? String(raw).trim() : emptyLabel;
+    m.set(v, (m.get(v) || 0) + 1);
+  }
+  return [...m.entries()].sort((a,b) => b[1]-a[1]);
 }
 
-function destroyChart(key) {
-  const ch = charts[key];
-  if (ch && typeof ch.destroy === "function") ch.destroy();
-  charts[key] = null;
+function buildDayBuckets(daysBack) {
+  const today = startOfLocalDay(new Date());
+  const start = addDays(today, -(daysBack - 1));
+  const buckets = [];
+  for (let i = 0; i < daysBack; i++) {
+    const day = addDays(start, i);
+    buckets.push({ key: toLocalDayKey(day), label: `${pad2(day.getDate())}/${pad2(day.getMonth()+1)}` });
+  }
+  return buckets;
 }
 
-function safeTrim(v, fallback) {
-  const s = (v ?? "").toString().trim();
-  return s || fallback;
-}
+function seriesByDay(rows, dateField, buckets) {
+  const map = new Map();
+  for (const b of buckets) map.set(b.key, 0);
 
-// =========================================================
-// HELPERS SUPABASE (para tolerar columnas opcionales)
-// =========================================================
-async function selectWithOptionalActivo(table, columns) {
-  // Intenta filtrar activo=true; si la columna no existe, reintenta sin filtro
-  const r1 = await supabaseClient.from(table).select(columns).eq("activo", true);
-  if (!r1.error) return r1;
-
-  const msg = (r1.error?.message || "").toLowerCase();
-  if (msg.includes("column") && msg.includes("activo") && msg.includes("does not exist")) {
-    return await supabaseClient.from(table).select(columns);
+  for (const r of rows) {
+    const d = parseDate(r?.[dateField]);
+    if (!d) continue;
+    const key = toLocalDayKey(d);
+    if (map.has(key)) map.set(key, (map.get(key) || 0) + 1);
   }
 
-  // Error real (tabla no existe u otra cosa)
-  return r1;
-}
-
-async function selectConsumidoresConEstado() {
-  // Probamos estado, si falla probamos estado_consumidor
-  const r1 = await selectWithOptionalActivo("consumidores", "id, estado, ultima_actividad, created_at");
-  if (!r1.error) return { ...r1, estadoField: "estado" };
-
-  const msg = (r1.error?.message || "").toLowerCase();
-  if (msg.includes("column") && msg.includes("estado") && msg.includes("does not exist")) {
-    const r2 = await selectWithOptionalActivo("consumidores", "id, estado_consumidor, ultima_actividad, created_at");
-    if (!r2.error) return { ...r2, estadoField: "estado_consumidor" };
-    return { ...r2, estadoField: "estado_consumidor" };
-  }
-  return { ...r1, estadoField: "estado" };
+  return { labels: buckets.map(b => b.label), data: buckets.map(b => map.get(b.key) || 0) };
 }
 
 // =========================================================
-// LOAD STATS
+// UI: select único
 // =========================================================
-async function cargarEstadisticas() {
-  applyChartTheme();
+function ensureGlobalRangeSelect() {
+  const actions = document.querySelector(".stats-topbar-actions");
+  if (!actions) return null;
 
-  // Reset charts to avoid overlay
-  destroyChart("rubros");
-  destroyChart("estados");
-  destroyChart("responsables");
-  destroyChart("promedioResp");
-  destroyChart("estadosConsumidores");
+  let sel = $("statsRange");
+  if (sel) return sel;
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const hoyStr = hoy.toISOString().split("T")[0];
+  sel = document.createElement("select");
+  sel.id = "statsRange";
+  sel.className = "btn-secundario";
+  sel.style.minWidth = "220px";
+  sel.style.padding = "10px 12px";
+  sel.style.borderRadius = "12px";
+  sel.style.border = "1px solid rgba(0,0,0,0.18)";
+  sel.style.background = "transparent";
+  sel.style.cursor = "pointer";
 
-  const hace7 = new Date(hoy);
-  hace7.setDate(hoy.getDate() - 7);
-
-  const hace30 = new Date(hoy);
-  hace30.setDate(hoy.getDate() - 30);
-
-  const dentro7 = new Date(hoy);
-  dentro7.setDate(hoy.getDate() + 7);
-  const dentro7Str = dentro7.toISOString().split("T")[0];
-
-  // ==========================
-  // Clientes activos
-  // ==========================
-  const { data: clientes, error: errClientes } = await supabaseClient
-    .from("clientes")
-    .select("id, rubro, estado, fecha_proximo_contacto, responsable, ultima_actividad")
-    .eq("activo", true);
-
-  if (errClientes) {
-    console.error(errClientes);
-    alert("No se pudieron cargar las estadísticas (clientes).");
-    return;
+  for (const r of CFG.ranges) {
+    const opt = document.createElement("option");
+    opt.value = r.value;
+    opt.textContent = r.label;
+    sel.appendChild(opt);
   }
+  sel.value = "30d";
 
-  const lista = clientes || [];
-  const totalClientes = lista.length;
+  const btn = $("btnRefrescarStats");
+  if (btn) actions.insertBefore(sel, btn);
+  else actions.prepend(sel);
 
-  // Conteos
-  const rubrosCount = new Map();        // rubro -> count
-  const estadosCount = new Map();       // estado -> count
-  const responsablesCount = new Map();  // responsable -> count
+  return sel;
+}
 
-  // Agenda
-  let conFecha = 0;
-  let vencidos = 0;
-  let sinFecha = 0;
-  let proxHoy = 0;
-  let prox7 = 0;
-  let proxFuturo = 0;
-
-  // Salud cartera
-  let clientesActivos30 = 0;
-  let clientesDormidos30 = 0;
-  let clientesSinHistorial = 0;
-
-  for (const c of lista) {
-    const rubroKey = safeTrim(c.rubro, "Sin definir");
-    rubrosCount.set(rubroKey, (rubrosCount.get(rubroKey) || 0) + 1);
-
-    const estadoKey = normalizeEstado(c.estado);
-    estadosCount.set(estadoKey, (estadosCount.get(estadoKey) || 0) + 1);
-
-    const respKey = safeTrim(c.responsable, "Sin responsable");
-    responsablesCount.set(respKey, (responsablesCount.get(respKey) || 0) + 1);
-
-    // Agenda
-    const fProx = c.fecha_proximo_contacto;
-    if (fProx) {
-      conFecha++;
-      if (fProx < hoyStr) {
-        vencidos++;
-      } else if (fProx === hoyStr) {
-        proxHoy++;
-      } else if (fProx <= dentro7Str) {
-        prox7++;
-      } else {
-        proxFuturo++;
-      }
-    } else {
-      sinFecha++;
-    }
-
-    // Salud cartera
-    if (!c.ultima_actividad) {
-      clientesSinHistorial++;
-      clientesDormidos30++;
-    } else {
-      const ua = new Date(c.ultima_actividad);
-      if (!Number.isNaN(ua.getTime()) && ua >= hace30) clientesActivos30++;
-      else clientesDormidos30++;
-    }
-  }
-
-  // ==========================
-  // Actividades 30 días (para volumen + promedio)
-  // ==========================
-  let actividades7 = 0;
-  let actividades30 = 0;
-  const actividadesPorUsuario = new Map();
-
-  const { data: actividades, error: errAct } = await supabaseClient
-    .from("actividades")
-    .select("id, fecha, usuario, cliente_id")
-    .gte("fecha", hace30.toISOString());
-
-  if (errAct) {
-    console.error(errAct);
-    // seguimos, pero actividades quedan en 0
-  } else {
-    for (const a of actividades || []) {
-      const f = new Date(a.fecha);
-      if (Number.isNaN(f.getTime())) continue;
-
-      actividades30++;
-      if (f >= hace7) actividades7++;
-
-      const userKey = safeTrim(a.usuario, "Sin usuario");
-      actividadesPorUsuario.set(userKey, (actividadesPorUsuario.get(userKey) || 0) + 1);
-    }
-  }
-
-  // KPIs (Clientes)
-  setText("statTotalClientes", totalClientes);
-  setText("statConFecha", conFecha);
-  setText("statVencidos", vencidos);
-  setText("statSinFecha", sinFecha);
-
-  setText("statConFechaText", conFecha);
-  setText("statVencidosText", vencidos);
-  setText("statSinFechaText", sinFecha);
-
-  setText("statProxHoy", proxHoy);
-  setText("statProx7", prox7);
-  setText("statProxFuturo", proxFuturo);
-
-  setText("statAct7", actividades7);
-  setText("statAct30", actividades30);
-
-  setText("statClientesActivos30", clientesActivos30);
-  setText("statClientesDormidos30", clientesDormidos30);
-  setText("statSinHistorial", clientesSinHistorial);
-
-  // Render charts + lists (Clientes)
-  dibujarChartRubrosOrdenado(rubrosCount);
-  dibujarChartEstados(estadosCount);
-  dibujarChartResponsables(responsablesCount);
-  renderListaActividadUsuarios(actividadesPorUsuario);
-
-  // Promedio por responsable: tabla + gráfico
-  renderPromedioContactosPorResponsable(lista, actividades || [], hace30);
-
-  // =========================================================
-  // NUEVO: CONSUMIDORES FINALES
-  // =========================================================
-  await cargarEstadisticasConsumidores(hace7, hace30);
+function getRangeDays() {
+  const sel = $("statsRange");
+  const v = sel?.value || "30d";
+  const found = CFG.ranges.find(r => r.value === v);
+  return found?.days || 30;
 }
 
 // =========================================================
-// NUEVO: ESTADÍSTICAS CONSUMIDORES
+// Render helpers (listas / tabla)
 // =========================================================
-async function cargarEstadisticasConsumidores(hace7, hace30) {
-  // KPIs placeholders (por si falla)
-  setText("statTotalConsumidores", "-");
-  setText("statConsAct7", "-");
-  setText("statConsAct30", "-");
-
-  // Estados consumidores
-  const estadosConsCount = new Map();
-
-  // 1) Consumidores
-  const resCons = await selectConsumidoresConEstado();
-  if (resCons.error) {
-    console.warn("Consumidores: no se pudo leer tabla/columnas.", resCons.error);
-    // Render “sin datos” en listas si existen
-    renderListaSimpleVacia("listaEstadosConsumidores", "No hay consumidores (o no existe la tabla).");
-    renderListaSimpleVacia("listaActividadUsuariosConsumidores", "No hay actividades de consumidores (o no existe la tabla).");
-    return;
-  }
-
-  const consumidores = resCons.data || [];
-  const estadoField = resCons.estadoField || "estado";
-
-  setText("statTotalConsumidores", consumidores.length);
-
-  for (const c of consumidores) {
-    const rawEstado = c?.[estadoField];
-    const estadoKey = normalizeEstado(rawEstado);
-    estadosConsCount.set(estadoKey, (estadosConsCount.get(estadoKey) || 0) + 1);
-  }
-
-  // 2) Actividades consumidores (30 días)
-  let consAct7 = 0;
-  let consAct30 = 0;
-  const actConsPorUsuario = new Map();
-
-  const { data: actCons, error: errActCons } = await supabaseClient
-    .from("actividades_consumidores")
-    .select("id, fecha, usuario, consumidor_id")
-    .gte("fecha", hace30.toISOString());
-
-  if (errActCons) {
-    console.warn("actividades_consumidores: no se pudo leer.", errActCons);
-  } else {
-    for (const a of actCons || []) {
-      const f = new Date(a.fecha);
-      if (Number.isNaN(f.getTime())) continue;
-
-      consAct30++;
-      if (f >= hace7) consAct7++;
-
-      const userKey = safeTrim(a.usuario, "Sin usuario");
-      actConsPorUsuario.set(userKey, (actConsPorUsuario.get(userKey) || 0) + 1);
-    }
-  }
-
-  setText("statConsAct7", consAct7);
-  setText("statConsAct30", consAct30);
-
-  // Chart + list estados consumidores
-  dibujarChartEstadosGenerico({
-    canvasId: "chartEstadosConsumidores",
-    listId: "listaEstadosConsumidores",
-    titleKind: "consumidor",
-    countMap: estadosConsCount,
-  });
-
-  // Lista actividad consumidores por usuario
-  renderListaActividadUsuariosEn(
-    "listaActividadUsuariosConsumidores",
-    actConsPorUsuario,
-    "No hay actividades de consumidores registradas en los últimos 30 días."
-  );
-}
-
-function renderListaSimpleVacia(listId, msg) {
-  const ul = document.getElementById(listId);
+function renderUlList(ulId, items) {
+  const ul = $(ulId);
   if (!ul) return;
   ul.innerHTML = "";
-  const li = document.createElement("li");
-  li.textContent = msg;
-  ul.appendChild(li);
-}
-
-// =========================================================
-// RUBROS: PIE ORDENADO (mayor -> menor) + FLUO en DARK
-// =========================================================
-function dibujarChartRubrosOrdenado(rubrosCount) {
-  const canvas = document.getElementById("chartRubros");
-  if (!canvas) return;
-
-  const ordered = Array.from(rubrosCount.entries()).sort((a, b) => b[1] - a[1]);
-  const labels = ordered.map(([k]) => k);
-  const data = ordered.map(([, v]) => v);
-
-  const dark = isDarkTheme();
-  const backgroundColor = dark
-    ? getFluoPalette(labels.length)
-    : labels.map((_, i) => ([
-        "#3b82f6", "#22c55e", "#f97316", "#eab308", "#a855f7",
-        "#ec4899", "#6366f1", "#14b8a6", "#f43f5e", "#6b7280",
-      ])[i % 10]);
-
-  charts.rubros = new Chart(canvas, {
-    type: "pie",
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor,
-        borderColor: dark ? "#0c0c0c" : "rgba(255,255,255,0.8)",
-        borderWidth: dark ? 2 : 1,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: "bottom" },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const value = ctx.raw || 0;
-              const total = data.reduce((acc, n) => acc + n, 0) || 1;
-              const perc = ((value * 100) / total).toFixed(1);
-              return `${ctx.label}: ${value} (${perc}%)`;
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const listaRubros = document.getElementById("listaRubros");
-  if (listaRubros) {
-    listaRubros.innerHTML = "";
-    const total = data.reduce((acc, n) => acc + n, 0) || 1;
-
-    labels.forEach((label, idx) => {
-      const value = data[idx];
-      const perc = ((value * 100) / total).toFixed(1);
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <span class="stats-list-label">${label}</span>
-        <span class="stats-list-value">${value} <span class="chip">${perc}%</span></span>
-      `;
-      listaRubros.appendChild(li);
-    });
-  }
-}
-
-// =========================================================
-// ESTADOS (CLIENTES): BAR HORIZONTAL + FLUO en DARK
-// =========================================================
-function dibujarChartEstados(estadosCount) {
-  const canvas = document.getElementById("chartEstados");
-  if (!canvas) return;
-
-  const labels = ESTADOS_CONFIG.map((e) => e.label);
-  const data = ESTADOS_CONFIG.map((e) => estadosCount.get(e.value) || 0);
-
-  const dark = isDarkTheme();
-  const backgroundColor = dark
-    ? getFluoPalette(labels.length)
-    : ESTADOS_CONFIG.map((e) => e.color);
-
-  charts.estados = new Chart(canvas, {
-    type: "bar",
-    data: { labels, datasets: [{ data, backgroundColor, borderRadius: 10 }] },
-    options: {
-      responsive: true,
-      indexAxis: "y",
-      scales: {
-        x: { beginAtZero: true, ticks: { stepSize: 1 } },
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const v = ctx.raw || 0;
-              return `${v} cliente${v === 1 ? "" : "s"}`;
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const ul = document.getElementById("listaEstados");
-  if (ul) {
-    ul.innerHTML = "";
-    const total = data.reduce((acc, n) => acc + n, 0) || 1;
-
-    labels.forEach((label, idx) => {
-      const value = data[idx];
-      const perc = ((value * 100) / total).toFixed(1);
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <span class="stats-list-label">${label}</span>
-        <span class="stats-list-value">${value} <span class="chip">${perc}%</span></span>
-      `;
-      ul.appendChild(li);
-    });
-  }
-}
-
-// =========================================================
-// NUEVO: ESTADOS GENÉRICO (Consumidores)
-// - Toma los estados reales del Map, los ordena por cantidad
-// - Gráfico bar horizontal + fluo en dark
-// =========================================================
-function dibujarChartEstadosGenerico({ canvasId, listId, titleKind, countMap }) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-
-  const ordered = Array.from((countMap || new Map()).entries()).sort((a, b) => b[1] - a[1]);
-  const labels = ordered.map(([k]) => k);
-  const data = ordered.map(([, v]) => v);
-
-  // Si no hay estados, mostramos vacío
-  if (labels.length === 0) {
-    renderListaSimpleVacia(listId, `No hay estados de ${titleKind} para mostrar.`);
-    return;
-  }
-
-  const dark = isDarkTheme();
-  const backgroundColor = dark ? getFluoPalette(labels.length) : labels.map((_, i) => ([
-    "#3b82f6", "#22c55e", "#f97316", "#eab308", "#a855f7",
-    "#ec4899", "#6366f1", "#14b8a6", "#f43f5e", "#6b7280",
-  ])[i % 10]);
-
-  charts.estadosConsumidores = new Chart(canvas, {
-    type: "bar",
-    data: { labels, datasets: [{ data, backgroundColor, borderRadius: 10 }] },
-    options: {
-      responsive: true,
-      indexAxis: "y",
-      scales: {
-        x: { beginAtZero: true, ticks: { stepSize: 1 } },
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const v = ctx.raw || 0;
-              return `${v} ${titleKind}${v === 1 ? "" : "es"}`;
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const ul = document.getElementById(listId);
-  if (ul) {
-    ul.innerHTML = "";
-    const total = data.reduce((acc, n) => acc + n, 0) || 1;
-
-    labels.forEach((label, idx) => {
-      const value = data[idx];
-      const perc = ((value * 100) / total).toFixed(1);
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <span class="stats-list-label">${label}</span>
-        <span class="stats-list-value">${value} <span class="chip">${perc}%</span></span>
-      `;
-      ul.appendChild(li);
-    });
-  }
-}
-
-// =========================================================
-// RESPONSABLES: BAR VERTICAL + FLUO en DARK
-// =========================================================
-function dibujarChartResponsables(responsablesCount) {
-  const canvas = document.getElementById("chartResponsables");
-  if (!canvas) return;
-
-  const ordered = Array.from(responsablesCount.entries()).sort((a, b) => b[1] - a[1]);
-  const labels = ordered.map(([k]) => k);
-  const data = ordered.map(([, v]) => v);
-
-  const dark = isDarkTheme();
-  const backgroundColor = dark
-    ? getFluoPalette(labels.length)
-    : labels.map((_, i) => ([
-        "#6366f1", "#22c55e", "#f97316", "#eab308", "#a855f7",
-        "#ec4899", "#0ea5e9", "#f43f5e", "#6b7280",
-      ])[i % 9]);
-
-  charts.responsables = new Chart(canvas, {
-    type: "bar",
-    data: { labels, datasets: [{ data, backgroundColor, borderRadius: 10 }] },
-    options: {
-      responsive: true,
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const v = ctx.raw || 0;
-              return `${v} cliente${v === 1 ? "" : "s"}`;
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const ul = document.getElementById("listaResponsables");
-  if (ul) {
-    ul.innerHTML = "";
-    const total = data.reduce((acc, n) => acc + n, 0) || 1;
-
-    labels.forEach((label, idx) => {
-      const value = data[idx];
-      const perc = ((value * 100) / total).toFixed(1);
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <span class="stats-list-label">${label}</span>
-        <span class="stats-list-value">${value} <span class="chip">${perc}%</span></span>
-      `;
-      ul.appendChild(li);
-    });
-  }
-}
-
-// =========================================================
-// ACTIVIDAD POR USUARIO (LISTA) - CLIENTES
-// =========================================================
-function renderListaActividadUsuarios(actividadesPorUsuario) {
-  renderListaActividadUsuariosEn(
-    "listaActividadUsuarios",
-    actividadesPorUsuario,
-    "No hay actividades registradas en los últimos 30 días."
-  );
-}
-
-// NUEVO: versión parametrizable (clientes/consumidores)
-function renderListaActividadUsuariosEn(listId, actividadesPorUsuario, emptyMsg) {
-  const ul = document.getElementById(listId);
-  if (!ul) return;
-
-  ul.innerHTML = "";
-
-  if (!actividadesPorUsuario || actividadesPorUsuario.size === 0) {
+  for (const it of items) {
     const li = document.createElement("li");
-    li.textContent = emptyMsg || "Sin datos.";
+    li.innerHTML = `<span>${escapeHtml(it.label)}</span><strong>${escapeHtml(String(it.value))}</strong>`;
     ul.appendChild(li);
-    return;
   }
-
-  const entries = Array.from(actividadesPorUsuario.entries()).sort((a, b) => b[1] - a[1]);
-  const total = entries.reduce((acc, [, v]) => acc + v, 0) || 1;
-
-  entries.forEach(([usuario, cant]) => {
-    const perc = ((cant * 100) / total).toFixed(1);
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <span class="stats-list-label">${usuario}</span>
-      <span class="stats-list-value">${cant} <span class="chip">${perc}%</span></span>
-    `;
-    ul.appendChild(li);
-  });
 }
 
-// =========================================================
-// PROMEDIO CONTACTOS POR RESPONSABLE: TABLA + GRÁFICO
-// - promedio = contactos_30d / clientes_asignados
-// - incluye clientes con 0 contactos
-// - FLUO en DARK
-// =========================================================
-function renderPromedioContactosPorResponsable(clientes, actividades30, desdeFecha) {
-  const tbody = document.getElementById("tablaPromedioResponsable");
-  const canvas = document.getElementById("chartPromedioResponsable");
+function renderPromedioTable(rows) {
+  const tbody = $("tablaPromedioResponsable");
   if (!tbody) return;
-
-  // Mapa cliente_id -> responsable
-  const clienteAResp = new Map();
-  // Mapa responsable -> Set(cliente_id)
-  const respAClientes = new Map();
-
-  (clientes || []).forEach((c) => {
-    const resp = safeTrim(c.responsable, "Sin responsable");
-    clienteAResp.set(c.id, resp);
-    if (!respAClientes.has(resp)) respAClientes.set(resp, new Set());
-    respAClientes.get(resp).add(c.id);
-  });
-
-  // Mapa responsable -> contactos en rango
-  const respAContactos = new Map();
-  (actividades30 || []).forEach((a) => {
-    const f = new Date(a.fecha);
-    if (Number.isNaN(f.getTime())) return;
-    if (desdeFecha && f < desdeFecha) return;
-
-    const resp = clienteAResp.get(a.cliente_id) || "Sin responsable";
-    respAContactos.set(resp, (respAContactos.get(resp) || 0) + 1);
-  });
-
-  // Construimos filas + dataset
-  const rows = [];
-  for (const [resp, setIds] of respAClientes.entries()) {
-    const clientesAsignados = setIds.size;
-    const contactos = respAContactos.get(resp) || 0;
-    const promedio = clientesAsignados > 0 ? contactos / clientesAsignados : 0;
-    rows.push({ resp, clientesAsignados, contactos, promedio });
-  }
-
-  // Orden visual: por promedio desc, y si empatan por contactos desc
-  rows.sort((a, b) => (b.promedio - a.promedio) || (b.contactos - a.contactos) || a.resp.localeCompare(b.resp, "es"));
-
-  // Render tabla
   tbody.innerHTML = "";
-  rows.forEach((r) => {
+  for (const r of rows) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${r.resp}</td>
-      <td>${r.clientesAsignados}</td>
-      <td>${r.contactos}</td>
-      <td>${r.promedio.toFixed(2)}</td>
-    `;
+    tr.innerHTML =
+      `<td>${escapeHtml(r.resp)}</td>` +
+      `<td>${escapeHtml(String(r.clientes))}</td>` +
+      `<td>${escapeHtml(String(r.contactos))}</td>` +
+      `<td>${escapeHtml(String(r.promedio))}</td>`;
     tbody.appendChild(tr);
+  }
+}
+
+// =========================================================
+// Chart helpers
+// =========================================================
+function destroyChart(key) {
+  if (CHARTS[key]) {
+    try { CHARTS[key].destroy(); } catch (_) {}
+    CHARTS[key] = null;
+  }
+}
+
+function ensureCanvasHeight(canvasId) {
+  const c = $(canvasId);
+  if (!c) return;
+  c.style.display = "block";
+  c.style.width = "100%";
+  c.style.height = `${CFG.chartMinHeight}px`;
+  if (c.parentElement) c.parentElement.style.height = `${CFG.chartMinHeight}px`;
+}
+
+function makeDoughnut(canvasId, labels, values) {
+  const canvas = $(canvasId);
+  if (!canvas) return null;
+  ensureCanvasHeight(canvasId);
+  return new Chart(canvas.getContext("2d"), {
+    type: "doughnut",
+    data: { labels, datasets: [{ data: values, borderWidth: 1 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } } }
   });
+}
 
-  // Render chart
-  if (!canvas) return;
-
-  const labels = rows.map((r) => r.resp);
-  const data = rows.map((r) => Number(r.promedio.toFixed(2)));
-
-  const dark = isDarkTheme();
-  const barColor = dark ? "#00E5FF" : "#3b82f6";
-
-  charts.promedioResp = new Chart(canvas, {
+function makeBar(canvasId, labels, values) {
+  const canvas = $(canvasId);
+  if (!canvas) return null;
+  ensureCanvasHeight(canvasId);
+  return new Chart(canvas.getContext("2d"), {
     type: "bar",
+    data: { labels, datasets: [{ data: values, borderWidth: 1 }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+function makeLineTwoDatasets(canvasId, labels, aLabel, aData, bLabel, bData) {
+  const canvas = $(canvasId);
+  if (!canvas) return null;
+  ensureCanvasHeight(canvasId);
+  return new Chart(canvas.getContext("2d"), {
+    type: "line",
     data: {
       labels,
       datasets: [
-        { label: "Promedio de contactos", data, backgroundColor: barColor, borderRadius: 10 }
-      ],
+        { label: aLabel, data: aData, tension: 0.25, fill: false, pointRadius: 2, borderWidth: 2 },
+        { label: bLabel, data: bData, tension: 0.25, fill: false, pointRadius: 2, borderWidth: 2 }
+      ]
     },
     options: {
       responsive: true,
-      scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 0.5 } },
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: { label: (ctx) => `Promedio: ${ctx.raw}` },
-        },
-      },
-    },
+      maintainAspectRatio: false,
+      plugins: { legend: { display: true }, tooltip: { enabled: true } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
   });
+}
+
+// =========================================================
+// RENDER: TODO según lapso
+// =========================================================
+async function renderAllByRange() {
+  const days = getRangeDays();
+  const today0 = startOfLocalDay(new Date());
+  const fromISO = isoFromLocalStart(addDays(today0, -(days - 1)));
+  const buckets = buildDayBuckets(days);
+
+  // Ajuste visual de canvases (evita height 0)
+  [
+    "chartRubros",
+    "chartEstados",
+    "chartResponsables",
+    "chartPromedioResponsable",
+    "chartAltasDiarias",
+    "chartEstadosConsumidores"
+  ].forEach(ensureCanvasHeight);
+
+  // =======================================================
+  // CLIENTES
+  // =======================================================
+  // Total clientes activos (GLOBAL). Si lo querés POR RANGO, cambiá a .gte("created_at", fromISO)
+  const totalClientesActivos = await countExact(CFG.tables.clientes, q => q.eq("activo", true));
+  setText("statTotalClientes", fmtInt(totalClientesActivos));
+
+  // Agenda (no depende del lapso; es “estado actual” del pipeline)
+  const todayDate0 = startOfLocalDay(new Date());
+  const in7_0 = addDays(todayDate0, 7);
+
+  const agendaRows = await fetchAll(
+    CFG.tables.clientes,
+    "fecha_proximo_contacto,activo",
+    q => q.eq("activo", true)
+  );
+
+  let conFecha = 0, sinFecha = 0, vencidos = 0, proxHoy = 0, prox7 = 0, proxFuturo = 0;
+  for (const r of agendaRows) {
+    const d = parseDate(r?.fecha_proximo_contacto);
+    if (!d) { sinFecha++; continue; }
+    conFecha++;
+    const d0 = startOfLocalDay(d);
+    if (d0 < todayDate0) vencidos++;
+    if (d0.getTime() === todayDate0.getTime()) proxHoy++;
+    else if (d0 > todayDate0 && d0 <= in7_0) prox7++;
+    else if (d0 > in7_0) proxFuturo++;
+  }
+
+  setText("statConFecha", fmtInt(conFecha));
+  setText("statVencidos", fmtInt(vencidos));
+  setText("statSinFecha", fmtInt(sinFecha));
+  setText("statProxHoy", fmtInt(proxHoy));
+  setText("statProx7", fmtInt(prox7));
+  setText("statProxFuturo", fmtInt(proxFuturo));
+  setText("statConFechaText", fmtInt(conFecha));
+  setText("statVencidosText", fmtInt(vencidos));
+  setText("statSinFechaText", fmtInt(sinFecha));
+
+  // Actividades clientes EN RANGO (reemplaza 7d/30d)
+  const actInRange = await countExact(CFG.tables.actividades, q => q.gte("fecha", fromISO));
+  setText("statAct7", fmtInt(actInRange));   // reusamos estos campos del HTML
+  setText("statAct30", fmtInt(actInRange));  // para no tocar HTML
+
+  // Salud cartera EN RANGO (usa ultima_actividad)
+  // Activos en rango: ultima_actividad >= fromISO
+  const activosEnRango = await countExact(
+    CFG.tables.clientes,
+    q => q.eq("activo", true).gte("ultima_actividad", fromISO)
+  );
+  // Dormidos: ultima_actividad < fromISO AND NOT NULL
+  const dormidosEnRango = await countExact(
+    CFG.tables.clientes,
+    q => q.eq("activo", true).lt("ultima_actividad", fromISO).not("ultima_actividad", "is", null)
+  );
+  // Sin historial: ultima_actividad IS NULL
+  const sinHistorial = await countExact(
+    CFG.tables.clientes,
+    q => q.eq("activo", true).is("ultima_actividad", null)
+  );
+
+  setText("statClientesActivos30", fmtInt(activosEnRango));   // reusamos IDs del HTML
+  setText("statClientesDormidos30", fmtInt(dormidosEnRango)); // reusamos IDs del HTML
+  setText("statSinHistorial", fmtInt(sinHistorial));
+
+  // Distribuciones (actuales, no de rango): rubro/estado/responsable (solo activos)
+  const clientesMeta = await fetchAll(
+    CFG.tables.clientes,
+    "rubro,estado,responsable,activo",
+    q => q.eq("activo", true)
+  );
+
+  const rub = groupCount(clientesMeta, "rubro", "Sin rubro");
+  destroyChart("rubros");
+  CHARTS.rubros = makeDoughnut("chartRubros", rub.map(x => x[0]), rub.map(x => x[1]));
+  renderUlList("listaRubros", rub.map(([label, count]) => ({ label, value: fmtInt(count) })));
+
+  const est = groupCount(clientesMeta, "estado", "Sin estado");
+  destroyChart("estados");
+  CHARTS.estados = makeDoughnut("chartEstados", est.map(x => x[0]), est.map(x => x[1]));
+  renderUlList("listaEstados", est.map(([label, count]) => ({ label, value: fmtInt(count) })));
+
+  const resp = groupCount(clientesMeta, "responsable", "Sin responsable");
+  destroyChart("responsables");
+  CHARTS.responsables = makeBar("chartResponsables", resp.map(x => x[0]), resp.map(x => x[1]));
+  renderUlList("listaResponsables", resp.map(([label, count]) => ({ label, value: fmtInt(count) })));
+
+  // Promedio contactos por responsable EN RANGO (actividades.usuario en rango / clientes por responsable)
+  const clientesActivos = await fetchAll(CFG.tables.clientes, "id,responsable,activo", q => q.eq("activo", true));
+  const clientesPorResp = new Map();
+  for (const c of clientesActivos) {
+    const r = c?.responsable && String(c.responsable).trim() ? String(c.responsable).trim() : "Sin responsable";
+    clientesPorResp.set(r, (clientesPorResp.get(r) || 0) + 1);
+  }
+
+  const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", q => q.gte("fecha", fromISO));
+  const contactosPorUser = new Map();
+  for (const a of actsRango) {
+    const u = a?.usuario && String(a.usuario).trim() ? String(a.usuario).trim() : "Sin usuario";
+    contactosPorUser.set(u, (contactosPorUser.get(u) || 0) + 1);
+  }
+
+  const promRows = [];
+  for (const [r, cantClientes] of clientesPorResp.entries()) {
+    const contactos = contactosPorUser.get(r) || 0;
+    promRows.push({ resp: r, clientes: cantClientes, contactos, promedio: (cantClientes ? (contactos / cantClientes) : 0).toFixed(2) });
+  }
+  promRows.sort((a,b) => Number(b.promedio) - Number(a.promedio));
+
+  destroyChart("promedio");
+  CHARTS.promedio = makeBar("chartPromedioResponsable", promRows.map(x => x.resp), promRows.map(x => Number(x.promedio)));
+  renderPromedioTable(promRows);
+
+  // Actividad por usuario (clientes) EN RANGO
+  const actUsersAgg = groupCount(actsRango, "usuario", "Sin usuario");
+  renderUlList("listaActividadUsuarios", actUsersAgg.map(([label, count]) => ({ label, value: fmtInt(count) })));
+
+  // Crecimiento diario EN RANGO (altas por día)
+  const [cliAltas, conAltas] = await Promise.all([
+    fetchAll(CFG.tables.clientes, "created_at,activo", q => q.eq("activo", true).gte("created_at", fromISO)),
+    fetchAll(CFG.tables.consumidores, "created_at,activo", q => q.eq("activo", true).gte("created_at", fromISO))
+  ]);
+
+  const sCli = seriesByDay(cliAltas, "created_at", buckets);
+  const sCon = seriesByDay(conAltas, "created_at", buckets);
+
+  destroyChart("altas");
+  CHARTS.altas = makeLineTwoDatasets("chartAltasDiarias", sCli.labels, "Clientes", sCli.data, "Consumidores", sCon.data);
+
+  const ulAltas = $("listaAltasDiarias");
+  if (ulAltas) {
+    ulAltas.innerHTML = "";
+    const take = Math.min(7, buckets.length);
+    for (let i = buckets.length - take; i < buckets.length; i++) {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span><strong>Clientes: ${fmtInt(sCli.data[i]||0)} · Consumidores: ${fmtInt(sCon.data[i]||0)}</strong>`;
+      ulAltas.appendChild(li);
+    }
+  }
+
+  // =======================================================
+  // CONSUMIDORES
+  // =======================================================
+  // Total consumidores activos (GLOBAL). Si lo querés POR RANGO, agregá .gte("created_at", fromISO)
+  const totalConsActivos = await countExact(CFG.tables.consumidores, q => q.eq("activo", true));
+  setText("statTotalConsumidores", fmtInt(totalConsActivos));
+
+  // Actividades consumidores EN RANGO
+  const consActInRange = await countExact(CFG.tables.actividadesConsumidores, q => q.gte("fecha", fromISO));
+  setText("statConsAct7", fmtInt(consActInRange));   // reusamos IDs del HTML
+  setText("statConsAct30", fmtInt(consActInRange));  // reusamos IDs del HTML
+
+  // Estados consumidores (actual, no por rango) — solo activos
+  const consRows = await fetchAll(CFG.tables.consumidores, "estado,activo", q => q.eq("activo", true));
+  const estCons = groupCount(consRows, "estado", "Sin estado");
+  destroyChart("estadosConsumidores");
+  CHARTS.estadosConsumidores = makeDoughnut("chartEstadosConsumidores", estCons.map(x=>x[0]), estCons.map(x=>x[1]));
+  renderUlList("listaEstadosConsumidores", estCons.map(([label, count]) => ({ label, value: fmtInt(count) })));
+
+  // Actividad por usuario (consumidores) EN RANGO
+  const actConsRango = await fetchAll(CFG.tables.actividadesConsumidores, "usuario,fecha", q => q.gte("fecha", fromISO));
+  const aggConsUser = groupCount(actConsRango, "usuario", "Sin usuario");
+  renderUlList("listaActividadUsuariosConsumidores", aggConsUser.map(([label, count]) => ({ label, value: fmtInt(count) })));
+}
+
+// =========================================================
+// UI Wiring
+// =========================================================
+function wireUi() {
+  ensureGlobalRangeSelect();
+
+  const sel = $("statsRange");
+  if (sel) {
+    sel.addEventListener("change", async () => {
+      try {
+        await renderAllByRange();
+      } catch (e) {
+        console.error(e);
+        alert(`Error al aplicar lapso: ${e?.message || e}`);
+      }
+    });
+  }
+
+  const btn = $("btnRefrescarStats");
+  if (btn) {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        await renderAllByRange();
+      } catch (e) {
+        console.error(e);
+        alert(`Error al actualizar estadísticas: ${e?.message || e}`);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
 }
 
 // =========================================================
 // INIT
 // =========================================================
-document.addEventListener("DOMContentLoaded", () => {
-  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
-  applyTheme(savedTheme);
-  applyChartTheme();
+async function initStats() {
+  try {
+    if (!window.supabase) throw new Error("Supabase JS no está cargado (window.supabase).");
+    if (!window.Chart) throw new Error("Chart.js no está cargado (window.Chart).");
 
-  const btnTheme = document.getElementById("btnToggleTheme");
-  if (btnTheme) {
-    btnTheme.addEventListener("click", () => {
-      const current = document.documentElement.getAttribute("data-theme") || "light";
-      applyTheme(current === "light" ? "dark" : "light");
-      applyChartTheme();
-      cargarEstadisticas();
-    });
+    wireUi();
+    await renderAllByRange();
+  } catch (e) {
+    console.error(e);
+    alert(`Error al cargar estadísticas: ${e?.message || e}`);
   }
+}
 
-  const btnRefresh = document.getElementById("btnRefrescarStats");
-  if (btnRefresh) btnRefresh.addEventListener("click", () => cargarEstadisticas());
-
-  cargarEstadisticas();
-});
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initStats);
+} else {
+  initStats();
+}
