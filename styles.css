@@ -569,7 +569,7 @@ textarea {
 .modal-content {
   background: var(--bg-elevated);
   width: 90%;
-  max-width: 420px;
+  max-width: 90%;
   padding: 20px;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -2264,3 +2264,172 @@ th, td {
   color: var(--text);
 }
 th { color: var(--muted); text-align: left; font-weight: 600; }
+
+/* =========================================================
+   FIX MODAL FORM CLIENTE (RESPONSIVE + SCROLL INTERNO)
+   Pegarlo al final de styles.css
+   ========================================================= */
+
+/* Overlay */
+#modalFormCliente.modal {
+  position: fixed;
+  inset: 0;
+  display: none;                /* JS lo pone en flex */
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 9999;
+}
+
+/* Caja del modal */
+#modalFormCliente .modal-content {
+  width: min(920px, 100%);
+  max-height: calc(100dvh - 32px); /* clave: no excede alto pantalla */
+  overflow: hidden;                /* para que el scroll lo tenga el body interno */
+  border-radius: 12px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header fijo */
+#modalFormCliente .form-box-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: inherit;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* El formulario scrollea (no el modal completo) */
+#modalFormCliente #formCliente {
+  padding: 14px 16px 16px;
+  overflow: auto;
+  max-height: calc(100dvh - 32px - 58px); /* pantalla - padding overlay - alto header aprox */
+}
+
+/* Grid más compacto si tu CSS no lo limita */
+#modalFormCliente .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+#modalFormCliente .field-notas {
+  grid-column: 1 / -1;
+}
+
+/* Acciones fijas abajo (opcional) */
+#modalFormCliente .form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* Inputs: que no se rompan */
+#modalFormCliente input,
+#modalFormCliente select,
+#modalFormCliente textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+  #modalFormCliente.modal {
+    padding: 10px;
+    align-items: flex-end; /* más cómodo en mobile */
+  }
+
+  #modalFormCliente .modal-content {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px 14px 0 0; /* estilo “sheet” */
+  }
+
+  #modalFormCliente .grid {
+    grid-template-columns: 1fr;
+  }
+
+  #modalFormCliente #formCliente {
+    max-height: calc(100dvh - 20px - 58px);
+  }
+}
+
+/* =========================================================
+   MODAL FORM CLIENTE - MODO OSCURO (data-theme="dark")
+   Pegarlo al final de styles.css (debajo del bloque anterior)
+   ========================================================= */
+
+html[data-theme="dark"] #modalFormCliente.modal {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+/* Fondo y texto del modal */
+html[data-theme="dark"] #modalFormCliente .modal-content {
+  background: #0f141b; /* panel */
+  color: #e7edf6;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Header del modal */
+html[data-theme="dark"] #modalFormCliente .form-box-header {
+  background: #0f141b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* Labels */
+html[data-theme="dark"] #modalFormCliente label {
+  color: #cfd8e3;
+}
+
+/* Inputs/select/textarea */
+html[data-theme="dark"] #modalFormCliente input,
+html[data-theme="dark"] #modalFormCliente select,
+html[data-theme="dark"] #modalFormCliente textarea {
+  background: #0b0f15;
+  color: #e7edf6;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* Placeholder */
+html[data-theme="dark"] #modalFormCliente input::placeholder,
+html[data-theme="dark"] #modalFormCliente textarea::placeholder {
+  color: rgba(231, 237, 246, 0.55);
+}
+
+/* Focus accesible */
+html[data-theme="dark"] #modalFormCliente input:focus,
+html[data-theme="dark"] #modalFormCliente select:focus,
+html[data-theme="dark"] #modalFormCliente textarea:focus {
+  outline: none;
+  border-color: rgba(120, 160, 255, 0.85);
+  box-shadow: 0 0 0 3px rgba(120, 160, 255, 0.18);
+}
+
+/* Botón secundario en dark (Cerrar/Cancelar) */
+html[data-theme="dark"] #modalFormCliente .btn-secundario {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e7edf6;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] #modalFormCliente .btn-secundario:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* Botón icono (📅) */
+html[data-theme="dark"] #modalFormCliente .btn-icon {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e7edf6;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] #modalFormCliente .btn-icon:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
