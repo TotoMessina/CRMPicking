@@ -1,27 +1,24 @@
 /* =========================================================
-   consumidores.js (ACTUALIZADO - SIN SEGMENTOS)
+   consumidores.js (ACTUALIZADO)
    - Reusa el usuario guardado en Clientes (localStorage: "usuarioActual")
-   - NO vuelve a pedir usuario en consumidores
    - CRUD consumidores + historial (actividades_consumidores)
-   - Filtros + paginación (sin segmento)
-   - Excel: descargar modelo / importar / exportar (sin segmento)
-   Requiere en consumidores.html:
-     - supabase-js v2
-     - xlsx.full.min.js (SheetJS)
+   - Botón "+ Actividad" por consumidor (modal)
+   - Filtros + paginación
+   - Excel: descargar modelo / importar / exportar
+   - NUEVO: Formulario de alta/edición en MODAL (btnNuevoConsumidor)
    ========================================================= */
 
 /* ============================
    CONFIG + THEME + USER
    ============================ */
 
-// Ajustá si vos los exponés como window.SUPABASE_URL / window.SUPABASE_ANON_KEY
 const SUPABASE_URL = window.SUPABASE_URL || "https://mflftikcvsnniwwanrkj.supabase.co";
-const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
+const SUPABASE_ANON_KEY =
+  window.SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn(
-    "Faltan SUPABASE_URL / SUPABASE_ANON_KEY. Definilos como window.SUPABASE_URL / window.SUPABASE_ANON_KEY o setealos aquí."
-  );
+  console.warn("Faltan SUPABASE_URL / SUPABASE_ANON_KEY.");
 }
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -29,12 +26,11 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const THEME_KEY = "crm_theme";
 const FILTERS_KEY = "crm_consumidores_filters";
 
-/* En tu CRM de Clientes (app.js) se usa "usuarioActual". */
+/* En tu CRM de Clientes se usa "usuarioActual". */
 function getUsuarioActual() {
   const u = (localStorage.getItem("usuarioActual") || "").trim();
   if (u) return u;
 
-  // fallbacks por si hubo versiones previas
   const legacy =
     (localStorage.getItem("crm_usuario") || "").trim() ||
     (localStorage.getItem("usuarioConfirmado") || "").trim();
@@ -98,6 +94,13 @@ function setValueIfExists(id, value) {
   el.value = value ?? "";
 }
 
+function formatFechaISO(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString("es-AR");
+}
+
 // Para queries con columna activo opcional
 async function selectWithOptionalActivo(table, columns) {
   const r1 = await supabaseClient.from(table).select(columns).eq("activo", true);
@@ -108,6 +111,81 @@ async function selectWithOptionalActivo(table, columns) {
     return await supabaseClient.from(table).select(columns);
   }
   return r1;
+}
+
+/* ============================
+   MODAL FORM (ALTA / EDICIÓN)
+   ============================ */
+
+function openModalById(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.add("is-open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeModalById(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.remove("is-open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function setModalFormTitle(txt) {
+  const t = document.getElementById("modalFormConsTitle");
+  if (t) t.textContent = txt;
+}
+
+function openFormNuevo() {
+  setModalFormTitle("Nuevo consumidor");
+  resetFormulario();
+  openModalById("modalFormConsumidor");
+}
+
+function openFormEditarById(id) {
+  const c = consumidoresCache.find((x) => String(x.id) === String(id));
+  if (!c) return;
+
+  setModalFormTitle("Editar consumidor");
+
+  setValueIfExists("consumidorId", c.id);
+  setValueIfExists("nombre", c.nombre || "");
+  setValueIfExists("telefono", c.telefono || "");
+  setValueIfExists("mail", c.mail || "");
+  setValueIfExists("localidad", c.localidad || "");
+  setValueIfExists("barrio", c.barrio || "");
+  setValueIfExists("edad", c.edad ?? "");
+  setValueIfExists("genero", c.genero || "");
+  setValueIfExists("estado", c.estado || "Lead");
+  setValueIfExists("responsable", c.responsable || "");
+  setValueIfExists("fecha_proximo_contacto", c.fecha_proximo_contacto || "");
+
+  const hora = c.hora_proximo_contacto ? String(c.hora_proximo_contacto).slice(0, 5) : "";
+  setValueIfExists("hora_proximo_contacto", hora);
+
+  setValueIfExists("notas", c.notas || "");
+
+  openModalById("modalFormConsumidor");
+}
+
+function initModalFormUI() {
+  const modal = document.getElementById("modalFormConsumidor");
+  const btnNuevo = document.getElementById("btnNuevoConsumidor");
+
+  if (btnNuevo) btnNuevo.addEventListener("click", openFormNuevo);
+
+  if (modal) {
+    // Cierra si tocás overlay o un botón con data-close="true"
+    modal.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t?.dataset?.close === "true") closeModalById("modalFormConsumidor");
+    });
+
+    // Cierra con ESC
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("is-open")) closeModalById("modalFormConsumidor");
+    });
+  }
 }
 
 /* ============================
@@ -150,7 +228,121 @@ function updatePaginationUI() {
 }
 
 /* ============================
-   ACTIVIDADES
+   MODAL ACTIVIDAD (Consumidor)
+   ============================ */
+
+let modalActConsTargetId = null;
+let modalActConsTargetNombre = "";
+
+function ensureModalElements() {
+  return {
+    modal: document.getElementById("modalActCons"),
+    sub: document.getElementById("modalActConsSub"),
+    desc: document.getElementById("actConsDescripcion"),
+    dt: document.getElementById("actConsFecha"),
+    usuario: document.getElementById("actConsUsuario"),
+    btnSave: document.getElementById("btnActConsSave"),
+  };
+}
+
+function openModalActCons(consumidorId, consumidorNombre) {
+  const { modal, sub, desc, dt, usuario } = ensureModalElements();
+  if (!modal) return;
+
+  modalActConsTargetId = Number(consumidorId);
+  modalActConsTargetNombre = consumidorNombre || "";
+
+  if (sub) sub.textContent = `Consumidor: ${modalActConsTargetNombre} (ID: ${modalActConsTargetId})`;
+
+  if (desc) desc.value = "";
+  if (usuario) usuario.value = getUsuarioActual() || "";
+
+  // default: ahora (datetime-local)
+  if (dt) {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    dt.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+
+  modal.classList.add("is-open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeModalActCons() {
+  const { modal } = ensureModalElements();
+  if (!modal) return;
+  modal.classList.remove("is-open");
+  modal.setAttribute("aria-hidden", "true");
+  modalActConsTargetId = null;
+  modalActConsTargetNombre = "";
+}
+
+async function guardarActividadDesdeModal() {
+  if (!asegurarUsuarioValido()) return;
+  const { desc, dt, usuario } = ensureModalElements();
+
+  if (!modalActConsTargetId) {
+    alert("No hay consumidor seleccionado para agregar actividad.");
+    return;
+  }
+
+  const descripcion = (desc?.value || "").trim();
+  if (!descripcion) {
+    alert("La descripción es obligatoria.");
+    return;
+  }
+
+  let fechaISO = new Date().toISOString();
+  if (dt?.value) {
+    const d = new Date(dt.value);
+    if (!Number.isNaN(d.getTime())) fechaISO = d.toISOString();
+  }
+
+  const payload = {
+    consumidor_id: modalActConsTargetId,
+    descripcion,
+    fecha: fechaISO,
+    usuario: (usuario?.value || "").trim() || (getUsuarioActual() || null),
+  };
+
+  const { error } = await supabaseClient.from("actividades_consumidores").insert([payload]);
+  if (error) {
+    console.error(error);
+    alert("No se pudo guardar la actividad.\n\n" + error.message);
+    return;
+  }
+
+  // Mantener ultima_actividad sincronizada (si existe la columna)
+  try {
+    await supabaseClient
+      .from("consumidores")
+      .update({ ultima_actividad: fechaISO })
+      .eq("id", modalActConsTargetId);
+  } catch (_) {}
+
+  closeModalActCons();
+  await cargarConsumidores();
+}
+
+function initModalActConsUI() {
+  const { modal, btnSave } = ensureModalElements();
+
+  if (btnSave) btnSave.addEventListener("click", guardarActividadDesdeModal);
+
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t?.dataset?.close === "true") closeModalActCons();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("is-open")) closeModalActCons();
+    });
+  }
+}
+
+/* ============================
+   ACTIVIDADES (helper)
    ============================ */
 
 async function agregarActividad(consumidorId, descripcion) {
@@ -162,7 +354,6 @@ async function agregarActividad(consumidorId, descripcion) {
 
   if (error) console.error("Error agregando actividad:", error);
 
-  // update ultima_actividad si tu tabla lo tiene
   try {
     await supabaseClient
       .from("consumidores")
@@ -250,6 +441,7 @@ async function guardarConsumidor(e) {
   }
 
   resetFormulario();
+  closeModalById("modalFormConsumidor"); // NUEVO: cerrar modal al guardar
   currentPage = 1;
   await cargarConsumidores();
 }
@@ -263,31 +455,6 @@ async function eliminarConsumidor(id) {
 
   await agregarActividad(id, "Consumidor eliminado");
   await cargarConsumidores();
-}
-
-function editarConsumidor(id) {
-  const c = consumidoresCache.find((x) => String(x.id) === String(id));
-  if (!c) return;
-
-  setValueIfExists("consumidorId", c.id);
-
-  setValueIfExists("nombre", c.nombre || "");
-  setValueIfExists("telefono", c.telefono || "");
-  setValueIfExists("mail", c.mail || "");
-  setValueIfExists("localidad", c.localidad || "");
-  setValueIfExists("barrio", c.barrio || "");
-  setValueIfExists("edad", c.edad ?? "");
-  setValueIfExists("genero", c.genero || "");
-  setValueIfExists("estado", c.estado || "Lead");
-  setValueIfExists("responsable", c.responsable || "");
-  setValueIfExists("fecha_proximo_contacto", c.fecha_proximo_contacto || "");
-
-  const hora = c.hora_proximo_contacto ? String(c.hora_proximo_contacto).slice(0, 5) : "";
-  setValueIfExists("hora_proximo_contacto", hora);
-
-  setValueIfExists("notas", c.notas || "");
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /* ============================
@@ -411,37 +578,43 @@ async function cargarConsumidores() {
           </div>
 
           ${c.notas ? `<div class="card-notas"><strong>Notas:</strong> ${c.notas}</div>` : ""}
-
-          <div class="historial">
-            <div class="historial-header">
-              <strong>Historial (${acts.length})</strong>
-              <button class="btn-toggle-historial" data-action="toggle" data-id="${c.id}">Ver historial</button>
-            </div>
-
-            <div class="historial-list" style="display:none">
-              <div class="historial-container">
-                ${
-                  acts.length
-                    ? acts
-                        .map(
-                          (a) => `
-                    <div class="historial-item">
-                      <div class="historial-desc">${a.descripcion}</div>
-                      <div class="historial-fecha">${a.fecha}${a.usuario ? " · <strong>" + a.usuario + "</strong>" : ""}</div>
-                    </div>
-                  `
-                        )
-                        .join("")
-                    : `<div class="historial-empty">No hay actividades registradas.</div>`
-                }
-              </div>
-            </div>
-          </div>
         </div>
 
         <div class="card-buttons">
           <button class="btn-edit" data-action="editar" data-id="${c.id}">Editar</button>
           <button class="btn-delete" data-action="eliminar" data-id="${c.id}">Eliminar</button>
+          <button class="btn-add-historial" data-action="addAct" data-id="${c.id}">+ Actividad</button>
+        </div>
+      </div>
+
+      <div class="historial">
+        <div class="historial-header">
+          <strong>Historial (${acts.length})</strong>
+
+          <div class="historial-actions">
+            <button class="btn-toggle-historial" data-action="toggle" data-id="${c.id}">Ver historial</button>
+          </div>
+        </div>
+
+        <div class="historial-list" style="display:none">
+          <div class="historial-container">
+            ${
+              acts.length
+                ? acts
+                    .map(
+                      (a) => `
+                <div class="historial-item">
+                  <div class="historial-desc">${a.descripcion}</div>
+                  <div class="historial-fecha">${formatFechaISO(a.fecha)}${
+                        a.usuario ? " · <strong>" + a.usuario + "</strong>" : ""
+                      }</div>
+                </div>
+              `
+                    )
+                    .join("")
+                : `<div class="historial-empty">No hay actividades registradas.</div>`
+            }
+          </div>
         </div>
       </div>
     `;
@@ -451,12 +624,7 @@ async function cargarConsumidores() {
 }
 
 /* =========================================================
-   EXCEL (CONSUMIDORES) - SIN SEGMENTOS
-   IDs esperados en consumidores.html:
-     - btnConsDescargarModelo
-     - btnConsExportarExcel
-     - inputConsExcel
-     - consImportStatus
+   EXCEL (CONSUMIDORES)
    ========================================================= */
 
 function consSetStatus(msg) {
@@ -561,7 +729,6 @@ function mapRowToConsumidor(row) {
 
   const fecha = excelDateToISO(getRowField(row, "fecha_proximo_contacto", "proximo_contacto", "fecha"));
   const hora = normalizeTimeHHMM(getRowField(row, "hora_proximo_contacto", "hora"));
-
   const notas = safeTrim(getRowField(row, "notas", "nota", "observaciones"));
 
   const activoRaw = getRowField(row, "activo", "active");
@@ -696,7 +863,6 @@ async function importarConsumidoresDesdeExcel(file) {
     return;
   }
 
-  // Dedupe simple por mail / tel / (nombre+localidad)
   const seen = new Set();
   const unique = [];
   for (const c of consumidores) {
@@ -719,13 +885,11 @@ async function importarConsumidoresDesdeExcel(file) {
   for (const c of unique) {
     let existing = null;
 
-    // 1) match por mail
     if (c.mail) {
       const r = await supabaseClient.from("consumidores").select("id").eq("mail", c.mail).maybeSingle();
       if (!r.error && r.data?.id) existing = r.data;
     }
 
-    // 2) match por teléfono
     if (!existing && c.telefono) {
       const r = await supabaseClient.from("consumidores").select("id").eq("telefono", c.telefono).maybeSingle();
       if (!r.error && r.data?.id) existing = r.data;
@@ -740,11 +904,7 @@ async function importarConsumidoresDesdeExcel(file) {
       actualizados++;
 
       const { error: eAct } = await supabaseClient.from("actividades_consumidores").insert([
-        {
-          consumidor_id: existing.id,
-          descripcion: "Actualizado por importación Excel",
-          usuario: getUsuarioActual() || null,
-        },
+        { consumidor_id: existing.id, descripcion: "Actualizado por importación Excel", usuario: getUsuarioActual() || null },
       ]);
       if (!eAct) actividadesCreadas++;
     } else {
@@ -756,11 +916,7 @@ async function importarConsumidoresDesdeExcel(file) {
       creados++;
 
       const { error: eAct } = await supabaseClient.from("actividades_consumidores").insert([
-        {
-          consumidor_id: data.id,
-          descripcion: "Creado por importación Excel",
-          usuario: getUsuarioActual() || null,
-        },
+        { consumidor_id: data.id, descripcion: "Creado por importación Excel", usuario: getUsuarioActual() || null },
       ]);
       if (!eAct) actividadesCreadas++;
     }
@@ -777,7 +933,7 @@ function initExcelConsumidoresUI() {
   const input = document.getElementById("inputConsExcel");
 
   if (typeof XLSX === "undefined") {
-    console.error("XLSX no está cargado. Falta incluir xlsx.full.min.js o está en mal orden.");
+    console.error("XLSX no está cargado.");
     if (btnModelo) btnModelo.disabled = true;
     if (btnExport) btnExport.disabled = true;
     if (input) input.disabled = true;
@@ -786,11 +942,7 @@ function initExcelConsumidoresUI() {
   }
 
   if (!btnModelo || !btnExport || !input) {
-    console.error("Faltan elementos Excel en el HTML (IDs).", {
-      btnConsDescargarModelo: !!btnModelo,
-      btnConsExportarExcel: !!btnExport,
-      inputConsExcel: !!input,
-    });
+    console.error("Faltan elementos Excel en el HTML (IDs).");
     consSetStatus("Error: faltan botones/inputs de Excel en el HTML.");
     return;
   }
@@ -827,8 +979,6 @@ function initExcelConsumidoresUI() {
       e.target.value = "";
     }
   });
-
-  console.log("Excel Consumidores: listeners OK");
 }
 
 /* ============================
@@ -844,10 +994,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     applyTheme(current === "light" ? "dark" : "light");
   });
 
-  // Excel UI (si agregaste panel/botones en HTML)
+  initModalFormUI();     // NUEVO: modal form alta/edición
+  initModalActConsUI();
   initExcelConsumidoresUI();
 
-  // Filtros (sin segmento)
   loadFilters();
 
   const filtros = ["filtroNombre", "filtroTelefono", "filtroLocalidad", "filtroEstado", "filtroResponsable"];
@@ -888,14 +1038,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Form
   document.getElementById("formConsumidor")?.addEventListener("submit", guardarConsumidor);
   document.getElementById("btnReset")?.addEventListener("click", resetFormulario);
 
-  // Delegación clicks (historial/editar/eliminar)
+  // Delegación clicks (historial/editar/eliminar/agregar actividad)
   document.getElementById("lista")?.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
+
     const action = btn.dataset.action;
     const id = btn.dataset.id;
 
@@ -909,12 +1059,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    if (action === "editar") return editarConsumidor(id);
+    if (action === "addAct") {
+      const c = consumidoresCache.find((x) => String(x.id) === String(id));
+      openModalActCons(id, c?.nombre || "");
+      return;
+    }
+
+    // NUEVO: editar abre el MODAL del formulario
+    if (action === "editar") return openFormEditarById(id);
+
     if (action === "eliminar") return eliminarConsumidor(id);
   });
 
-  // No pedir usuario acá: si falta, mandamos a index
   if (!asegurarUsuarioValido()) return;
-
   await cargarConsumidores();
 });

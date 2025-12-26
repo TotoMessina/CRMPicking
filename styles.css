@@ -226,7 +226,9 @@ button:hover {
 }
 
 .btn-secundario:hover {
-  background: rgba(148, 163, 184, 0.08);
+  background: #2563eb;
+  color: #fff;
+  font-weight: 500;
 }
 
 .form-box {
@@ -2094,3 +2096,171 @@ textarea {
   }
 }
 
+
+/* =========================
+   COMPAT CSS (Clientes/Consumidores)
+   Pegar al final del CSS
+========================= */
+
+/* Contenedores típicos */
+.card, .panel, .box, .contenedor, .seccion {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+}
+
+.card__header, .panel__header, .box__header, .seccion__header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card__body, .panel__body, .box__body, .seccion__body {
+  padding: 14px 16px;
+}
+
+/* Acciones (botones alineados) */
+.acciones, .actions, .toolbar, .topbar-actions, .stats-topbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Botones */
+.btn, .btn-primario, .btn-secundario, button.btn {
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .08s ease, opacity .12s ease, background .12s ease;
+}
+.btn:hover, .btn-primario:hover, .btn-secundario:hover { opacity: .95; }
+.btn:active, .btn-primario:active, .btn-secundario:active { transform: translateY(1px); }
+.btn[disabled], .btn-primario[disabled], .btn-secundario[disabled] { opacity: .6; cursor: not-allowed; }
+
+.btn-primario {
+  background: #2563eb;
+  color: #fff;
+  border-color: rgba(255,255,255,0.18);
+}
+.btn-secundario {
+  background: #2563eb;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Inputs */
+.form__label, label {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.form__input, .form__textarea, input, select, textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.form__textarea, textarea { resize: vertical; min-height: 96px; }
+
+.form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+@media (max-width: 720px) {
+  .form__row { grid-template-columns: 1fr; }
+}
+
+/* Listas tipo “stats list” */
+ul.lista, .lista, .stats-list, .list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+ul.lista li, .lista li, .stats-list li, .list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.02);
+  margin-bottom: 8px;
+}
+ul.lista li span, .lista li span, .stats-list li span { color: var(--muted); }
+ul.lista li strong, .lista li strong, .stats-list li strong { color: var(--text); }
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 9999;
+}
+.modal.is-open { display: block; }
+
+.modal__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.58);
+  backdrop-filter: blur(6px);
+}
+
+.modal__dialog {
+  position: relative;
+  width: min(680px, calc(100% - 24px));
+  margin: 60px auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.modal__header, .modal__footer {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.modal__footer { border-bottom: none; border-top: 1px solid var(--border); justify-content: flex-end; }
+
+.modal__title { margin: 0; font-size: 1.05rem; color: var(--text); }
+
+.modal__close {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.modal__body { padding: 14px 16px; }
+
+/* Tablas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 12px;
+}
+th, td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: var(--text);
+}
+th { color: var(--muted); text-align: left; font-weight: 600; }
