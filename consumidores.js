@@ -21,16 +21,87 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn("Faltan SUPABASE_URL / SUPABASE_ANON_KEY.");
 }
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
+  ? window.CRM_AUTH.supabaseClient
+  : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const THEME_KEY = "crm_theme";
+/* ============================
+   AUTH (Supabase) - Login Gate
+   Requiere que se carguen auth.js y guard.js en el HTML.
+   Si no están, usa fallback con supabaseClient.auth.getSession().
+   ============================ */
+async function requireAuthOrRedirect() {
+  // Esperar a que guard.js termine (evita condiciones de carrera)
+  if (window.CRM_GUARD_READY) {
+    try { await window.CRM_GUARD_READY; } catch (_) {}
+  }
+
+  // Si guard.js ya seteo el usuario, listo
+  if (window.CRM_USER && window.CRM_USER.activo === true) return window.CRM_USER;
+
+  // Fallback: chequear sesión y (si existe) cargar perfil desde public.usuarios
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+
+    const session = data?.session;
+    if (!session?.user) {
+      window.location.href = "login.html";
+      return null;
+    }
+
+    // Intentar traer perfil si tu esquema lo usa
+    if (!window.CRM_USER) {
+      const { data: perfil, error: e2 } = await supabaseClient
+        .from("usuarios")
+        .select("id, email, nombre, role, activo")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!e2 && perfil && perfil.activo === true) {
+        window.CRM_USER = perfil;
+        localStorage.setItem("usuarioActual", (perfil.nombre || "").trim());
+      } else {
+        // Si no existe tabla usuarios, al menos permitimos entrar con sesión
+        window.CRM_USER = {
+          id: session.user.id,
+          email: session.user.email || "",
+          nombre: (session.user.email || "Usuario").split("@")[0],
+          role: "user",
+          activo: true,
+        };
+        localStorage.setItem("usuarioActual", (window.CRM_USER.nombre || "").trim());
+      }
+    }
+
+    if (!window.CRM_USER || window.CRM_USER.activo !== true) {
+      window.location.href = "login.html";
+      return null;
+    }
+
+    return window.CRM_USER;
+  } catch (e) {
+    console.error("Auth error:", e);
+    window.location.href = "login.html";
+    return null;
+  }
+}
+
+function getAuthUserName() {
+  const n = (window.CRM_USER?.nombre || "").trim();
+  if (n) return n;
+  return (localStorage.getItem("usuarioActual") || "").trim();
+}
+
 const FILTERS_KEY = "crm_consumidores_filters";
 
-/* En tu CRM de Clientes se usa "usuarioActual". */
+/* En tu CRM de Clientes se usa "usuarioActual". Ahora se prioriza el usuario autenticado (CRM_USER). */
 function getUsuarioActual() {
-  const u = (localStorage.getItem("usuarioActual") || "").trim();
-  if (u) return u;
+  const authName = getAuthUserName();
+  if (authName) return authName;
 
+  // Fallback legacy (si algún módulo viejo escribe estas keys)
   const legacy =
     (localStorage.getItem("crm_usuario") || "").trim() ||
     (localStorage.getItem("usuarioConfirmado") || "").trim();
@@ -46,11 +117,10 @@ function asegurarUsuarioValido() {
   const u = getUsuarioActual();
   if (u) return true;
 
-  alert("Antes de usar Consumidores, confirmá tu usuario en la solapa Clientes (index).");
-  window.location.href = "index.html";
+  alert("Tu sesión no es válida. Volvé a iniciar sesión.");
+  window.location.href = "login.html";
   return false;
 }
-
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem(THEME_KEY, theme);
@@ -986,7 +1056,14 @@ function initExcelConsumidoresUI() {
    ============================ */
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
+  const profile = await requireAuthOrRedirect();
+  if (!profile) return;
+
+  // Mostrar usuario si existe placeholder
+  const userEl = document.getElementById("currentUserName");
+  if (userEl) userEl.textContent = getAuthUserName() || "-";
+
+const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
 
   document.getElementById("btnToggleTheme")?.addEventListener("click", () => {

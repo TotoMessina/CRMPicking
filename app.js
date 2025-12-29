@@ -5,22 +5,36 @@ const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
+  ? window.CRM_AUTH.supabaseClient
+  : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Cache local de clientes (solo de la página actual)
 let clientesCache = [];
 
 // Usuario actual y tema
-let usuarioActual = localStorage.getItem("usuarioActual") || "";
+let usuarioActual =
+  (window.CRM_USER && window.CRM_USER.nombre ? String(window.CRM_USER.nombre).trim() : "") ||
+  (localStorage.getItem("usuarioActual") || "");
 const THEME_KEY = "crm_theme";
 const FILTERS_KEY = "crm_filters";
+
+// =========================================================
+// AUTH CONTEXT (Login real)
+// Requiere: auth.js + guard.js cargados en el HTML.
+// =========================================================
+function getAuthProfileName() {
+  return (window.CRM_USER && window.CRM_USER.nombre) ? String(window.CRM_USER.nombre).trim() : "";
+}
+function isAuthReady() {
+  return !!(window.CRM_USER && window.CRM_USER.activo === true);
+}
+
 
 // Cache de rubros para el filtro
 let rubrosCache = [];
 let rubrosCacheLoaded = false;
 
-// Solo estos usuarios pueden guardar / registrar historial
-const allowedUsers = ["Toto", "Ruben", "Tincho(B)", "Fran", "Ari", "Nati", "Dani", "Otro"];
 
 const ESTADOS_VALIDOS_MAP = {
   "1 - Cliente relevado": "1 - Cliente relevado",
@@ -123,14 +137,14 @@ function applyTheme(theme) {
 
 // Usuario válido
 function isUsuarioValido() {
-  return !!usuarioActual && allowedUsers.includes(usuarioActual);
+  const nombre = getAuthProfileName();
+  return isAuthReady() && !!nombre;
 }
 
 function asegurarUsuarioValido() {
   if (!isUsuarioValido()) {
-    alert(
-      "Para poder guardar clientes o registrar historial tenés que seleccionar un usuario válido (Toto, Ruben, Tincho(B), Fran, Ari, Nati, Dani u Otro) en el selector de arriba."
-    );
+    alert("Tu sesión no es válida. Volvé a iniciar sesión.");
+    window.location.href = "login.html";
     return false;
   }
   return true;
@@ -430,39 +444,6 @@ function updatePaginationUI() {
   if (pageSizeSelect && Number(pageSizeSelect.value) !== pageSize) pageSizeSelect.value = String(pageSize);
 }
 
-// =========================================================
-// Modal selección de usuario
-// =========================================================
-function initUsuarioModal() {
-  const modal = document.getElementById("usuarioModal");
-  const selModal = document.getElementById("usuarioModalSelect");
-  const btnGuardar = document.getElementById("btnGuardarUsuario");
-  if (!modal || !selModal || !btnGuardar) return;
-
-  const selHeader = document.getElementById("usuarioActual");
-
-  if (usuarioActual && allowedUsers.includes(usuarioActual)) {
-    selModal.value = usuarioActual;
-    if (selHeader) selHeader.value = usuarioActual;
-    modal.style.display = "none";
-    return;
-  }
-
-  modal.style.display = "flex";
-
-  btnGuardar.addEventListener("click", () => {
-    const value = selModal.value;
-    if (!allowedUsers.includes(value)) {
-      alert("Seleccioná un usuario para continuar.");
-      return;
-    }
-    usuarioActual = value;
-    localStorage.setItem("usuarioActual", usuarioActual);
-
-    if (selHeader) selHeader.value = usuarioActual;
-    modal.style.display = "none";
-  });
-}
 
 // =========================================================
 // 3) ACTIVIDADES (historial)
@@ -1151,21 +1132,47 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 2) Usuario modal
-  initUsuarioModal();
+  document.addEventListener("DOMContentLoaded", async () => {
+    // Esperar a que guard.js termine (evita rebotes)
+    if (window.CRM_GUARD_READY) await window.CRM_GUARD_READY;
 
+    // Si el guard te redirigió, esto ni corre; pero por seguridad:
+    if (!(window.CRM_USER && window.CRM_USER.activo)) return;
+
+    // Usuario autenticado
+    usuarioActual = (window.CRM_USER.nombre || "").trim();
+    localStorage.setItem("usuarioActual", usuarioActual);
+
+    const currentUserNameEl = document.getElementById("currentUserName");
+    if (currentUserNameEl) currentUserNameEl.textContent = usuarioActual || "-";
+
+    // A partir de acá, tu init normal:
+    // renderAgendaCalendario();
+    // cargarAgendaStats();
+    // cargarClientes();
+    // ...
+  });
+
+  // Reflejar usuario autenticado
+  usuarioActual = getAuthProfileName() || usuarioActual || "";
+  localStorage.setItem("usuarioActual", usuarioActual);
+  const currentUserNameEl = document.getElementById("currentUserName");
+  if (currentUserNameEl) currentUserNameEl.textContent = usuarioActual || "-";
+
+  // Si existe el <select id="usuarioActual"> (legacy), lo deshabilitamos
   const selHeader = document.getElementById("usuarioActual");
   if (selHeader) {
-    selHeader.addEventListener("change", () => {
-      const v = selHeader.value;
-      if (!allowedUsers.includes(v)) {
-        alert("Seleccioná un usuario válido para operar en el CRM.");
-        return;
-      }
-      usuarioActual = v;
-      localStorage.setItem("usuarioActual", usuarioActual);
-    });
+    selHeader.disabled = true;
+    const opt = Array.from(selHeader.options || []).find(o => o.value === usuarioActual);
+    if (opt) selHeader.value = usuarioActual;
   }
+
+  // Logout (si existe botón)
+  document.getElementById("btnLogout")?.addEventListener("click", async () => {
+    try { await supabaseClient.auth.signOut(); } catch (_) {}
+    localStorage.removeItem("usuarioActual");
+    window.location.href = "login.html";
+  });
 
   // 3) Modal cliente: abrir/cerrar + overlay click + ESC
   const btnNuevo = document.getElementById("btnNuevoCliente");

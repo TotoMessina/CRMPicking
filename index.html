@@ -12,12 +12,21 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <div class="sidebar-logo">PU</div>
           <div class="sidebar-brand-text">
-            <div class="sidebar-title">PickingUp</div>
-            <div class="sidebar-subtitle">CRM</div>
+            <div class="logo-pu">
+              <div class="sidebar-logo">PU</div>
+              <div class="sidebar-title">PickingUp</div>
+            </div>
+          </div>
+          <div class="topbar-user">
+            <span class="muted">Usuario:</span>
+            <strong id="currentUserName">-</strong>
+            <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
           </div>
         </div>
+        <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
+          Modo noche 🌙
+        </button>
 
         <nav class="sidebar-nav" aria-label="Navegación principal">
           <a href="index.html" class="nav-item active" aria-current="page">
@@ -47,27 +56,13 @@
           <!-- Controles superiores (Excel, filtros, usuario, tema) -->
           <section class="controls">
             <!-- Selector de usuario actual (header) -->
-            <select id="usuarioActual">
-              <option value="">Seleccionar usuario...</option>
-              <option value="Toto">Toto</option>
-              <option value="Ruben">Ruben</option>
-              <option value="Tincho(B)">Tincho(B)</option>
-              <option value="Fran">Fran</option>
-              <option value="Ari">Ari</option>
-              <option value="Nati">Nati</option>
-              <option value="Dani">Dani</option>
-              <option value="Otro">Otro</option>
-            </select>
-
             <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none" />
 
             <!-- Botón NUEVO: abre modal de alta -->
             <button type="button" id="btnNuevoCliente">Nuevo cliente</button>
 
             <!-- Toggle tema -->
-            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
-              Modo noche 🌙
-            </button>
+
 
             <div class="filters">
               <input type="text" id="filtroNombre" placeholder="Buscar por nombre." />
@@ -239,31 +234,11 @@
           </div>
         </div>
 
-        <!-- MODAL SELECCIÓN DE USUARIO (obligatorio al entrar) -->
-        <div id="usuarioModal" class="modal" style="display:flex;">
-          <div class="modal-content">
-            <h3>Seleccionar usuario</h3>
-            <p>Elegí quién está usando el CRM:</p>
-            <select id="usuarioModalSelect">
-              <option value="">Seleccionar usuario...</option>
-              <option value="Toto">Toto</option>
-              <option value="Ruben">Ruben</option>
-              <option value="Tincho(B)">Tincho(B)</option>
-              <option value="Fran">Fran</option>
-              <option value="Ari">Ari</option>
-              <option value="Nati">Nati</option>
-              <option value="Dani">Dani</option>
-              <option value="Otro">Otro</option>
-            </select>
-            <div class="modal-actions">
-              <button id="btnGuardarUsuario">Confirmar</button>
-            </div>
-          </div>
-        </div>
-
         <!-- Librería XLSX -->
         <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
         <!-- App -->
+        <script src="auth.js"></script>
+        <script src="guard.js"></script>
         <script src="app.js"></script>
       </div>
     </div>

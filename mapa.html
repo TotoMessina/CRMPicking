@@ -185,10 +185,16 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <div class="sidebar-logo">PU</div>
           <div class="sidebar-brand-text">
-            <div class="sidebar-title">PickingUp</div>
-            <div class="sidebar-subtitle">CRM</div>
+            <div class="logo-pu">
+              <div class="sidebar-logo">PU</div>
+              <div class="sidebar-title">PickingUp</div>
+            </div>
+          </div>
+          <div class="topbar-user">
+            <span class="muted">Usuario:</span>
+            <strong id="currentUserName">-</strong>
+            <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
           </div>
         </div>
 
@@ -348,6 +354,8 @@
       crossorigin=""
     ></script>
 
+    <script src="auth.js"></script>
+    <script src="guard.js"></script>
     <script src="mapa.js"></script>
 
       </div>

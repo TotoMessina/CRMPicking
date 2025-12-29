@@ -16,13 +16,19 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-brand">
-        <div class="sidebar-logo">PU</div>
-        <div class="sidebar-brand-text">
-          <div class="sidebar-title">PickingUp</div>
-          <div class="sidebar-subtitle">CRM</div>
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-text">
+            <div class="logo-pu">
+              <div class="sidebar-logo">PU</div>
+              <div class="sidebar-title">PickingUp</div>
+            </div>
+          </div>
+          <div class="topbar-user">
+            <span class="muted">Usuario:</span>
+            <strong id="currentUserName">-</strong>
+            <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
+          </div>
         </div>
-      </div>
 
       <nav class="sidebar-nav" aria-label="Navegación principal">
         <a href="index.html" class="nav-item">
@@ -59,7 +65,6 @@
           <div class="stats-topbar-actions">
             <button type="button" id="btnRefrescarStats" class="btn-secundario">Actualizar</button>
             <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
-          </div>
         </header>
 
         <!-- KPIs CLIENTES -->
@@ -299,6 +304,8 @@
         </footer>
       </main>
 
+      <script src="auth.js"></script>
+      <script src="guard.js"></script>
       <script src="stats.js"></script>
     </div>
   </div>

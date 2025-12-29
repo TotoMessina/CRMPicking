@@ -12,10 +12,75 @@ const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
+  ? window.CRM_AUTH.supabaseClient
+  : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 
 // ========= THEME (igual que Stats/Calendario) =========
 const THEME_KEY = "crm_theme";
+
+
+/* ============================
+   AUTH (Supabase) - Login Gate
+   Requiere que se carguen auth.js y guard.js en el HTML.
+   ============================ */
+async function requireAuthOrRedirect() {
+  if (window.CRM_GUARD_READY) {
+    try { await window.CRM_GUARD_READY; } catch (_) {}
+  }
+  if (window.CRM_USER && window.CRM_USER.activo === true) return window.CRM_USER;
+
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    const session = data?.session;
+    if (!session?.user) {
+      window.location.href = "login.html";
+      return null;
+    }
+
+    if (!window.CRM_USER) {
+      // Intentar usuarios; si no existe, permitir con sesión
+      const { data: perfil, error: e2 } = await supabaseClient
+        .from("usuarios")
+        .select("id, email, nombre, role, activo")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!e2 && perfil) {
+        window.CRM_USER = perfil;
+      } else {
+        window.CRM_USER = {
+          id: session.user.id,
+          email: session.user.email || "",
+          nombre: (session.user.email || "Usuario").split("@")[0],
+          role: "user",
+          activo: true,
+        };
+      }
+
+      if (window.CRM_USER && window.CRM_USER.activo === true) {
+        localStorage.setItem("usuarioActual", (window.CRM_USER.nombre || "").trim());
+      }
+    }
+
+    if (!window.CRM_USER || window.CRM_USER.activo !== true) {
+      window.location.href = "login.html";
+      return null;
+    }
+
+    return window.CRM_USER;
+  } catch (e) {
+    console.error("Auth error:", e);
+    window.location.href = "login.html";
+    return null;
+  }
+}
+
+function getAuthUserName() {
+  return (window.CRM_USER?.nombre || localStorage.getItem("usuarioActual") || "").trim();
+}
 
 // ========= ESTADOS (exactos de tu CRM) =========
 const ESTADOS = [
@@ -459,7 +524,10 @@ async function onDeleteClick() {
 
 // ========= Init =========
 document.addEventListener("DOMContentLoaded", async () => {
-  // Theme
+  const profile = await requireAuthOrRedirect();
+  if (!profile) return;
+
+// Theme
   const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
 
