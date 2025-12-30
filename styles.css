@@ -1784,6 +1784,7 @@ textarea {
   justify-content:space-between;
   gap: 12px;
   margin-bottom: 12px;
+  width: 100%;
 }
 
 .topbar-actions{
@@ -1804,6 +1805,7 @@ textarea {
   display:grid;
   grid-template-columns: repeat(9, 1fr);
   gap: 10px;
+  width: 100%;
 }
 
 :root[data-theme="dark"] .filters{
@@ -1820,16 +1822,15 @@ textarea {
   grid-column: span 12;
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:center;
   gap: 10px;
-  flex-wrap:wrap;
+  width: 100%;
 }
 
 .pager{
   display:flex;
   gap: 8px;
   align-items:center;
-  flex-wrap:wrap;
 }
 
 @media (max-width: 980px){
@@ -1913,6 +1914,7 @@ textarea {
   grid-template-columns: repeat(12, 1fr);
   gap: 12px;
   margin: 12px 0 18px;
+  width: 100%;
 }
 
 .stats-dashboard .kpi-card{
@@ -1957,6 +1959,7 @@ textarea {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 12px;
+  width: 100%;
 }
 
 @media (max-width: 980px){
@@ -2042,6 +2045,7 @@ textarea {
   justify-content:space-between;
   gap: 12px;
   margin-bottom: 12px;
+  width: 100%;
 }
 
 .stats-dashboard .stats-subtitle{
@@ -2154,11 +2158,15 @@ textarea {
   background: #2563eb;
   color: #fff;
   border-color: rgba(255,255,255,0.18);
+  width: 100%;
 }
 .btn-secundario {
   background: #2563eb;
   color: #fff;
   font-weight: 500;
+  width: 100%;
+  justify-content: center;
+  text-align: center;
 }
 
 /* Inputs */
@@ -2542,7 +2550,6 @@ button:active {
 /* Toggle theme */
 .controls {
   width: 100%;
-  max-width: 520px;
   display: flex;
   justify-content: flex-end;
   margin-bottom: 12px;
@@ -2589,4 +2596,16 @@ button:active {
 #map {
   width: 100%;
   height: 100vh;
+}
+
+.btn-add-historial{
+  background-color: #15803d;
+}
+
+#pageSize{
+  width: min-content;
+}
+
+.calendar-toolbar{
+  width: 100%;
 }

@@ -4,10 +4,16 @@
    - Editar/Eliminar: click en marcador
    - Color por ESTADO (mismos nombres que el CRM)
    - Tema: usa localStorage crm_theme (igual que tu app)
+
+   NUEVO:
+   - Optimizar ruta entre múltiples clientes (sin API paga):
+     * Seleccionás clientes
+     * Elegís origen (Mi ubicación / un cliente)
+     * Orden recomendado (heurística nearest-neighbor)
+     * Dibuja polyline + resumen + abrir en Google Maps
    ========================================================= */
 
 // ========= SUPABASE (copiá los tuyos si difieren) =========
-// En tus archivos se usa este patrón:
 const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
@@ -16,10 +22,8 @@ const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
   ? window.CRM_AUTH.supabaseClient
   : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-
 // ========= THEME (igual que Stats/Calendario) =========
 const THEME_KEY = "crm_theme";
-
 
 /* ============================
    AUTH (Supabase) - Login Gate
@@ -92,14 +96,14 @@ const ESTADOS = [
   "6 - Local No Interesado",
 ];
 
-// Mapeo de colores (alineado con tu styles.css en dark: fluo-red/orange/lime/cyan/mint/violet)
+// Mapeo de colores
 const ESTADO_COLOR = {
-  "1 - Cliente relevado": "#ff3d3d", // red
-  "2 - Local Visitado No Activo": "#ff9f1c", // orange
-  "3 - Primer Ingreso": "#ffef16ff", // lime
-  "4 - Local Creado": "#7700ffff", // cyan
-  "5 - Local Visitado Activo": "#22ff34ff", // mint
-  "6 - Local No Interesado": "#5f5f5fff", // violet
+  "1 - Cliente relevado": "#ff3d3d",
+  "2 - Local Visitado No Activo": "#ff9f1c",
+  "3 - Primer Ingreso": "#ffef16ff",
+  "4 - Local Creado": "#7700ffff",
+  "5 - Local Visitado Activo": "#22ff34ff",
+  "6 - Local No Interesado": "#5f5f5fff",
 };
 
 // ========= Leaflet/map state =========
@@ -109,9 +113,15 @@ let myMarker = null;
 let myAccuracyCircle = null;
 
 let lastKnownPos = null; // {lat, lng, accuracy, ts}
-let recordsCache = []; // clientes
+let recordsCache = [];   // clientes (con coords)
 
-// ========= DOM =========
+// ========= Route state (NUEVO) =========
+let routeLine = null;
+let routeStopsLayer = null;
+let routeBounds = null;
+let lastRoute = null; // { origin:{lat,lng,label}, stops:[{id,label,lat,lng}], ordered:[...], totalKm, returnToOrigin }
+
+// ========= DOM (Cliente modal) =========
 const elModal = document.getElementById("modalCliente");
 const elForm = document.getElementById("formClienteMapa");
 const elModalTitle = document.getElementById("modalTitle");
@@ -124,6 +134,28 @@ const btnToggleTheme = document.getElementById("btnToggleTheme");
 const btnUbicarme = document.getElementById("btnUbicarme");
 const btnRegistrarAqui = document.getElementById("btnRegistrarAqui");
 const btnRefrescar = document.getElementById("btnRefrescar");
+
+// ========= DOM (Ruta - NUEVO) =========
+const btnOptimizarRuta = document.getElementById("btnOptimizarRuta");
+const btnLimpiarRuta = document.getElementById("btnLimpiarRuta");
+
+const elModalRuta = document.getElementById("modalRuta");
+const btnCerrarModalRuta = document.getElementById("btnCerrarModalRuta");
+const elRouteSearch = document.getElementById("routeSearch");
+const elRouteStart = document.getElementById("routeStart");
+const elRouteList = document.getElementById("routeList");
+const elRouteReturn = document.getElementById("routeReturn");
+const elRouteAutoCenter = document.getElementById("routeAutoCenter");
+const elRouteCount = document.getElementById("routeCount");
+const btnSeleccionarTodos = document.getElementById("btnSeleccionarTodos");
+const btnDeseleccionarTodos = document.getElementById("btnDeseleccionarTodos");
+const btnGenerarRuta = document.getElementById("btnGenerarRuta");
+
+const elRouteSummary = document.getElementById("routeSummary");
+const elRouteMeta = document.getElementById("routeMeta");
+const elRouteStops = document.getElementById("routeStops");
+const btnAbrirGoogleMaps = document.getElementById("btnAbrirGoogleMaps");
+const btnCentrarRuta = document.getElementById("btnCentrarRuta");
 
 // ========= Helpers =========
 function escapeHtml(v) {
@@ -138,7 +170,7 @@ function escapeHtml(v) {
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem(THEME_KEY, theme);
-  if (btnToggleTheme) btnToggleTheme.textContent = theme === "dark" ? "Modo día" : "Modo noche";
+  if (btnToggleTheme) btnToggleTheme.textContent = theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
 }
 
 function getTheme() {
@@ -148,22 +180,14 @@ function getTheme() {
 function toggleTheme() {
   const next = getTheme() === "light" ? "dark" : "light";
   applyTheme(next);
-  // opcional: re-render markers para asegurar contraste (acá no hace falta)
 }
 
 function normalizeEstado(raw) {
   if (!raw) return "Sin estado";
-
   const s = String(raw).trim();
-
-  // Normalizaciones que ya aparecen en tu app (por compatibilidad)
   if (s.toLowerCase() === "3 - primer ingreso") return "3 - Primer Ingreso";
   if (s === "3 - Primer ingreso") return "3 - Primer Ingreso";
-
-  // Si viene sólo "1".."6" lo convertimos a etiqueta CRM
   if (/^[1-6]$/.test(s)) return ESTADOS[Number(s) - 1];
-
-  // Si viene "1 - Cliente relevado" etc lo dejamos
   return s;
 }
 
@@ -186,6 +210,10 @@ function iconForEstado(estadoRaw) {
 function setModalOpen(open) {
   elModal.style.display = open ? "flex" : "none";
   elModal.setAttribute("aria-hidden", open ? "false" : "true");
+}
+function setModalRutaOpen(open) {
+  elModalRuta.style.display = open ? "flex" : "none";
+  elModalRuta.setAttribute("aria-hidden", open ? "false" : "true");
 }
 
 function setCoordsHint(lat, lng) {
@@ -214,6 +242,55 @@ function currentISODate() {
   return `${y}-${m}-${day}`;
 }
 
+function clientLabel(rec) {
+  const n = `${rec?.nombre ?? ""} ${rec?.apellido ?? ""}`.trim();
+  return n || "(Sin nombre)";
+}
+
+function toNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// ========= Distancias (NUEVO) =========
+function haversineKm(a, b) {
+  const R = 6371; // km
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180;
+  const lat2 = b.lat * Math.PI / 180;
+
+  const s1 = Math.sin(dLat / 2);
+  const s2 = Math.sin(dLng / 2);
+  const h = s1 * s1 + Math.cos(lat1) * Math.cos(lat2) * s2 * s2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function nearestNeighborOrder(origin, stops) {
+  const remaining = stops.slice();
+  const ordered = [];
+  let current = origin;
+
+  while (remaining.length) {
+    let bestIdx = 0;
+    let bestDist = Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const d = haversineKm(current, remaining[i]);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+
+    const next = remaining.splice(bestIdx, 1)[0];
+    ordered.push(next);
+    current = next;
+  }
+
+  return ordered;
+}
+
 // ========= Legend =========
 function renderLegend() {
   const legend = document.getElementById("legend");
@@ -236,9 +313,7 @@ function renderLegend() {
 
 // ========= Map init =========
 function initMap() {
-  map = L.map("map", {
-    zoomControl: true,
-  }).setView([-34.62, -58.44], 12); // fallback (CABA) - se ajusta con "Ubicarme"
+  map = L.map("map", { zoomControl: true }).setView([-34.62, -58.44], 12);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -246,6 +321,9 @@ function initMap() {
   }).addTo(map);
 
   markersLayer = L.layerGroup().addTo(map);
+
+  // NUEVO: capa para paradas de ruta (por arriba de markers)
+  routeStopsLayer = L.layerGroup().addTo(map);
 
   map.on("click", (e) => {
     openCreateModalAt(e.latlng.lat, e.latlng.lng);
@@ -255,7 +333,6 @@ function initMap() {
 // ========= Geolocation =========
 function updateMyLocationMarker(pos) {
   const { lat, lng, accuracy } = pos;
-
   const latlng = [lat, lng];
 
   if (!myMarker) {
@@ -293,6 +370,11 @@ function locateMe({ center = true } = {}) {
       updateMyLocationMarker(lastKnownPos);
 
       if (center) map.setView([lat, lng], 16);
+
+      // NUEVO: si el modal de ruta está abierto, refrescamos el origen (para habilitar “Mi ubicación”)
+      if (elModalRuta && elModalRuta.style.display === "flex") {
+        rebuildRouteStartOptions();
+      }
     },
     (err) => {
       console.error(err);
@@ -302,7 +384,7 @@ function locateMe({ center = true } = {}) {
   );
 }
 
-// ========= Modal open/fill =========
+// ========= Modal (Cliente) =========
 function resetModalToCreate(lat, lng) {
   setFormValue("clienteId", "");
   setFormValue("lat", lat);
@@ -315,7 +397,7 @@ function resetModalToCreate(lat, lng) {
   setFormValue("direccion", "");
   setFormValue("rubro", "");
   setFormValue("responsable", "");
-  setFormValue("estado", "4 - Local Creado"); // default razonable
+  setFormValue("estado", "4 - Local Creado");
   setFormValue("fecha_contacto", currentISODate());
 
   elModalTitle.textContent = "Nuevo cliente";
@@ -359,17 +441,30 @@ function openEditModal(rec) {
 async function loadRecords() {
   const { data, error } = await supabaseClient
     .from("clientes")
-    .select("id,nombre,apellido,telefono,mail,direccion,rubro,estado,responsable,fecha_contacto,lat,lng,created_at")
-    .eq("activo", true);
+    .select("id,nombre,apellido,direccion,rubro,estado,responsable,lat,lng")
+    .eq("activo", true)
+    .not("lat", "is", null)
+    .not("lng", "is", null);
 
   if (error) throw error;
 
-  // Sólo los que tienen coords para mapear (si querés mapear sin coords, habría que geocodificar)
-  recordsCache = (data || []).filter(
-    (r) => typeof r.lat === "number" && typeof r.lng === "number"
-  );
+  // 🔥 NORMALIZACIÓN CLAVE
+  recordsCache = (data || [])
+    .map(r => ({
+      ...r,
+      lat: Number(r.lat),
+      lng: Number(r.lng),
+    }))
+    .filter(r =>
+      Number.isFinite(r.lat) &&
+      Number.isFinite(r.lng)
+    );
 
   renderMarkers();
+
+  if (elModalRuta && elModalRuta.style.display === "flex") {
+    rebuildRouteUI();
+  }
 }
 
 async function insertRecord(payload) {
@@ -390,13 +485,11 @@ async function updateRecord(id, payload) {
 }
 
 async function deleteRecord(id) {
-  // Para no romper tu CRM, preferimos soft-delete (activo=false) si existe esa columna
-  // Si tu tabla no tiene "activo", cambiá por .delete()
   const { error } = await supabaseClient.from("clientes").update({ activo: false }).eq("id", id);
   if (error) throw error;
 }
 
-// ========= Rendering =========
+// ========= Rendering (Marcadores) =========
 function renderMarkers() {
   markersLayer.clearLayers();
 
@@ -522,24 +615,418 @@ async function onDeleteClick() {
   }
 }
 
+// =========================================================
+// RUTAS (NUEVO)
+// =========================================================
+function getSelectedRouteIds() {
+  const checked = elRouteList?.querySelectorAll('input[type="checkbox"][data-id]:checked') || [];
+  return Array.from(checked).map((x) => x.getAttribute("data-id")).filter(Boolean);
+}
+
+function updateRouteCount() {
+  const n = getSelectedRouteIds().length;
+  if (elRouteCount) elRouteCount.textContent = `${n} seleccionados`;
+}
+
+function rebuildRouteStartOptions() {
+  if (!elRouteStart) return;
+
+  const selectedIds = new Set(getSelectedRouteIds());
+  const selectedRecs = recordsCache.filter((r) => selectedIds.has(r.id));
+
+  const prev = elRouteStart.value || "";
+  elRouteStart.innerHTML = "";
+
+  // Mi ubicación
+  const optMe = document.createElement("option");
+  optMe.value = "__me__";
+  optMe.textContent = lastKnownPos ? "Mi ubicación (GPS)" : "Mi ubicación (GPS) — primero tocá “Ubicarme”";
+  optMe.disabled = !lastKnownPos;
+  elRouteStart.appendChild(optMe);
+
+  // Origen en un cliente seleccionado (o en cualquiera, si no hay selección todavía)
+  const pool = selectedRecs.length ? selectedRecs : recordsCache;
+  const sorted = pool.slice().sort((a,b) => clientLabel(a).localeCompare(clientLabel(b), "es", { sensitivity:"base" }));
+
+  for (const r of sorted) {
+    const o = document.createElement("option");
+    o.value = r.id;
+    o.textContent = `Cliente: ${clientLabel(r)}`;
+    elRouteStart.appendChild(o);
+  }
+
+  // intentar conservar
+  if (prev && Array.from(elRouteStart.options).some((o) => o.value === prev)) elRouteStart.value = prev;
+  else elRouteStart.value = lastKnownPos ? "__me__" : (sorted[0]?.id || "__me__");
+}
+
+function rebuildRouteList(filterText = "") {
+  if (!elRouteList) return;
+
+  const prevSelected = new Set(getSelectedRouteIds());
+  elRouteList.innerHTML = "";
+
+  const q = String(filterText || "").trim().toLowerCase();
+
+  const sorted = recordsCache
+  .filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng))
+  .sort((a, b) =>
+    clientLabel(a).localeCompare(clientLabel(b), "es", { sensitivity: "base" })
+  );
+
+  for (const rec of sorted) {
+    const label = clientLabel(rec);
+    const hay = `${label} ${rec?.direccion ?? ""} ${rec?.rubro ?? ""}`.toLowerCase();
+
+    if (q && !hay.includes(q)) continue;
+
+    const row = document.createElement("div");
+    row.className = "route-item";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.setAttribute("data-id", rec.id);
+    cb.checked = prevSelected.has(rec.id);
+
+    cb.addEventListener("change", () => {
+      updateRouteCount();
+      rebuildRouteStartOptions();
+    });
+
+    const info = document.createElement("div");
+    info.innerHTML = `
+      <strong>${escapeHtml(label)}</strong>
+      <div class="muted">${escapeHtml(rec?.direccion ?? "")}</div>
+    `;
+
+    row.appendChild(cb);
+    row.appendChild(info);
+    elRouteList.appendChild(row);
+  }
+
+  updateRouteCount();
+}
+
+function rebuildRouteUI() {
+  rebuildRouteList(elRouteSearch?.value || "");
+  rebuildRouteStartOptions();
+}
+
+function openRouteModal() {
+  if (!recordsCache.length) {
+    alert("No hay clientes con coordenadas para armar una ruta.");
+    return;
+  }
+  rebuildRouteUI();
+  setModalRutaOpen(true);
+}
+
+function clearRoute() {
+  if (routeLine) {
+    try { map.removeLayer(routeLine); } catch (_) {}
+    routeLine = null;
+  }
+  if (routeStopsLayer) routeStopsLayer.clearLayers();
+  routeBounds = null;
+  lastRoute = null;
+
+  if (elRouteSummary) elRouteSummary.style.display = "none";
+}
+
+function addRouteStopMarker(lat, lng, label, idx) {
+  const icon = L.divIcon({
+    className: "",
+    html: `
+      <div style="
+        width:26px;height:26px;border-radius:999px;
+        display:flex;align-items:center;justify-content:center;
+        font-weight:700;font-size:12px;
+        border:2px solid rgba(255,255,255,0.95);
+        background:rgba(2,6,23,0.78);
+        color:#fff;
+        box-shadow:0 10px 28px rgba(0,0,0,0.22);
+      ">${idx}</div>
+    `,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+    popupAnchor: [0, -12],
+  });
+
+  const m = L.marker([lat, lng], { icon, title: label });
+  m.bindPopup(`<b>${escapeHtml(label)}</b>`);
+  routeStopsLayer.addLayer(m);
+  return m;
+}
+
+function computeRouteTotalKm(origin, orderedStops, returnToOrigin) {
+  let total = 0;
+  let curr = origin;
+  for (const s of orderedStops) {
+    total += haversineKm(curr, s);
+    curr = s;
+  }
+  if (returnToOrigin && orderedStops.length) {
+    total += haversineKm(curr, origin);
+  }
+  return total;
+}
+
+function renderRouteSummary(route) {
+  if (!elRouteSummary || !elRouteMeta || !elRouteStops) return;
+
+  elRouteMeta.innerHTML = "";
+
+  const pill1 = document.createElement("span");
+  pill1.className = "pill";
+  pill1.textContent = `Origen: ${route.origin.label}`;
+  elRouteMeta.appendChild(pill1);
+
+  const pill2 = document.createElement("span");
+  pill2.className = "pill";
+  pill2.textContent = `Paradas: ${route.ordered.length}`;
+  elRouteMeta.appendChild(pill2);
+
+  const pill3 = document.createElement("span");
+  pill3.className = "pill";
+  pill3.textContent = `Distancia aprox.: ${route.totalKm.toFixed(1)} km`;
+  elRouteMeta.appendChild(pill3);
+
+  const pill4 = document.createElement("span");
+  pill4.className = "pill";
+  pill4.textContent = route.returnToOrigin ? "Cierra circuito: Sí" : "Cierra circuito: No";
+  elRouteMeta.appendChild(pill4);
+
+  elRouteStops.innerHTML = "";
+  for (const s of route.ordered) {
+    const li = document.createElement("li");
+    li.textContent = s.label;
+    elRouteStops.appendChild(li);
+  }
+
+  elRouteSummary.style.display = "block";
+}
+
+function buildGoogleMapsDirectionsUrl(route) {
+  // Google Maps Directions: origin, destination, waypoints
+  // Limit práctico: muchos waypoints puede fallar; manejamos recorte con aviso.
+  const origin = `${route.origin.lat},${route.origin.lng}`;
+
+  const ordered = route.ordered.slice();
+  if (!ordered.length) return null;
+
+  const destinationStop = route.returnToOrigin ? route.origin : ordered[ordered.length - 1];
+  const destination = `${destinationStop.lat},${destinationStop.lng}`;
+
+  // waypoints: todos menos el último (si no volvemos), o todos (si volvemos al origen)
+  let waypointsStops = [];
+  if (route.returnToOrigin) {
+    waypointsStops = ordered;
+  } else {
+    waypointsStops = ordered.slice(0, -1);
+  }
+
+  // Recorte defensivo: 23 waypoints suele ser límite; dejamos 20 para margen.
+  const MAX_WAYPOINTS = 20;
+  if (waypointsStops.length > MAX_WAYPOINTS) {
+    waypointsStops = waypointsStops.slice(0, MAX_WAYPOINTS);
+    alert("La ruta tiene demasiadas paradas para Google Maps. Se abrirá con las primeras 20 paradas.");
+  }
+
+  const waypoints = waypointsStops.map((s) => `${s.lat},${s.lng}`).join("|");
+  const params = new URLSearchParams({
+    api: "1",
+    origin,
+    destination,
+    travelmode: "driving",
+  });
+  if (waypoints) params.set("waypoints", waypoints);
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function drawRouteOnMap(route, { autoCenter = true } = {}) {
+  clearRoute();
+
+  const points = [];
+  points.push([route.origin.lat, route.origin.lng]);
+
+  for (const s of route.ordered) {
+    points.push([s.lat, s.lng]);
+  }
+
+  if (route.returnToOrigin && route.ordered.length) {
+    points.push([route.origin.lat, route.origin.lng]);
+  }
+
+  // polyline
+  routeLine = L.polyline(points, {
+    weight: 5,
+    opacity: 0.85,
+  }).addTo(map);
+
+  routeBounds = routeLine.getBounds();
+
+  // marcadores numerados de paradas
+  routeStopsLayer.clearLayers();
+
+  // Origen (si es mi ubicación, mostramos un marker especial)
+  const originLabel = route.origin.label;
+  const originIcon = L.divIcon({
+    className: "",
+    html: `
+      <div style="
+        width:28px;height:28px;border-radius:999px;
+        display:flex;align-items:center;justify-content:center;
+        font-weight:800;font-size:12px;
+        border:2px solid rgba(255,255,255,0.95);
+        background:rgba(34,255,52,0.75);
+        color:#0b1220;
+        box-shadow:0 10px 28px rgba(0,0,0,0.22);
+      ">O</div>
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -12],
+  });
+  const mo = L.marker([route.origin.lat, route.origin.lng], { icon: originIcon, title: originLabel });
+  mo.bindPopup(`<b>Origen</b><br>${escapeHtml(originLabel)}`);
+  routeStopsLayer.addLayer(mo);
+
+  route.ordered.forEach((s, i) => addRouteStopMarker(s.lat, s.lng, s.label, i + 1));
+
+  if (autoCenter && routeBounds && routeBounds.isValid()) {
+    map.fitBounds(routeBounds.pad(0.18));
+  }
+
+  renderRouteSummary(route);
+  lastRoute = route;
+}
+
+function generateRoute() {
+  const selectedIds = getSelectedRouteIds();
+  if (selectedIds.length < 2) {
+    alert("Seleccioná al menos 2 clientes para optimizar una ruta.");
+    return;
+  }
+
+  // Armar stops
+  const selected = recordsCache
+    .filter(r => selectedIds.includes(r.id))
+    .map(r => ({
+      id: r.id,
+      label: clientLabel(r),
+      lat: Number(r.lat),
+      lng: Number(r.lng),
+    }))
+    .filter(s =>
+      Number.isFinite(s.lat) &&
+      Number.isFinite(s.lng)
+    );
+
+  if (selected.length < 2) {
+    alert("No hay suficientes clientes con coordenadas válidas.");
+    return;
+  }
+
+  // Origen
+  const startValue = elRouteStart?.value || "__me__";
+  let origin = null;
+
+  if (startValue === "__me__") {
+    if (!lastKnownPos) {
+      alert("Primero tocá “Ubicarme” para usar tu ubicación como origen.");
+      return;
+    }
+    origin = { lat: lastKnownPos.lat, lng: lastKnownPos.lng, label: "Mi ubicación" };
+  } else {
+    const rec = selected.find((s) => s.id === startValue) || selected[0];
+    origin = { lat: rec.lat, lng: rec.lng, label: rec.label };
+  }
+
+  // Si el origen es un cliente, lo sacamos de stops (para no duplicar)
+  const stops = selected.filter((s) => !(origin.label === s.label && origin.lat === s.lat && origin.lng === s.lng));
+
+  if (!stops.length) {
+    alert("Si el origen es un cliente, necesitás seleccionar al menos otro cliente adicional.");
+    return;
+  }
+
+  const ordered = nearestNeighborOrder(origin, stops);
+  const returnToOrigin = !!elRouteReturn?.checked;
+  const totalKm = computeRouteTotalKm(origin, ordered, returnToOrigin);
+
+  const route = {
+    origin,
+    stops,
+    ordered,
+    totalKm,
+    returnToOrigin,
+  };
+
+  drawRouteOnMap(route, { autoCenter: !!elRouteAutoCenter?.checked });
+  setModalRutaOpen(false);
+}
+
+// ========= Eventos (Ruta) =========
+function wireRouteUi() {
+  btnOptimizarRuta?.addEventListener("click", openRouteModal);
+  btnLimpiarRuta?.addEventListener("click", clearRoute);
+
+  btnCerrarModalRuta?.addEventListener("click", () => setModalRutaOpen(false));
+  elModalRuta?.addEventListener("click", (ev) => {
+    if (ev.target === elModalRuta) setModalRutaOpen(false);
+  });
+
+  elRouteSearch?.addEventListener("input", () => {
+    rebuildRouteList(elRouteSearch.value);
+  });
+
+  btnSeleccionarTodos?.addEventListener("click", () => {
+    const boxes = elRouteList?.querySelectorAll('input[type="checkbox"][data-id]') || [];
+    boxes.forEach((b) => { b.checked = true; });
+    updateRouteCount();
+    rebuildRouteStartOptions();
+  });
+
+  btnDeseleccionarTodos?.addEventListener("click", () => {
+    const boxes = elRouteList?.querySelectorAll('input[type="checkbox"][data-id]') || [];
+    boxes.forEach((b) => { b.checked = false; });
+    updateRouteCount();
+    rebuildRouteStartOptions();
+  });
+
+  btnGenerarRuta?.addEventListener("click", generateRoute);
+
+  btnCentrarRuta?.addEventListener("click", () => {
+    if (routeBounds && routeBounds.isValid()) map.fitBounds(routeBounds.pad(0.18));
+  });
+
+  btnAbrirGoogleMaps?.addEventListener("click", () => {
+    if (!lastRoute) return;
+    const url = buildGoogleMapsDirectionsUrl(lastRoute);
+    if (!url) return;
+    window.open(url, "_blank", "noopener,noreferrer");
+  });
+}
+
 // ========= Init =========
 document.addEventListener("DOMContentLoaded", async () => {
   const profile = await requireAuthOrRedirect();
   if (!profile) return;
 
-// Theme
+  // Theme
   const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
 
   btnToggleTheme?.addEventListener("click", toggleTheme);
 
-  // Modal close
+  // Modal cliente close
   elBtnCerrarModal?.addEventListener("click", () => setModalOpen(false));
   elModal?.addEventListener("click", (ev) => {
     if (ev.target === elModal) setModalOpen(false);
   });
 
-  // Form
+  // Form cliente
   elForm?.addEventListener("submit", onSubmitForm);
   elBtnEliminar?.addEventListener("click", onDeleteClick);
 
@@ -547,12 +1034,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   initMap();
   renderLegend();
 
-  // Actions
+  // Acciones
   btnUbicarme?.addEventListener("click", () => locateMe({ center: true }));
   btnRegistrarAqui?.addEventListener("click", () => {
     if (!lastKnownPos) {
       locateMe({ center: true });
-      // cuando llega la ubicación, el usuario puede tocar el botón de nuevo
       alert("Primero obtengamos tu ubicación. Tocá 'Registrar donde estoy' nuevamente.");
       return;
     }
@@ -568,6 +1054,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       alert("No se pudo refrescar.");
     }
   });
+
+  // NUEVO: rutas
+  wireRouteUi();
 
   // Cargar data + ubicar (opcional)
   try {

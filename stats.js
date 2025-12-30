@@ -1,12 +1,7 @@
 /* =========================================================
-   stats.js (PEGAR TAL CUAL) — TODO DEPENDE DEL SELECT DE LAPSO
-   Select único: #statsRange (se inserta en la topbar actions)
-
-   Tablas/columnas (tuyas):
-   - clientes(created_at, activo, rubro, estado, responsable, fecha_proximo_contacto, ultima_actividad)
-   - consumidores(created_at, activo, estado, responsable, ultima_actividad)
-   - actividades(cliente_id, fecha, usuario)
-   - actividades_consumidores(consumidor_id, fecha, usuario)
+   stats.js — catálogo de usuarios desde public.usuarios
+   Mantiene históricos desde BD (clientes.responsable / actividades.usuario)
+   NO usa localStorage como fuente de “usuarios existentes”.
 
    Requiere:
    - Supabase JS (window.supabase)
@@ -14,30 +9,30 @@
 ========================================================= */
 
 // =========================================================
-// CONEXIÓN SUPABASE (COMO PEDISTE)
+// CONEXIÓN SUPABASE
 // =========================================================
 const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
 
-const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
-  ? window.CRM_AUTH.supabaseClient
-  : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient =
+  window.CRM_AUTH && window.CRM_AUTH.supabaseClient
+    ? window.CRM_AUTH.supabaseClient
+    : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 /* ============================
-   AUTH (Supabase) - Login Gate
-   Requiere que se carguen auth.js y guard.js en el HTML.
-   Si no están, usa fallback con supabaseClient.auth.getSession().
-   ============================ */
+   AUTH - Login Gate
+   Requiere auth.js y guard.js idealmente.
+============================ */
 async function requireAuthOrRedirect() {
-  // Esperar a que guard.js termine (evita condiciones de carrera)
   if (window.CRM_GUARD_READY) {
-    try { await window.CRM_GUARD_READY; } catch (_) {}
+    try {
+      await window.CRM_GUARD_READY;
+    } catch (_) {}
   }
 
-  // Si guard.js ya seteo el usuario, listo
   if (window.CRM_USER && window.CRM_USER.activo === true) return window.CRM_USER;
 
-  // Fallback: chequear sesión y (si existe) cargar perfil desde public.usuarios
   try {
     const { data, error } = await supabaseClient.auth.getSession();
     if (error) throw error;
@@ -48,7 +43,6 @@ async function requireAuthOrRedirect() {
       return null;
     }
 
-    // Intentar traer perfil si tu esquema lo usa
     if (!window.CRM_USER) {
       const { data: perfil, error: e2 } = await supabaseClient
         .from("usuarios")
@@ -58,9 +52,7 @@ async function requireAuthOrRedirect() {
 
       if (!e2 && perfil && perfil.activo === true) {
         window.CRM_USER = perfil;
-        localStorage.setItem("usuarioActual", (perfil.nombre || "").trim());
       } else {
-        // Si no existe tabla usuarios, al menos permitimos entrar con sesión
         window.CRM_USER = {
           id: session.user.id,
           email: session.user.email || "",
@@ -68,7 +60,6 @@ async function requireAuthOrRedirect() {
           role: "user",
           activo: true,
         };
-        localStorage.setItem("usuarioActual", (window.CRM_USER.nombre || "").trim());
       }
     }
 
@@ -87,10 +78,8 @@ async function requireAuthOrRedirect() {
 
 function getAuthUserName() {
   const n = (window.CRM_USER?.nombre || "").trim();
-  if (n) return n;
-  return (localStorage.getItem("usuarioActual") || "").trim();
+  return n || "-";
 }
-
 
 // =========================================================
 // CONFIG
@@ -100,7 +89,8 @@ const CFG = {
     clientes: "clientes",
     consumidores: "consumidores",
     actividades: "actividades",
-    actividadesConsumidores: "actividades_consumidores"
+    actividadesConsumidores: "actividades_consumidores",
+    usuarios: "usuarios",
   },
   pageSize: 1000,
   ranges: [
@@ -109,9 +99,9 @@ const CFG = {
     { value: "60d", label: "Lapso: 60 días", days: 60 },
     { value: "90d", label: "Lapso: 90 días", days: 90 },
     { value: "6m", label: "Lapso: 6 meses", days: 182 },
-    { value: "1y", label: "Lapso: 1 año", days: 365 }
+    { value: "1y", label: "Lapso: 1 año", days: 365 },
   ],
-  chartMinHeight: 320
+  chartMinHeight: 320,
 };
 
 // =========================================================
@@ -123,29 +113,103 @@ const CHARTS = {
   responsables: null,
   promedio: null,
   altas: null,
-  estadosConsumidores: null
+  estadosConsumidores: null,
 };
 
 // =========================================================
 // HELPERS
 // =========================================================
-function $(id) { return document.getElementById(id); }
-function setText(id, val) { const el = $(id); if (el) el.textContent = val; }
-function fmtInt(n) { return (typeof n === "number" && !Number.isNaN(n)) ? n.toLocaleString("es-AR") : "0"; }
-function pad2(n) { return String(n).padStart(2, "0"); }
-function startOfLocalDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
-function addDays(d, days) { const x = new Date(d); x.setDate(x.getDate() + days); return x; }
-function toLocalDayKey(dateObj) { return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth()+1)}-${pad2(dateObj.getDate())}`; }
-function parseDate(value) { if (!value) return null; const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d; }
-function isoFromLocalStart(dateObj) { return startOfLocalDay(dateObj).toISOString(); }
+function $(id) {
+  return document.getElementById(id);
+}
+function setText(id, val) {
+  const el = $(id);
+  if (el) el.textContent = val;
+}
+function fmtInt(n) {
+  return typeof n === "number" && !Number.isNaN(n) ? n.toLocaleString("es-AR") : "0";
+}
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function startOfLocalDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function addDays(d, days) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + days);
+  return x;
+}
+function toLocalDayKey(dateObj) {
+  return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}`;
+}
+function parseDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+function isoFromLocalStart(dateObj) {
+  return startOfLocalDay(dateObj).toISOString();
+}
 function escapeHtml(s) {
   return String(s)
-    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+/**
+ * Quita cualquier "(Histórico)" (o variantes) y normaliza espacios.
+ * IMPORTANTE: esto evita que el front se “auto-contamine” con labels.
+ */
+function cleanName(name) {
+  return String(name || "")
+    .replace(/\(hist[oó]rico\)/gi, "") // elimina "(Histórico)" si ya estaba
+    .replace(/\u00A0/g, " ")          // NBSP
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Clave normalizada para comparar/matchear.
+ */
+function normName(s) {
+  return cleanName(s)
+    .normalize("NFKC")
+    .toLowerCase();
+}
+
+/**
+ * Canoniza un nombre usando el mapa canon (nombre_normalizado => nombre_real_en_usuarios).
+ * - Limpia "(Histórico)" si vino “pegado”.
+ * - Si existe usuario real, devuelve el nombre exacto del catálogo (ej: "Tincho").
+ * - Si no, devuelve el nombre limpio (sin histórico).
+ */
+function canonizeName(name, canonMap) {
+  const raw = cleanName(name);
+  if (!raw) return "";
+  const k = normName(raw);
+  return canonMap?.get(k) || raw;
+}
+
+/**
+ * Devuelve label de display SIN duplicar histórico:
+ * - si es real -> "Tincho"
+ * - si no es real -> "Tincho (Histórico)"
+ */
+function displayNameWithHistoricFlag(name, activeSet) {
+  const base = cleanName(name);
+  if (!base) return "Sin dato";
+  const isReal = activeSet?.has(normName(base));
+  return isReal ? base : `${base} (Histórico)`;
 }
 
 // =========================================================
-// SUPABASE (paginado + count)
+// SUPABASE (paginado)
 // =========================================================
 async function fetchAll(table, selectCols, applyFiltersFn) {
   const out = [];
@@ -176,6 +240,89 @@ async function countExact(table, applyFiltersFn) {
 }
 
 // =========================================================
+// CATÁLOGO DE USUARIOS
+// Fuente: public.usuarios (activos) + históricos desde BD (sin localStorage)
+// =========================================================
+async function getUserUniverse({ fromISO } = {}) {
+  const activeUsers = []; // catálogo “real”
+  const activeSet = new Set(); // normalizado
+
+  // 1) Usuarios reales (activos)
+  const { data: uData, error: uErr } = await supabaseClient
+    .from(CFG.tables.usuarios)
+    .select("nombre, activo")
+    .eq("activo", true);
+
+  if (!uErr && Array.isArray(uData)) {
+    for (const u of uData) {
+      const n = cleanName(u?.nombre || "");
+      if (!n) continue;
+      const k = normName(n);
+      if (!activeSet.has(k)) {
+        activeSet.add(k);
+        activeUsers.push(n);
+      }
+    }
+  }
+
+  // Mapa canon: nombre_normalizado => nombre_real_en_usuarios
+  const canon = new Map();
+  for (const n of activeUsers) canon.set(normName(n), n);
+
+  // 2) Históricos desde clientes (responsable)
+  const histSet = new Set();
+  const clientesHist = await fetchAll(
+    CFG.tables.clientes,
+    "responsable,activo",
+    (q) => q.eq("activo", true).not("responsable", "is", null)
+  );
+  for (const c of clientesHist) {
+    const n = cleanName(c?.responsable || "");
+    if (!n) continue;
+    // guardamos limpio, no decorado
+    histSet.add(n);
+  }
+
+  // 3) Históricos desde actividades (usuario) (podés limitar por rango)
+  const actsHist = await fetchAll(
+    CFG.tables.actividades,
+    "usuario,fecha",
+    (q) => {
+      let qq = q.not("usuario", "is", null);
+      if (fromISO) qq = qq.gte("fecha", fromISO);
+      return qq;
+    }
+  );
+  for (const a of actsHist) {
+    const n = cleanName(a?.usuario || "");
+    if (!n) continue;
+    histSet.add(n);
+  }
+
+  // Construir lista histórica que no está en activos
+  const historicalUsers = [];
+  for (const n of histSet) {
+    const k = normName(n);
+    if (!activeSet.has(k)) historicalUsers.push(n);
+  }
+  historicalUsers.sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+
+  // Universo (para selects/otros usos si los agregás): activos + históricos ya marcados
+  const universe = [
+    ...activeUsers.sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })),
+    ...historicalUsers.map((n) => `${n} (Histórico)`),
+  ];
+
+  return {
+    activeUsers,
+    historicalUsers,
+    universe,
+    activeSet,
+    canon,
+  };
+}
+
+// =========================================================
 // GROUP / SERIES
 // =========================================================
 function groupCount(rows, field, emptyLabel = "Sin dato") {
@@ -185,7 +332,7 @@ function groupCount(rows, field, emptyLabel = "Sin dato") {
     const v = raw != null && String(raw).trim() !== "" ? String(raw).trim() : emptyLabel;
     m.set(v, (m.get(v) || 0) + 1);
   }
-  return [...m.entries()].sort((a,b) => b[1]-a[1]);
+  return [...m.entries()].sort((a, b) => b[1] - a[1]);
 }
 
 function buildDayBuckets(daysBack) {
@@ -194,7 +341,7 @@ function buildDayBuckets(daysBack) {
   const buckets = [];
   for (let i = 0; i < daysBack; i++) {
     const day = addDays(start, i);
-    buckets.push({ key: toLocalDayKey(day), label: `${pad2(day.getDate())}/${pad2(day.getMonth()+1)}` });
+    buckets.push({ key: toLocalDayKey(day), label: `${pad2(day.getDate())}/${pad2(day.getMonth() + 1)}` });
   }
   return buckets;
 }
@@ -210,7 +357,7 @@ function seriesByDay(rows, dateField, buckets) {
     if (map.has(key)) map.set(key, (map.get(key) || 0) + 1);
   }
 
-  return { labels: buckets.map(b => b.label), data: buckets.map(b => map.get(b.key) || 0) };
+  return { labels: buckets.map((b) => b.label), data: buckets.map((b) => map.get(b.key) || 0) };
 }
 
 // =========================================================
@@ -251,7 +398,7 @@ function ensureGlobalRangeSelect() {
 function getRangeDays() {
   const sel = $("statsRange");
   const v = sel?.value || "30d";
-  const found = CFG.ranges.find(r => r.value === v);
+  const found = CFG.ranges.find((r) => r.value === v);
   return found?.days || 30;
 }
 
@@ -289,7 +436,9 @@ function renderPromedioTable(rows) {
 // =========================================================
 function destroyChart(key) {
   if (CHARTS[key]) {
-    try { CHARTS[key].destroy(); } catch (_) {}
+    try {
+      CHARTS[key].destroy();
+    } catch (_) {}
     CHARTS[key] = null;
   }
 }
@@ -310,7 +459,7 @@ function makeDoughnut(canvasId, labels, values) {
   return new Chart(canvas.getContext("2d"), {
     type: "doughnut",
     data: { labels, datasets: [{ data: values, borderWidth: 1 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } } },
   });
 }
 
@@ -325,8 +474,8 @@ function makeBar(canvasId, labels, values) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-    }
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
   });
 }
 
@@ -340,15 +489,15 @@ function makeLineTwoDatasets(canvasId, labels, aLabel, aData, bLabel, bData) {
       labels,
       datasets: [
         { label: aLabel, data: aData, tension: 0.25, fill: false, pointRadius: 2, borderWidth: 2 },
-        { label: bLabel, data: bData, tension: 0.25, fill: false, pointRadius: 2, borderWidth: 2 }
-      ]
+        { label: bLabel, data: bData, tension: 0.25, fill: false, pointRadius: 2, borderWidth: 2 },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { display: true }, tooltip: { enabled: true } },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-    }
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
   });
 }
 
@@ -361,37 +510,45 @@ async function renderAllByRange() {
   const fromISO = isoFromLocalStart(addDays(today0, -(days - 1)));
   const buckets = buildDayBuckets(days);
 
-  // Ajuste visual de canvases (evita height 0)
   [
     "chartRubros",
     "chartEstados",
     "chartResponsables",
     "chartPromedioResponsable",
     "chartAltasDiarias",
-    "chartEstadosConsumidores"
+    "chartEstadosConsumidores",
   ].forEach(ensureCanvasHeight);
+
+  // Catálogo de usuarios (activos + históricos del rango)
+  const userUniverse = await getUserUniverse({ fromISO });
+  const activeUsers = userUniverse.activeUsers;
+  const activeSet = userUniverse.activeSet;
+  const canon = userUniverse.canon;
 
   // =======================================================
   // CLIENTES
   // =======================================================
-  // Total clientes activos (GLOBAL). Si lo querés POR RANGO, cambiá a .gte("created_at", fromISO)
-  const totalClientesActivos = await countExact(CFG.tables.clientes, q => q.eq("activo", true));
+  const totalClientesActivos = await countExact(CFG.tables.clientes, (q) => q.eq("activo", true));
   setText("statTotalClientes", fmtInt(totalClientesActivos));
 
-  // Agenda (no depende del lapso; es “estado actual” del pipeline)
+  // Agenda
   const todayDate0 = startOfLocalDay(new Date());
   const in7_0 = addDays(todayDate0, 7);
 
-  const agendaRows = await fetchAll(
-    CFG.tables.clientes,
-    "fecha_proximo_contacto,activo",
-    q => q.eq("activo", true)
-  );
+  const agendaRows = await fetchAll(CFG.tables.clientes, "fecha_proximo_contacto,activo", (q) => q.eq("activo", true));
 
-  let conFecha = 0, sinFecha = 0, vencidos = 0, proxHoy = 0, prox7 = 0, proxFuturo = 0;
+  let conFecha = 0,
+    sinFecha = 0,
+    vencidos = 0,
+    proxHoy = 0,
+    prox7 = 0,
+    proxFuturo = 0;
   for (const r of agendaRows) {
     const d = parseDate(r?.fecha_proximo_contacto);
-    if (!d) { sinFecha++; continue; }
+    if (!d) {
+      sinFecha++;
+      continue;
+    }
     conFecha++;
     const d0 = startOfLocalDay(d);
     if (d0 < todayDate0) vencidos++;
@@ -410,88 +567,168 @@ async function renderAllByRange() {
   setText("statVencidosText", fmtInt(vencidos));
   setText("statSinFechaText", fmtInt(sinFecha));
 
-  // Actividades clientes EN RANGO (reemplaza 7d/30d)
-  const actInRange = await countExact(CFG.tables.actividades, q => q.gte("fecha", fromISO));
-  setText("statAct7", fmtInt(actInRange));   // reusamos estos campos del HTML
-  setText("statAct30", fmtInt(actInRange));  // para no tocar HTML
+  // Actividades clientes EN RANGO
+  const actInRange = await countExact(CFG.tables.actividades, (q) => q.gte("fecha", fromISO));
+  setText("statAct7", fmtInt(actInRange));
+  setText("statAct30", fmtInt(actInRange));
 
-  // Salud cartera EN RANGO (usa ultima_actividad)
-  // Activos en rango: ultima_actividad >= fromISO
-  const activosEnRango = await countExact(
-    CFG.tables.clientes,
-    q => q.eq("activo", true).gte("ultima_actividad", fromISO)
+  // Salud cartera EN RANGO
+  const activosEnRango = await countExact(CFG.tables.clientes, (q) => q.eq("activo", true).gte("ultima_actividad", fromISO));
+  const dormidosEnRango = await countExact(CFG.tables.clientes, (q) =>
+    q.eq("activo", true).lt("ultima_actividad", fromISO).not("ultima_actividad", "is", null)
   );
-  // Dormidos: ultima_actividad < fromISO AND NOT NULL
-  const dormidosEnRango = await countExact(
-    CFG.tables.clientes,
-    q => q.eq("activo", true).lt("ultima_actividad", fromISO).not("ultima_actividad", "is", null)
-  );
-  // Sin historial: ultima_actividad IS NULL
-  const sinHistorial = await countExact(
-    CFG.tables.clientes,
-    q => q.eq("activo", true).is("ultima_actividad", null)
-  );
+  const sinHistorial = await countExact(CFG.tables.clientes, (q) => q.eq("activo", true).is("ultima_actividad", null));
 
-  setText("statClientesActivos30", fmtInt(activosEnRango));   // reusamos IDs del HTML
-  setText("statClientesDormidos30", fmtInt(dormidosEnRango)); // reusamos IDs del HTML
+  setText("statClientesActivos30", fmtInt(activosEnRango));
+  setText("statClientesDormidos30", fmtInt(dormidosEnRango));
   setText("statSinHistorial", fmtInt(sinHistorial));
 
-  // Distribuciones (actuales, no de rango): rubro/estado/responsable (solo activos)
-  const clientesMeta = await fetchAll(
-    CFG.tables.clientes,
-    "rubro,estado,responsable,activo",
-    q => q.eq("activo", true)
-  );
+  // Distribuciones actuales
+  const clientesMeta = await fetchAll(CFG.tables.clientes, "rubro,estado,responsable,activo", (q) => q.eq("activo", true));
 
   const rub = groupCount(clientesMeta, "rubro", "Sin rubro");
   destroyChart("rubros");
-  CHARTS.rubros = makeDoughnut("chartRubros", rub.map(x => x[0]), rub.map(x => x[1]));
+  CHARTS.rubros = makeDoughnut("chartRubros", rub.map((x) => x[0]), rub.map((x) => x[1]));
   renderUlList("listaRubros", rub.map(([label, count]) => ({ label, value: fmtInt(count) })));
 
   const est = groupCount(clientesMeta, "estado", "Sin estado");
   destroyChart("estados");
-  CHARTS.estados = makeDoughnut("chartEstados", est.map(x => x[0]), est.map(x => x[1]));
+  CHARTS.estados = makeDoughnut("chartEstados", est.map((x) => x[0]), est.map((x) => x[1]));
   renderUlList("listaEstados", est.map(([label, count]) => ({ label, value: fmtInt(count) })));
 
-  const resp = groupCount(clientesMeta, "responsable", "Sin responsable");
-  destroyChart("responsables");
-  CHARTS.responsables = makeBar("chartResponsables", resp.map(x => x[0]), resp.map(x => x[1]));
-  renderUlList("listaResponsables", resp.map(([label, count]) => ({ label, value: fmtInt(count) })));
+  // =======================================================
+  // Responsables: CANON + FLAG HISTÓRICO SOLO EN RENDER
+  // =======================================================
+  const respCounts = new Map();
 
-  // Promedio contactos por responsable EN RANGO (actividades.usuario en rango / clientes por responsable)
-  const clientesActivos = await fetchAll(CFG.tables.clientes, "id,responsable,activo", q => q.eq("activo", true));
-  const clientesPorResp = new Map();
-  for (const c of clientesActivos) {
-    const r = c?.responsable && String(c.responsable).trim() ? String(c.responsable).trim() : "Sin responsable";
-    clientesPorResp.set(r, (clientesPorResp.get(r) || 0) + 1);
+  for (const c of clientesMeta) {
+    const rRaw = c?.responsable ? String(c.responsable) : "";
+    const canonName = rRaw && rRaw.trim() ? canonizeName(rRaw, canon) : "Sin responsable";
+    respCounts.set(canonName, (respCounts.get(canonName) || 0) + 1);
   }
 
-  const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", q => q.gte("fecha", fromISO));
+  // Garantizar que todos los usuarios reales aparezcan aunque tengan 0
+  for (const u of activeUsers) {
+    if (!respCounts.has(u)) respCounts.set(u, 0);
+  }
+
+  const respEntries = Array.from(respCounts.entries())
+    .map(([name, count]) => {
+      const base = cleanName(name) || "Sin responsable";
+      const isReal = activeSet.has(normName(base));
+      return { name: isReal ? base : `${base} (Histórico)`, count, real: isReal };
+    })
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      if (a.real !== b.real) return a.real ? -1 : 1;
+      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+    });
+
+  destroyChart("responsables");
+  CHARTS.responsables = makeBar(
+    "chartResponsables",
+    respEntries.map((x) => x.name),
+    respEntries.map((x) => x.count)
+  );
+  renderUlList(
+    "listaResponsables",
+    respEntries.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
+  );
+
+  // =======================================================
+  // Promedio contactos por responsable EN RANGO (CANON)
+  // =======================================================
+  const clientesActivos = await fetchAll(CFG.tables.clientes, "id,responsable,activo", (q) => q.eq("activo", true));
+
+  const clientesPorResp = new Map();
+  for (const c of clientesActivos) {
+    const rRaw = c?.responsable ? String(c.responsable) : "";
+    const canonResp = rRaw && rRaw.trim() ? canonizeName(rRaw, canon) : "Sin responsable";
+    clientesPorResp.set(canonResp, (clientesPorResp.get(canonResp) || 0) + 1);
+  }
+
+  // Asegurar que usuarios reales aparezcan en tabla de promedio
+  for (const u of activeUsers) {
+    if (!clientesPorResp.has(u)) clientesPorResp.set(u, 0);
+  }
+
+  const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", (q) => q.gte("fecha", fromISO));
+
   const contactosPorUser = new Map();
   for (const a of actsRango) {
-    const u = a?.usuario && String(a.usuario).trim() ? String(a.usuario).trim() : "Sin usuario";
-    contactosPorUser.set(u, (contactosPorUser.get(u) || 0) + 1);
+    const uRaw = a?.usuario ? String(a.usuario) : "";
+    const canonUser = uRaw && uRaw.trim() ? canonizeName(uRaw, canon) : "Sin usuario";
+    contactosPorUser.set(canonUser, (contactosPorUser.get(canonUser) || 0) + 1);
   }
 
   const promRows = [];
-  for (const [r, cantClientes] of clientesPorResp.entries()) {
-    const contactos = contactosPorUser.get(r) || 0;
-    promRows.push({ resp: r, clientes: cantClientes, contactos, promedio: (cantClientes ? (contactos / cantClientes) : 0).toFixed(2) });
+  for (const [respName, cantClientes] of clientesPorResp.entries()) {
+    const base = cleanName(respName) || "Sin responsable";
+    const contactos = contactosPorUser.get(respName) || 0;
+    const isReal = activeSet.has(normName(base));
+    promRows.push({
+      resp: isReal ? base : `${base} (Histórico)`,
+      clientes: cantClientes,
+      contactos,
+      promedio: (cantClientes ? contactos / cantClientes : 0).toFixed(2),
+      real: isReal,
+    });
   }
-  promRows.sort((a,b) => Number(b.promedio) - Number(a.promedio));
+
+  promRows.sort((a, b) => {
+    const pa = Number(a.promedio);
+    const pb = Number(b.promedio);
+    if (pb !== pa) return pb - pa;
+    if (a.real !== b.real) return a.real ? -1 : 1;
+    return a.resp.localeCompare(b.resp, "es", { sensitivity: "base" });
+  });
 
   destroyChart("promedio");
-  CHARTS.promedio = makeBar("chartPromedioResponsable", promRows.map(x => x.resp), promRows.map(x => Number(x.promedio)));
+  CHARTS.promedio = makeBar(
+    "chartPromedioResponsable",
+    promRows.map((x) => x.resp),
+    promRows.map((x) => Number(x.promedio))
+  );
   renderPromedioTable(promRows);
 
-  // Actividad por usuario (clientes) EN RANGO
-  const actUsersAgg = groupCount(actsRango, "usuario", "Sin usuario");
-  renderUlList("listaActividadUsuarios", actUsersAgg.map(([label, count]) => ({ label, value: fmtInt(count) })));
+  // =======================================================
+  // Actividad por usuario (clientes) EN RANGO (CANON + FLAG EN RENDER)
+  // =======================================================
+  const actUsersAgg = new Map();
 
-  // Crecimiento diario EN RANGO (altas por día)
+  // seed: usuarios reales con 0
+  for (const u of activeUsers) actUsersAgg.set(u, 0);
+
+  // sumar actividades (canonizando)
+  for (const a of actsRango) {
+    const uRaw = a?.usuario ? String(a.usuario) : "";
+    const canonUser = uRaw && uRaw.trim() ? canonizeName(uRaw, canon) : "Sin usuario";
+    actUsersAgg.set(canonUser, (actUsersAgg.get(canonUser) || 0) + 1);
+  }
+
+  const actUsersList = Array.from(actUsersAgg.entries())
+    .map(([name, count]) => {
+      const base = cleanName(name) || "Sin usuario";
+      const isReal = activeSet.has(normName(base));
+      return { name: isReal ? base : `${base} (Histórico)`, count, real: isReal };
+    })
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      if (a.real !== b.real) return a.real ? -1 : 1;
+      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+    });
+
+  renderUlList(
+    "listaActividadUsuarios",
+    actUsersList.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
+  );
+
+  // =======================================================
+  // Crecimiento diario EN RANGO
+  // =======================================================
   const [cliAltas, conAltas] = await Promise.all([
-    fetchAll(CFG.tables.clientes, "created_at,activo", q => q.eq("activo", true).gte("created_at", fromISO)),
-    fetchAll(CFG.tables.consumidores, "created_at,activo", q => q.eq("activo", true).gte("created_at", fromISO))
+    fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO)),
+    fetchAll(CFG.tables.consumidores, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO)),
   ]);
 
   const sCli = seriesByDay(cliAltas, "created_at", buckets);
@@ -506,7 +743,9 @@ async function renderAllByRange() {
     const take = Math.min(7, buckets.length);
     for (let i = buckets.length - take; i < buckets.length; i++) {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span><strong>Clientes: ${fmtInt(sCli.data[i]||0)} · Consumidores: ${fmtInt(sCon.data[i]||0)}</strong>`;
+      li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span><strong>Clientes: ${fmtInt(
+        sCli.data[i] || 0
+      )} · Consumidores: ${fmtInt(sCon.data[i] || 0)}</strong>`;
       ulAltas.appendChild(li);
     }
   }
@@ -514,26 +753,51 @@ async function renderAllByRange() {
   // =======================================================
   // CONSUMIDORES
   // =======================================================
-  // Total consumidores activos (GLOBAL). Si lo querés POR RANGO, agregá .gte("created_at", fromISO)
-  const totalConsActivos = await countExact(CFG.tables.consumidores, q => q.eq("activo", true));
+  const totalConsActivos = await countExact(CFG.tables.consumidores, (q) => q.eq("activo", true));
   setText("statTotalConsumidores", fmtInt(totalConsActivos));
 
-  // Actividades consumidores EN RANGO
-  const consActInRange = await countExact(CFG.tables.actividadesConsumidores, q => q.gte("fecha", fromISO));
-  setText("statConsAct7", fmtInt(consActInRange));   // reusamos IDs del HTML
-  setText("statConsAct30", fmtInt(consActInRange));  // reusamos IDs del HTML
+  const consActInRange = await countExact(CFG.tables.actividadesConsumidores, (q) => q.gte("fecha", fromISO));
+  setText("statConsAct7", fmtInt(consActInRange));
+  setText("statConsAct30", fmtInt(consActInRange));
 
-  // Estados consumidores (actual, no por rango) — solo activos
-  const consRows = await fetchAll(CFG.tables.consumidores, "estado,activo", q => q.eq("activo", true));
+  const consRows = await fetchAll(CFG.tables.consumidores, "estado,activo", (q) => q.eq("activo", true));
   const estCons = groupCount(consRows, "estado", "Sin estado");
   destroyChart("estadosConsumidores");
-  CHARTS.estadosConsumidores = makeDoughnut("chartEstadosConsumidores", estCons.map(x=>x[0]), estCons.map(x=>x[1]));
+  CHARTS.estadosConsumidores = makeDoughnut(
+    "chartEstadosConsumidores",
+    estCons.map((x) => x[0]),
+    estCons.map((x) => x[1])
+  );
   renderUlList("listaEstadosConsumidores", estCons.map(([label, count]) => ({ label, value: fmtInt(count) })));
 
-  // Actividad por usuario (consumidores) EN RANGO
-  const actConsRango = await fetchAll(CFG.tables.actividadesConsumidores, "usuario,fecha", q => q.gte("fecha", fromISO));
-  const aggConsUser = groupCount(actConsRango, "usuario", "Sin usuario");
-  renderUlList("listaActividadUsuariosConsumidores", aggConsUser.map(([label, count]) => ({ label, value: fmtInt(count) })));
+  // Actividad por usuario (consumidores) EN RANGO (CANON + FLAG EN RENDER)
+  const actConsRango = await fetchAll(CFG.tables.actividadesConsumidores, "usuario,fecha", (q) => q.gte("fecha", fromISO));
+
+  const consUsersAgg = new Map();
+  for (const u of activeUsers) consUsersAgg.set(u, 0);
+
+  for (const a of actConsRango) {
+    const uRaw = a?.usuario ? String(a.usuario) : "";
+    const canonUser = uRaw && uRaw.trim() ? canonizeName(uRaw, canon) : "Sin usuario";
+    consUsersAgg.set(canonUser, (consUsersAgg.get(canonUser) || 0) + 1);
+  }
+
+  const consUsersList = Array.from(consUsersAgg.entries())
+    .map(([name, count]) => {
+      const base = cleanName(name) || "Sin usuario";
+      const isReal = activeSet.has(normName(base));
+      return { name: isReal ? base : `${base} (Histórico)`, count, real: isReal };
+    })
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      if (a.real !== b.real) return a.real ? -1 : 1;
+      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+    });
+
+  renderUlList(
+    "listaActividadUsuariosConsumidores",
+    consUsersList.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
+  );
 }
 
 // =========================================================
@@ -579,7 +843,7 @@ async function initStats() {
     if (!profile) return;
 
     const userEl = document.getElementById("currentUserName");
-    if (userEl) userEl.textContent = getAuthUserName() || "-";
+    if (userEl) userEl.textContent = getAuthUserName();
 
     if (!window.supabase) throw new Error("Supabase JS no está cargado (window.supabase).");
     if (!window.Chart) throw new Error("Chart.js no está cargado (window.Chart).");

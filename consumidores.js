@@ -125,7 +125,7 @@ function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem(THEME_KEY, theme);
   const btn = document.getElementById("btnToggleTheme");
-  if (btn) btn.textContent = theme === "dark" ? "Modo día" : "Modo noche";
+  if (btn) btn.textContent = theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
 }
 
 /* ============================
@@ -416,20 +416,23 @@ function initModalActConsUI() {
    ============================ */
 
 async function agregarActividad(consumidorId, descripcion) {
-  const usuario = getUsuarioActual() || null;
+  if (!consumidorId) return;
 
-  const { error } = await supabaseClient
-    .from("actividades_consumidores")
-    .insert([{ consumidor_id: consumidorId, descripcion, usuario }]);
+  const nombreAuth = (window.CRM_USER && window.CRM_USER.nombre)
+    ? String(window.CRM_USER.nombre).trim()
+    : "";
 
-  if (error) console.error("Error agregando actividad:", error);
+  const { error } = await supabaseClient.from("actividades").insert([{
+    consumidor_id: consumidorId,
+    descripcion,
+    usuario: nombreAuth || null, // el trigger completa si viene null
+    user_id: (window.CRM_USER && window.CRM_USER.userId) ? window.CRM_USER.userId : null
+  }]);
 
-  try {
-    await supabaseClient
-      .from("consumidores")
-      .update({ ultima_actividad: new Date().toISOString() })
-      .eq("id", consumidorId);
-  } catch (_) {}
+  if (error) {
+    console.error("Error agregando actividad:", error);
+    alert("No se pudo registrar la actividad.");
+  }
 }
 
 /* ============================

@@ -450,11 +450,17 @@ function updatePaginationUI() {
 // =========================================================
 async function agregarActividad(clienteId, descripcion) {
   if (!clienteId) return;
-  if (!isUsuarioValido()) return;
 
-  const { error } = await supabaseClient.from("actividades").insert([
-    { cliente_id: clienteId, descripcion, usuario: usuarioActual || null },
-  ]);
+  const nombreAuth = (window.CRM_USER && window.CRM_USER.nombre)
+    ? String(window.CRM_USER.nombre).trim()
+    : "";
+
+  const { error } = await supabaseClient.from("actividades").insert([{
+    cliente_id: clienteId,
+    descripcion,
+    usuario: nombreAuth || null, // el trigger completa si viene null
+    user_id: (window.CRM_USER && window.CRM_USER.userId) ? window.CRM_USER.userId : null
+  }]);
 
   if (error) {
     console.error("Error agregando actividad:", error);

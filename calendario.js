@@ -92,7 +92,7 @@ function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem(THEME_KEY, theme);
   const btn = document.getElementById("btnToggleTheme");
-  if (btn) btn.textContent = theme === "dark" ? "Modo día" : "Modo noche";
+  if (btn) btn.textContent = theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
 }
 function isDark() {
   return (document.documentElement.getAttribute("data-theme") || "light") === "dark";
