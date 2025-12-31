@@ -114,6 +114,7 @@ let myAccuracyCircle = null;
 
 let lastKnownPos = null; // {lat, lng, accuracy, ts}
 let recordsCache = [];   // clientes (con coords)
+let selectedRouteIds = new Set(); // Persistent selection
 
 // ========= Route state (NUEVO) =========
 let routingControl = null;
@@ -619,8 +620,7 @@ async function onDeleteClick() {
 // RUTAS (NUEVO)
 // =========================================================
 function getSelectedRouteIds() {
-  const checked = elRouteList?.querySelectorAll('input[type="checkbox"][data-id]:checked') || [];
-  return Array.from(checked).map((x) => x.getAttribute("data-id")).filter(Boolean);
+  return Array.from(selectedRouteIds);
 }
 
 function updateRouteCount() {
@@ -631,8 +631,7 @@ function updateRouteCount() {
 function rebuildRouteStartOptions() {
   if (!elRouteStart) return;
 
-  const selectedIds = new Set(getSelectedRouteIds());
-  const selectedRecs = recordsCache.filter((r) => selectedIds.has(String(r.id)));
+  const selectedRecs = recordsCache.filter((r) => selectedRouteIds.has(String(r.id)));
 
   const prev = elRouteStart.value || "";
   elRouteStart.innerHTML = "";
@@ -678,22 +677,48 @@ function rebuildRouteList(filterText = "") {
     const label = clientLabel(rec);
     const hay = `${label} ${rec?.direccion ?? ""} ${rec?.rubro ?? ""}`.toLowerCase();
 
+    // Si hay filtro, mostramos solo coincidencias.
+    // PERO si ya estaba seleccionado, tal vez queramos mostrarlo igual? 
+    // Por ahora: comportamiento standard de filtro (oculta lo que no matchea), 
+    // pero la selección se mantiene en el Set.
     if (q && !hay.includes(q)) continue;
 
     const row = document.createElement("div");
     row.className = "route-item";
 
+    // Checkbox click area wrapper
+    row.addEventListener("click", (e) => {
+      // Avoid double trigger if clicking directly on checkbox
+      if (e.target !== cb) {
+        cb.checked = !cb.checked;
+        // Trigger change manually
+        cb.dispatchEvent(new Event('change'));
+      }
+    });
+
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.setAttribute("data-id", rec.id);
-    cb.checked = prevSelected.has(rec.id);
+    cb.checked = selectedRouteIds.has(String(rec.id));
 
     cb.addEventListener("change", () => {
+      if (cb.checked) {
+        selectedRouteIds.add(String(rec.id));
+      } else {
+        selectedRouteIds.delete(String(rec.id));
+      }
       updateRouteCount();
       rebuildRouteStartOptions();
+
+      // Visual feedback for row
+      if (cb.checked) row.classList.add("selected");
+      else row.classList.remove("selected");
     });
 
+    if (cb.checked) row.classList.add("selected");
+
     const info = document.createElement("div");
+    info.style.pointerEvents = "none"; // clicks pass to row
     info.innerHTML = `
       <strong>${escapeHtml(label)}</strong>
       <div class="muted">${escapeHtml(rec?.direccion ?? "")}</div>
@@ -1016,17 +1041,26 @@ function wireRouteUi() {
   });
 
   btnSeleccionarTodos?.addEventListener("click", () => {
-    const boxes = elRouteList?.querySelectorAll('input[type="checkbox"][data-id]') || [];
-    boxes.forEach((b) => { b.checked = true; });
-    updateRouteCount();
-    rebuildRouteStartOptions();
+    // Agregamos al Set TODOS los clients actualmente visibles (filtrados)
+    const q = String(elRouteSearch?.value || "").trim().toLowerCase();
+
+    recordsCache.forEach(rec => {
+      // Misma lógica de filtro que rebuildRouteList
+      if (Number.isFinite(rec.lat) && Number.isFinite(rec.lng)) {
+        const label = clientLabel(rec);
+        const hay = `${label} ${rec?.direccion ?? ""} ${rec?.rubro ?? ""}`.toLowerCase();
+        if (!q || hay.includes(q)) {
+          selectedRouteIds.add(String(rec.id));
+        }
+      }
+    });
+    rebuildRouteUI();
   });
 
   btnDeseleccionarTodos?.addEventListener("click", () => {
-    const boxes = elRouteList?.querySelectorAll('input[type="checkbox"][data-id]') || [];
-    boxes.forEach((b) => { b.checked = false; });
-    updateRouteCount();
-    rebuildRouteStartOptions();
+    // Limpiamos todo el Set (más intuitivo que solo limpiar visibles)
+    selectedRouteIds.clear();
+    rebuildRouteUI();
   });
 
   btnGenerarRuta?.addEventListener("click", generateRoute);
