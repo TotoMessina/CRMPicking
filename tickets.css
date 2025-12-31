@@ -1,0 +1,133 @@
+/* Modal Styles for Tickets Page */
+/* Defining explicit variables just in case, but using hard values below */
+:root {
+    --modal-bg-light: #ffffff;
+    --modal-bg-dark: #1e293b;
+}
+
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    /* Darker backdrop */
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.modal-backdrop.active {
+    display: flex !important;
+    opacity: 1;
+}
+
+.modal-container {
+    background-color: #ffffff !important;
+    /* Explicit Force White */
+    width: 100%;
+    max-width: 600px;
+    border-radius: 16px;
+    padding: 0;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: scale(0.95);
+    transition: transform 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: 90vh;
+    border: 1px solid #e2e8f0;
+}
+
+/* Dark Mode Overrides for Modal */
+[data-theme="dark"] .modal-container {
+    background-color: #1e293b !important;
+    /* Explicit Force Dark */
+    border-color: #334155;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.modal-backdrop.active .modal-container {
+    transform: scale(1);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #ffffff;
+}
+
+[data-theme="dark"] .modal-header {
+    background-color: #1e293b;
+    border-bottom-color: #334155;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #1e293b;
+}
+
+[data-theme="dark"] .modal-header h2 {
+    color: #f8fafc;
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    color: #1e293b;
+}
+
+[data-theme="dark"] .modal-body {
+    background-color: #1e293b;
+    color: #f8fafc;
+}
+
+.modal-footer {
+    padding: 20px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background-color: #f8fafc;
+}
+
+[data-theme="dark"] .modal-footer {
+    background-color: #0f172a;
+    border-top-color: #334155;
+}
+
+.btn-close-modal {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #64748b;
+    cursor: pointer;
+    line-height: 1;
+}
+
+[data-theme="dark"] .btn-close-modal {
+    color: #94a3b8;
+}
+
+.btn-close-modal:hover {
+    color: #1e293b;
+}
+
+[data-theme="dark"] .btn-close-modal:hover {
+    color: #f8fafc;
+}
+
+/* Ensure z-index is high enough */
+#modalTicket {
+    z-index: 99999;
+}

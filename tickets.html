@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tickets - CRM PickingUp</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="tickets.css" />
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <div class="logo-pu">
+                        <div class="sidebar-logo">PU</div>
+                        <div class="sidebar-title">PickingUp</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-user"
+                style="margin-top: 0; background: transparent; border: none; padding: 0 16px 16px 16px;">
+                <div class="user-info">
+                    <span class="muted">Usuario:</span>
+                    <strong id="currentUserName">Cargando...</strong>
+                </div>
+            </div>
+
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
+                Modo noche 🌙
+            </button>
+
+            <nav class="sidebar-nav" aria-label="Navegación principal">
+                <ul class="sidebar-menu">
+                    <li><a href="index.html">📍 Inicio</a></li>
+                    <li><a href="clientes.html">🏢 Clientes</a></li>
+                    <li><a href="consumidores.html">👥 Consumidores</a></li>
+                    <li><a href="repartidores.html">🚚 Repartidores</a></li>
+                    <li><a href="calendario.html">📅 Calendario</a></li>
+                    <li><a href="mapa.html">🗺️ Mapa</a></li>
+                    <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+                    <li><a href="tickets.html" class="active">🎫 Tickets</a></li> <!-- Active link -->
+                    <li class="spacer"></li>
+                    <li><a href="configuracion.html">⚙️ Configuración</a></li>
+                    <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+                </ul>
+            </nav>
+
+        </aside>
+
+        <div class="app-content">
+            <main class="container">
+                <header
+                    style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1>Gestión de Tickets</h1>
+                        <p class="muted">Soporte técnico y reclamos.</p>
+                    </div>
+                    <button id="btnRefresh" class="btn-secundario">🔄 Actualizar</button>
+                </header>
+
+                <section class="controls">
+                    <div class="filters">
+                        <select id="filterStatus">
+                            <option value="todos">Todos los estados</option>
+                            <option value="Pendiente" selected>Pendientes</option>
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Resuelto">Resueltos</option>
+                        </select>
+                        <input type="text" id="searchInput" placeholder="Buscar por asunto o email..." />
+                    </div>
+                </section>
+
+                <!-- Bento Grid for Tickets -->
+                <div class="bento-grid" id="ticketsGrid">
+                    <!-- Loading state -->
+                    <div class="bento-card" style="grid-column: span 3; text-align: center; padding: 40px;">
+                        <p>Cargando tickets...</p>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Ver Ticket -->
+    <div id="modalTicket" class="modal-backdrop">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="modalTicketSubject">Asunto del Ticket</h2>
+                <button class="btn-close-modal" id="btnCloseTicketModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-body); border-radius: 8px;">
+                    <p><strong>De:</strong> <span id="modalTicketName">Nombre</span> (<span
+                            id="modalTicketEmail">email</span>)</p>
+                    <p><strong>Tel:</strong> <span id="modalTicketPhone" class="muted">...</span></p>
+                    <p><span id="modalTicketType" class="badge">Tipo</span> - <span style="font-size: 0.85rem;"
+                            class="muted" id="modalTicketDate">...</span></p>
+                </div>
+                <div style="margin-bottom: 24px;">
+                    <label style="display:block; margin-bottom: 8px; font-weight: 500;">Mensaje:</label>
+                    <div id="modalTicketMessage" style="white-space: pre-wrap; line-height: 1.5;">...</div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                <div class="form-group">
+                    <label for="selectNewStatus">Cambiar Estado:</label>
+                    <select id="selectNewStatus" class="form-control">
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En Proceso">En Proceso</option>
+                        <option value="Resuelto">Resuelto</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <button type="button" class="btn-secundario" id="btnDeleteTicket"
+                    style="color: #ef4444; border-color: #ef4444;">🗑️ Eliminar</button>
+                <div>
+                    <button type="button" class="btn-secundario" id="btnCancelTicket">Cerrar</button>
+                    <button type="button" class="btn-primary" id="btnSaveTicketStatus">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script src="auth.js"></script>
+    <script src="guard.js"></script>
+    <script src="tickets.js"></script>
+</body>
+
+</html>
