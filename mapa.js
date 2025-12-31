@@ -14,13 +14,8 @@
    ========================================================= */
 
 // ========= SUPABASE (copiá los tuyos si difieren) =========
-const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
-
-const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
-  ? window.CRM_AUTH.supabaseClient
-  : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ========= SUPABASE (common.js) =========
+const supabaseClient = window.supabaseClient;
 
 // ========= THEME (igual que Stats/Calendario) =========
 const THEME_KEY = "crm_theme";
@@ -964,7 +959,7 @@ function drawRouteOnMap(route, { autoCenter = true } = {}) {
 function generateRoute() {
   const selectedIds = getSelectedRouteIds();
   if (selectedIds.length < 2) {
-    alert("Seleccioná al menos 2 clientes para optimizar una ruta.");
+    showToast("Seleccioná al menos 2 clientes para optimizar una ruta.", "warning");
     return;
   }
 
@@ -983,7 +978,7 @@ function generateRoute() {
     );
 
   if (selected.length < 2) {
-    alert("No hay suficientes clientes con coordenadas válidas.");
+    showToast("No hay suficientes clientes con coordenadas válidas.", "warning");
     return;
   }
 
@@ -993,7 +988,7 @@ function generateRoute() {
 
   if (startValue === "__me__") {
     if (!lastKnownPos) {
-      alert("Primero tocá “Ubicarme” para usar tu ubicación como origen.");
+      showToast("Primero tocá “Ubicarme” para usar tu ubicación como origen.", "warning");
       return;
     }
     origin = { lat: lastKnownPos.lat, lng: lastKnownPos.lng, label: "Mi ubicación" };
@@ -1006,7 +1001,7 @@ function generateRoute() {
   const stops = selected.filter((s) => !(origin.label === s.label && origin.lat === s.lat && origin.lng === s.lng));
 
   if (!stops.length) {
-    alert("Si el origen es un cliente, necesitás seleccionar al menos otro cliente adicional.");
+    showToast("Si el origen es un cliente, necesitás seleccionar al menos otro cliente adicional.", "warning");
     return;
   }
 
@@ -1086,7 +1081,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
 
-  btnToggleTheme?.addEventListener("click", toggleTheme);
+
 
   // Modal cliente close
   elBtnCerrarModal?.addEventListener("click", () => setModalOpen(false));
@@ -1107,7 +1102,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnRegistrarAqui?.addEventListener("click", () => {
     if (!lastKnownPos) {
       locateMe({ center: true });
-      alert("Primero obtengamos tu ubicación. Tocá 'Registrar donde estoy' nuevamente.");
+      showToast("Primero obtengamos tu ubicación. Tocá 'Registrar donde estoy' nuevamente.", "info");
       return;
     }
     openCreateModalAt(lastKnownPos.lat, lastKnownPos.lng);
@@ -1116,10 +1111,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnRefrescar?.addEventListener("click", async () => {
     try {
       await loadRecords();
-      alert("Mapa actualizado.");
+      showToast("Mapa actualizado.", "success");
     } catch (e) {
       console.error(e);
-      alert("No se pudo refrescar.");
+      showToast("No se pudo refrescar.", "error");
     }
   });
 
@@ -1131,7 +1126,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadRecords();
   } catch (err) {
     console.error(err);
-    alert("No se pudieron cargar los clientes. Revisá tu URL/KEY de Supabase y tu conexión.");
+    showToast("No se pudieron cargar los clientes. Revisá tu conexión.", "error");
   }
 
   // Ubicación inicial (no obliga)

@@ -1,10 +1,5 @@
-const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
-
-const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
-  ? window.CRM_AUTH.supabaseClient
-  : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ========= SUPABASE (common.js) =========
+const supabaseClient = window.supabaseClient;
 const THEME_KEY = "crm_theme";
 /* ============================
    AUTH (Supabase) - Login Gate
@@ -14,7 +9,7 @@ const THEME_KEY = "crm_theme";
 async function requireAuthOrRedirect() {
   // Esperar a que guard.js termine (evita condiciones de carrera)
   if (window.CRM_GUARD_READY) {
-    try { await window.CRM_GUARD_READY; } catch (_) {}
+    try { await window.CRM_GUARD_READY; } catch (_) { }
   }
 
   // Si guard.js ya seteo el usuario, listo
@@ -88,12 +83,7 @@ const DEFAULTS = {
 let usuariosList = []; // ["Juan", "Maria", ...]
 
 // ---------------- Theme ----------------
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem(THEME_KEY, theme);
-  const btn = document.getElementById("btnToggleTheme");
-  if (btn) btn.textContent = theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
-}
+// Theme managed by common.js
 function isDark() {
   return (document.documentElement.getAttribute("data-theme") || "light") === "dark";
 }
@@ -175,7 +165,7 @@ async function cargarUsuarios() {
         if (label) set.add(label);
       });
     }
-  } catch (_) {}
+  } catch (_) { }
 
   // 2) Fallback
   if (set.size === 0) {
@@ -414,7 +404,7 @@ async function buildHistorialTexto(clienteId) {
   const lines = acts.map((a) => {
     const f = a.fecha ? new Date(a.fecha) : null;
     const fechaTxt = f && !Number.isNaN(f.getTime())
-      ? f.toLocaleString("es-AR", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" })
+      ? f.toLocaleString("es-AR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
       : "(sin fecha)";
     const userTxt = a.usuario ? ` · ${a.usuario}` : "";
     return `• ${fechaTxt}${userTxt}\n  ${a.descripcion || ""}`.trimEnd();
@@ -501,7 +491,7 @@ async function onSubmitModal(e) {
   const fin = parseLocal(document.getElementById("evFin").value);
 
   if (!inicio) {
-    alert("Completá inicio.");
+    showToast("Completá inicio.", "warning");
     return;
   }
 
@@ -531,7 +521,7 @@ async function onSubmitModal(e) {
   const id = document.getElementById("eventoId").value;
   const titulo = document.getElementById("evTitulo").value.trim();
   if (!titulo) {
-    alert("Completá el título.");
+    showToast("Completá el título.", "warning");
     return;
   }
 
@@ -565,7 +555,7 @@ async function onSubmitModal(e) {
     calendar.refetchEvents();
   } catch (err) {
     console.error(err);
-    alert("No se pudo guardar el evento.");
+    showToast("No se pudo guardar el evento.", "error");
   }
 }
 
@@ -663,14 +653,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const userEl = document.getElementById("currentUserName");
   if (userEl) userEl.textContent = getAuthUserName() || "-";
 
-const savedTheme = localStorage.getItem(THEME_KEY) || "light";
+  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
 
-  document.getElementById("btnToggleTheme")?.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-theme") || "light";
-    applyTheme(current === "light" ? "dark" : "light");
-    calendar.refetchEvents();
-  });
+
 
   await cargarUsuarios();
   renderUsuariosUI();

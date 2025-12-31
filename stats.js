@@ -11,14 +11,10 @@
 // =========================================================
 // CONEXIÓN SUPABASE
 // =========================================================
-const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
-
-const supabaseClient =
-  window.CRM_AUTH && window.CRM_AUTH.supabaseClient
-    ? window.CRM_AUTH.supabaseClient
-    : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// =========================================================
+// CONEXIÓN SUPABASE (common.js)
+// =========================================================
+const supabaseClient = window.supabaseClient;
 
 /* ============================
    AUTH - Login Gate
@@ -28,7 +24,7 @@ async function requireAuthOrRedirect() {
   if (window.CRM_GUARD_READY) {
     try {
       await window.CRM_GUARD_READY;
-    } catch (_) {}
+    } catch (_) { }
   }
 
   if (window.CRM_USER && window.CRM_USER.activo === true) return window.CRM_USER;
@@ -438,7 +434,7 @@ function destroyChart(key) {
   if (CHARTS[key]) {
     try {
       CHARTS[key].destroy();
-    } catch (_) {}
+    } catch (_) { }
     CHARTS[key] = null;
   }
 }

@@ -12,18 +12,10 @@
    CONFIG + THEME + USER
    ============================ */
 
-const SUPABASE_URL = window.SUPABASE_URL || "https://mflftikcvsnniwwanrkj.supabase.co";
-const SUPABASE_ANON_KEY =
-  window.SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn("Faltan SUPABASE_URL / SUPABASE_ANON_KEY.");
-}
-
-const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
-  ? window.CRM_AUTH.supabaseClient
-  : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// =========================================================
+// 1) Conexión Supabase (common.js)
+// =========================================================
+const supabaseClient = window.supabaseClient;
 
 const THEME_KEY = "crm_theme";
 /* ============================
@@ -34,7 +26,7 @@ const THEME_KEY = "crm_theme";
 async function requireAuthOrRedirect() {
   // Esperar a que guard.js termine (evita condiciones de carrera)
   if (window.CRM_GUARD_READY) {
-    try { await window.CRM_GUARD_READY; } catch (_) {}
+    try { await window.CRM_GUARD_READY; } catch (_) { }
   }
 
   // Si guard.js ya seteo el usuario, listo
@@ -117,8 +109,8 @@ function asegurarUsuarioValido() {
   const u = getUsuarioActual();
   if (u) return true;
 
-  alert("Tu sesión no es válida. Volvé a iniciar sesión.");
-  window.location.href = "login.html";
+  showToast("Tu sesión no es válida. Volvé a iniciar sesión.", "error");
+  setTimeout(() => window.location.href = "login.html", 1500);
   return false;
 }
 function applyTheme(theme) {
@@ -289,7 +281,7 @@ function loadFilters() {
     if (document.getElementById("filtroLocalidad")) document.getElementById("filtroLocalidad").value = f.localidad || "";
     if (document.getElementById("filtroEstado")) document.getElementById("filtroEstado").value = f.estado || "Todos";
     if (document.getElementById("filtroResponsable")) document.getElementById("filtroResponsable").value = f.responsable || "";
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function updatePaginationUI() {
@@ -388,7 +380,7 @@ async function guardarActividadDesdeModal() {
       .from("consumidores")
       .update({ ultima_actividad: fechaISO })
       .eq("id", modalActConsTargetId);
-  } catch (_) {}
+  } catch (_) { }
 
   closeModalActCons();
   await cargarConsumidores();
@@ -671,22 +663,20 @@ async function cargarConsumidores() {
 
         <div class="historial-list" style="display:none">
           <div class="historial-container">
-            ${
-              acts.length
-                ? acts
-                    .map(
-                      (a) => `
+            ${acts.length
+        ? acts
+          .map(
+            (a) => `
                 <div class="historial-item">
                   <div class="historial-desc">${a.descripcion}</div>
-                  <div class="historial-fecha">${formatFechaISO(a.fecha)}${
-                        a.usuario ? " · <strong>" + a.usuario + "</strong>" : ""
-                      }</div>
+                  <div class="historial-fecha">${formatFechaISO(a.fecha)}${a.usuario ? " · <strong>" + a.usuario + "</strong>" : ""
+              }</div>
                 </div>
               `
-                    )
-                    .join("")
-                : `<div class="historial-empty">No hay actividades registradas.</div>`
-            }
+          )
+          .join("")
+        : `<div class="historial-empty">No hay actividades registradas.</div>`
+      }
           </div>
         </div>
       </div>
@@ -1066,13 +1056,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const userEl = document.getElementById("currentUserName");
   if (userEl) userEl.textContent = getAuthUserName() || "-";
 
-const savedTheme = localStorage.getItem(THEME_KEY) || "light";
+  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
   applyTheme(savedTheme);
 
-  document.getElementById("btnToggleTheme")?.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-theme") || "light";
-    applyTheme(current === "light" ? "dark" : "light");
-  });
+
 
   initModalFormUI();     // NUEVO: modal form alta/edición
   initModalActConsUI();

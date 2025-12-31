@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -16,19 +17,22 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-        <div class="sidebar-brand">
-          <div class="sidebar-brand-text">
-            <div class="logo-pu">
-              <div class="sidebar-logo">PU</div>
-              <div class="sidebar-title">PickingUp</div>
-            </div>
-          </div>
-          <div class="topbar-user">
-            <span class="muted">Usuario:</span>
-            <strong id="currentUserName">-</strong>
-            <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-text">
+          <div class="logo-pu">
+            <div class="sidebar-logo">PU</div>
+            <div class="sidebar-title">PickingUp</div>
           </div>
         </div>
+        <div class="topbar-user">
+          <span class="muted">Usuario:</span>
+          <strong id="currentUserName">-</strong>
+          <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
+        </div>
+      </div>
+      <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
+        Modo noche 🌙
+      </button>
 
       <nav class="sidebar-nav" aria-label="Navegación principal">
         <a href="index.html" class="nav-item">
@@ -304,9 +308,11 @@
       </main>
 
       <script src="auth.js"></script>
+      <script src="common.js"></script>
       <script src="guard.js"></script>
       <script src="stats.js"></script>
     </div>
   </div>
 </body>
+
 </html>

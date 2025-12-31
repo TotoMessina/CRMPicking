@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const supabaseClient = window.CRM_AUTH?.supabaseClient;
+  const supabaseClient = window.supabaseClient;
   if (!supabaseClient) {
     console.error("Supabase client no encontrado (falta auth.js o está en mal orden).");
     return;

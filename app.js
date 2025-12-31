@@ -1,13 +1,10 @@
 // =========================================================
 // 1) Conexión a Supabase (solo ANON KEY)
 // =========================================================
-const SUPABASE_URL = "https://mflftikcvsnniwwanrkj.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
-
-const supabaseClient = (window.CRM_AUTH && window.CRM_AUTH.supabaseClient)
-  ? window.CRM_AUTH.supabaseClient
-  : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// =========================================================
+// 1) Conexión a Supabase (usando global window.supabaseClient de common.js)
+// =========================================================
+const supabaseClient = window.supabaseClient;
 
 // Cache local de clientes (solo de la página actual)
 let clientesCache = [];
@@ -124,16 +121,7 @@ function resetFormulario() {
 }
 
 // Tema
-function applyTheme(theme) {
-  const root = document.documentElement;
-  root.setAttribute("data-theme", theme);
-  localStorage.setItem(THEME_KEY, theme);
-
-  const btn = document.getElementById("btnToggleTheme");
-  if (btn) {
-    btn.textContent = theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
-  }
-}
+// Tema manejado por common.js (window.applyTheme, window.toggleTheme)
 
 // Usuario válido
 function isUsuarioValido() {
@@ -143,8 +131,8 @@ function isUsuarioValido() {
 
 function asegurarUsuarioValido() {
   if (!isUsuarioValido()) {
-    alert("Tu sesión no es válida. Volvé a iniciar sesión.");
-    window.location.href = "login.html";
+    showToast("Tu sesión no es válida. Volvé a iniciar sesión.", "error");
+    setTimeout(() => window.location.href = "login.html", 1500);
     return false;
   }
   return true;
@@ -464,7 +452,9 @@ async function agregarActividad(clienteId, descripcion) {
 
   if (error) {
     console.error("Error agregando actividad:", error);
-    alert("No se pudo registrar la actividad.");
+    showToast("No se pudo registrar la actividad.", "error");
+  } else {
+    showToast("Actividad registrada.", "success");
   }
 }
 
@@ -489,7 +479,7 @@ async function actualizarProximoContactoRapido(clienteId, tipo) {
 
   if (error) {
     console.error("Error actualizando próximo contacto:", error);
-    alert("No se pudo actualizar el próximo contacto.");
+    showToast("No se pudo actualizar el próximo contacto.", "error");
     return;
   }
 
@@ -742,11 +732,10 @@ async function cargarClientes() {
 
         <div class="historial-list" style="display:none">
           <div class="historial-container">
-            ${
-              actividadesCliente.length
-                ? actividadesCliente
-                    .map(
-                      (a) => `
+            ${actividadesCliente.length
+        ? actividadesCliente
+          .map(
+            (a) => `
                 <div class="historial-item">
                   <div class="historial-desc">${a.descripcion}</div>
                   <div class="historial-fecha">
@@ -754,10 +743,10 @@ async function cargarClientes() {
                     ${a.usuario ? ` · <strong>${a.usuario}</strong>` : ""}
                   </div>
                 </div>`
-                    )
-                    .join("")
-                : `<div class="historial-empty">No hay actividades registradas.</div>`
-            }
+          )
+          .join("")
+        : `<div class="historial-empty">No hay actividades registradas.</div>`
+      }
           </div>
         </div>
       </div>
@@ -793,7 +782,7 @@ async function guardarCliente(e) {
   const sinProximo = chkSinProx ? chkSinProx.checked : false;
 
   if (!nombre) {
-    alert("El nombre es obligatorio.");
+    showToast("El nombre es obligatorio.", "warning");
     return;
   }
 
@@ -1125,18 +1114,8 @@ function cerrarActividadModal() {
 // 11) INIT DOMContentLoaded
 // =========================================================
 document.addEventListener("DOMContentLoaded", () => {
-  // 1) Tema
-  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
-  applyTheme(savedTheme);
+  // 1) Tema (Manejado por common.js)
 
-  const btnTheme = document.getElementById("btnToggleTheme");
-  if (btnTheme) {
-    btnTheme.addEventListener("click", () => {
-      const current = document.documentElement.getAttribute("data-theme") || "light";
-      const next = current === "light" ? "dark" : "light";
-      applyTheme(next);
-    });
-  }
 
   document.addEventListener("DOMContentLoaded", async () => {
     // Esperar a que guard.js termine (evita rebotes)
@@ -1175,7 +1154,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Logout (si existe botón)
   document.getElementById("btnLogout")?.addEventListener("click", async () => {
-    try { await supabaseClient.auth.signOut(); } catch (_) {}
+    try { await supabaseClient.auth.signOut(); } catch (_) { }
     localStorage.removeItem("usuarioActual");
     window.location.href = "login.html";
   });
@@ -1364,11 +1343,11 @@ document.addEventListener("DOMContentLoaded", () => {
     btnGuardarActividad.addEventListener("click", async () => {
       const texto = textareaActividad.value.trim();
       if (!texto) {
-        alert("Escribí la actividad antes de guardar.");
+        showToast("Escribí la actividad antes de guardar.", "warning");
         return;
       }
       if (!clienteActividadID) {
-        alert("No se encontró el cliente para esta actividad.");
+        showToast("No se encontró el cliente para esta actividad.", "error");
         return;
       }
       await agregarActividad(clienteActividadID, texto);

@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -12,24 +13,25 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-        <div class="sidebar-brand">
-          <div class="sidebar-brand-text">
-            <div class="logo-pu">
-              <div class="sidebar-logo">PU</div>
-              <div class="sidebar-title">PickingUp</div>
-            </div>
-          </div>
-          <div class="topbar-user">
-            <span class="muted">Usuario:</span>
-            <strong id="currentUserName">-</strong>
-            <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-text">
+          <div class="logo-pu">
+            <div class="sidebar-logo">PU</div>
+            <div class="sidebar-title">PickingUp</div>
           </div>
         </div>
-        
+        <div class="topbar-user">
+          <span class="muted">Usuario:</span>
+          <strong id="currentUserName">-</strong>
+          <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
+        </div>
+      </div>
+
       <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
       <nav class="sidebar-nav">
         <a href="index.html" class="nav-item"><span class="nav-dot"></span><span>Clientes</span></a>
-        <a href="consumidores.html" class="nav-item active" aria-current="page"><span class="nav-dot"></span><span>Consumidores</span></a>
+        <a href="consumidores.html" class="nav-item active" aria-current="page"><span
+            class="nav-dot"></span><span>Consumidores</span></a>
         <a href="calendario.html" class="nav-item"><span class="nav-dot"></span><span>Calendario</span></a>
         <a href="mapa.html" class="nav-item"><span class="nav-dot"></span><span>Mapa</span></a>
         <a href="estadisticas.html" class="nav-item"><span class="nav-dot"></span><span>Estadísticas</span></a>
@@ -107,18 +109,18 @@
           <div id="lista"></div>
         </section>
 
-          <div class="filters-actions">
-            <div class="pager">
-              <button id="btnPrevPagina" class="btn-secundario">◀</button>
-              <span id="pageInfo" class="muted">1/1</span>
-              <button id="btnNextPagina" class="btn-secundario">▶</button>
+        <div class="filters-actions">
+          <div class="pager">
+            <button id="btnPrevPagina" class="btn-secundario">◀</button>
+            <span id="pageInfo" class="muted">1/1</span>
+            <button id="btnNextPagina" class="btn-secundario">▶</button>
 
-              <select id="pageSize" class="btn-secundario">
-                <option value="25">25</option>
-                <option value="50">50</option>
-              </select>
-            </div>
+            <select id="pageSize" class="btn-secundario">
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
           </div>
+        </div>
       </main>
 
       <!-- Modal: Alta/Edición Consumidor -->
@@ -247,7 +249,8 @@
             <div class="muted" id="modalActConsSub" style="margin-bottom:10px;"></div>
 
             <label class="form__label">Descripción *</label>
-            <textarea id="actConsDescripcion" class="form__textarea" rows="4" placeholder="Detalle de la gestión..."></textarea>
+            <textarea id="actConsDescripcion" class="form__textarea" rows="4"
+              placeholder="Detalle de la gestión..."></textarea>
 
             <div class="form__row">
               <div>
@@ -269,9 +272,11 @@
       </div>
 
       <script src="auth.js"></script>
+      <script src="common.js"></script>
       <script src="guard.js"></script>
       <script src="consumidores.js"></script>
     </div>
   </div>
 </body>
+
 </html>
