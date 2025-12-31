@@ -761,4 +761,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Initial Load
     cargarRepartidores();
+
+    // URL Action Check
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("action") === "new") {
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: newUrl }, "", newUrl);
+
+        // Open Modal manually as no shortcut function existed in view
+        document.getElementById("modalFormRepTitle").textContent = "Nuevo repartidor";
+        resetFormulario();
+        openModalById("modalFormRepartidor");
+    }
 });

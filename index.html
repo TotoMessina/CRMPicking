@@ -1,13 +1,14 @@
-<!doctype html>
-<html lang="es">
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
 
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CRM de PickingUp!</title>
-  <link rel="stylesheet" href="styles.css" />
-  <!-- Supabase JS v2 -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inicio | CRM PickingUp</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Custom Styles handled in styles.css -->
 </head>
 
 <body>
@@ -22,7 +23,7 @@
         </div>
         <div class="topbar-user">
           <span class="muted">Usuario:</span>
-          <strong id="currentUserName">-</strong>
+          <strong id="currentUserName">-</strong> <!-- ID matches standard used in common.js -->
           <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
         </div>
       </div>
@@ -31,227 +32,109 @@
       </button>
 
       <nav class="sidebar-nav" aria-label="Navegación principal">
-        <a href="index.html" class="nav-item active" aria-current="page">
-          <span class="nav-dot"></span><span>Clientes</span>
-        </a>
-        <a href="consumidores.html" class="nav-item">
-          <span class="nav-dot"></span><span>Consumidores</span>
-        </a>
-        <a href="calendario.html" class="nav-item">
-          <span class="nav-dot"></span><span>Calendario</span>
-        </a>
-        <a href="mapa.html" class="nav-item">
-          <span class="nav-dot"></span><span>Mapa</span>
-        </a>
-        <a href="repartidores.html" class="nav-item">
-          <span class="nav-dot"></span><span>Repartidores</span>
-        </a>
-        <a href="estadisticas.html" class="nav-item">
-          <span class="nav-dot"></span><span>Estadísticas</span>
-        </a>
-        <a href="configuracion.html" class="nav-item">
-          <span class="nav-dot"></span><span>Configuración</span>
-        </a>
+        <ul class="sidebar-menu">
+          <li><a href="index.html" class="active">📍 Inicio</a></li>
+          <li><a href="clientes.html">🏢 Clientes</a></li>
+          <li><a href="consumidores.html">👥 Consumidores</a></li>
+          <li><a href="repartidores.html">🚚 Repartidores</a></li>
+          <li><a href="calendario.html">📅 Calendario</a></li>
+          <li><a href="mapa.html">🗺️ Mapa</a></li>
+          <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+          <li class="spacer"></li>
+          <li><a href="configuracion.html">⚙️ Configuración</a></li>
+          <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+        </ul>
       </nav>
 
-      <div class="sidebar-foot muted">Navegación</div>
+      <div class="sidebar-foot muted">Dashboard</div>
     </aside>
 
     <div class="app-content">
       <main class="container">
-        <h1>CRM de PickingUp!</h1>
 
-        <!-- Controles superiores (Excel, filtros, usuario, tema) -->
-        <section class="controls">
-          <!-- Selector de usuario actual (header) -->
-          <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none" />
+        <!-- TOPBAR -->
+        <header style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
+          <h1 style="margin:0; font-size: 2rem;">Dashboard</h1>
+        </header>
 
-          <!-- Botón NUEVO: abre modal de alta -->
-          <button type="button" id="btnNuevoCliente">Nuevo cliente</button>
+        <!-- HERO -->
+        <section class="hero-welcome">
+          <h1 id="welcomeMsg">Hola, Usuario</h1>
+          <p>Aquí tienes el resumen de tu operación hoy.</p>
+        </section>
 
-          <!-- Toggle tema -->
+        <!-- BENTO GRID -->
+        <div class="bento-grid">
 
+          <!-- 1. CREAR CLIENTE (BIG STAR) -->
+          <a href="clientes.html?action=new" class="bento-card card-primary span-2 span-row-2">
+            <div style="position:absolute; top:-20px; right:-20px; font-size:10rem; opacity:0.1;">🏢</div>
+            <div class="bento-icon">✨</div>
+            <div>
+              <div class="bento-title">Nuevo Cliente</div>
+              <p class="bento-desc">Registrar un nuevo punto de venta o comercio en el sistema.</p>
+            </div>
+            <button class="bento-action-btn">➜</button>
+          </a>
 
-          <div class="filters">
-            <input type="text" id="filtroNombre" placeholder="Buscar por nombre." />
-            <input type="text" id="filtroTelefono" placeholder="Buscar por teléfono." />
-            <input type="text" id="filtroDireccion" placeholder="Buscar por dirección." />
-
-            <select id="filtroRubro">
-              <option value="">Todos los rubros</option>
-            </select>
-
-            <select id="filtroEstado">
-              <option value="Todos">Todos los estados</option>
-              <option value="1 - Cliente relevado">1 - Cliente relevado</option>
-              <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-              <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
-              <option value="4 - Local Creado">4 - Local Creado</option>
-              <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
-              <option value="6 - Local No Interesado">6 - Local No Interesado</option>
-            </select>
-
-            <select id="filtroResponsable">
-              <option value="">Todos los responsables</option>
-              <option value="Toto">Toto</option>
-              <option value="Ruben">Ruben</option>
-              <option value="Tincho(B)">Tincho(B)</option>
-              <option value="Fran">Fran</option>
-              <option value="Ari">Ari</option>
-              <option value="Nati">Nati</option>
-              <option value="Dani">Dani</option>
-              <option value="Otro">Otro</option>
-            </select>
+          <!-- 2. KPI RAPIDO -->
+          <div class="bento-card">
+            <div class="bento-title" style="font-size:1rem; opacity:0.7;">Clientes Activos</div>
+            <div class="bento-stat" id="dashTotalClientes">-</div>
           </div>
 
-          <button type="button" class="btn-primario" id="btnDescargarModelo">Descargar modelo Excel</button>
-          <button type="button" class="btn-secundario" id="btnImportarExcel">Importar clientes desde Excel</button>
-          <button type="button" class="btn-secundario" id="btnExportarExcel">Exportar Excel</button>
+          <!-- 3. CREAR VISITA / EVENTO -->
+          <a href="calendario.html?action=new" class="bento-card">
+            <div class="bento-icon">📅</div>
+            <div class="bento-title">Nueva Visita</div>
+            <p class="bento-desc">Agendar reunión.</p>
+          </a>
 
-          <div id="agendaCalendario" class="agenda-calendar"></div>
-        </section>
+          <!-- 4. CREAR CONSUMIDOR -->
+          <a href="consumidores.html?action=new" class="bento-card">
+            <div class="bento-icon">👥</div>
+            <div class="bento-title">Nuevo Consumidor</div>
+          </a>
 
-        <!-- Lista de clientes -->
-        <section>
-          <h2>Clientes <span id="contador">(0)</span></h2>
-          <div id="lista"></div>
-        </section>
+          <!-- 5. CREAR REPARTIDOR -->
+          <a href="repartidores.html?action=new" class="bento-card">
+            <div class="bento-icon">🚚</div>
+            <div class="bento-title">Nuevo Repartidor</div>
+          </a>
 
-        <!-- Paginación -->
-        <div class="pagination">
-          <label for="pageSize">Por página:</label>
-          <select id="pageSize">
-            <option value="25" selected>25</option>
-            <option value="50">50</option>
-          </select>
-          <button id="btnPrevPagina" class="btn-secundario">&laquo; Anterior</button>
-          <span id="pageInfo">Página 0 de 1</span>
-          <button id="btnNextPagina" class="btn-secundario">Siguiente &raquo;</button>
+          <!-- 6. KPI AGENDA HOY (Wide) -->
+          <div class="bento-card span-2">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div class="bento-title">Agenda de Hoy</div>
+                <div class="bento-desc">Clientes para visitar o contactar hoy.</div>
+              </div>
+              <div class="bento-stat" id="dashAgendaCount" style="font-size:2.5rem; color:var(--accent);">-</div>
+            </div>
+          </div>
+
+          <!-- 7. INSIGHT (Wide) -->
+          <div class="bento-card span-2"
+            style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none;">
+            <div class="bento-icon" style="color:white; margin-bottom:0;">💡</div>
+            <div style="margin-top:auto;">
+              <div class="bento-title">Insight IA</div>
+              <div class="bento-desc" id="dashInsight" style="opacity:1; font-weight:600; font-size:1.1rem;">
+                Calculando...</div>
+            </div>
+          </div>
+
         </div>
+
       </main>
-
-      <!-- MODAL FORMULARIO CLIENTE (ALTA / EDICIÓN) -->
-      <div id="modalFormCliente" class="modal" style="display:none;">
-        <div class="modal-content">
-          <div class="form-box-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <h2 id="tituloForm" style="margin:0;">Nuevo cliente</h2>
-            <button type="button" id="btnCerrarModalCliente" class="btn-secundario">Cerrar</button>
-          </div>
-
-          <form id="formCliente" style="margin-top:12px;">
-            <input type="hidden" id="clienteId" />
-
-            <div class="grid">
-              <div class="field">
-                <label for="nombre">Nombre *</label>
-                <input type="text" id="nombre" required />
-              </div>
-
-              <div class="field">
-                <label for="telefono">Teléfono</label>
-                <input type="text" id="telefono" />
-              </div>
-
-              <div class="field">
-                <label for="mail">Mail</label>
-                <input type="email" id="mail" placeholder="cliente@dominio.com" />
-              </div>
-
-              <div class="field">
-                <label for="direccion">Dirección</label>
-                <input type="text" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" />
-              </div>
-
-              <div class="field">
-                <label for="rubro">Rubro</label>
-                <input type="text" id="rubro" placeholder="Ej: Gastronomía, Retail..." />
-              </div>
-
-              <div class="field">
-                <label for="estado">Estado</label>
-                <select id="estado">
-                  <option value="1 - Cliente relevado">1 - Cliente relevado</option>
-                  <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-                  <option value="3 - Primer ingreso">3 - Primer Ingreso</option>
-                  <option value="4 - Local Creado">4 - Local Creado</option>
-                  <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
-                  <option value="6 - Local No Interesado">6 - Local No Interesado</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="responsable">Responsable</label>
-                <select id="responsable">
-                  <option value="">(Sin asignar)</option>
-                  <option value="Toto">Toto</option>
-                  <option value="Ruben">Ruben</option>
-                  <option value="Tincho(B)">Tincho(B)</option>
-                  <option value="Fran">Fran</option>
-                  <option value="Ari">Ari</option>
-                  <option value="Nati">Nati</option>
-                  <option value="Dani">Dani</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-
-              <div class="field field-inline">
-                <label for="fecha_proximo_contacto">Próximo contacto</label>
-                <div class="field-inline-inner">
-                  <input type="date" id="fecha_proximo_contacto" />
-                  <button type="button" id="btnPickFecha" class="btn-icon" title="Abrir calendario">📅</button>
-                </div>
-              </div>
-
-              <div class="field">
-                <label for="hora_proximo_contacto">Horario</label>
-                <input type="time" id="hora_proximo_contacto" />
-              </div>
-
-              <div class="field">
-                <label>
-                  <input type="checkbox" id="sin_proximo_contacto" />
-                  Marcar como contactado y sin próximo contacto
-                </label>
-              </div>
-
-              <div class="field field-notas">
-                <label for="notas">Notas</label>
-                <textarea id="notas" rows="3" placeholder="Comentarios, acuerdos, próximos pasos..."></textarea>
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <button type="submit" id="btnGuardar">Guardar</button>
-              <button type="button" id="btnCancelarEdicion" class="btn-secundario">
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- MODAL PARA ACTIVIDADES -->
-      <div id="actividadModal" class="modal" style="display:none;">
-        <div class="modal-content">
-          <h3>Nueva actividad</h3>
-          <textarea id="actividadTexto" rows="6"
-            placeholder="Escribí la actividad... (se permiten saltos de línea)"></textarea>
-          <div class="modal-actions">
-            <button id="btnGuardarActividad">Guardar</button>
-            <button id="btnCerrarActividad" class="btn-secundario">Cancelar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Librería XLSX -->
-      <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-      <!-- App -->
-      <script src="auth.js"></script>
-      <script src="common.js"></script>
-      <script src="guard.js"></script>
-      <script src="app.js"></script>
     </div>
   </div>
+
+  <!-- SCRIPTS -->
+  <script src="auth.js"></script>
+  <script src="common.js"></script>
+  <script src="guard.js"></script>
+  <script src="dashboard.js"></script>
 </body>
 
 </html>

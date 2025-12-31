@@ -395,27 +395,18 @@
       <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
 
       <nav class="sidebar-nav" aria-label="Navegación principal">
-        <a href="index.html" class="nav-item">
-          <span class="nav-dot"></span><span>Clientes</span>
-        </a>
-        <a href="consumidores.html" class="nav-item">
-          <span class="nav-dot"></span><span>Consumidores</span>
-        </a>
-        <a href="calendario.html" class="nav-item">
-          <span class="nav-dot"></span><span>Calendario</span>
-        </a>
-        <a href="mapa.html" class="nav-item active" aria-current="page">
-          <span class="nav-dot"></span><span>Mapa</span>
-        </a>
-        <a href="repartidores.html" class="nav-item">
-          <span class="nav-dot"></span><span>Repartidores</span>
-        </a>
-        <a href="estadisticas.html" class="nav-item">
-          <span class="nav-dot"></span><span>Estadísticas</span>
-        </a>
-        <a href="configuracion.html" class="nav-item">
-          <span class="nav-dot"></span><span>Configuración</span>
-        </a>
+        <ul class="sidebar-menu">
+          <li><a href="index.html">📍 Inicio</a></li>
+          <li><a href="clientes.html">🏢 Clientes</a></li>
+          <li><a href="consumidores.html">👥 Consumidores</a></li>
+          <li><a href="repartidores.html">🚚 Repartidores</a></li>
+          <li><a href="calendario.html">📅 Calendario</a></li>
+          <li><a href="mapa.html" class="active">🗺️ Mapa</a></li>
+          <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+          <li class="spacer"></li>
+          <li><a href="configuracion.html">⚙️ Configuración</a></li>
+          <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+        </ul>
       </nav>
 
       <div class="sidebar-foot muted">
@@ -499,138 +490,139 @@
                 <label for="telefono">Número de celular</label>
                 <input class="input" id="telefono" />
               </div>
-
-              <div class="field">
-                <label for="mail">Mail</label>
-                <input class="input" id="mail" type="email" placeholder="cliente@dominio.com" />
-              </div>
-
-              <div class="field">
-                <label for="direccion">Dirección</label>
-                <input class="input" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" />
-              </div>
-
-              <div class="field">
-                <label for="rubro">Rubro</label>
-                <input class="input" id="rubro" placeholder="Ej: Gastronomía, Retail" />
-              </div>
-
-              <div class="field">
-                <label for="responsable">Responsable</label>
-                <select class="input" id="responsable">
-                  <option value="">(Sin asignar)</option>
-                  <option value="Toto">Toto</option>
-                  <option value="Ruben">Ruben</option>
-                  <option value="Tincho(B)">Tincho(B)</option>
-                  <option value="Fran">Fran</option>
-                  <option value="Ari">Ari</option>
-                  <option value="Nati">Nati</option>
-                  <option value="Dani">Dani</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="estado">Estado</label>
-                <select class="input" id="estado" required>
-                  <option value="1 - Cliente relevado">1 - Cliente relevado</option>
-                  <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-                  <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
-                  <option value="4 - Local Creado">4 - Local Creado</option>
-                  <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
-                  <option value="6 - Local No Interesado">6 - Local No Interesado</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="fecha_contacto">Cuándo se contactó</label>
-                <input class="input" id="fecha_contacto" type="date" />
-              </div>
             </div>
 
-            <div class="modal-foot">
-              <div class="muted" id="coordHint">Lat/Lng: -</div>
-
-              <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button type="button" id="btnEliminar" class="btn-secundario" style="display:none;">
-                  Eliminar
-                </button>
-                <button type="submit" id="btnGuardar" class="btn-primario">
-                  Guardar
-                </button>
-              </div>
+            <div class="field">
+              <label for="mail">Mail</label>
+              <input class="input" id="mail" type="email" placeholder="cliente@dominio.com" />
             </div>
-          </form>
+
+            <div class="field">
+              <label for="direccion">Dirección</label>
+              <input class="input" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" />
+            </div>
+
+            <div class="field">
+              <label for="rubro">Rubro</label>
+              <input class="input" id="rubro" placeholder="Ej: Gastronomía, Retail" />
+            </div>
+
+            <div class="field">
+              <label for="responsable">Responsable</label>
+              <select class="input" id="responsable">
+                <option value="">(Sin asignar)</option>
+                <option value="Toto">Toto</option>
+                <option value="Ruben">Ruben</option>
+                <option value="Tincho(B)">Tincho(B)</option>
+                <option value="Fran">Fran</option>
+                <option value="Ari">Ari</option>
+                <option value="Nati">Nati</option>
+                <option value="Dani">Dani</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="estado">Estado</label>
+              <select class="input" id="estado" required>
+                <option value="1 - Cliente relevado">1 - Cliente relevado</option>
+                <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
+                <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
+                <option value="4 - Local Creado">4 - Local Creado</option>
+                <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
+                <option value="6 - Local No Interesado">6 - Local No Interesado</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="fecha_contacto">Cuándo se contactó</label>
+              <input class="input" id="fecha_contacto" type="date" />
+            </div>
         </div>
-      </div>
 
-      <!-- NUEVO: MODAL RUTA -->
-      <div id="modalRuta" class="modal-map" aria-hidden="true">
-        <div class="modal-card">
-          <div class="modal-head">
-            <h2>Optimizar ruta</h2>
-            <button type="button" id="btnCerrarModalRuta" class="btn-secundario">Cerrar</button>
-          </div>
+        <div class="modal-foot">
+          <div class="muted" id="coordHint">Lat/Lng: -</div>
 
-          <div class="grid-2">
-            <div class="field">
-              <label for="routeSearch">Buscar clientes</label>
-              <input class="input" id="routeSearch" placeholder="Escribí para filtrar..." />
-            </div>
-
-            <div class="field">
-              <label for="routeStart">Origen</label>
-              <select class="input" id="routeStart"></select>
-            </div>
-
-            <div class="field">
-              <label class="muted" style="margin-top:4px;">
-                Seleccioná los clientes que querés visitar (se requiere lat/lng en la ficha).
-              </label>
-              <div class="route-listbox" id="routeList"></div>
-            </div>
-
-            <div class="field">
-              <label for="routeReturn">Opciones</label>
-              <div style="display:flex; flex-direction:column; gap:10px;">
-                <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
-                  <input type="checkbox" id="routeReturn" />
-                  <span>Volver al origen (cierra el circuito)</span>
-                </label>
-
-                <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
-                  <input type="checkbox" id="routeAutoCenter" checked />
-                  <span>Centrar el mapa al generar la ruta</span>
-                </label>
-
-                <div class="muted" id="routeHint" style="font-size:12px;">
-                  Tip: si querés usar “Mi ubicación” como origen, primero tocá “Ubicarme”.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-foot">
-            <div class="muted" id="routeCount">0 seleccionados</div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <button type="button" id="btnSeleccionarTodos" class="btn-secundario">Seleccionar todos</button>
-              <button type="button" id="btnDeseleccionarTodos" class="btn-secundario">Limpiar selección</button>
-              <button type="button" id="btnGenerarRuta" class="btn-primario">Generar ruta</button>
-            </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" id="btnEliminar" class="btn-secundario" style="display:none;">
+              Eliminar
+            </button>
+            <button type="submit" id="btnGuardar" class="btn-primario">
+              Guardar
+            </button>
           </div>
         </div>
+        </form>
       </div>
-
-      <!-- Leaflet JS -->
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-      <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-
-      <script src="auth.js"></script>
-      <script src="common.js"></script>
-      <script src="guard.js"></script>
-      <script src="mapa.js"></script>
     </div>
+
+    <!-- NUEVO: MODAL RUTA -->
+    <div id="modalRuta" class="modal-map" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2>Optimizar ruta</h2>
+          <button type="button" id="btnCerrarModalRuta" class="btn-secundario">Cerrar</button>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="routeSearch">Buscar clientes</label>
+            <input class="input" id="routeSearch" placeholder="Escribí para filtrar..." />
+          </div>
+
+          <div class="field">
+            <label for="routeStart">Origen</label>
+            <select class="input" id="routeStart"></select>
+          </div>
+
+          <div class="field">
+            <label class="muted" style="margin-top:4px;">
+              Seleccioná los clientes que querés visitar (se requiere lat/lng en la ficha).
+            </label>
+            <div class="route-listbox" id="routeList"></div>
+          </div>
+
+          <div class="field">
+            <label for="routeReturn">Opciones</label>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
+                <input type="checkbox" id="routeReturn" />
+                <span>Volver al origen (cierra el circuito)</span>
+              </label>
+
+              <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
+                <input type="checkbox" id="routeAutoCenter" checked />
+                <span>Centrar el mapa al generar la ruta</span>
+              </label>
+
+              <div class="muted" id="routeHint" style="font-size:12px;">
+                Tip: si querés usar “Mi ubicación” como origen, primero tocá “Ubicarme”.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <div class="muted" id="routeCount">0 seleccionados</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" id="btnSeleccionarTodos" class="btn-secundario">Seleccionar todos</button>
+            <button type="button" id="btnDeseleccionarTodos" class="btn-secundario">Limpiar selección</button>
+            <button type="button" id="btnGenerarRuta" class="btn-primario">Generar ruta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+    <script src="auth.js"></script>
+    <script src="common.js"></script>
+    <script src="guard.js"></script>
+    <script src="mapa.js"></script>
+  </div>
   </div>
 </body>
 

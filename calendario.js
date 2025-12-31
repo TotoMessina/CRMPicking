@@ -79,6 +79,17 @@ const DEFAULTS = {
   interno: "#FF2BD6",
 };
 
+const EVENT_COLORS = {
+  interno: "#FF2BD6",
+  reunion: "#3b82f6",
+  virtual: "#8b5cf6",
+  contacto: "#f97316",
+  empresa: "#ec4899",
+  activacion: "#10b981",
+  capacitacion: "#14b8a6",
+  feriado: "#ef4444",
+};
+
 // Usuarios (lista)
 let usuariosList = []; // ["Juan", "Maria", ...]
 
@@ -671,13 +682,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("filtroTipo")?.addEventListener("change", () => calendar.refetchEvents());
 
   document.getElementById("btnNuevoEvento")?.addEventListener("click", () => openModalNuevoEvento());
-  document.getElementById("btnCerrarModal")?.addEventListener("click", closeModal);
+
+  // Close handler (overlay + button)
   document.getElementById("modalEvento")?.addEventListener("click", (ev) => {
-    if (ev.target?.id === "modalEvento") closeModal();
+    if (ev.target.dataset.close === "true" || ev.target.id === "modalEvento") {
+      closeModal();
+    }
   });
 
   document.getElementById("formEvento")?.addEventListener("submit", onSubmitModal);
   document.getElementById("btnEliminarEvento")?.addEventListener("click", onEliminarEvento);
+
+  // Auto-color based on type
+  document.getElementById("evTipo")?.addEventListener("change", (e) => {
+    const val = e.target.value;
+    const color = EVENT_COLORS[val];
+    if (color) {
+      document.getElementById("evColor").value = color;
+    }
+  });
 
   document.getElementById("btnSelectAllUsers")?.addEventListener("click", selectAllUsers);
   document.getElementById("btnClearAllUsers")?.addEventListener("click", clearAllUsers);
@@ -726,4 +749,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   calendar.render();
+
+  // URL Action Check
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("action") === "new") {
+    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+    window.history.replaceState({ path: newUrl }, "", newUrl);
+    openModalNuevoEvento();
+  }
 });

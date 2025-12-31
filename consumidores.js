@@ -1170,4 +1170,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (!asegurarUsuarioValido()) return;
   await cargarConsumidores();
+
+  // URL Action Check
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("action") === "new") {
+    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+    window.history.replaceState({ path: newUrl }, "", newUrl);
+    openFormNuevo();
+  }
 });

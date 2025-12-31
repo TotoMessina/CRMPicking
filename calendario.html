@@ -35,27 +35,18 @@
       <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
 
       <nav class="sidebar-nav" aria-label="Navegación principal">
-        <a href="index.html" class="nav-item">
-          <span class="nav-dot"></span><span>Clientes</span>
-        </a>
-        <a href="consumidores.html" class="nav-item">
-          <span class="nav-dot"></span><span>Consumidores</span>
-        </a>
-        <a href="calendario.html" class="nav-item active" aria-current="page">
-          <span class="nav-dot"></span><span>Calendario</span>
-        </a>
-        <a href="mapa.html" class="nav-item">
-          <span class="nav-dot"></span><span>Mapa</span>
-        </a>
-        <a href="repartidores.html" class="nav-item">
-          <span class="nav-dot"></span><span>Repartidores</span>
-        </a>
-        <a href="estadisticas.html" class="nav-item">
-          <span class="nav-dot"></span><span>Estadísticas</span>
-        </a>
-        <a href="configuracion.html" class="nav-item">
-          <span class="nav-dot"></span><span>Configuración</span>
-        </a>
+        <ul class="sidebar-menu">
+          <li><a href="index.html">📍 Inicio</a></li>
+          <li><a href="clientes.html">🏢 Clientes</a></li>
+          <li><a href="consumidores.html">👥 Consumidores</a></li>
+          <li><a href="repartidores.html">🚚 Repartidores</a></li>
+          <li><a href="calendario.html" class="active">📅 Calendario</a></li>
+          <li><a href="mapa.html">🗺️ Mapa</a></li>
+          <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+          <li class="spacer"></li>
+          <li><a href="configuracion.html">⚙️ Configuración</a></li>
+          <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+        </ul>
       </nav>
 
       <div class="sidebar-foot muted">
@@ -105,16 +96,29 @@
           <div id="calendar"></div>
         </section>
 
-        <!-- Modal -->
-        <div id="modalEvento" class="modal" style="display:none;">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h2 id="modalTitulo">Nuevo</h2>
-              <button class="btn-close" id="btnCerrarModal">×</button>
-            </div>
+        <footer class="stats-footer">
+          <span class="muted">Calendario CRM</span>
+        </footer>
+      </main>
 
-            <form id="formEvento" class="form-grid">
-              <input type="hidden" id="modalKind" value="evento"> <!-- evento | contacto -->
+      <script src="auth.js"></script>
+      <script src="common.js"></script>
+      <script src="guard.js"></script>
+      <script src="calendario.js"></script>
+
+      <!-- Modal Moved to Outside for Z-Index Fix -->
+      <div id="modalEvento" class="modal" aria-hidden="true" style="display:none;">
+        <div class="modal__overlay" data-close="true"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+          <div class="modal__header">
+            <h3 id="modalTitulo" class="modal__title">Nuevo evento</h3>
+            <button class="modal__close" type="button" data-close="true">✕</button>
+          </div>
+
+          <div class="modal__body">
+            <form id="formEvento">
+              <input type="hidden" id="modalKind" value="evento">
               <input type="hidden" id="eventoId" value="">
               <input type="hidden" id="clienteId" value="">
 
@@ -133,8 +137,14 @@
                 <label class="field">
                   <span class="field-label">Tipo</span>
                   <select id="evTipo">
-                    <option value="interno">Evento interno</option>
-                    <option value="contacto">Contacto (manual)</option>
+                    <option value="interno">General</option>
+                    <option value="reunion">Reunión Prensencial</option>
+                    <option value="virtual">Reunión Virtual</option>
+                    <option value="contacto">Contacto / Visita</option>
+                    <option value="empresa">Evento Empresa</option>
+                    <option value="activacion">Activación</option>
+                    <option value="capacitacion">Capacitación</option>
+                    <option value="feriado">Feriado</option>
                   </select>
                 </label>
 
@@ -183,16 +193,7 @@
             </form>
           </div>
         </div>
-
-        <footer class="stats-footer">
-          <span class="muted">Calendario CRM</span>
-        </footer>
-      </main>
-
-      <script src="auth.js"></script>
-      <script src="common.js"></script>
-      <script src="guard.js"></script>
-      <script src="calendario.js"></script>
+      </div>
 
     </div>
   </div>
