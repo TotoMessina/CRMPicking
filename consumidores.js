@@ -862,7 +862,21 @@ function descargarModeloConsumidoresExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "modelo_consumidores");
 
-  XLSX.writeFile(wb, "modelo_consumidores.xlsx");
+  try {
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo_consumidores.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    alert("Error descargando modelo: " + e.message);
+  }
 }
 
 async function exportarConsumidoresExcel() {
@@ -903,7 +917,21 @@ async function exportarConsumidoresExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "consumidores");
 
-  XLSX.writeFile(wb, "consumidores_export.xlsx");
+  try {
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "consumidores_export.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    alert("Error descargando archivo: " + e.message);
+  }
   consSetStatus(`Exportado: ${rows.length} consumidores.`);
 }
 
@@ -1010,7 +1038,8 @@ function initExcelConsumidoresUI() {
     return;
   }
 
-  btnModelo.addEventListener("click", () => {
+  btnModelo.addEventListener("click", (e) => {
+    e.preventDefault();
     try {
       descargarModeloConsumidoresExcel();
     } catch (e) {
@@ -1019,7 +1048,8 @@ function initExcelConsumidoresUI() {
     }
   });
 
-  btnExport.addEventListener("click", async () => {
+  btnExport.addEventListener("click", async (e) => {
+    e.preventDefault();
     try {
       await exportarConsumidoresExcel();
     } catch (e) {

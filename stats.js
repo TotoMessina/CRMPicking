@@ -86,7 +86,9 @@ const CFG = {
     consumidores: "consumidores",
     actividades: "actividades",
     actividadesConsumidores: "actividades_consumidores",
+    actividadesConsumidores: "actividades_consumidores",
     usuarios: "usuarios",
+    repartidores: "repartidores",
   },
   pageSize: 1000,
   ranges: [
@@ -110,6 +112,12 @@ const CHARTS = {
   promedio: null,
   altas: null,
   estadosConsumidores: null,
+  estadosRepartidores: null,
+  localidadRepartidores: null,
+  localidadRepartidores: null,
+  responsableRepartidores: null,
+  funnelConsumidores: null,
+  funnelRepartidores: null,
 };
 
 // =========================================================
@@ -412,6 +420,92 @@ function renderUlList(ulId, items) {
   }
 }
 
+function renderFunnelList(id, labels, data) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = "";
+
+  // Calcular % de conversion relativa al paso anterior
+  // Paso 1 = 100% (Base)
+  // Paso 2 = (P2 / P1) %
+  // Paso 3 = (P3 / P2) %
+
+  for (let i = 0; i < labels.length; i++) {
+    const count = data[i];
+    const prev = i > 0 ? data[i - 1] : 0;
+    let rate = "-";
+    let color = "var(--text-muted)";
+
+    if (i > 0 && prev > 0) {
+      const pct = Math.round((count / prev) * 100);
+      rate = `${pct}% conv.`;
+      color = pct >= 50 ? "#4ade80" : "#f87171";
+    } else if (i === 0) {
+      rate = "Base 100%";
+    }
+
+    const li = document.createElement("li");
+    li.style.display = "flex";
+    li.style.justifyContent = "space-between";
+    li.style.marginBottom = "4px";
+    li.innerHTML = `
+            <span>${labels[i]}</span>
+            <div style="text-align:right;">
+                <strong>${fmtInt(count)}</strong>
+                <div style="font-size:0.75rem; color:${color};">${rate}</div>
+            </div>
+        `;
+    el.appendChild(li);
+  }
+}
+
+function makeFunnelChart(id, labels, data, baseColor) {
+  const canvas = $(id);
+  if (!canvas) return null;
+  ensureCanvasHeight(id);
+  const ctx = canvas.getContext("2d");
+
+  // Horizontal Bar simulates Funnel
+  return new Chart(ctx, {
+    type: "bar",
+    indexAxis: 'y', // Horizontal
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Cantidad',
+          data: data,
+          backgroundColor: baseColor,
+          borderRadius: 4,
+          barPercentage: 0.6,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.raw} prospectos`
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { display: false }
+        },
+        y: {
+          grid: { display: false }
+        }
+      },
+    },
+  });
+}
+
+
 function renderPromedioTable(rows) {
   const tbody = $("tablaPromedioResponsable");
   if (!tbody) return;
@@ -512,7 +606,13 @@ async function renderAllByRange() {
     "chartResponsables",
     "chartPromedioResponsable",
     "chartAltasDiarias",
+    "chartAltasDiarias",
     "chartEstadosConsumidores",
+    "chartEstadosRepartidores",
+    "chartLocalidadRepartidores",
+    "chartResponsableRepartidores",
+    "chartFunnelConsumidores",
+    "chartFunnelRepartidores",
   ].forEach(ensureCanvasHeight);
 
   // Catálogo de usuarios (activos + históricos del rango)
@@ -722,16 +822,40 @@ async function renderAllByRange() {
   // =======================================================
   // Crecimiento diario EN RANGO
   // =======================================================
-  const [cliAltas, conAltas] = await Promise.all([
+  const [cliAltas, conAltas, repAltas] = await Promise.all([
     fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO)),
     fetchAll(CFG.tables.consumidores, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO)),
+    fetchAll(CFG.tables.repartidores, "created_at", (q) => q.gte("created_at", fromISO)), // Repartidores no tiene soft delete 'activo' en DB original a veces, revisar. Asumimos traer todos o filtrar por estado != null
   ]);
 
   const sCli = seriesByDay(cliAltas, "created_at", buckets);
   const sCon = seriesByDay(conAltas, "created_at", buckets);
+  const sRep = seriesByDay(repAltas, "created_at", buckets);
 
   destroyChart("altas");
-  CHARTS.altas = makeLineTwoDatasets("chartAltasDiarias", sCli.labels, "Clientes", sCli.data, "Consumidores", sCon.data);
+  // Update chart helper for 3 datasets or reuse makeLineTwoDatasets logic manually
+  const canvasAltas = $("chartAltasDiarias");
+  if (canvasAltas) {
+    ensureCanvasHeight("chartAltasDiarias");
+    if (CHARTS.altas) CHARTS.altas.destroy();
+    CHARTS.altas = new Chart(canvasAltas.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: buckets.map(b => b.label),
+        datasets: [
+          { label: "Clientes", data: sCli.data, tension: 0.25, fill: false, borderColor: "#36a2eb", backgroundColor: "#36a2eb" },
+          { label: "Consumidores", data: sCon.data, tension: 0.25, fill: false, borderColor: "#ff6384", backgroundColor: "#ff6384" },
+          { label: "Repartidores", data: sRep.data, tension: 0.25, fill: false, borderColor: "#ffce56", backgroundColor: "#ffce56" }
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: true }, tooltip: { enabled: true } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+  }
 
   const ulAltas = $("listaAltasDiarias");
   if (ulAltas) {
@@ -739,9 +863,12 @@ async function renderAllByRange() {
     const take = Math.min(7, buckets.length);
     for (let i = buckets.length - take; i < buckets.length; i++) {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span><strong>Clientes: ${fmtInt(
-        sCli.data[i] || 0
-      )} · Consumidores: ${fmtInt(sCon.data[i] || 0)}</strong>`;
+      li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span>
+      <small>
+      Cli: <strong>${fmtInt(sCli.data[i] || 0)}</strong> · 
+      Cons: <strong>${fmtInt(sCon.data[i] || 0)}</strong> · 
+      Rep: <strong>${fmtInt(sRep.data[i] || 0)}</strong>
+      </small>`;
       ulAltas.appendChild(li);
     }
   }
@@ -765,6 +892,26 @@ async function renderAllByRange() {
     estCons.map((x) => x[1])
   );
   renderUlList("listaEstadosConsumidores", estCons.map(([label, count]) => ({ label, value: fmtInt(count) })));
+
+  // === FUNNEL CONSUMIDORES ===
+  // Etapas del pipe: Lead -> Contactado -> Interesado -> Cliente
+  // Filtramos por estos estados para el funnel
+  const stagesCons = ["Lead", "Contactado", "Interesado", "Cliente"];
+  const funnelConsData = stagesCons.map(stage => {
+    // Find count in estCons array [["Lead", 10], ...]
+    const found = estCons.find(x => x[0] === stage);
+    return found ? found[1] : 0;
+  });
+
+  destroyChart("funnelConsumidores");
+  CHARTS.funnelConsumidores = makeFunnelChart(
+    "chartFunnelConsumidores",
+    stagesCons,
+    funnelConsData,
+    "rgba(59, 130, 246, 0.7)" // Azul
+  );
+  renderFunnelList("listaFunnelConsumidores", stagesCons, funnelConsData);
+
 
   // Actividad por usuario (consumidores) EN RANGO (CANON + FLAG EN RENDER)
   const actConsRango = await fetchAll(CFG.tables.actividadesConsumidores, "usuario,fecha", (q) => q.gte("fecha", fromISO));
@@ -794,6 +941,169 @@ async function renderAllByRange() {
     "listaActividadUsuariosConsumidores",
     consUsersList.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
   );
+
+  // =======================================================
+  // REPARTIDORES
+  // =======================================================
+  const repRows = await fetchAll(CFG.tables.repartidores, "estado,localidad,responsable", (q) => q); // Traer todos
+  setText("statTotalRepartidores", fmtInt(repRows.length));
+
+  // Estados
+  const estRep = groupCount(repRows, "estado", "Sin estado");
+  destroyChart("estadosRepartidores");
+  CHARTS.estadosRepartidores = makeDoughnut("chartEstadosRepartidores", estRep.map(x => x[0]), estRep.map(x => x[1]));
+  renderUlList("listaEstadosRepartidores", estRep.map(([label, count]) => ({ label, value: fmtInt(count) })));
+
+  // === FUNNEL REPARTIDORES ===
+  // Etapas: Documentación sin gestionar -> Cuenta aun no confirmada -> Cuenta confirmada y repartiendo
+  const stagesRep = ["Documentación sin gestionar", "Cuenta aun no confirmada", "Cuenta confirmada y repartiendo"];
+  const stagesRepShort = ["Sin gestionar", "No confirmada", "Confirmada/Repartiendo"]; // Etiquetas cortas para gráfico
+  const funnelRepData = stagesRep.map(stage => {
+    const found = estRep.find(x => x[0] === stage);
+    return found ? found[1] : 0;
+  });
+
+  destroyChart("funnelRepartidores");
+  CHARTS.funnelRepartidores = makeFunnelChart(
+    "chartFunnelRepartidores",
+    stagesRepShort,
+    funnelRepData,
+    "rgba(245, 158, 11, 0.7)" // Amarillo/Naranja
+  );
+  renderFunnelList("listaFunnelRepartidores", stagesRepShort, funnelRepData);
+
+
+  // Localidades
+  const locRep = groupCount(repRows, "localidad", "Sin localidad");
+  // Top 10 localidades
+  const topLocRep = locRep.slice(0, 10);
+  destroyChart("localidadRepartidores");
+  CHARTS.localidadRepartidores = makeBar(
+    "chartLocalidadRepartidores",
+    topLocRep.map(x => x[0]),
+    topLocRep.map(x => x[1])
+  );
+  renderUlList("listaLocalidadRepartidores", topLocRep.map(([label, count]) => ({ label, value: fmtInt(count) })));
+
+  // Responsables
+  const respRepMap = new Map();
+  // Inicializar usuarios activos en 0
+  for (const u of activeUsers) respRepMap.set(u, 0);
+
+  for (const r of repRows) {
+    const rRaw = r?.responsable ? String(r.responsable) : "";
+    const canonName = rRaw && rRaw.trim() ? canonizeName(rRaw, canon) : "Sin responsable";
+    respRepMap.set(canonName, (respRepMap.get(canonName) || 0) + 1);
+  }
+
+  const respRepEntries = Array.from(respRepMap.entries())
+    .map(([name, count]) => {
+      const base = cleanName(name) || "Sin responsable";
+      const isReal = activeSet.has(normName(base));
+      return { name: isReal ? base : `${base} (Histórico)`, count, real: isReal };
+    })
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+    });
+
+  destroyChart("responsableRepartidores");
+  CHARTS.responsableRepartidores = makeBar(
+    "chartResponsableRepartidores",
+    respRepEntries.map(x => x.name),
+    respRepEntries.map(x => x.count)
+  );
+  renderUlList("listaResponsableRepartidores", respRepEntries.map(x => ({ label: x.name, value: fmtInt(x.count) })));
+
+  // =======================================================
+  // INTELLIGENCE / INSIGHTS
+  // =======================================================
+  calculateInsights({
+    cliAltas,
+    actInRange: actsRango, // Pasamos las filas reales (actsRango) en lugar del count
+    totalClientesActivos,
+    activosEnRango: activosEnRango
+  }, buckets);
+}
+
+// Helper para Insights
+function calculateInsights({ cliAltas, actInRange, totalClientesActivos, activosEnRango }, buckets) {
+  // 1. Proyección Crecimiento (Clientes)
+  // Simple lineal: (Total Nuevos en Rango / Dias Rango) * 90 dias + Total Actual
+  // Usamos cliAltas que son ARRAY de objetos {created_at}
+  const diasRango = buckets.length || 30;
+  const nuevosEnRango = cliAltas.length;
+  const tasaDiaria = nuevosEnRango / Math.max(diasRango, 1);
+
+  // Proyectar a 3 meses (90 días)
+  const proy3m = Math.round(totalClientesActivos + (tasaDiaria * 90));
+  const crecimiento3m = Math.round(tasaDiaria * 90);
+
+  setText("insightProjection", `~${fmtInt(proy3m)} Clientes`);
+  setText("insightProjectionMeta", `+${fmtInt(crecimiento3m)} estimados en 90 días (${(tasaDiaria * 30).toFixed(1)}/mes)`);
+
+  // 2. Health Score
+  // Ratio: Clientes con actividad reciente / Total Clientes Activos
+  let health = 0;
+  if (totalClientesActivos > 0) {
+    health = Math.round((activosEnRango / totalClientesActivos) * 100);
+  }
+  const healthEl = $("insightHealthScore");
+  if (healthEl) {
+    healthEl.textContent = `${health}/100`;
+    healthEl.style.color = health >= 70 ? "#4ade80" : (health >= 40 ? "#fbbf24" : "#f87171");
+  }
+
+  // 3. Mejor Momento de Contacto (Real)
+  // Analizar 'actInRange' (que ahora es actsRango array) buscando patrones de DOW + Hora
+  if (Array.isArray(actInRange) && actInRange.length > 0) {
+    const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const dayCounts = new Array(7).fill(0);
+
+    const blocks = ["Madrugada", "Mañana", "Mediodía", "Tarde", "Noche"];
+    // 0-7, 8-11, 12-13, 14-18, 19-23
+    const blockCounts = new Array(5).fill(0);
+
+    for (const act of actInRange) {
+      if (!act.fecha) continue;
+      const d = new Date(act.fecha);
+      const dow = d.getDay(); // 0-6
+      const h = d.getHours(); // 0-23
+
+      dayCounts[dow]++;
+
+      let bIdx = 0; // Madrugada
+      if (h >= 8 && h < 12) bIdx = 1; // Mañana
+      else if (h >= 12 && h < 14) bIdx = 2; // Mediodía
+      else if (h >= 14 && h < 19) bIdx = 3; // Tarde
+      else if (h >= 19) bIdx = 4; // Noche
+
+      blockCounts[bIdx]++;
+    }
+
+    // Find Max Day
+    let maxDayIdx = 0;
+    for (let i = 1; i < 7; i++) {
+      if (dayCounts[i] > dayCounts[maxDayIdx]) maxDayIdx = i;
+    }
+
+    // Find Max Block
+    let maxBlockIdx = 3; // Default Tarde
+    let maxVal = -1;
+    for (let i = 0; i < 5; i++) {
+      if (blockCounts[i] > maxVal) {
+        maxVal = blockCounts[i];
+        maxBlockIdx = i;
+      }
+    }
+
+    const bestDay = days[maxDayIdx];
+    const bestBlock = blocks[maxBlockIdx];
+
+    setText("insightBestTime", `${bestDay} - ${bestBlock}`);
+  } else {
+    setText("insightBestTime", "---");
+  }
 }
 
 // =========================================================

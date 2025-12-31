@@ -928,7 +928,20 @@ function descargarModeloExcel() {
   const ws = XLSX.utils.aoa_to_sheet(data);
   XLSX.utils.book_append_sheet(wb, ws, "Modelo");
 
-  XLSX.writeFile(wb, "modelo_clientes_crm.xlsx");
+  try {
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo_clientes_crm.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
 }
 
 // Exportar todos los clientes + historial
@@ -993,7 +1006,20 @@ async function exportarExcel() {
   const wsHist = XLSX.utils.aoa_to_sheet(dataHist);
   XLSX.utils.book_append_sheet(wb, wsHist, "Historial");
 
-  XLSX.writeFile(wb, "crm_clientes_historial.xlsx");
+  try {
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "crm_clientes_historial.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
 }
 
 // Importar clientes (upsert por teléfono)
@@ -1278,12 +1304,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 7) Excel
   const btnDescargarModelo = document.getElementById("btnDescargarModelo");
-  if (btnDescargarModelo) btnDescargarModelo.addEventListener("click", () => descargarModeloExcel());
+  if (btnDescargarModelo) btnDescargarModelo.addEventListener("click", (e) => {
+    e.preventDefault();
+    descargarModeloExcel()
+  });
 
   const inputExcel = document.getElementById("inputExcel");
   const btnImportarExcel = document.getElementById("btnImportarExcel");
   if (btnImportarExcel && inputExcel) {
-    btnImportarExcel.addEventListener("click", () => inputExcel.click());
+    btnImportarExcel.addEventListener("click", (e) => {
+      e.preventDefault();
+      inputExcel.click()
+    });
 
     inputExcel.addEventListener("change", () => {
       if (inputExcel.files.length === 1) {
@@ -1294,7 +1326,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const btnExportarExcel = document.getElementById("btnExportarExcel");
-  if (btnExportarExcel) btnExportarExcel.addEventListener("click", () => exportarExcel());
+  if (btnExportarExcel) btnExportarExcel.addEventListener("click", (e) => {
+    e.preventDefault();
+    exportarExcel()
+  });
 
   // 8) Formulario cliente
   const formCliente = document.getElementById("formCliente");

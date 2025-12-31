@@ -47,6 +47,9 @@
         <a href="mapa.html" class="nav-item">
           <span class="nav-dot"></span><span>Mapa</span>
         </a>
+        <a href="repartidores.html" class="nav-item">
+          <span class="nav-dot"></span><span>Repartidores</span>
+        </a>
         <a href="estadisticas.html" class="nav-item active" aria-current="page">
           <span class="nav-dot"></span><span>Estadísticas</span>
         </a>
@@ -71,7 +74,47 @@
 
           <div class="stats-topbar-actions">
             <button type="button" id="btnRefrescarStats" class="btn-secundario">Actualizar</button>
+          </div>
         </header>
+
+        <!-- INTELLIGENCE / PROYECCIONES -->
+        <section class="panel"
+          style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); margin-bottom: 25px;">
+          <header class="panel-header" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <h2 style="display:flex; align-items:center; gap:8px;">
+              <span>🔮</span> Proyecciones &amp; Insights
+            </h2>
+            <p>Análisis predictivo y optimización de agenda.</p>
+          </header>
+
+          <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+
+            <!-- Proyección Crecimiento -->
+            <article class="kpi-card" style="position:relative; overflow:hidden;">
+              <div class="kpi-label">Proyección (3 Meses)</div>
+              <div class="kpi-value" id="insightProjection">-</div>
+              <div class="kpi-meta" id="insightProjectionMeta">Calculando tendencia...</div>
+              <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">📈</div>
+            </article>
+
+            <!-- Mejor Momento -->
+            <article class="kpi-card" style="position:relative; overflow:hidden;">
+              <div class="kpi-label">Mejor momento contacto</div>
+              <div class="kpi-value" id="insightBestTime" style="font-size: 1.8rem;">-</div>
+              <div class="kpi-meta">Basado en historial exitoso</div>
+              <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">⏰</div>
+            </article>
+
+            <!-- Health Score -->
+            <article class="kpi-card" style="position:relative; overflow:hidden;">
+              <div class="kpi-label">Salud de Cartera</div>
+              <div class="kpi-value" id="insightHealthScore">-</div>
+              <div class="kpi-meta">Clientes activos recientes</div>
+              <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">❤️</div>
+            </article>
+
+          </div>
+        </section>
 
         <!-- KPIs CLIENTES -->
         <section class="kpi-grid">
@@ -283,8 +326,34 @@
         <section class="panel-grid-2">
           <article class="panel">
             <header class="panel-header">
+              <h2>Embudo de Conversión (Consumidores)</h2>
+              <p>Avance por etapas del pipeline.</p>
+            </header>
+            <div class="chart-box"><canvas id="chartFunnelConsumidores"></canvas></div>
+            <div class="list-box">
+              <h3>Tasas de conversión</h3>
+              <ul id="listaFunnelConsumidores" class="stats-list"></ul>
+            </div>
+          </article>
+
+          <article class="panel">
+            <header class="panel-header">
+              <h2>Embudo de Conversión (Repartidores)</h2>
+              <p>Pipeline de reclutamiento.</p>
+            </header>
+            <div class="chart-box"><canvas id="chartFunnelRepartidores"></canvas></div>
+            <div class="list-box">
+              <h3>Tasas de conversión</h3>
+              <ul id="listaFunnelRepartidores" class="stats-list"></ul>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel-grid-2">
+          <article class="panel">
+            <header class="panel-header">
               <h2>Estados (Consumidores)</h2>
-              <p>Distribución por estado.</p>
+              <p>Distribución total por estado.</p>
             </header>
             <div class="chart-box"><canvas id="chartEstadosConsumidores"></canvas></div>
             <div class="list-box">
@@ -303,6 +372,61 @@
               <ul id="listaActividadUsuariosConsumidores" class="stats-list"></ul>
             </div>
           </article>
+        </section>
+
+        <!-- REPARTIDORES -->
+        <section class="panel">
+          <header class="panel-header">
+            <h2>Repartidores</h2>
+            <p>KPIs y estado de la flota.</p>
+          </header>
+
+          <section class="kpi-grid" style="margin-top: 10px;">
+            <article class="kpi-card">
+              <div class="kpi-label">Repartidores</div>
+              <div class="kpi-value" id="statTotalRepartidores">-</div>
+              <div class="kpi-meta">Base total</div>
+            </article>
+            <!-- Futuros KPIs de actividad aquí -->
+          </section>
+        </section>
+
+        <section class="panel-grid-2">
+          <article class="panel">
+            <header class="panel-header">
+              <h2>Estados (Repartidores)</h2>
+              <p>Distribución por estado.</p>
+            </header>
+            <div class="chart-box"><canvas id="chartEstadosRepartidores"></canvas></div>
+            <div class="list-box">
+              <h3>Detalle</h3>
+              <ul id="listaEstadosRepartidores" class="stats-list"></ul>
+            </div>
+          </article>
+
+          <article class="panel">
+            <header class="panel-header">
+              <h2>Localidades (Repartidores)</h2>
+              <p>Top 10 localidades.</p>
+            </header>
+            <div class="chart-box"><canvas id="chartLocalidadRepartidores"></canvas></div>
+            <div class="list-box">
+              <h3>Detalle</h3>
+              <ul id="listaLocalidadRepartidores" class="stats-list"></ul>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <header class="panel-header">
+            <h2>Responsables (Repartidores)</h2>
+            <p>Cartera asignada por responsable.</p>
+          </header>
+          <div class="chart-box"><canvas id="chartResponsableRepartidores"></canvas></div>
+          <div class="list-box">
+            <h3>Detalle</h3>
+            <ul id="listaResponsableRepartidores" class="stats-list"></ul>
+          </div>
         </section>
 
         <footer class="stats-footer">

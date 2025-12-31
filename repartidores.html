@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CRM Repartidores</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <div class="logo-pu">
+                        <div class="sidebar-logo">PU</div>
+                        <div class="sidebar-title">PickingUp</div>
+                    </div>
+                </div>
+                <div class="topbar-user">
+                    <span class="muted">Usuario:</span>
+                    <strong id="currentUserName">-</strong>
+                    <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
+                </div>
+            </div>
+
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item"><span class="nav-dot"></span><span>Clientes</span></a>
+                <a href="consumidores.html" class="nav-item"><span class="nav-dot"></span><span>Consumidores</span></a>
+                <a href="calendario.html" class="nav-item"><span class="nav-dot"></span><span>Calendario</span></a>
+                <a href="mapa.html" class="nav-item"><span class="nav-dot"></span><span>Mapa</span></a>
+                <a href="repartidores.html" class="nav-item active" aria-current="page"><span
+                        class="nav-dot"></span><span>Repartidores</span></a>
+                <a href="estadisticas.html" class="nav-item"><span class="nav-dot"></span><span>Estadísticas</span></a>
+                <a href="configuracion.html" class="nav-item"><span
+                        class="nav-dot"></span><span>Configuración</span></a>
+            </nav>
+
+            <div class="sidebar-foot muted">Navegación</div>
+        </aside>
+
+        <div class="app-content">
+            <main class="container">
+
+                <header class="topbar">
+                    <div>
+                        <h1>Repartidores</h1>
+                        <p class="muted">Gestión de flota, documentación y estados.</p>
+                    </div>
+
+                    <div class="topbar-actions">
+                        <button type="button" id="btnNuevoRepartidor" class="btn-primario">+ Nuevo repartidor</button>
+                    </div>
+                </header>
+
+                <section class="panel">
+                    <header class="panel-header">
+                        <h2>Importación / Exportación</h2>
+                    </header>
+
+                    <button type="button" class="btn-primario" id="btnRepDescargarModelo">Descargar modelo
+                        (Excel)</button>
+
+
+                    <label class="btn-secundario" style="cursor:pointer;">
+                        Importar Excel
+                        <input id="inputRepExcel" type="file" accept=".xlsx,.xls" style="display:none;" />
+                    </label>
+
+                    <button type="button" class="btn-secundario" id="btnRepExportarExcel">Exportar repartidores
+                        (Excel)</button>
+
+                </section>
+
+                <!-- Filtros -->
+                <section class="filters">
+                    <input id="filtroNombre" placeholder="Buscar por nombre" />
+                    <input id="filtroTelefono" placeholder="Buscar por teléfono" />
+                    <input id="filtroLocalidad" placeholder="Buscar por localidad" />
+
+                    <select id="filtroEstado">
+                        <option value="Todos">Todos los estados</option>
+                        <option value="Documentación sin gestionar">Documentación sin gestionar</option>
+                        <option value="Cuenta aun no confirmada">Cuenta aun no confirmada</option>
+                        <option value="Cuenta confirmada y repartiendo">Cuenta confirmada y repartiendo</option>
+                    </select>
+
+                    <select id="filtroResponsable">
+                        <option value="">Todos los responsables</option>
+                        <option value="Toto">Toto</option>
+                        <option value="Ruben">Ruben</option>
+                        <option value="Tincho(B)">Tincho(B)</option>
+                        <option value="Fran">Fran</option>
+                        <option value="Ari">Ari</option>
+                        <option value="Nati">Nati</option>
+                        <option value="Dani">Dani</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </section>
+
+                <!-- Listado -->
+                <section class="panel">
+                    <header class="panel-header">
+                        <h2>Listado</h2>
+                        <span class="muted" id="contador">(0)</span>
+                    </header>
+
+                    <div id="lista"></div>
+                </section>
+
+                <div class="filters-actions">
+                    <div class="pager">
+                        <button id="btnPrevPagina" class="btn-secundario">◀</button>
+                        <span id="pageInfo" class="muted">1/1</span>
+                        <button id="btnNextPagina" class="btn-secundario">▶</button>
+
+                        <select id="pageSize" class="btn-secundario">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Modal: Alta/Edición Repartidor -->
+            <div id="modalFormRepartidor" class="modal" aria-hidden="true">
+                <div class="modal__overlay" data-close="true"></div>
+
+                <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalFormRepTitle">
+                    <div class="modal__header">
+                        <h3 id="modalFormRepTitle" class="modal__title">Nuevo repartidor</h3>
+                        <button class="modal__close" type="button" data-close="true">✕</button>
+                    </div>
+
+                    <div class="modal__body">
+                        <form id="formRepartidor">
+                            <input type="hidden" id="repartidorId" />
+
+                            <div class="form__row">
+                                <div>
+                                    <label class="form__label">Nombre *</label>
+                                    <input id="nombre" class="form__input" required />
+                                </div>
+                                <div>
+                                    <label class="form__label">Teléfono</label>
+                                    <input id="telefono" class="form__input" />
+                                </div>
+                            </div>
+
+                            <div class="form__row">
+                                <div>
+                                    <label class="form__label">Email</label>
+                                    <input id="mail" class="form__input" />
+                                </div>
+                                <div>
+                                    <label class="form__label">Localidad</label>
+                                    <input id="localidad" class="form__input" />
+                                </div>
+                            </div>
+
+                            <div class="form__row">
+                                <div>
+                                    <label class="form__label">Dirección</label>
+                                    <input id="direccion" class="form__input" />
+                                </div>
+                                <div>
+                                    <!-- Espacio libre o status -->
+                                    <label class="form__label">Estado</label>
+                                    <select id="estado" class="form__input">
+                                        <option value="Documentación sin gestionar">Documentación sin gestionar</option>
+                                        <option value="Cuenta aun no confirmada">Cuenta aun no confirmada</option>
+                                        <option value="Cuenta confirmada y repartiendo">Cuenta confirmada y repartiendo
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form__row">
+                                <div>
+                                    <label class="form__label">Responsable</label>
+                                    <select id="responsable" class="form__input">
+                                        <option value="">Sin responsable</option>
+                                        <option value="Toto">Toto</option>
+                                        <option value="Ruben">Ruben</option>
+                                        <option value="Tincho(B)">Tincho(B)</option>
+                                        <option value="Fran">Fran</option>
+                                        <option value="Ari">Ari</option>
+                                        <option value="Nati">Nati</option>
+                                        <option value="Dani">Dani</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                                <div><!-- Spacer --></div>
+                            </div>
+
+                            <label class="form__label">Notas</label>
+                            <textarea id="notas" class="form__textarea" rows="3"></textarea>
+
+                            <!-- Fecha de Alta (Editable) -->
+                            <div class="form__row" style="margin-top: 10px;">
+                                <div>
+                                    <label class="form__label">Fecha de Alta (Opcional)</label>
+                                    <input id="created_at" type="datetime-local" class="form__input" />
+                                    <small class="muted" style="font-size: 0.75rem;">Modificar solo si es necesario
+                                        corregir la fecha de ingreso.</small>
+                                </div>
+                            </div>
+
+                            <div class="modal__footer" style="padding-left:0;padding-right:0;border:0;">
+                                <button type="button" id="btnReset" class="btn-secundario">Limpiar</button>
+                                <button type="submit" class="btn-primario">Guardar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Agregar actividad -->
+            <div id="modalActRep" class="modal" aria-hidden="true">
+                <div class="modal__overlay" data-close="true"></div>
+
+                <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalActRepTitle">
+                    <div class="modal__header">
+                        <h3 id="modalActRepTitle" class="modal__title">Agregar actividad</h3>
+                        <button class="modal__close" type="button" data-close="true">✕</button>
+                    </div>
+
+                    <div class="modal__body">
+                        <div class="muted" id="modalActRepSub" style="margin-bottom:10px;"></div>
+
+                        <label class="form__label">Descripción *</label>
+                        <textarea id="actRepDescripcion" class="form__textarea" rows="4"
+                            placeholder="Detalle de la gestión..."></textarea>
+
+                        <div class="form__row">
+                            <div>
+                                <label class="form__label">Fecha y hora</label>
+                                <input id="actRepFecha" class="form__input" type="datetime-local">
+                            </div>
+                            <div>
+                                <label class="form__label">Usuario (opcional)</label>
+                                <input id="actRepUsuario" class="form__input" type="text"
+                                    placeholder="Ej: Toto / Admin">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal__footer">
+                        <button id="btnActRepCancel" class="btn-secundario" type="button"
+                            data-close="true">Cancelar</button>
+                        <button id="btnActRepSave" class="btn-primario" type="button">Guardar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Librería XLSX (Excel) -->
+            <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+            <script src="auth.js"></script>
+            <script src="common.js"></script>
+            <script src="guard.js"></script>
+            <script src="repartidores.js"></script>
+        </div>
+    </div>
+</body>
+
+</html>

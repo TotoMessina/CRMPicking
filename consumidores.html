@@ -34,6 +34,7 @@
             class="nav-dot"></span><span>Consumidores</span></a>
         <a href="calendario.html" class="nav-item"><span class="nav-dot"></span><span>Calendario</span></a>
         <a href="mapa.html" class="nav-item"><span class="nav-dot"></span><span>Mapa</span></a>
+        <a href="repartidores.html" class="nav-item"><span class="nav-dot"></span><span>Repartidores</span></a>
         <a href="estadisticas.html" class="nav-item"><span class="nav-dot"></span><span>Estadísticas</span></a>
         <a href="configuracion.html" class="nav-item"><span class="nav-dot"></span><span>Configuración</span></a>
       </nav>
@@ -60,14 +61,14 @@
             <h2>Importación / Exportación</h2>
           </header>
 
-          <button class="btn-primario" id="btnConsDescargarModelo">Descargar modelo (Excel)</button>
+          <button type="button" class="btn-primario" id="btnConsDescargarModelo">Descargar modelo (Excel)</button>
 
           <label class="btn-secundario" style="cursor:pointer;">
             Importar Excel
             <input id="inputConsExcel" type="file" accept=".xlsx,.xls" style="display:none;" />
           </label>
 
-          <button class="btn-secundario" id="btnConsExportarExcel">Exportar consumidores (Excel)</button>
+          <button type="button" class="btn-secundario" id="btnConsExportarExcel">Exportar consumidores (Excel)</button>
 
         </section>
 
@@ -272,6 +273,8 @@
         </div>
       </div>
 
+      <!-- Librería XLSX (Excel) -->
+      <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
       <script src="auth.js"></script>
       <script src="common.js"></script>
       <script src="guard.js"></script>
