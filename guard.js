@@ -31,7 +31,7 @@
 
       if (!error && data && data.activo === true) return data;
       if (!error && data && data.activo !== true) return { ...data, activo: false };
-    } catch (_) {}
+    } catch (_) { }
 
     // Fallback: permitir con sesión
     return {
@@ -77,6 +77,14 @@
 
       if (window.CRM_USER.activo === true) {
         localStorage.setItem("usuarioActual", window.CRM_USER.nombre);
+
+        // Update Avatar
+        const avatarEl = document.getElementById("userAvatar");
+        if (avatarEl) {
+          const name = window.CRM_USER.nombre || "U";
+          const initials = name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
+          avatarEl.textContent = initials;
+        }
       }
 
       // Si no está activo, forzar login (o podrías mostrar mensaje de deshabilitado)

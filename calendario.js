@@ -166,34 +166,52 @@ function setModalMode(kind) {
 // Si existe tabla usuarios -> usarla; si no, fallback a clientes.responsable + actividades.usuario
 async function cargarUsuarios() {
   const set = new Set();
+  const promises = [];
 
-  // 1) Intentar tabla usuarios
-  try {
-    const { data, error } = await supabaseClient.from("usuarios").select("nombre, email");
-    if (!error && data && data.length) {
-      data.forEach((u) => {
-        const label = (u.nombre || u.email || "").toString().trim();
-        if (label) set.add(label);
-      });
-    }
-  } catch (_) { }
+  // 1) Tabla usuarios (si existe y tenemos permiso)
+  promises.push(
+    supabaseClient.from("usuarios").select("nombre, email")
+      .then(({ data, error }) => {
+        if (!error && data) {
+          data.forEach(u => {
+            const label = (u.nombre || u.email || "").toString().trim();
+            if (label) set.add(label);
+          });
+        }
+      })
+  );
 
-  // 2) Fallback
-  if (set.size === 0) {
-    const [c1, a1] = await Promise.all([
-      supabaseClient.from("clientes").select("responsable").eq("activo", true),
-      supabaseClient.from("actividades").select("usuario"),
-    ]);
+  // 2) Clientes (responsable)
+  promises.push(
+    supabaseClient.from("clientes").select("responsable").neq("responsable", null)
+      .then(({ data, error }) => {
+        if (!error && data) {
+          data.forEach(r => {
+            const v = (r.responsable || "").toString().trim();
+            if (v) set.add(v);
+          });
+        }
+      })
+  );
 
-    (c1.data || []).forEach((r) => {
-      const v = (r.responsable || "").toString().trim();
-      if (v) set.add(v);
-    });
-    (a1.data || []).forEach((r) => {
-      const v = (r.usuario || "").toString().trim();
-      if (v) set.add(v);
-    });
-  }
+  // 3) Actividades (usuario)
+  promises.push(
+    supabaseClient.from("actividades").select("usuario").neq("usuario", null)
+      .then(({ data, error }) => {
+        if (!error && data) {
+          data.forEach(r => {
+            const v = (r.usuario || "").toString().trim();
+            if (v) set.add(v);
+          });
+        }
+      })
+  );
+
+  await Promise.allSettled(promises);
+
+  // Agregar usuario actual por si acaso no vino en ninguna lista
+  const myself = getAuthUserName();
+  if (myself) set.add(myself);
 
   usuariosList = Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
 }
