@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Configuración - PickingUp</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <div class="logo-pu">
+                        <div class="sidebar-logo">PU</div>
+                        <div class="sidebar-title">PickingUp</div>
+                    </div>
+                </div>
+                <div class="topbar-user">
+                    <span class="muted">Usuario:</span>
+                    <strong id="currentUserName">-</strong>
+                    <button id="btnLogout" class="btn-secundario" type="button">Salir</button>
+                </div>
+            </div>
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
+                Modo noche 🌙
+            </button>
+
+            <nav class="sidebar-nav" aria-label="Navegación principal">
+                <a href="index.html" class="nav-item">
+                    <span class="nav-dot"></span><span>Clientes</span>
+                </a>
+                <a href="consumidores.html" class="nav-item">
+                    <span class="nav-dot"></span><span>Consumidores</span>
+                </a>
+                <a href="calendario.html" class="nav-item">
+                    <span class="nav-dot"></span><span>Calendario</span>
+                </a>
+                <a href="mapa.html" class="nav-item">
+                    <span class="nav-dot"></span><span>Mapa</span>
+                </a>
+                <a href="estadisticas.html" class="nav-item">
+                    <span class="nav-dot"></span><span>Estadísticas</span>
+                </a>
+                <a href="configuracion.html" class="nav-item active">
+                    <span class="nav-dot"></span><span>Configuración</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-foot muted">Navegación</div>
+        </aside>
+
+        <div class="app-content">
+            <main class="container">
+                <h1>Configuración de Cuenta</h1>
+                <p class="muted">Administra tu perfil y opciones de seguridad.</p>
+
+                <div class="settings-grid">
+
+                    <!-- Perfil -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2>Perfil</h2>
+                            <p>Información pública de tu cuenta.</p>
+                        </div>
+                        <form id="formProfile" class="form-grid">
+                            <div class="field">
+                                <label for="profileName">Nombre de usuario</label>
+                                <input type="text" id="profileName" placeholder="Tu nombre" />
+                            </div>
+                            <div class="field">
+                                <label for="profileEmail">Email</label>
+                                <input type="text" id="profileEmail" disabled
+                                    style="opacity: 0.7; cursor: not-allowed;" />
+                                <small class="muted">El email no se puede cambiar.</small>
+                            </div>
+                            <div class="form-row">
+                                <button type="submit" class="btn-primario" id="btnSaveProfile">Guardar Cambios</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- Seguridad -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2>Seguridad</h2>
+                            <p>Actualizar tu contraseña.</p>
+                        </div>
+                        <form id="formPassword" class="form-grid">
+                            <div class="field">
+                                <label for="newPassword">Nueva Contraseña</label>
+                                <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres" />
+                            </div>
+                            <div class="field">
+                                <label for="confirmPassword">Confirmar Contraseña</label>
+                                <input type="password" id="confirmPassword" placeholder="Repite la contraseña" />
+                            </div>
+                            <div class="form-row">
+                                <button type="submit" class="btn-secundario" id="btnUpdatePassword">Actualizar
+                                    Contraseña</button>
+                            </div>
+                        </form>
+                    </section>
+
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="auth.js"></script>
+    <script src="common.js"></script>
+    <script src="guard.js"></script>
+    <script src="configuracion.js"></script>
+</body>
+
+</html>

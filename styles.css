@@ -3120,3 +3120,22 @@ button:active {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===========================
+   SETTINGS PAGE
+   =========================== */
+.settings-grid {
+  display: grid;
+  gap: 24px;
+  margin-top: 24px;
+  max-width: 1000px;
+  grid-template-columns: 1fr;
+  /* Mobile first: 1 column */
+}
+
+@media (min-width: 768px) {
+  .settings-grid {
+    grid-template-columns: repeat(2, 1fr);
+    /* Tablet+: 2 columns */
+  }
+}

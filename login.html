@@ -50,10 +50,57 @@
           </div>
 
           <div class="signup-prompt">
-            <button class="btn-secundario btn-sm" id="btnSignup" type="button">Crear cuenta nueva</button>
+            <span class="muted">¿No tenés cuenta?</span>
+            <button class="btn-text" id="btnToggleSignup" type="button" style="margin-left:5px;">Crear cuenta</button>
           </div>
 
           <p class="muted text-center" id="msg" style="margin-top:16px; min-height: 20px;"></p>
+        </form>
+
+        <!-- Formulario de Registro (Oculto por defecto) -->
+        <form id="formSignup" class="form-stack" style="display: none;">
+          <div class="field">
+            <label for="reg_display_name">Nombre y Apellido</label>
+            <input id="reg_display_name" type="text" placeholder="Tu nombre real" required />
+          </div>
+
+          <div class="field">
+            <label for="reg_email">Email</label>
+            <input id="reg_email" type="email" autocomplete="email" required placeholder="tu@email.com" />
+          </div>
+
+          <div class="field">
+            <label for="reg_password">Contraseña</label>
+            <input id="reg_password" type="password" autocomplete="new-password" required
+              placeholder="Mínimo 6 caracteres" />
+          </div>
+
+          <div class="field">
+            <label for="reg_code">Código de Invitación</label>
+            <input id="reg_code" type="text" placeholder="Código de empresa" required />
+          </div>
+
+          <div class="form-actions-stack" style="margin-top:12px;">
+            <button class="btn-primario btn-block" id="btnDoSignup" type="submit">Registrarme</button>
+            <button class="btn-secundario btn-block" id="btnBackToLogin" type="button">Volver al Login</button>
+          </div>
+
+          <p class="muted text-center" id="msgSignup" style="margin-top:16px; min-height: 20px;"></p>
+        </form>
+
+        <!-- Formulario de Actualizar Contraseña (Oculto por defecto) -->
+        <form id="formUpdatePassword" class="form-stack" style="display: none;">
+          <div class="field">
+            <label for="new_password">Nueva Contraseña</label>
+            <input id="new_password" type="password" autocomplete="new-password" required
+              placeholder="Mínimo 6 caracteres" />
+          </div>
+
+          <div class="form-actions-stack" style="margin-top:12px;">
+            <button class="btn-primario btn-block" id="btnSavePassword" type="submit">Guardar Contraseña</button>
+          </div>
+
+          <p class="muted text-center" id="msgUpdate" style="margin-top:16px; min-height: 20px;"></p>
         </form>
 
         <div class="theme-toggle-fixed">
