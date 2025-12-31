@@ -31,7 +31,7 @@ const THEME_KEY = "crm_theme";
    ============================ */
 async function requireAuthOrRedirect() {
   if (window.CRM_GUARD_READY) {
-    try { await window.CRM_GUARD_READY; } catch (_) {}
+    try { await window.CRM_GUARD_READY; } catch (_) { }
   }
   if (window.CRM_USER && window.CRM_USER.activo === true) return window.CRM_USER;
 
@@ -116,7 +116,7 @@ let lastKnownPos = null; // {lat, lng, accuracy, ts}
 let recordsCache = [];   // clientes (con coords)
 
 // ========= Route state (NUEVO) =========
-let routeLine = null;
+let routingControl = null;
 let routeStopsLayer = null;
 let routeBounds = null;
 let lastRoute = null; // { origin:{lat,lng,label}, stops:[{id,label,lat,lng}], ordered:[...], totalKm, returnToOrigin }
@@ -632,7 +632,7 @@ function rebuildRouteStartOptions() {
   if (!elRouteStart) return;
 
   const selectedIds = new Set(getSelectedRouteIds());
-  const selectedRecs = recordsCache.filter((r) => selectedIds.has(r.id));
+  const selectedRecs = recordsCache.filter((r) => selectedIds.has(String(r.id)));
 
   const prev = elRouteStart.value || "";
   elRouteStart.innerHTML = "";
@@ -646,7 +646,7 @@ function rebuildRouteStartOptions() {
 
   // Origen en un cliente seleccionado (o en cualquiera, si no hay selección todavía)
   const pool = selectedRecs.length ? selectedRecs : recordsCache;
-  const sorted = pool.slice().sort((a,b) => clientLabel(a).localeCompare(clientLabel(b), "es", { sensitivity:"base" }));
+  const sorted = pool.slice().sort((a, b) => clientLabel(a).localeCompare(clientLabel(b), "es", { sensitivity: "base" }));
 
   for (const r of sorted) {
     const o = document.createElement("option");
@@ -669,10 +669,10 @@ function rebuildRouteList(filterText = "") {
   const q = String(filterText || "").trim().toLowerCase();
 
   const sorted = recordsCache
-  .filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng))
-  .sort((a, b) =>
-    clientLabel(a).localeCompare(clientLabel(b), "es", { sensitivity: "base" })
-  );
+    .filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng))
+    .sort((a, b) =>
+      clientLabel(a).localeCompare(clientLabel(b), "es", { sensitivity: "base" })
+    );
 
   for (const rec of sorted) {
     const label = clientLabel(rec);
@@ -722,9 +722,9 @@ function openRouteModal() {
 }
 
 function clearRoute() {
-  if (routeLine) {
-    try { map.removeLayer(routeLine); } catch (_) {}
-    routeLine = null;
+  if (routingControl) {
+    try { map.removeControl(routingControl); } catch (_) { }
+    routingControl = null;
   }
   if (routeStopsLayer) routeStopsLayer.clearLayers();
   routeBounds = null;
@@ -847,24 +847,58 @@ function buildGoogleMapsDirectionsUrl(route) {
 function drawRouteOnMap(route, { autoCenter = true } = {}) {
   clearRoute();
 
-  const points = [];
-  points.push([route.origin.lat, route.origin.lng]);
+  // Create waypoints array
+  const waypoints = [];
+  waypoints.push(L.latLng(route.origin.lat, route.origin.lng));
 
   for (const s of route.ordered) {
-    points.push([s.lat, s.lng]);
+    waypoints.push(L.latLng(s.lat, s.lng));
   }
 
   if (route.returnToOrigin && route.ordered.length) {
-    points.push([route.origin.lat, route.origin.lng]);
+    waypoints.push(L.latLng(route.origin.lat, route.origin.lng));
   }
 
-  // polyline
-  routeLine = L.polyline(points, {
-    weight: 5,
-    opacity: 0.85,
+  // Use Leaflet Routing Machine
+  routingControl = L.Routing.control({
+    waypoints: waypoints,
+    router: L.Routing.osrmv1({
+      serviceUrl: 'https://router.project-osrm.org/route/v1'
+    }),
+    lineOptions: {
+      styles: [{ color: 'blue', opacity: 0.6, weight: 5 }]
+    },
+    createMarker: function () { return null; }, // No default markers, we use our own
+    addWaypoints: false,
+    draggableWaypoints: false,
+    fitSelectedRoutes: autoCenter,
+    show: false // Hide text instructions
   }).addTo(map);
 
-  routeBounds = routeLine.getBounds();
+  routingControl.on('routesfound', function (e) {
+    const r = e.routes[0];
+    if (!r) return;
+
+    // Actualizar bounds para el botón "Centrar"
+    routeBounds = L.latLngBounds(r.coordinates);
+
+    // Actualizar resumen con datos REALES de OSRM (distancia en metros -> km)
+    const distKm = r.summary.totalDistance / 1000;
+
+    // Re-render summary with real data
+    if (lastRoute) {
+      lastRoute.totalKm = distKm;
+      renderRouteSummary(lastRoute);
+    }
+  });
+
+  // Ocultar el contenedor de instrucciones (si 'show: false' no basta en versiones viejas)
+  // Aunque show:false debería, algunos CSS default lo muestran igual vacío.
+  // Podríamos inyectar CSS o simplemente dejarlo.
+  // Para asegurar limpieza, forzamos hide via DOM event 'routingstart' o similar si hiciera falta.
+  // Pero con show:false suele, en versiones nuevas, no renderizar el panel.
+
+
 
   // marcadores numerados de paradas
   routeStopsLayer.clearLayers();
@@ -911,7 +945,7 @@ function generateRoute() {
 
   // Armar stops
   const selected = recordsCache
-    .filter(r => selectedIds.includes(r.id))
+    .filter(r => selectedIds.includes(String(r.id))) // MATCH STRING
     .map(r => ({
       id: r.id,
       label: clientLabel(r),
@@ -939,7 +973,7 @@ function generateRoute() {
     }
     origin = { lat: lastKnownPos.lat, lng: lastKnownPos.lng, label: "Mi ubicación" };
   } else {
-    const rec = selected.find((s) => s.id === startValue) || selected[0];
+    const rec = selected.find((s) => String(s.id) === startValue) || selected[0];
     origin = { lat: rec.lat, lng: rec.lng, label: rec.label };
   }
 
