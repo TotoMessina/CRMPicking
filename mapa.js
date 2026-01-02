@@ -61,6 +61,11 @@ async function requireAuthOrRedirect() {
 
       if (window.CRM_USER && window.CRM_USER.activo === true) {
         localStorage.setItem("usuarioActual", (window.CRM_USER.nombre || "").trim());
+        // FALLBACK: si guard.js no corrió o no actualizó el DOM, hacerlo aquí
+        const userLabel = document.getElementById("currentUserName");
+        if (userLabel && userLabel.textContent === "Cargando...") {
+          userLabel.textContent = window.CRM_USER.nombre || "Usuario";
+        }
       }
     }
 

@@ -103,6 +103,12 @@
         });
       }
 
+      // FIX: Update currentUserName globally if present
+      const userLabel = document.getElementById("currentUserName");
+      if (userLabel) {
+        userLabel.textContent = window.CRM_USER.nombre || "Usuario";
+      }
+
       return { ok: true, reason: "session_ok" };
     }
 
