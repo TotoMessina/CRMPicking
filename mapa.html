@@ -467,11 +467,11 @@
       </main>
 
       <!-- MODAL CLIENTE -->
-      <div id="modalCliente" class="modal-map" aria-hidden="true">
-        <div class="modal-card">
-          <div class="modal-head">
-            <h2 id="modalTitle">Nuevo cliente</h2>
-            <button type="button" id="btnCerrarModal" class="btn-secundario">Cerrar</button>
+      <div id="modalCliente" class="modal" aria-hidden="true" style="display:none;" data-close="true">
+        <div class="modal-content">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h2 id="modalTitle" style="margin:0;">Nuevo cliente</h2>
+            <button type="button" id="btnCerrarModal" class="btn-secundario" data-close="true">Cerrar</button>
           </div>
 
           <form id="formClienteMapa">
@@ -542,91 +542,85 @@
               <label for="fecha_contacto">Cuándo se contactó</label>
               <input class="input" id="fecha_contacto" type="date" />
             </div>
-        </div>
 
-        <div class="modal-foot">
-          <div class="muted" id="coordHint">Lat/Lng: -</div>
-
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button type="button" id="btnEliminar" class="btn-secundario" style="display:none;">
-              Eliminar
-            </button>
-            <button type="submit" id="btnGuardar" class="btn-primario">
-              Guardar
-            </button>
-          </div>
+            <div class="modal-actions" style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+              <div class="muted" id="coordHint">Lat/Lng: -</div>
+              <div style="display:flex; gap:10px;">
+                <button type="button" id="btnEliminar" class="btn-delete" style="display:none;">Eliminar</button>
+                <button type="submit" id="btnGuardar" class="btn-primario">Guardar</button>
+              </div>
+            </div>
+          </form>
         </div>
-        </form>
       </div>
-    </div>
 
-    <!-- NUEVO: MODAL RUTA -->
-    <div id="modalRuta" class="modal-map" aria-hidden="true">
-      <div class="modal-card">
-        <div class="modal-head">
-          <h2>Optimizar ruta</h2>
-          <button type="button" id="btnCerrarModalRuta" class="btn-secundario">Cerrar</button>
-        </div>
-
-        <div class="grid-2">
-          <div class="field">
-            <label for="routeSearch">Buscar clientes</label>
-            <input class="input" id="routeSearch" placeholder="Escribí para filtrar..." />
+      <!-- NUEVO: MODAL RUTA -->
+      <div id="modalRuta" class="modal" aria-hidden="true" style="display:none;" data-close="true">
+        <div class="modal-content">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h2 style="margin:0;">Optimizar ruta</h2>
+            <button type="button" id="btnCerrarModalRuta" class="btn-secundario" data-close="true">Cerrar</button>
           </div>
 
-          <div class="field">
-            <label for="routeStart">Origen</label>
-            <select class="input" id="routeStart"></select>
-          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="routeSearch">Buscar clientes</label>
+              <input class="input" id="routeSearch" placeholder="Escribí para filtrar..." />
+            </div>
 
-          <div class="field">
-            <label class="muted" style="margin-top:4px;">
-              Seleccioná los clientes que querés visitar (se requiere lat/lng en la ficha).
-            </label>
-            <div class="route-listbox" id="routeList"></div>
-          </div>
+            <div class="field">
+              <label for="routeStart">Origen</label>
+              <select class="input" id="routeStart"></select>
+            </div>
 
-          <div class="field">
-            <label for="routeReturn">Opciones</label>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-              <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
-                <input type="checkbox" id="routeReturn" />
-                <span>Volver al origen (cierra el circuito)</span>
+            <div class="field">
+              <label class="muted" style="margin-top:4px;">
+                Seleccioná los clientes que querés visitar (se requiere lat/lng en la ficha).
               </label>
+              <div class="route-listbox" id="routeList"></div>
+            </div>
 
-              <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
-                <input type="checkbox" id="routeAutoCenter" checked />
-                <span>Centrar el mapa al generar la ruta</span>
-              </label>
+            <div class="field">
+              <label for="routeReturn">Opciones</label>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
+                  <input type="checkbox" id="routeReturn" />
+                  <span>Volver al origen (cierra el circuito)</span>
+                </label>
 
-              <div class="muted" id="routeHint" style="font-size:12px;">
-                Tip: si querés usar “Mi ubicación” como origen, primero tocá “Ubicarme”.
+                <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
+                  <input type="checkbox" id="routeAutoCenter" checked />
+                  <span>Centrar el mapa al generar la ruta</span>
+                </label>
+
+                <div class="muted" id="routeHint" style="font-size:12px;">
+                  Tip: si querés usar “Mi ubicación” como origen, primero tocá “Ubicarme”.
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="modal-foot">
-          <div class="muted" id="routeCount">0 seleccionados</div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button type="button" id="btnSeleccionarTodos" class="btn-secundario">Seleccionar todos</button>
-            <button type="button" id="btnDeseleccionarTodos" class="btn-secundario">Limpiar selección</button>
-            <button type="button" id="btnGenerarRuta" class="btn-primario">Generar ruta</button>
+          <div class="modal-actions" style="margin-top:16px;">
+            <div class="muted" id="routeCount" style="margin-right:auto;">0 seleccionados</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="button" id="btnSeleccionarTodos" class="btn-secundario">Seleccionar todos</button>
+              <button type="button" id="btnDeseleccionarTodos" class="btn-secundario">Limpiar selección</button>
+              <button type="button" id="btnGenerarRuta" class="btn-primario">Generar ruta</button>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Leaflet JS -->
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+      <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+      <script src="auth.js"></script>
+      <script src="common.js"></script>
+      <script src="guard.js"></script>
+      <script src="mapa.js"></script>
     </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-
-    <script src="auth.js"></script>
-    <script src="common.js"></script>
-    <script src="guard.js"></script>
-    <script src="mapa.js"></script>
-  </div>
   </div>
 </body>
 

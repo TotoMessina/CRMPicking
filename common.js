@@ -164,4 +164,64 @@
         });
     });
 
+
+    // 6. MODAL SCROLL LOCK (New)
+    // =========================================================
+    // Watch for any element with class 'modal' becoming visible and toggle body.modal-open
+    const observer = new MutationObserver((mutations) => {
+        let isAnyModalOpen = false;
+
+        // Efficiently check all modals
+        const modals = document.querySelectorAll('.modal, .modal-map');
+        modals.forEach(modal => {
+            const style = getComputedStyle(modal);
+            if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+                isAnyModalOpen = true;
+            }
+        });
+
+        if (isAnyModalOpen) {
+            document.body.classList.add('modal-open');
+        } else {
+            document.body.classList.remove('modal-open');
+        }
+    });
+
+    // Start observing document body for attribute changes (class) or subtree modifications
+    // effectively catching style changes or class changes on modals if they are in DOM
+    // However, direct style changes on elements might not trigger subtree efficiently if deep.
+    // Better strategy: Observe attributes on all .modal elements if possible, or simpler:
+    // Just observe the specific known modals or delegate. 
+    // Since we standardize on '.active' class or inline 'style', let's observe body subtree for attribute changes
+    // This might be expensive. A better way is to hook into the toggle logic?
+    // But we want to be "global". 
+    // Let's rely on the fact most toggles set attributes.
+
+    // OPTIMIZED APPROACH:
+    // Just run the check whenever mutations happen on attributes or childList of body (broad but reliable for small app)
+    observer.observe(document.body, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ['style', 'class']
+    });
+
+    // 7. FIX MODAL POSITIONING (New)
+    // =========================================================
+    // Move all modals to body to ensure position:fixed works relative to viewport
+    // avoiding issues with transforms/overflows in parent containers (.app-shell, etc)
+    const moveModalsToBody = () => {
+        const modals = document.querySelectorAll('.modal, .modal-map');
+        modals.forEach(modal => {
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+        });
+    };
+
+    // Run on init
+    moveModalsToBody();
+
+    // Also run if DOM changes significantly (optional, but good for client-side routing if used later)
+    // For now, simple calls are enough.
+
 })();

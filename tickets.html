@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tickets - CRM PickingUp</title>
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="tickets.css" />
+    <!-- tickets.css removed, using styles.css now -->
     <!-- Supabase JS v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -89,13 +89,14 @@
     </div>
 
     <!-- Modal Ver Ticket -->
-    <div id="modalTicket" class="modal-backdrop">
-        <div class="modal-container">
-            <div class="modal-header">
+    <div id="modalTicket" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="btnCloseTicketModal">×</button>
+            <div class="modal-header" style="padding:0; border:none;">
                 <h2 id="modalTicketSubject">Asunto del Ticket</h2>
-                <button class="btn-close-modal" id="btnCloseTicketModal">×</button>
             </div>
-            <div class="modal-body">
+
+            <div class="modal-body" style="padding: 16px 0;">
                 <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-body); border-radius: 8px;">
                     <p><strong>De:</strong> <span id="modalTicketName">Nombre</span> (<span
                             id="modalTicketEmail">email</span>)</p>
@@ -119,10 +120,10 @@
                     </select>
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content: space-between;">
+            <div class="modal-actions">
                 <button type="button" class="btn-secundario" id="btnDeleteTicket"
                     style="color: #ef4444; border-color: #ef4444;">🗑️ Eliminar</button>
-                <div>
+                <div style="display:flex; gap:8px;">
                     <button type="button" class="btn-secundario" id="btnCancelTicket">Cerrar</button>
                     <button type="button" class="btn-primary" id="btnSaveTicketStatus">Guardar Cambios</button>
                 </div>

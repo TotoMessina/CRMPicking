@@ -134,129 +134,116 @@
             </main>
 
             <!-- Modal: Alta/Edición Repartidor -->
-            <div id="modalFormRepartidor" class="modal" aria-hidden="true">
-                <div class="modal__overlay" data-close="true"></div>
+            <div id="modalFormRepartidor" class="modal" aria-hidden="true" data-close="true">
+                <div class="modal-content">
+                    <h3 id="modalFormRepTitle">Nuevo repartidor</h3>
+                    <button class="modal-close" type="button" data-close="true">×</button>
 
-                <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalFormRepTitle">
-                    <div class="modal__header">
-                        <h3 id="modalFormRepTitle" class="modal__title">Nuevo repartidor</h3>
-                        <button class="modal__close" type="button" data-close="true">✕</button>
-                    </div>
+                    <form id="formRepartidor" style="margin-top:16px;">
+                        <input type="hidden" id="repartidorId" />
 
-                    <div class="modal__body">
-                        <form id="formRepartidor">
-                            <input type="hidden" id="repartidorId" />
-
-                            <div class="form__row">
-                                <div>
-                                    <label class="form__label">Nombre *</label>
-                                    <input id="nombre" class="form__input" required />
-                                </div>
-                                <div>
-                                    <label class="form__label">Teléfono</label>
-                                    <input id="telefono" class="form__input" />
-                                </div>
+                        <div class="grid">
+                            <div class="field">
+                                <label class="form__label">Nombre *</label>
+                                <input id="nombre" required />
                             </div>
-
-                            <div class="form__row">
-                                <div>
-                                    <label class="form__label">Email</label>
-                                    <input id="mail" class="form__input" />
-                                </div>
-                                <div>
-                                    <label class="form__label">Localidad</label>
-                                    <input id="localidad" class="form__input" />
-                                </div>
+                            <div class="field">
+                                <label class="form__label">Teléfono</label>
+                                <input id="telefono" />
                             </div>
+                        </div>
 
-                            <div class="form__row">
-                                <div>
-                                    <label class="form__label">Dirección</label>
-                                    <input id="direccion" class="form__input" />
-                                </div>
-                                <div>
-                                    <!-- Espacio libre o status -->
-                                    <label class="form__label">Estado</label>
-                                    <select id="estado" class="form__input">
-                                        <option value="Documentación sin gestionar">Documentación sin gestionar</option>
-                                        <option value="Cuenta aun no confirmada">Cuenta aun no confirmada</option>
-                                        <option value="Cuenta confirmada y repartiendo">Cuenta confirmada y repartiendo
-                                        </option>
-                                    </select>
-                                </div>
+                        <div class="grid">
+                            <div class="field">
+                                <label class="form__label">Email</label>
+                                <input id="mail" />
                             </div>
-
-                            <div class="form__row">
-                                <div>
-                                    <label class="form__label">Responsable</label>
-                                    <select id="responsable" class="form__input">
-                                        <option value="">Sin responsable</option>
-                                        <option value="Toto">Toto</option>
-                                        <option value="Ruben">Ruben</option>
-                                        <option value="Tincho(B)">Tincho(B)</option>
-                                        <option value="Fran">Fran</option>
-                                        <option value="Ari">Ari</option>
-                                        <option value="Nati">Nati</option>
-                                        <option value="Dani">Dani</option>
-                                        <option value="Otro">Otro</option>
-                                    </select>
-                                </div>
-                                <div><!-- Spacer --></div>
+                            <div class="field">
+                                <label class="form__label">Localidad</label>
+                                <input id="localidad" />
                             </div>
+                        </div>
 
+                        <div class="grid">
+                            <div class="field">
+                                <label class="form__label">Dirección</label>
+                                <input id="direccion" />
+                            </div>
+                            <div class="field">
+                                <label class="form__label">Estado</label>
+                                <select id="estado">
+                                    <option value="Documentación sin gestionar">Documentación sin gestionar</option>
+                                    <option value="Cuenta aun no confirmada">Cuenta aun no confirmada</option>
+                                    <option value="Cuenta confirmada y repartiendo">Cuenta confirmada y repartiendo
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid">
+                            <div class="field">
+                                <label class="form__label">Responsable</label>
+                                <select id="responsable">
+                                    <option value="">Sin responsable</option>
+                                    <option value="Toto">Toto</option>
+                                    <option value="Ruben">Ruben</option>
+                                    <option value="Tincho(B)">Tincho(B)</option>
+                                    <option value="Fran">Fran</option>
+                                    <option value="Ari">Ari</option>
+                                    <option value="Nati">Nati</option>
+                                    <option value="Dani">Dani</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="field" style="margin-top:12px;">
                             <label class="form__label">Notas</label>
-                            <textarea id="notas" class="form__textarea" rows="3"></textarea>
+                            <textarea id="notas" rows="3"></textarea>
+                        </div>
 
-                            <!-- Fecha de Alta (Editable) -->
-                            <div class="form__row" style="margin-top: 10px;">
-                                <div>
-                                    <label class="form__label">Fecha de Alta (Opcional)</label>
-                                    <input id="created_at" type="datetime-local" class="form__input" />
-                                    <small class="muted" style="font-size: 0.75rem;">Modificar solo si es necesario
-                                        corregir la fecha de ingreso.</small>
-                                </div>
-                            </div>
+                        <!-- Fecha de Alta (Editable) -->
+                        <div class="field" style="margin-top: 10px;">
+                            <label class="form__label">Fecha de Alta (Opcional)</label>
+                            <input id="created_at" type="datetime-local" />
+                            <small class="muted" style="font-size: 0.75rem;">Modificar solo si es necesario
+                                corregir la fecha de ingreso.</small>
+                        </div>
 
-                            <div class="modal__footer" style="padding-left:0;padding-right:0;border:0;">
-                                <button type="button" id="btnReset" class="btn-secundario">Limpiar</button>
-                                <button type="submit" class="btn-primario">Guardar</button>
-                            </div>
-                        </form>
-                    </div>
+                        <div class="modal-actions">
+                            <button type="button" id="btnReset" class="btn-secundario">Limpiar</button>
+                            <button type="submit" class="btn-primario">Guardar</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
             <!-- Modal: Agregar actividad -->
-            <div id="modalActRep" class="modal" aria-hidden="true">
-                <div class="modal__overlay" data-close="true"></div>
+            <div id="modalActRep" class="modal" aria-hidden="true" data-close="true">
+                <div class="modal-content">
+                    <h3 id="modalActRepTitle">Agregar actividad</h3>
+                    <button class="modal-close" type="button" data-close="true">×</button>
 
-                <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalActRepTitle">
-                    <div class="modal__header">
-                        <h3 id="modalActRepTitle" class="modal__title">Agregar actividad</h3>
-                        <button class="modal__close" type="button" data-close="true">✕</button>
-                    </div>
-
-                    <div class="modal__body">
+                    <div style="margin-top:16px;">
                         <div class="muted" id="modalActRepSub" style="margin-bottom:10px;"></div>
 
                         <label class="form__label">Descripción *</label>
-                        <textarea id="actRepDescripcion" class="form__textarea" rows="4"
-                            placeholder="Detalle de la gestión..."></textarea>
+                        <textarea id="actRepDescripcion" rows="4" placeholder="Detalle de la gestión..."
+                            style="width:100%; margin-bottom:12px;"></textarea>
 
-                        <div class="form__row">
-                            <div>
+                        <div class="grid">
+                            <div class="field">
                                 <label class="form__label">Fecha y hora</label>
-                                <input id="actRepFecha" class="form__input" type="datetime-local">
+                                <input id="actRepFecha" type="datetime-local">
                             </div>
-                            <div>
+                            <div class="field">
                                 <label class="form__label">Usuario (opcional)</label>
-                                <input id="actRepUsuario" class="form__input" type="text"
-                                    placeholder="Ej: Toto / Admin">
+                                <input id="actRepUsuario" type="text" placeholder="Ej: Toto / Admin">
                             </div>
                         </div>
                     </div>
 
-                    <div class="modal__footer">
+                    <div class="modal-actions">
                         <button id="btnActRepCancel" class="btn-secundario" type="button"
                             data-close="true">Cancelar</button>
                         <button id="btnActRepSave" class="btn-primario" type="button">Guardar</button>

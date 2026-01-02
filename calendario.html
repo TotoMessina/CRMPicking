@@ -107,92 +107,88 @@
       <script src="guard.js"></script>
       <script src="calendario.js"></script>
 
-      <!-- Modal Moved to Outside for Z-Index Fix -->
-      <div id="modalEvento" class="modal" aria-hidden="true" style="display:none;">
-        <div class="modal__overlay" data-close="true"></div>
-
-        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
-          <div class="modal__header">
-            <h3 id="modalTitulo" class="modal__title">Nuevo evento</h3>
-            <button class="modal__close" type="button" data-close="true">✕</button>
+      <!-- Modal Evento -->
+      <div id="modalEvento" class="modal" aria-hidden="true" style="display:none;" data-close="true">
+        <div class="modal-content">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 id="modalTitulo" style="margin:0;">Nuevo evento</h3>
+            <button class="modal-close" type="button" data-close="true">×</button>
           </div>
 
-          <div class="modal__body">
-            <form id="formEvento">
-              <input type="hidden" id="modalKind" value="evento">
-              <input type="hidden" id="eventoId" value="">
-              <input type="hidden" id="clienteId" value="">
+          <form id="formEvento">
+            <input type="hidden" id="modalKind" value="evento">
+            <input type="hidden" id="eventoId" value="">
+            <input type="hidden" id="clienteId" value="">
 
+            <label class="field">
+              <span class="field-label">Título</span>
+              <input id="evTitulo" type="text" required />
+            </label>
+
+            <label class="field">
+              <span class="field-label" id="labelDesc">Descripción</span>
+              <textarea id="evDesc" rows="8"></textarea>
+            </label>
+
+            <!-- SOLO EVENTOS INTERNOS -->
+            <div class="form-row-2" id="rowTipoColor">
               <label class="field">
-                <span class="field-label">Título</span>
-                <input id="evTitulo" type="text" required />
+                <span class="field-label">Tipo</span>
+                <select id="evTipo">
+                  <option value="interno">General</option>
+                  <option value="reunion">Reunión Prensencial</option>
+                  <option value="virtual">Reunión Virtual</option>
+                  <option value="contacto">Contacto / Visita</option>
+                  <option value="empresa">Evento Empresa</option>
+                  <option value="activacion">Activación</option>
+                  <option value="capacitacion">Capacitación</option>
+                  <option value="feriado">Feriado</option>
+                </select>
               </label>
 
               <label class="field">
-                <span class="field-label" id="labelDesc">Descripción</span>
-                <textarea id="evDesc" rows="8"></textarea>
+                <span class="field-label">Color</span>
+                <input id="evColor" type="color" value="#FF2BD6" />
               </label>
+            </div>
 
-              <!-- SOLO EVENTOS INTERNOS -->
-              <div class="form-row-2" id="rowTipoColor">
-                <label class="field">
-                  <span class="field-label">Tipo</span>
-                  <select id="evTipo">
-                    <option value="interno">General</option>
-                    <option value="reunion">Reunión Prensencial</option>
-                    <option value="virtual">Reunión Virtual</option>
-                    <option value="contacto">Contacto / Visita</option>
-                    <option value="empresa">Evento Empresa</option>
-                    <option value="activacion">Activación</option>
-                    <option value="capacitacion">Capacitación</option>
-                    <option value="feriado">Feriado</option>
-                  </select>
-                </label>
-
-                <label class="field">
-                  <span class="field-label">Color</span>
-                  <input id="evColor" type="color" value="#FF2BD6" />
-                </label>
-              </div>
-
-              <!-- Checklist de usuarios (multi) -->
-              <div class="field" id="rowUsuariosChecklist">
-                <div class="field-label-row">
-                  <span class="field-label">Usuarios que lo ven</span>
-                  <div class="field-actions">
-                    <button type="button" id="btnSelectAllUsers" class="btn-mini">Seleccionar todos</button>
-                    <button type="button" id="btnClearAllUsers" class="btn-mini">Limpiar</button>
-                  </div>
+            <!-- Checklist de usuarios (multi) -->
+            <div class="field" id="rowUsuariosChecklist">
+              <div class="field-label-row">
+                <span class="field-label">Usuarios que lo ven</span>
+                <div class="field-actions">
+                  <button type="button" id="btnSelectAllUsers" class="btn-mini">Seleccionar todos</button>
+                  <button type="button" id="btnClearAllUsers" class="btn-mini">Limpiar</button>
                 </div>
-
-                <div id="usuariosChecklist" class="checklist"></div>
-                <div class="muted mini-hint">Tip: si no seleccionás ninguno, el evento queda “general” (visible solo si
-                  filtrás en “Todos”).</div>
               </div>
 
-              <div class="form-row-2">
-                <label class="field">
-                  <span class="field-label">Inicio</span>
-                  <input id="evInicio" type="datetime-local" required />
-                </label>
+              <div id="usuariosChecklist" class="checklist"></div>
+              <div class="muted mini-hint">Tip: si no seleccionás ninguno, el evento queda “general” (visible solo si
+                filtrás en “Todos”).</div>
+            </div>
 
-                <label class="field">
-                  <span class="field-label">Fin</span>
-                  <input id="evFin" type="datetime-local" />
-                </label>
-              </div>
-
-              <label class="field inline" id="rowAllDay">
-                <input id="evAllDay" type="checkbox" />
-                <span>Todo el día</span>
+            <div class="form-row-2">
+              <label class="field">
+                <span class="field-label">Inicio</span>
+                <input id="evInicio" type="datetime-local" required />
               </label>
 
-              <div class="modal-actions">
-                <button type="submit" class="btn-primario">Guardar</button>
-                <button type="button" id="btnEliminarEvento" class="btn-delete">Eliminar</button>
-              </div>
-            </form>
-          </div>
+              <label class="field">
+                <span class="field-label">Fin</span>
+                <input id="evFin" type="datetime-local" />
+              </label>
+            </div>
+
+            <label class="field inline" id="rowAllDay">
+              <input id="evAllDay" type="checkbox" />
+              <span>Todo el día</span>
+            </label>
+
+            <div class="modal-actions">
+              <button type="submit" class="btn-primario">Guardar</button>
+              <button type="button" id="btnEliminarEvento" class="btn-delete">Eliminar</button>
+            </div>
+          </form>
         </div>
       </div>
 

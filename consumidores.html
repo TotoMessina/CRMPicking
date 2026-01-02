@@ -134,147 +134,142 @@
       </main>
 
       <!-- Modal: Alta/Edición Consumidor -->
-      <div id="modalFormConsumidor" class="modal" aria-hidden="true">
-        <div class="modal__overlay" data-close="true"></div>
-
-        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalFormConsTitle">
-          <div class="modal__header">
-            <h3 id="modalFormConsTitle" class="modal__title">Nuevo consumidor</h3>
-            <button class="modal__close" type="button" data-close="true">✕</button>
+      <div id="modalFormConsumidor" class="modal" aria-hidden="true" data-close="true">
+        <div class="modal-content">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 id="modalFormConsTitle" style="margin:0;">Nuevo consumidor</h3>
+            <button class="modal-close" type="button" data-close="true">×</button>
           </div>
 
-          <div class="modal__body">
-            <form id="formConsumidor">
-              <input type="hidden" id="consumidorId" />
+          <form id="formConsumidor">
+            <input type="hidden" id="consumidorId" />
 
-              <div class="form__row">
-                <div>
-                  <label class="form__label">Nombre *</label>
-                  <input id="nombre" class="form__input" required />
-                </div>
-                <div>
-                  <label class="form__label">Teléfono</label>
-                  <input id="telefono" class="form__input" />
-                </div>
-              </div>
+            <div class="form-row-2">
+              <label class="field">
+                <span class="field-label">Nombre *</span>
+                <input id="nombre" class="input" required />
+              </label>
+              <label class="field">
+                <span class="field-label">Teléfono</span>
+                <input id="telefono" class="input" />
+              </label>
+            </div>
 
-              <div class="form__row">
-                <div>
-                  <label class="form__label">Email</label>
-                  <input id="mail" class="form__input" />
-                </div>
-                <div>
-                  <label class="form__label">Localidad</label>
-                  <input id="localidad" class="form__input" />
-                </div>
-              </div>
+            <div class="form-row-2">
+              <label class="field">
+                <span class="field-label">Email</span>
+                <input id="mail" class="input" />
+              </label>
+              <label class="field">
+                <span class="field-label">Localidad</span>
+                <input id="localidad" class="input" />
+              </label>
+            </div>
 
-              <div class="form__row">
-                <div>
-                  <label class="form__label">Barrio</label>
-                  <input id="barrio" class="form__input" />
-                </div>
-                <div>
-                  <label class="form__label">Edad</label>
-                  <input id="edad" class="form__input" type="number" min="0" />
-                </div>
-              </div>
+            <div class="form-row-2">
+              <label class="field">
+                <span class="field-label">Barrio</span>
+                <input id="barrio" class="input" />
+              </label>
+              <label class="field">
+                <span class="field-label">Edad</span>
+                <input id="edad" class="input" type="number" min="0" />
+              </label>
+            </div>
 
-              <div class="form__row">
-                <div>
-                  <label class="form__label">Género</label>
-                  <select id="genero" class="form__input">
-                    <option value="">Sin definir</option>
-                    <option value="F">F</option>
-                    <option value="M">M</option>
-                    <option value="X">X</option>
-                  </select>
-                </div>
+            <div class="form-row-2">
+              <label class="field">
+                <span class="field-label">Género</span>
+                <select id="genero" class="input">
+                  <option value="">Sin definir</option>
+                  <option value="F">F</option>
+                  <option value="M">M</option>
+                  <option value="X">X</option>
+                </select>
+              </label>
 
-                <div>
-                  <label class="form__label">Estado</label>
-                  <select id="estado" class="form__input">
-                    <option value="Lead">Lead</option>
-                    <option value="Contactado">Contactado</option>
-                    <option value="Interesado">Interesado</option>
-                    <option value="Cliente">Cliente</option>
-                    <option value="No interesado">No interesado</option>
-                  </select>
-                </div>
-              </div>
+              <label class="field">
+                <span class="field-label">Estado</span>
+                <select id="estado" class="input">
+                  <option value="Lead">Lead</option>
+                  <option value="Contactado">Contactado</option>
+                  <option value="Interesado">Interesado</option>
+                  <option value="Cliente">Cliente</option>
+                  <option value="No interesado">No interesado</option>
+                </select>
+              </label>
+            </div>
 
-              <div class="form__row">
-                <div>
-                  <label class="form__label">Responsable</label>
-                  <select id="responsable" class="form__input">
-                    <option value="">Sin responsable</option>
-                    <option value="Toto">Toto</option>
-                    <option value="Ruben">Ruben</option>
-                    <option value="Tincho(B)">Tincho(B)</option>
-                    <option value="Fran">Fran</option>
-                    <option value="Ari">Ari</option>
-                    <option value="Nati">Nati</option>
-                    <option value="Dani">Dani</option>
-                    <option value="Otro">Otro</option>
-                  </select>
-                </div>
+            <div class="form-row-2">
+              <label class="field">
+                <span class="field-label">Responsable</span>
+                <select id="responsable" class="input">
+                  <option value="">Sin responsable</option>
+                  <option value="Toto">Toto</option>
+                  <option value="Ruben">Ruben</option>
+                  <option value="Tincho(B)">Tincho(B)</option>
+                  <option value="Fran">Fran</option>
+                  <option value="Ari">Ari</option>
+                  <option value="Nati">Nati</option>
+                  <option value="Dani">Dani</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
 
-                <div>
-                  <label class="form__label">Próximo contacto</label>
-                  <input id="fecha_proximo_contacto" class="form__input" type="date" />
-                </div>
-              </div>
+              <label class="field">
+                <span class="field-label">Próximo contacto</span>
+                <input id="fecha_proximo_contacto" class="input" type="date" />
+              </label>
+            </div>
 
-              <div class="form__row">
-                <div>
-                  <label class="form__label">Hora</label>
-                  <input id="hora_proximo_contacto" class="form__input" type="time" />
-                </div>
-                <div></div>
-              </div>
+            <div class="form-row-2">
+              <label class="field">
+                <span class="field-label">Hora</span>
+                <input id="hora_proximo_contacto" class="input" type="time" />
+              </label>
+              <div></div>
+            </div>
 
-              <label class="form__label">Notas</label>
-              <textarea id="notas" class="form__textarea" rows="3"></textarea>
+            <label class="field">
+              <span class="field-label">Notas</span>
+              <textarea id="notas" class="input" rows="3"></textarea>
+            </label>
 
-              <div class="modal__footer" style="padding-left:0;padding-right:0;border:0;">
-                <button type="button" id="btnReset" class="btn-secundario">Limpiar</button>
-                <button type="submit" class="btn-primario">Guardar</button>
-              </div>
-            </form>
-          </div>
+            <div class="modal-actions">
+              <button type="button" id="btnReset" class="btn-secundario">Limpiar</button>
+              <button type="submit" class="btn-primario">Guardar</button>
+            </div>
+          </form>
         </div>
       </div>
 
       <!-- Modal: Agregar actividad -->
-      <div id="modalActCons" class="modal" aria-hidden="true">
-        <div class="modal__overlay" data-close="true"></div>
-
-        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalActConsTitle">
-          <div class="modal__header">
-            <h3 id="modalActConsTitle" class="modal__title">Agregar actividad</h3>
-            <button class="modal__close" type="button" data-close="true">✕</button>
+      <div id="modalActCons" class="modal" aria-hidden="true" data-close="true">
+        <div class="modal-content">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 id="modalActConsTitle" style="margin:0;">Agregar actividad</h3>
+            <button class="modal-close" type="button" data-close="true">×</button>
           </div>
 
-          <div class="modal__body">
-            <div class="muted" id="modalActConsSub" style="margin-bottom:10px;"></div>
+          <div class="muted" id="modalActConsSub" style="margin-bottom:10px;"></div>
 
-            <label class="form__label">Descripción *</label>
-            <textarea id="actConsDescripcion" class="form__textarea" rows="4"
-              placeholder="Detalle de la gestión..."></textarea>
+          <label class="field">
+            <span class="field-label">Descripción *</span>
+            <textarea id="actConsDescripcion" class="input" rows="4" placeholder="Detalle de la gestión..."></textarea>
+          </label>
 
-            <div class="form__row">
-              <div>
-                <label class="form__label">Fecha y hora</label>
-                <input id="actConsFecha" class="form__input" type="datetime-local">
-              </div>
-              <div>
-                <label class="form__label">Usuario (opcional)</label>
-                <input id="actConsUsuario" class="form__input" type="text" placeholder="Ej: Toto / Admin">
-              </div>
-            </div>
+          <div class="form-row-2">
+            <label class="field">
+              <span class="field-label">Fecha y hora</span>
+              <input id="actConsFecha" class="input" type="datetime-local">
+            </label>
+            <label class="field">
+              <span class="field-label">Usuario</span>
+              <input id="actConsUsuario" class="input" type="text" placeholder="Ej: Toto / Admin">
+            </label>
           </div>
 
-          <div class="modal__footer">
+          <div class="modal-actions" style="margin-top:16px;">
             <button id="btnActConsCancel" class="btn-secundario" type="button" data-close="true">Cancelar</button>
             <button id="btnActConsSave" class="btn-primario" type="button">Guardar</button>
           </div>
