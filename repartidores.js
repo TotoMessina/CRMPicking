@@ -57,13 +57,8 @@ function applyTheme(theme) {
    HELPERS
    ============================ */
 
-function debounce(fn, delay = 300) {
-    let t = null;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), delay);
-    };
-}
+// Debounce genérico
+const debounce = window.utils.debounce;
 
 function setText(id, v) {
     const el = document.getElementById(id);
@@ -136,9 +131,9 @@ function openFormEditarById(id) {
     // Populate created_at
     const createdInput = document.getElementById("created_at");
     if (createdInput) {
-        if (r.created_at) {
+        if (c.created_at) {
             // Convert ISO to YYYY-MM-DDTHH:MM for datetime-local
-            const d = new Date(r.created_at);
+            const d = new Date(c.created_at);
             const pad = (n) => String(n).padStart(2, "0");
             const fmt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
             createdInput.value = fmt;
@@ -261,15 +256,15 @@ async function guardarActividadDesdeModal() {
 
     const payload = {
         repartidor_id: modalActRepTargetId,
-        descripcion,
+        detalle: descripcion,
         fecha_accion: fechaISO,
-        usuario: (usuario?.value || "").trim() || (getUsuarioActual() || null),
+        usuario: (usuario?.value || "").trim() || (getUsuarioActual() || "Sistema"),
     };
 
     const { error } = await supabaseClient.from("actividades_repartidores").insert([payload]);
     if (error) {
-        console.error(error);
-        alert("Error al guardar actividad: " + error.message);
+        console.error("Error al guardar actividad:", JSON.stringify(error, null, 2));
+        alert("Error al guardar actividad: " + (error.message || "Error desconocido"));
         return;
     }
 
@@ -294,7 +289,7 @@ async function agregarActividadAuto(repartidorId, descripcion) {
     const usr = getUsuarioActual();
     await supabaseClient.from("actividades_repartidores").insert([{
         repartidor_id: repartidorId,
-        descripcion,
+        detalle: descripcion,
         usuario: usr || "Sistema",
         fecha_accion: new Date().toISOString()
     }]);
@@ -480,7 +475,7 @@ async function cargarRepartidores() {
             <div class="historial-list">
                  ${acts.length ? acts.map(a => `
                     <div class="historial-item">
-                        <div class="historial-desc">${a.descripcion}</div>
+                        <div class="historial-desc">${a.detalle}</div>
                         <div class="historial-fecha">${formatFechaISO(a.fecha_accion)} · ${a.usuario || ""}</div>
                     </div>
                  `).join("") : `<div class="historial-empty">Sin movimientos.</div>`}

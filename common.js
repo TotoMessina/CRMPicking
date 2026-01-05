@@ -129,7 +129,19 @@
         }
     };
 
-    // 5. PAGE TRANSITIONS
+    // 5. SHARED CONSTANTS
+    // =========================================================
+     window.ESTADOS_VALIDOS_MAP = {
+        "1 - Cliente relevado": "1 - Cliente relevado",
+        "2 - Local Visitado No Activo": "2 - Local Visitado No Activo",
+        "3 - Primer ingreso": "3 - Primer Ingreso",
+        // "3 - Primer Ingreso" duplicated key removed
+        "4 - Local Creado": "4 - Local Creado",
+        "5 - Local Visitado Activo": "5 - Local Visitado Activo",
+        "6 - Local No Interesado": "6 - Local No Interesado",
+    };
+
+    // 6. PAGE TRANSITIONS
     // =========================================================
     document.addEventListener("DOMContentLoaded", () => {
         // 1. Entrance animation

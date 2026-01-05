@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Debounce helper
+    const debounce = window.utils.debounce;
+
     // Check Auth is handled by guard.js
 
     const ticketsGrid = document.getElementById('ticketsGrid');
@@ -186,12 +189,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    // Debounce helper
-    function debounce(func, wait) {
-        let timeout;
-        return function (...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-    }
 });

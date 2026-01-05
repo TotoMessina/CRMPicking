@@ -33,11 +33,11 @@ let rubrosCache = [];
 let rubrosCacheLoaded = false;
 
 
-const ESTADOS_VALIDOS_MAP = {
+const ESTADOS_VALIDOS_MAP = window.ESTADOS_VALIDOS_MAP || {
   "1 - Cliente relevado": "1 - Cliente relevado",
   "2 - Local Visitado No Activo": "2 - Local Visitado No Activo",
   "3 - Primer ingreso": "3 - Primer Ingreso",
-  "3 - Primer Ingreso": "3 - Primer Ingreso",
+  // "3 - Primer Ingreso" duplicated key removed
   "4 - Local Creado": "4 - Local Creado",
   "5 - Local Visitado Activo": "5 - Local Visitado Activo",
   "6 - Local No Interesado": "6 - Local No Interesado",
@@ -180,13 +180,7 @@ function excelDateToYMD(value) {
 }
 
 // Debounce genérico
-function debounce(fn, delay = 300) {
-  let timer = null;
-  return (...args) => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  };
-}
+const debounce = window.utils.debounce;
 
 function saveFilters() {
   const filtroNombre = document.getElementById("filtroNombre");
@@ -552,36 +546,15 @@ async function ensureRubrosCache() {
 // =========================================================
 // 5) CARGA DE CLIENTES + HISTORIAL
 // =========================================================
-async function cargarClientes() {
-  const listaDiv = document.getElementById("lista");
-  if (!listaDiv) return;
+// =========================================================
+// 5) CARGA DE CLIENTES + HISTORIAL
+// =========================================================
 
-  listaDiv.innerHTML = "<p>Cargando...</p>";
-
-  const getVal = (id) => {
-    const el = document.getElementById(id);
-    return el ? el.value : "";
-  };
-  const getTrim = (id) => (getVal(id) || "").toString().trim();
-
-  const pageSizeSelect = document.getElementById("pageSize");
-  if (pageSizeSelect) {
-    const val = Number(pageSizeSelect.value);
-    if (!Number.isNaN(val) && (val === 25 || val === 50)) pageSize = val;
-  }
-
-  await ensureRubrosCache();
-
-  const filtroNombre = getTrim("filtroNombre");
-  const filtroTelefono = getTrim("filtroTelefono");
-  const filtroDireccion = getTrim("filtroDireccion");
-  const filtroRubro = getVal("filtroRubro");
-  const filtroEstado = getVal("filtroEstado");
-  const filtroResponsable = getVal("filtroResponsable");
-
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const hoyStr = hoy.toISOString().split("T")[0];
+async function fetchClientesData(start, end, filters) {
+  const {
+    nombre, telefono, direccion, rubro,
+    estado, responsable, agendaMode, agendaDate, hoyStr
+  } = filters;
 
   let query = supabaseClient
     .from("clientes")
@@ -591,103 +564,91 @@ async function cargarClientes() {
     )
     .eq("activo", true);
 
+  // Agenda Filters
   if (agendaMode === "fecha" && agendaDate) query = query.eq("fecha_proximo_contacto", agendaDate);
   else if (agendaMode === "vencidos") query = query.lt("fecha_proximo_contacto", hoyStr);
   else if (agendaMode === "sin_fecha") query = query.is("fecha_proximo_contacto", null);
 
-  if (filtroEstado && filtroEstado !== "Todos") query = query.eq("estado", filtroEstado);
-  if (filtroNombre) query = query.ilike("nombre", `%${filtroNombre}%`);
-  if (filtroTelefono) query = query.ilike("telefono", `%${filtroTelefono}%`);
-  if (filtroDireccion) query = query.ilike("direccion", `%${filtroDireccion}%`);
-  if (filtroRubro) query = query.eq("rubro", filtroRubro);
-  if (filtroResponsable) query = query.eq("responsable", filtroResponsable);
+  // General Filters
+  if (estado && estado !== "Todos") query = query.eq("estado", estado);
+  if (nombre) query = query.ilike("nombre", `%${nombre}%`);
+  if (telefono) query = query.ilike("telefono", `%${telefono}%`);
+  if (direccion) query = query.ilike("direccion", `%${direccion}%`);
+  if (rubro) query = query.eq("rubro", rubro);
+  if (responsable) query = query.eq("responsable", responsable);
 
-  query = query.order("ultima_actividad", { ascending: false, nullsFirst: false }).order("id", { ascending: true });
+  // Order
+  query = query
+    .order("ultima_actividad", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: true });
 
-  const start = (currentPage - 1) * pageSize;
-  const end = start + pageSize - 1;
+  const { data, error, count } = await query.range(start, end);
+  return { data, error, count };
+}
 
-  const { data: clientesPage, error, count } = await query.range(start, end);
+async function fetchActividadesBatch(clientIds) {
+  if (!clientIds.length) return {};
+
+  const { data: actividades, error } = await supabaseClient
+    .from("actividades")
+    .select("id, cliente_id, fecha, descripcion, usuario")
+    .in("cliente_id", clientIds)
+    .order("fecha", { ascending: false });
 
   if (error) {
-    console.error("Error cargando clientes:", error);
-    listaDiv.innerHTML = "<p>Error al cargar clientes.</p>";
-    return;
+    console.error("Error cargando actividades:", error);
+    return {};
   }
 
-  const clientes = clientesPage || [];
-  totalClientes = count ?? clientes.length ?? 0;
+  const map = {};
+  (actividades || []).forEach((a) => {
+    if (!map[a.cliente_id]) map[a.cliente_id] = [];
+    map[a.cliente_id].push(a);
+  });
+  return map;
+}
 
-  if (!clientes.length) {
-    clientesCache = [];
-    totalPages = 1;
-    updatePaginationUI();
-    const contador = document.getElementById("contador");
-    if (contador) contador.textContent = `(0)`;
-    listaDiv.innerHTML = "<p>No hay clientes cargados.</p>";
-    return;
+function createClienteCardHTML(cliente, actividades) {
+  const claseEstado = `tag-estado-${String(cliente.estado || "").replace(/\s+/g, "")}`;
+  const responsable = cliente.responsable || "";
+  const direccion = cliente.direccion || "";
+
+  // Fecha / Hora próximo contacto
+  const textoFecha = cliente.fecha_proximo_contacto
+    ? `📅 Próximo contacto: ${formatearFechaSoloDia(cliente.fecha_proximo_contacto)}`
+    : "";
+  const textoHora = cliente.hora_proximo_contacto
+    ? ` a las ${String(cliente.hora_proximo_contacto).slice(0, 5)}`
+    : "";
+
+  // Teléfono
+  let phoneHTML = "";
+  if (cliente.telefono) {
+    const telDigits = String(cliente.telefono).replace(/\D/g, "");
+    const waNumber = telDigits.startsWith("54") ? telDigits : "54" + telDigits;
+    phoneHTML = `
+      <span class="card-phone">
+        <a href="tel:${telDigits}" class="phone-link">📞 ${cliente.telefono}</a>
+        <a href="https://wa.me/${waNumber}" class="wa-link" target="_blank" rel="noopener noreferrer" title="Abrir WhatsApp">💬</a>
+      </span>`;
   }
 
-  totalPages = totalClientes > 0 ? Math.ceil(totalClientes / pageSize) : 1;
-  if (currentPage > totalPages) currentPage = totalPages;
-  if (currentPage < 1) currentPage = 1;
+  const direccionHTML = direccion ? `<div class="card-meta-line">📍 ${direccion}</div>` : "";
 
-  clientesCache = clientes;
-  updatePaginationUI();
+  // Historial HTML
+  const historialItems = actividades.length
+    ? actividades.map(a => `
+        <div class="historial-item">
+          <div class="historial-desc">${a.descripcion}</div>
+          <div class="historial-fecha">
+            ${formatearFecha(a.fecha)}
+            ${a.usuario ? ` · <strong>${a.usuario}</strong>` : ""}
+          </div>
+        </div>`).join("")
+    : `<div class="historial-empty">No hay actividades registradas.</div>`;
 
-  const contador = document.getElementById("contador");
-  if (contador) contador.textContent = `(${totalClientes})`;
-
-  const idsPage = clientes.map((c) => c.id);
-  let actividadesPorCliente = {};
-
-  if (idsPage.length) {
-    const { data: actividades, error: errorAct } = await supabaseClient
-      .from("actividades")
-      .select("id, cliente_id, fecha, descripcion, usuario")
-      .in("cliente_id", idsPage)
-      .order("fecha", { ascending: false });
-
-    if (errorAct) console.error("Error cargando actividades:", errorAct);
-
-    (actividades || []).forEach((a) => {
-      if (!actividadesPorCliente[a.cliente_id]) actividadesPorCliente[a.cliente_id] = [];
-      actividadesPorCliente[a.cliente_id].push(a);
-    });
-  }
-
-  listaDiv.innerHTML = "";
-  clientes.forEach((cliente) => {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.dataset.id = cliente.id;
-
-    const actividadesCliente = actividadesPorCliente[cliente.id] || [];
-    const claseEstado = `tag-estado-${String(cliente.estado || "").replace(/\s+/g, "")}`;
-    const responsable = cliente.responsable || "";
-    const direccion = cliente.direccion || "";
-
-    const textoFecha = cliente.fecha_proximo_contacto
-      ? `📅 Próximo contacto: ${formatearFechaSoloDia(cliente.fecha_proximo_contacto)}`
-      : "";
-    const textoHora = cliente.hora_proximo_contacto ? ` a las ${String(cliente.hora_proximo_contacto).slice(0, 5)}` : "";
-
-    let phoneHTML = "";
-    if (cliente.telefono) {
-      const telDigits = String(cliente.telefono).replace(/\D/g, "");
-      const waNumber = telDigits.startsWith("54") ? telDigits : "54" + telDigits;
-
-      phoneHTML = `
-        <span class="card-phone">
-          <a href="tel:${telDigits}" class="phone-link">📞 ${cliente.telefono}</a>
-          <a href="https://wa.me/${waNumber}" class="wa-link" target="_blank" rel="noopener noreferrer" title="Abrir WhatsApp">💬</a>
-        </span>
-      `;
-    }
-
-    const direccionHTML = direccion ? `<div class="card-meta-line">📍 ${direccion}</div>` : "";
-
-    card.innerHTML = `
+  return `
+    <div class="card" data-id="${cliente.id}">
       <div class="card-top">
         <div>
           <div class="card-main-title">${cliente.nombre || "(Sin nombre)"}</div>
@@ -724,7 +685,7 @@ async function cargarClientes() {
 
       <div class="historial">
         <div class="historial-header">
-          <strong>Historial (${actividadesCliente.length})</strong>
+          <strong>Historial (${actividades.length})</strong>
           <button class="btn-toggle-historial" data-action="toggle-historial" data-id="${cliente.id}">
             Ver historial
           </button>
@@ -732,28 +693,90 @@ async function cargarClientes() {
 
         <div class="historial-list" style="display:none">
           <div class="historial-container">
-            ${actividadesCliente.length
-        ? actividadesCliente
-          .map(
-            (a) => `
-                <div class="historial-item">
-                  <div class="historial-desc">${a.descripcion}</div>
-                  <div class="historial-fecha">
-                    ${formatearFecha(a.fecha)}
-                    ${a.usuario ? ` · <strong>${a.usuario}</strong>` : ""}
-                  </div>
-                </div>`
-          )
-          .join("")
-        : `<div class="historial-empty">No hay actividades registradas.</div>`
-      }
+            ${historialItems}
           </div>
         </div>
       </div>
-    `;
+    </div>`;
+}
 
-    listaDiv.appendChild(card);
-  });
+async function cargarClientes() {
+  const listaDiv = document.getElementById("lista");
+  if (!listaDiv) return;
+
+  listaDiv.innerHTML = "<p>Cargando...</p>";
+
+  // Helper inputs
+  const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };
+  const getTrim = (id) => (getVal(id) || "").toString().trim();
+
+  // PageSize
+  const pageSizeSelect = document.getElementById("pageSize");
+  if (pageSizeSelect) {
+    const val = Number(pageSizeSelect.value);
+    if (!Number.isNaN(val) && (val === 25 || val === 50)) pageSize = val;
+  }
+
+  await ensureRubrosCache();
+
+  // Filters object
+  const Filters = {
+    nombre: getTrim("filtroNombre"),
+    telefono: getTrim("filtroTelefono"),
+    direccion: getTrim("filtroDireccion"),
+    rubro: getVal("filtroRubro"),
+    estado: getVal("filtroEstado"),
+    responsable: getVal("filtroResponsable"),
+    agendaMode,
+    agendaDate,
+    hoyStr: new Date().toISOString().split("T")[0]
+  };
+
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize - 1;
+
+  // 1. Fetch Clients
+  const { data: clientes, error, count } = await fetchClientesData(start, end, Filters);
+
+  if (error) {
+    console.error("Error cargando clientes:", error);
+    listaDiv.innerHTML = "<p>Error al cargar clientes.</p>";
+    return;
+  }
+
+  const loadedClientes = clientes || [];
+  totalClientes = count ?? loadedClientes.length ?? 0;
+
+  // 2. Handle Empty State
+  if (!loadedClientes.length) {
+    clientesCache = [];
+    totalPages = 1;
+    updatePaginationUI();
+    const contador = document.getElementById("contador");
+    if (contador) contador.textContent = `(0)`;
+    listaDiv.innerHTML = "<p>No hay clientes cargados.</p>";
+    return;
+  }
+
+  // 3. Update Pagination & UI
+  totalPages = totalClientes > 0 ? Math.ceil(totalClientes / pageSize) : 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  clientesCache = loadedClientes;
+  updatePaginationUI();
+
+  const contador = document.getElementById("contador");
+  if (contador) contador.textContent = `(${totalClientes})`;
+
+  // 4. Fetch Activities
+  const clientIds = loadedClientes.map(c => c.id);
+  const actividadesMap = await fetchActividadesBatch(clientIds);
+
+  // 5. Render
+  listaDiv.innerHTML = loadedClientes
+    .map(c => createClienteCardHTML(c, actividadesMap[c.id] || []))
+    .join("");
 }
 
 // =========================================================
