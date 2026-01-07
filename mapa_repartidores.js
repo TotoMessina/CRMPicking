@@ -447,4 +447,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     elForm.addEventListener("submit", onSubmitForm);
     elBtnEliminar.addEventListener("click", onDeleteClick);
+
+    // Modal Close
+    document.getElementById("btnCerrarModal")?.addEventListener("click", () => setModalOpen(false));
+    elModal.addEventListener("click", (e) => {
+        if (e.target.dataset.close === "true") setModalOpen(false);
+    });
 });
