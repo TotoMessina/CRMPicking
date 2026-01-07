@@ -116,9 +116,30 @@ function resetFormulario() {
     horaInput.disabled = false;
   }
   if (chkSinProx) {
-    chkSinProx.checked = false;
+    if (chkSinProx) {
+      chkSinProx.checked = false;
+    }
+
+    // Reset nuevos campos
+    if (document.getElementById("nombre_local")) document.getElementById("nombre_local").value = "";
+    if (document.getElementById("cuit")) document.getElementById("cuit").value = "";
+    if (document.getElementById("horarios_atencion")) document.getElementById("horarios_atencion").value = "";
+    if (document.getElementById("venta_digital")) {
+      document.getElementById("venta_digital").value = "false";
+      toggleVentaDigital(false);
+    }
+    if (document.getElementById("venta_digital_cual")) document.getElementById("venta_digital_cual").value = "";
+
+    // Reset Horarios Helpers
+    ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
+    });
+    if (document.getElementById("time_apertura")) document.getElementById("time_apertura").value = "";
+    if (document.getElementById("time_cierre")) document.getElementById("time_cierre").value = "";
   }
 }
+
 
 // Tema
 // Tema manejado por common.js (window.applyTheme, window.toggleTheme)
@@ -612,6 +633,7 @@ function createClienteCardHTML(cliente, actividades) {
   const claseEstado = `tag-estado-${String(cliente.estado || "").replace(/\s+/g, "")}`;
   const responsable = cliente.responsable || "";
   const direccion = cliente.direccion || "";
+  const nombreLocal = cliente.nombre_local || "";
 
   // Fecha / Hora próximo contacto
   const textoFecha = cliente.fecha_proximo_contacto
@@ -659,6 +681,7 @@ function createClienteCardHTML(cliente, actividades) {
           </div>
 
           ${direccionHTML}
+          ${nombreLocal ? `<div class="card-meta-line">🏠 ${nombreLocal}</div>` : ""}
 
           <div class="card-tags">
             <span class="tag ${claseEstado}">Estado: ${cliente.estado}</span>
@@ -789,10 +812,16 @@ async function guardarCliente(e) {
 
   const id = document.getElementById("clienteId").value || null;
   const nombre = document.getElementById("nombre").value.trim();
+  const nombre_local = document.getElementById("nombre_local").value.trim();
+  const cuit = document.getElementById("cuit").value.trim();
   const telefono = document.getElementById("telefono").value.trim();
   const mail = document.getElementById("mail") ? document.getElementById("mail").value.trim() : "";
   const direccion = document.getElementById("direccion").value.trim();
+  const horarios_atencion = document.getElementById("horarios_atencion").value.trim();
   const rubro = document.getElementById("rubro").value.trim();
+  const venta_digital = document.getElementById("venta_digital").value === "true";
+  const venta_digital_cual = document.getElementById("venta_digital_cual").value.trim();
+
   const estadoRaw = document.getElementById("estado").value;
   const estado = ESTADOS_VALIDOS_MAP[estadoRaw] || estadoRaw || "1 - Cliente relevado";
   const responsableSelect = document.getElementById("responsable");
@@ -805,21 +834,42 @@ async function guardarCliente(e) {
   const sinProximo = chkSinProx ? chkSinProx.checked : false;
 
   if (!nombre) {
-    showToast("El nombre es obligatorio.", "warning");
+    showToast("El campo 'Nombre (Contacto)' es obligatorio.", "warning");
+    return;
+  }
+  if (!nombre_local) {
+    showToast("El campo 'Nombre del Local' es obligatorio.", "warning");
+    return;
+  }
+  if (!telefono) {
+    showToast("El campo 'Teléfono' es obligatorio.", "warning");
+    return;
+  }
+  if (!direccion) {
+    showToast("El campo 'Dirección' es obligatorio.", "warning");
+    return;
+  }
+  if (!rubro) {
+    showToast("El campo 'Rubro' es obligatorio.", "warning");
     return;
   }
 
   const payload = {
     nombre,
+    nombre_local: nombre_local || null,
+    cuit: cuit || null,
     telefono: telefono || null,
     mail: mail || null,
     direccion: direccion || null,
+    horarios_atencion: horarios_atencion || null,
     rubro: rubro || "Sin definir",
     estado,
     responsable: responsable || null,
     fecha_proximo_contacto: fechaProx || null,
     hora_proximo_contacto: horaProx || null,
     notas: notas || null,
+    venta_digital: venta_digital,
+    venta_digital_cual: venta_digital ? (venta_digital_cual || null) : null
   };
 
   if (sinProximo) {
@@ -892,12 +942,15 @@ function editarCliente(id) {
 
   document.getElementById("clienteId").value = cliente.id;
   document.getElementById("nombre").value = cliente.nombre || "";
+  document.getElementById("nombre_local").value = cliente.nombre_local || "";
+  document.getElementById("cuit").value = cliente.cuit || "";
   document.getElementById("telefono").value = cliente.telefono || "";
 
   const mailInput = document.getElementById("mail");
   if (mailInput) mailInput.value = cliente.mail || "";
 
   document.getElementById("direccion").value = cliente.direccion || "";
+  document.getElementById("horarios_atencion").value = cliente.horarios_atencion || "";
   document.getElementById("rubro").value = cliente.rubro || "";
 
   const estadoEditRaw = cliente.estado || "1 - Cliente relevado";
@@ -921,6 +974,13 @@ function editarCliente(id) {
 
   document.getElementById("notas").value = cliente.notas || "";
 
+  // Venta digital
+  const isDigital = !!cliente.venta_digital;
+  document.getElementById("venta_digital").value = isDigital ? "true" : "false";
+  toggleVentaDigital(isDigital);
+  document.getElementById("venta_digital_cual").value = cliente.venta_digital_cual || "";
+
+
   document.getElementById("tituloForm").textContent = "Editar cliente";
   document.getElementById("btnGuardar").textContent = "Actualizar cliente";
 }
@@ -933,19 +993,24 @@ function descargarModeloExcel() {
 
   const headers = [
     "nombre",
+    "nombre_local",
+    "cuit",
     "telefono",
     "direccion",
+    "horarios_atencion",
     "rubro",
     "estado",
     "responsable",
     "fecha_proximo_contacto",
     "hora_proximo_contacto",
     "notas",
+    "venta_digital",
+    "venta_digital_cual"
   ];
 
   const data = [
     headers,
-    ["Ejemplo SRL", "11-2345-6789", "Av. Rivadavia 1234", "Almacén", "1 - Cliente relevado", "Toto", "2025-01-15", "09:00", "Ejemplo de nota"],
+    ["Ejemplo SRL", "Local Ejemplo", "30-11223344-5", "11-2345-6789", "Av. Rivadavia 1234", "L-V 9-18", "Almacén", "1 - Cliente relevado", "Toto", "2025-01-15", "09:00", "Ejemplo de nota", "false", ""],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(data);
@@ -971,7 +1036,7 @@ function descargarModeloExcel() {
 async function exportarExcel() {
   const { data: clientes, error: errCli } = await supabaseClient
     .from("clientes")
-    .select("id, nombre, telefono, direccion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas")
+    .select("id, nombre, nombre_local, cuit, telefono, direccion, horarios_atencion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas, venta_digital, venta_digital_cual")
     .eq("activo", true);
 
   if (errCli) {
@@ -995,7 +1060,7 @@ async function exportarExcel() {
   const wb = XLSX.utils.book_new();
 
   const dataClientes = [
-    ["id", "nombre", "telefono", "direccion", "rubro", "estado", "responsable", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"],
+    ["id", "nombre", "nombre_local", "cuit", "telefono", "direccion", "horarios_atencion", "rubro", "estado", "responsable", "fecha_proximo_contacto", "hora_proximo_contacto", "notas", "venta_digital", "venta_digital_cual"],
   ];
 
   (clientes || []).forEach((c) => {
@@ -1417,7 +1482,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnCerrarActividad) btnCerrarActividad.addEventListener("click", () => cerrarActividadModal());
 
-  // 11) Agenda + stats + primera carga
+  if (btnCerrarActividad) btnCerrarActividad.addEventListener("click", () => cerrarActividadModal());
+
+  // 11) Toggle Venta Digital
+  const selectDigital = document.getElementById("venta_digital");
+  if (selectDigital) {
+    selectDigital.addEventListener("change", (e) => {
+      toggleVentaDigital(e.target.value === "true");
+    });
+  }
+
+  // 12) Agenda + stats + primera carga
   renderAgendaCalendario(); // dispara cargarClientes()
   cargarAgendaStats();
 
@@ -1432,3 +1507,55 @@ document.addEventListener("DOMContentLoaded", () => {
     openNuevoClienteModal();
   }
 });
+
+function toggleVentaDigital(show) {
+  const divCual = document.getElementById("divVentaDigitalCual");
+  if (!divCual) return;
+  divCual.style.display = show ? "block" : "none";
+}
+
+// 12) Auto-fill Horarios Logic
+document.addEventListener("DOMContentLoaded", () => {
+  const ids = ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom", "time_apertura", "time_cierre"];
+
+  function actualizarHorarioTexto() {
+    const dias = [];
+    if (document.getElementById("chk_lun")?.checked) dias.push("Lun");
+    if (document.getElementById("chk_mar")?.checked) dias.push("Mar");
+    if (document.getElementById("chk_mie")?.checked) dias.push("Mié");
+    if (document.getElementById("chk_jue")?.checked) dias.push("Jue");
+    if (document.getElementById("chk_vie")?.checked) dias.push("Vie");
+    if (document.getElementById("chk_sab")?.checked) dias.push("Sáb");
+    if (document.getElementById("chk_dom")?.checked) dias.push("Dom");
+
+    const apertura = document.getElementById("time_apertura")?.value;
+    const cierre = document.getElementById("time_cierre")?.value;
+
+    if (dias.length === 0 && !apertura && !cierre) return;
+
+    let txt = "";
+
+    // Simplificación: "Lun a Vie" si están todos
+    const esLunVie = dias.length === 5 && dias[0] === "Lun" && dias[1] === "Mar" && dias[2] === "Mié" && dias[3] === "Jue" && dias[4] === "Vie";
+
+    if (esLunVie) {
+      txt = "Lun a Vie";
+    } else {
+      txt = dias.join(", ");
+    }
+
+    if (apertura || cierre) {
+      if (txt) txt += " ";
+      txt += `${apertura || "?"} - ${cierre || "?"} hs`;
+    }
+
+    const inputTarget = document.getElementById("horarios_atencion");
+    if (inputTarget) inputTarget.value = txt;
+  }
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", actualizarHorarioTexto);
+  });
+});
+

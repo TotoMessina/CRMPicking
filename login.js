@@ -84,7 +84,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (error) {
-        setMsg(msgEl, "Error al ingresar: " + error.message, "error");
+        console.error("Login Error:", error);
+
+        let msg = "Error al ingresar: " + error.message;
+        if (error.message.includes("Invalid login credentials")) {
+          msg = "Credenciales incorrectas. Verificá tu email y contraseña.";
+        } else if (error.message.includes("Email not confirmed")) {
+          msg = "Tu email no ha sido confirmado. Revisá tu bandeja de entrada.";
+        }
+
+        setMsg(msgEl, msg, "error");
         return;
       }
 
@@ -180,34 +189,20 @@ document.addEventListener("DOMContentLoaded", () => {
       setMsg(msgEl, "");
 
       const email = (emailVal?.value || "").trim();
-      const name = (document.getElementById("display_name")?.value || "").trim();
 
-      if (!email || !name) {
-        setMsg(msgEl, "Ingresá tu Usuario y Email para recuperar la contraseña.", "error");
+      if (!email) {
+        setMsg(msgEl, "Ingresá tu Email para recuperar la contraseña.", "error");
         return;
       }
 
-      setMsg(msgEl, "Verificando identidad...");
+      setMsg(msgEl, "Enviando email...");
 
       try {
-        const { data: isVerified, error: rpcError } = await supabaseClient
-          .rpc('verify_user_identity', { check_email: email, check_name: name });
-
-        if (rpcError) {
-          console.error(rpcError);
-          setMsg(msgEl, "Error verificando identidad.", "error");
-          return;
-        }
-
-        if (!isVerified) {
-          setMsg(msgEl, "El usuario y email no coinciden.", "error");
-          return;
-        }
-
-        setMsg(msgEl, "Identidad verificada. Enviando email...");
+        // Usamos href para asegurar que funcione en subcarpetas
+        const redirectUrl = window.location.href.split('?')[0].split('#')[0];
 
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + "/login.html",
+          redirectTo: redirectUrl,
         });
 
         if (error) {
@@ -216,7 +211,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         setMsg(msgEl, "Listo. Revisá tu email para continuar.");
-
       } catch (err) {
         console.error(err);
         setMsg(msgEl, "Error inesperado.", "error");

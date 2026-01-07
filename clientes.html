@@ -140,13 +140,25 @@
 
             <div class="grid">
               <div class="field">
-                <label for="nombre">Nombre *</label>
+                <label for="nombre" style="text-decoration: underline; font-weight: bold;">Nombre (Contacto) *</label>
                 <input type="text" id="nombre" required />
               </div>
 
               <div class="field">
-                <label for="telefono">Teléfono</label>
-                <input type="text" id="telefono" />
+                <label for="nombre_local" style="text-decoration: underline; font-weight: bold;">Nombre del Local
+                  *</label>
+                <input type="text" id="nombre_local" required />
+              </div>
+
+              <div class="field">
+                <label for="cuit">CUIT</label>
+                <input type="text" id="cuit" placeholder="Ej: 30-12345678-9" />
+              </div>
+
+              <div class="field">
+                <label for="telefono" style="text-decoration: underline; font-weight: bold;">Teléfono (Celular)
+                  *</label>
+                <input type="text" id="telefono" required />
               </div>
 
               <div class="field">
@@ -155,13 +167,60 @@
               </div>
 
               <div class="field">
-                <label for="direccion">Dirección</label>
-                <input type="text" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" />
+                <label for="direccion" style="text-decoration: underline; font-weight: bold;">Dirección *</label>
+                <input type="text" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" required />
               </div>
 
               <div class="field">
-                <label for="rubro">Rubro</label>
-                <input type="text" id="rubro" placeholder="Ej: Gastronomía, Retail..." />
+                <label for="horarios_atencion">Horarios de atención</label>
+
+                <!-- Quick Fill Helpers -->
+                <div style="display:flex; flex-direction:column; gap:4px; margin-bottom: 6px;">
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <label style="font-size:0.85em;"><input type="checkbox" id="chk_lun" value="Lun"> Lun</label>
+                    <label style="font-size:0.85em;"><input type="checkbox" id="chk_mar" value="Mar"> Mar</label>
+                    <label style="font-size:0.85em;"><input type="checkbox" id="chk_mie" value="Mié"> Mié</label>
+                    <label style="font-size:0.85em;"><input type="checkbox" id="chk_jue" value="Jue"> Jue</label>
+                    <label style="font-size:0.85em;"><input type="checkbox" id="chk_vie" value="Vie"> Vie</label>
+                    <label style="font-size:0.85em;"><input type="checkbox" id="chk_sab" value="Sáb"> Sáb</label>
+                    <label style="font-size:0.85em;"><input type="checkbox" id="chk_dom" value="Dom"> Dom</label>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="time" id="time_apertura" style="width:auto;" />
+                    <span>a</span>
+                    <input type="time" id="time_cierre" style="width:auto;" />
+                  </div>
+                </div>
+
+                <input type="text" id="horarios_atencion" placeholder="Ej: Lun a Vie 09:00 - 18:00 hs" />
+              </div>
+
+              <div class="field">
+                <label for="rubro" style="text-decoration: underline; font-weight: bold;">Rubro *</label>
+                <select id="rubro" required>
+                  <option value="">Seleccionar rubro...</option>
+                  <option value="Kiosco">Kiosco</option>
+                  <option value="Carnicería">Carnicería</option>
+                  <option value="Almacén">Almacén</option>
+                  <option value="Autoservicios">Autoservicios</option>
+                  <option value="Pescadería">Pescadería</option>
+                  <option value="Librería">Librería</option>
+                  <option value="Panadería">Panadería</option>
+                  <option value="Ferretería">Ferretería</option>
+                  <option value="Farmacia">Farmacia</option>
+                  <option value="Granja">Granja</option>
+                  <option value="Fiambrería">Fiambrería</option>
+                  <option value="Vinoteca">Vinoteca</option>
+                  <option value="Pet Shop">Pet Shop</option>
+                  <option value="Verdulería">Verdulería</option>
+                  <option value="Heladería">Heladería</option>
+                  <option value="Gastronómico">Gastronómico</option>
+                  <option value="Accesorios de Celular">Accesorios de Celular</option>
+                  <option value="Dietética">Dietética</option>
+                  <option value="Cotillón">Cotillón</option>
+                  <option value="Artículos de Limpieza">Artículos de Limpieza</option>
+                  <option value="Papelera">Papelera</option>
+                </select>
               </div>
 
               <div class="field">
@@ -214,6 +273,19 @@
               <div class="field field-notas">
                 <label for="notas">Notas</label>
                 <textarea id="notas" rows="3" placeholder="Comentarios, acuerdos, próximos pasos..."></textarea>
+              </div>
+
+              <div class="field">
+                <label for="venta_digital">¿Vendió de forma digital?</label>
+                <select id="venta_digital">
+                  <option value="false">No</option>
+                  <option value="true">Sí</option>
+                </select>
+              </div>
+
+              <div class="field" id="divVentaDigitalCual" style="display:none;">
+                <label for="venta_digital_cual">¿Cuál/Plataforma?</label>
+                <input type="text" id="venta_digital_cual" placeholder="Ej: PedidosYa, Web propia, Instagram..." />
               </div>
             </div>
 
