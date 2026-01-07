@@ -326,6 +326,11 @@ function initMap() {
   // NUEVO: capa para paradas de ruta (por arriba de markers)
   routeStopsLayer = L.layerGroup().addTo(map);
 
+  const btnToggleColor = document.getElementById("btnToggleColor");
+  if (btnToggleColor) {
+    btnToggleColor.addEventListener("click", toggleColorMode);
+  }
+
   map.on("click", (e) => {
     openCreateModalAt(e.latlng.lat, e.latlng.lng);
   });
@@ -439,10 +444,33 @@ function openEditModal(rec) {
 }
 
 // ========= Supabase CRUD =========
+// 9) COLOR MODE & FILTER
+let colorMode = "estado"; // "estado" | "creador"
+let activeFilter = null;  // Value to filter by (or null)
+const CREATOR_COLORS = {}; // user -> hex
+
+function getColorForCreator(user) {
+  const key = (user || "Desconocido").trim();
+  if (!key) return "#94a3b8";
+  if (CREATOR_COLORS[key]) return CREATOR_COLORS[key];
+
+  // Hash simple para color consistente
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+  const hex = "#" + "00000".substring(0, 6 - c.length) + c;
+
+  CREATOR_COLORS[key] = hex;
+  return hex;
+}
+
+// ========= CRUD =========
 async function loadRecords() {
   const { data, error } = await supabaseClient
     .from("clientes")
-    .select("id,nombre,apellido,direccion,rubro,estado,responsable,lat,lng")
+    .select("id,nombre,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por")
     .eq("activo", true)
     .not("lat", "is", null)
     .not("lng", "is", null);
@@ -495,24 +523,57 @@ function renderMarkers() {
   markersLayer.clearLayers();
 
   for (const rec of recordsCache) {
+    // 1. FILTER CHECK
+    if (activeFilter) {
+      if (colorMode === "creador") {
+        const c = (rec.creado_por || "Desconocido").trim(); // Normalize?
+        if (c !== activeFilter) continue;
+      } else {
+        // Mode estado
+        const st = normalizeEstado(rec.estado);
+        if (st !== activeFilter) continue;
+      }
+    }
+
+    // Determine Color
+    let color = "#94a3b8";
+    if (colorMode === "creador") {
+      color = getColorForCreator(rec.creado_por);
+    } else {
+      color = colorFromEstado(rec.estado);
+    }
+
+    // Custom Icon
+    const icon = L.divIcon({
+      className: "",
+      html: `<div class="marker-dot" style="background:${color};"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+      popupAnchor: [0, -10],
+    });
+
     const marker = L.marker([rec.lat, rec.lng], {
-      icon: iconForEstado(rec.estado),
+      icon: icon,
       title: `${rec.nombre ?? ""}`.trim() || "Cliente",
     });
 
     const est = normalizeEstado(rec.estado);
+    const creador = rec.creado_por || "Desconocido";
+
     const popupHtml = `
       <div style="min-width:240px">
         <div style="font-weight:700; margin-bottom:6px;">
           ${escapeHtml(rec.nombre ?? "")} ${escapeHtml(rec.apellido ?? "")}
         </div>
         <div><b>Estado:</b> ${escapeHtml(est)}</div>
+        <div><b>Creado por:</b> ${escapeHtml(creador)}</div>
+        <hr style="margin:6px 0; border:0; border-top:1px solid #eee;">
         <div><b>Tel:</b> ${escapeHtml(rec.telefono ?? "")}</div>
         <div><b>Mail:</b> ${escapeHtml(rec.mail ?? "")}</div>
         <div><b>Dirección:</b> ${escapeHtml(rec.direccion ?? "")}</div>
         <div><b>Rubro:</b> ${escapeHtml(rec.rubro ?? "")}</div>
         <div><b>Responsable:</b> ${escapeHtml(rec.responsable ?? "")}</div>
-        <div><b>Contacto:</b> ${escapeHtml(rec.fecha_contacto ?? "")}</div>
+        
         <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
           <button type="button" class="btn-secundario" data-action="edit" data-id="${rec.id}">Editar</button>
         </div>
@@ -535,8 +596,72 @@ function renderMarkers() {
 
     marker.addTo(markersLayer);
   }
+
+  renderLegend();
 }
 
+// Legend
+function renderLegend() {
+  const legend = document.getElementById("legend");
+  if (!legend) return;
+  legend.innerHTML = "";
+
+  const createItem = (label, color) => {
+    const dot = document.createElement("span");
+    dot.className = "legend-dot";
+    dot.style.background = color;
+
+    const item = document.createElement("span");
+    item.className = "legend-item";
+
+    // Inactive style if filter is ON and this is NOT the selected one
+    if (activeFilter && activeFilter !== label) {
+      item.classList.add("inactive");
+    }
+
+    item.appendChild(dot);
+    item.appendChild(document.createTextNode(label));
+
+    // Interaction
+    item.addEventListener("click", () => {
+      if (activeFilter === label) {
+        activeFilter = null; // Toggle OFF
+      } else {
+        activeFilter = label; // Toggle ON
+      }
+      renderMarkers();
+    });
+
+    return item;
+  };
+
+  if (colorMode === "creador") {
+    // Unique creators
+    const creators = Array.from(new Set(recordsCache.map(r => (r.creado_por || "Desconocido").trim())));
+    creators.sort();
+
+    for (const c of creators) {
+      const color = getColorForCreator(c);
+      legend.appendChild(createItem(c, color));
+    }
+  } else {
+    // Normal storage
+    for (const est of ESTADOS) {
+      const color = colorFromEstado(est);
+      legend.appendChild(createItem(est, color));
+    }
+  }
+}
+
+// Toggle logic
+function toggleColorMode() {
+  colorMode = (colorMode === "estado") ? "creador" : "estado";
+  activeFilter = null; // Reset filter on mode switch
+  renderMarkers(); // re-renders markers & legend
+
+  const btn = document.getElementById("btnToggleColor");
+  if (btn) btn.textContent = (colorMode === "estado") ? "Ver por Creador" : "Ver por Estado";
+}
 // ========= Form submit/delete =========
 async function onSubmitForm(e) {
   e.preventDefault();
@@ -581,6 +706,8 @@ async function onSubmitForm(e) {
     }
 
     if (!id) {
+      // NUEVO: guardar creador
+      payload.creado_por = getAuthUserName();
       await insertRecord(payload);
     } else {
       await updateRecord(id, payload);

@@ -238,6 +238,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Fallback: Check hash manually if event fires too early
+  if (window.location.hash && window.location.hash.includes("type=recovery")) {
+    setMsg(msgEl, "Modo recuperación de contraseña", "info");
+    toggleForms(false);
+    if (formLogin) formLogin.style.display = "none";
+    if (formUpdate) formUpdate.style.display = "flex";
+  }
+
   if (formUpdate) {
     formUpdate.addEventListener("submit", async (e) => {
       e.preventDefault();

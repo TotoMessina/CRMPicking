@@ -887,6 +887,9 @@ async function guardarCliente(e) {
       await agregarActividad(id, sinProximo ? "Cliente actualizado y marcado sin próximo contacto." : "Cliente actualizado");
     }
   } else {
+    // NUEVO: Agregamos el creador
+    payload.creado_por = usuarioActual;
+
     const { data, error: errInsert } = await supabaseClient
       .from("clientes")
       .insert([payload])

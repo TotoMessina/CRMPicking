@@ -280,6 +280,27 @@
       background: rgba(255, 255, 255, 0.03);
     }
 
+    /* Interactive Legend */
+    .legend-item {
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .legend-item:hover {
+      transform: scale(1.05);
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    :root[data-theme="dark"] .legend-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .legend-item.inactive {
+      opacity: 0.4;
+      filter: grayscale(0.5);
+    }
+
     .legend-dot {
       width: 10px;
       height: 10px;
@@ -404,7 +425,8 @@
           <li><a href="consumidores.html">👥 Consumidores</a></li>
           <li><a href="repartidores.html">🚚 Repartidores</a></li>
           <li><a href="calendario.html">📅 Calendario</a></li>
-          <li><a href="mapa.html" class="active">🗺️ Mapa</a></li>
+          <li><a href="mapa.html" class="active">🗺️ Mapa Clientes</a></li>
+          <li><a href="mapa_repartidores.html">🏍️ Mapa Repartidores</a></li>
           <li><a href="estadisticas.html">📊 Estadísticas</a></li>
           <li><a href="tickets.html">🎫 Tickets</a></li>
           <li class="spacer"></li>
@@ -446,6 +468,10 @@
 
             <button type="button" id="btnRefrescar" class="btn-secundario">
               Refrescar
+            </button>
+
+            <button type="button" id="btnToggleColor" class="btn-secundario">
+              Ver por Creador
             </button>
           </div>
         </div>

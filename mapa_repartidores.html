@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mapa de Repartidores - CRM PickingUp!</title>
+
+    <!-- Tus estilos globales -->
+    <link rel="stylesheet" href="styles.css" />
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Leaflet Routing Machine -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* Layout consistente con tu UI */
+        .map-page {
+            padding: 16px;
+        }
+
+        .map-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .map-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #map {
+            height: calc(100vh - 240px);
+            min-height: 520px;
+            border-radius: 16px;
+            border: 1px solid rgba(2, 6, 23, 0.10);
+            overflow: hidden;
+        }
+
+        :root[data-theme="dark"] #map {
+            border-color: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        .marker-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+        }
+
+        :root[data-theme="dark"] .marker-dot {
+            border-color: rgba(12, 12, 12, 0.9);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+        }
+
+        .legend {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(2, 6, 23, 0.10);
+            background: rgba(255, 255, 255, 0.70);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .legend-item:hover {
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        :root[data-theme="dark"] .legend-item {
+            border-color: rgba(255, 255, 255, 0.10);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        :root[data-theme="dark"] .legend-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-item.inactive {
+            opacity: 0.4;
+            filter: grayscale(0.5);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.95);
+        }
+
+        /* Modal styles */
+        .modal-map {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(8px);
+            z-index: 99999;
+            opacity: 0;
+        }
+
+        .modal-map[aria-hidden="false"] {
+            opacity: 1;
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        :root[data-theme="dark"] .modal-map {
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-map .modal-card {
+            width: min(500px, 96vw);
+            max-height: 88vh;
+            overflow-y: auto;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 24px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.25);
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        .modal-map[aria-hidden="false"] .modal-card {
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        :root[data-theme="dark"] .modal-map .modal-card {
+            border-color: rgba(255, 255, 255, 0.08);
+            background: rgba(15, 23, 42, 0.95);
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .input {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(2, 6, 23, 0.12);
+            background: rgba(255, 255, 255, 0.92);
+            outline: none;
+        }
+
+        :root[data-theme="dark"] .input {
+            border-color: rgba(255, 255, 255, 0.10);
+            background: rgba(255, 255, 255, 0.03);
+            color: #f3f4f6;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <div class="logo-pu">
+                        <div class="sidebar-logo">PU</div>
+                        <div class="sidebar-title">PickingUp</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-user"
+                style="margin-top: 0; background: transparent; border: none; padding: 0 16px 16px 16px;">
+                <div class="user-info">
+                    <span class="muted">Usuario:</span>
+                    <strong id="currentUserName">Cargando...</strong>
+                </div>
+            </div>
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
+
+            <nav class="sidebar-nav" aria-label="Navegación principal">
+                <ul class="sidebar-menu">
+                    <li><a href="index.html">📍 Inicio</a></li>
+                    <li><a href="clientes.html">🏢 Clientes</a></li>
+                    <li><a href="consumidores.html">👥 Consumidores</a></li>
+                    <li><a href="repartidores.html">🚚 Repartidores</a></li>
+                    <li><a href="calendario.html">📅 Calendario</a></li>
+                    <li><a href="mapa.html">🗺️ Mapa Clientes</a></li>
+                    <li><a href="mapa_repartidores.html" class="active">🏍️ Mapa Repartidores</a></li>
+                    <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+                    <li><a href="tickets.html">🎫 Tickets</a></li>
+                    <li class="spacer"></li>
+                    <li><a href="configuracion.html">⚙️ Configuración</a></li>
+                    <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-foot muted">
+                Navegación
+            </div>
+        </aside>
+
+        <div class="app-content">
+            <main class="container map-page">
+                <div class="map-topbar">
+                    <div>
+                        <h1 style="margin: 0 0 6px 0">Mapa de Repartidores</h1>
+                        <div class="muted">Click en el mapa para crear ubicación. Click en un marcador para editar.
+                        </div>
+                    </div>
+
+                    <div class="map-actions">
+                        <!-- Funciones básicas -->
+                        <button type="button" id="btnUbicarme" class="btn-secundario">
+                            Ubicarme
+                        </button>
+                        <button type="button" id="btnRegistrarAqui" class="btn-secundario">
+                            Registrar donde estoy
+                        </button>
+                        <button type="button" id="btnRefrescar" class="btn-secundario">
+                            Refrescar
+                        </button>
+                        <button type="button" id="btnToggleCoverage" class="btn-secundario">
+                            Ver Cobertura
+                        </button>
+                        <button type="button" id="btnToggleHeatmap" class="btn-secundario">
+                            Mapa de Calor
+                        </button>
+                    </div>
+                </div>
+
+                <div id="map"></div>
+                <div class="legend" id="legend"></div>
+            </main>
+
+            <!-- MODAL REPARTIDOR -->
+            <div id="modalRepartidor" class="modal-map" aria-hidden="true" style="display:none;" data-close="true">
+                <div class="modal-card">
+                    <div class="modal-head">
+                        <h2 id="modalTitle">Nuevo Repartidor</h2>
+                        <button type="button" id="btnCerrarModal" class="btn-secundario"
+                            data-close="true">Cerrar</button>
+                    </div>
+
+                    <form id="formRepartidorMapa">
+                        <input type="hidden" id="repartidorId" />
+                        <input type="hidden" id="lat" />
+                        <input type="hidden" id="lng" />
+
+                        <div class="field">
+                            <label for="nombre">Nombre *</label>
+                            <input class="input" id="nombre" required placeholder="Ej: Juan Pérez" />
+                        </div>
+
+                        <div class="grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div class="field">
+                                <label for="telefono">Teléfono</label>
+                                <input class="input" id="telefono" />
+                            </div>
+                            <div class="field">
+                                <label for="email">Email</label>
+                                <input class="input" id="email" />
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label for="direccion">Dirección</label>
+                            <input class="input" id="direccion" placeholder="Calle 123" />
+                        </div>
+
+                        <div class="field">
+                            <label for="localidad">Localidad</label>
+                            <input class="input" id="localidad" />
+                        </div>
+
+                        <div class="field">
+                            <label for="estado">Estado</label>
+                            <select class="input" id="estado" required>
+                                <option value="Documentación sin gestionar">Documentación sin gestionar</option>
+                                <option value="Cuenta aun no confirmada">Cuenta aun no confirmada</option>
+                                <option value="Cuenta confirmada y repartiendo">Cuenta confirmada y repartiendo</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="responsable">Responsable</label>
+                            <select class="input" id="responsable">
+                                <option value="">(Sin asignar)</option>
+                                <option value="Toto">Toto</option>
+                                <option value="Ruben">Ruben</option>
+                                <option value="Tincho(B)">Tincho(B)</option>
+                                <option value="Fran">Fran</option>
+                                <option value="Ari">Ari</option>
+                                <option value="Nati">Nati</option>
+                                <option value="Dani">Dani</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="notas">Notas</label>
+                            <input class="input" id="notas" />
+                        </div>
+
+                        <div class="modal-actions"
+                            style="margin-top:20px; border-top:1px solid rgba(0,0,0,0.1); padding-top:16px;">
+                            <div class="muted" id="coordHint">Lat/Lng: -</div>
+                            <div style="display:flex; gap:10px;">
+                                <button type="button" id="btnEliminar" class="btn-delete"
+                                    style="display:none; background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:8px;">Eliminar</button>
+                                <button type="submit" id="btnGuardar" class="btn-primario">Guardar</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Leaflet JS -->
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+            <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+            <script src="auth.js"></script>
+            <script src="common.js"></script>
+            <script src="guard.js"></script>
+            <script src="mapa_repartidores.js"></script>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -109,6 +109,7 @@ const CHARTS = {
   rubros: null,
   estados: null,
   responsables: null,
+  creados: null, // NUEVO
   promedio: null,
   altas: null,
   estadosConsumidores: null,
@@ -603,7 +604,10 @@ async function renderAllByRange() {
   [
     "chartRubros",
     "chartEstados",
+    "chartRubros",
+    "chartEstados",
     "chartResponsables",
+    "chartCreados", // NUEVO
     "chartPromedioResponsable",
     "chartAltasDiarias",
     "chartAltasDiarias",
@@ -680,7 +684,7 @@ async function renderAllByRange() {
   setText("statSinHistorial", fmtInt(sinHistorial));
 
   // Distribuciones actuales
-  const clientesMeta = await fetchAll(CFG.tables.clientes, "rubro,estado,responsable,activo", (q) => q.eq("activo", true));
+  const clientesMeta = await fetchAll(CFG.tables.clientes, "rubro,estado,responsable,creado_por,activo", (q) => q.eq("activo", true));
 
   const rub = groupCount(clientesMeta, "rubro", "Sin rubro");
   destroyChart("rubros");
@@ -729,6 +733,23 @@ async function renderAllByRange() {
   renderUlList(
     "listaResponsables",
     respEntries.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
+  );
+
+  // =======================================================
+  // Creado Por (Clientes)
+  // =======================================================
+  const creados = groupCount(clientesMeta, "creado_por", "Desconocido");
+
+  destroyChart("creados");
+  CHARTS.creados = makeDoughnut(
+    "chartCreados",
+    creados.map(x => x[0]),
+    creados.map(x => x[1])
+  );
+
+  renderUlList(
+    "listaCreados",
+    creados.map(([label, count]) => ({ label, value: fmtInt(count) }))
   );
 
   // =======================================================
