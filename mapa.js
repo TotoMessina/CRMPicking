@@ -334,6 +334,48 @@ function initMap() {
   map.on("click", (e) => {
     openCreateModalAt(e.latlng.lat, e.latlng.lng);
   });
+
+  // Business Hours Helper
+  const ids = ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom", "time_apertura", "time_cierre"];
+
+  function actualizarHorarioTexto() {
+    const dias = [];
+    if (document.getElementById("chk_lun")?.checked) dias.push("Lun");
+    if (document.getElementById("chk_mar")?.checked) dias.push("Mar");
+    if (document.getElementById("chk_mie")?.checked) dias.push("Mié");
+    if (document.getElementById("chk_jue")?.checked) dias.push("Jue");
+    if (document.getElementById("chk_vie")?.checked) dias.push("Vie");
+    if (document.getElementById("chk_sab")?.checked) dias.push("Sáb");
+    if (document.getElementById("chk_dom")?.checked) dias.push("Dom");
+
+    const apertura = document.getElementById("time_apertura")?.value;
+    const cierre = document.getElementById("time_cierre")?.value;
+
+    if (dias.length === 0 && !apertura && !cierre) return;
+
+    let txt = "";
+    // Simplificación: "Lun a Vie" si están todos
+    const esLunVie = dias.length === 5 && dias[0] === "Lun" && dias[1] === "Mar" && dias[2] === "Mié" && dias[3] === "Jue" && dias[4] === "Vie";
+
+    if (esLunVie) {
+      txt = "Lun a Vie";
+    } else {
+      txt = dias.join(", ");
+    }
+
+    if (apertura || cierre) {
+      if (txt) txt += " ";
+      txt += `${apertura || "?"} - ${cierre || "?"} hs`;
+    }
+
+    const inputTarget = document.getElementById("horarios_atencion");
+    if (inputTarget) inputTarget.value = txt;
+  }
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", actualizarHorarioTexto);
+  });
 }
 
 // ========= Geolocation =========
@@ -397,14 +439,24 @@ function resetModalToCreate(lat, lng) {
   setFormValue("lng", lng);
 
   setFormValue("nombre", "");
-  setFormValue("apellido", "");
+  setFormValue("nombre_local", "");
+  setFormValue("apellido", ""); // hidden, clean just in case
   setFormValue("telefono", "");
   setFormValue("mail", "");
   setFormValue("direccion", "");
   setFormValue("rubro", "");
+  setFormValue("horarios_atencion", "");
   setFormValue("responsable", "");
-  setFormValue("estado", "4 - Local Creado");
+  setFormValue("estado", "3 - Primer Ingreso"); // Default state updated? checking clientes.js logic, usually 3 or 4.
   setFormValue("fecha_contacto", currentISODate());
+
+  // Clear helpers
+  ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
+  setFormValue("time_apertura", "");
+  setFormValue("time_cierre", "");
 
   elModalTitle.textContent = "Nuevo cliente";
   elBtnGuardar.textContent = "Guardar";
@@ -418,14 +470,24 @@ function fillModalForEdit(rec) {
   setFormValue("lng", rec.lng);
 
   setFormValue("nombre", rec.nombre ?? "");
+  setFormValue("nombre_local", rec.nombre_local ?? "");
   setFormValue("apellido", rec.apellido ?? "");
   setFormValue("telefono", rec.telefono ?? "");
   setFormValue("mail", rec.mail ?? "");
   setFormValue("direccion", rec.direccion ?? "");
   setFormValue("rubro", rec.rubro ?? "");
+  setFormValue("horarios_atencion", rec.horarios_atencion ?? "");
   setFormValue("responsable", rec.responsable ?? "");
   setFormValue("estado", normalizeEstado(rec.estado) || "4 - Local Creado");
   setFormValue("fecha_contacto", rec.fecha_contacto ?? "");
+
+  // Reset helpers (we don't parse back from text yet)
+  ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
+  setFormValue("time_apertura", "");
+  setFormValue("time_cierre", "");
 
   elModalTitle.textContent = "Editar cliente";
   elBtnGuardar.textContent = "Guardar cambios";
@@ -671,24 +733,33 @@ async function onSubmitForm(e) {
   const lng = Number(getFormValue("lng"));
 
   const nombre = getFormValue("nombre").trim();
-  if (!nombre) {
-    alert("El nombre es obligatorio.");
-    return;
-  }
+  const nombre_local = getFormValue("nombre_local").trim();
+  const telefono = getFormValue("telefono").trim();
+  const direccion = getFormValue("direccion").trim();
+  const rubro = getFormValue("rubro").trim();
+
+  if (!nombre) return alert("El Nombre (Contacto) es obligatorio.");
+  if (!nombre_local) return alert("El Nombre del Local es obligatorio.");
+  if (!telefono) return alert("El Teléfono es obligatorio.");
+  if (!direccion) return alert("La Dirección es obligatoria.");
+  if (!rubro) return alert("El Rubro es obligatorio.");
 
   const estado = normalizeEstado(getFormValue("estado"));
+  /*
   if (!ESTADOS.includes(estado)) {
-    alert("Estado inválido. Elegí uno de la lista.");
-    return;
+    return alert("Estado inválido.");
   }
+  */
 
   const payload = {
     nombre,
+    nombre_local,
     apellido: getFormValue("apellido").trim() || null,
-    telefono: getFormValue("telefono").trim() || null,
+    telefono,
     mail: getFormValue("mail").trim() || null,
-    direccion: getFormValue("direccion").trim() || null,
-    rubro: getFormValue("rubro").trim() || "Sin definir",
+    direccion,
+    rubro,
+    horarios_atencion: getFormValue("horarios_atencion").trim() || null,
     responsable: getFormValue("responsable").trim() || null,
     estado,
     fecha_contacto: getFormValue("fecha_contacto") || null,

@@ -495,8 +495,8 @@
       <!-- MODAL CLIENTE -->
       <div id="modalCliente" class="modal" aria-hidden="true" style="display:none;" data-close="true">
         <div class="modal-content">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h2 id="modalTitle" style="margin:0;">Nuevo cliente</h2>
+          <div class="modal-head">
+            <h2 id="modalTitle">Nuevo cliente</h2>
             <button type="button" id="btnCerrarModal" class="btn-secundario" data-close="true">Cerrar</button>
           </div>
 
@@ -505,36 +505,90 @@
             <input type="hidden" id="lat" />
             <input type="hidden" id="lng" />
 
-            <div class="grid-2">
+            <!-- Grid de 2 columnas para campos cortos -->
+            <div class="grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
               <div class="field">
-                <label for="nombre">Nombre *</label>
+                <label for="nombre" style="text-decoration: underline; font-weight: bold;">Nombre (Contacto) *</label>
                 <input class="input" id="nombre" required />
               </div>
-
               <div class="field">
-                <label for="apellido">Apellido</label>
-                <input class="input" id="apellido" />
-              </div>
-
-              <div class="field">
-                <label for="telefono">Número de celular</label>
-                <input class="input" id="telefono" />
+                <label for="nombre_local" style="text-decoration: underline; font-weight: bold;">Nombre del Local
+                  *</label>
+                <input class="input" id="nombre_local" required />
               </div>
             </div>
 
-            <div class="field">
-              <label for="mail">Mail</label>
-              <input class="input" id="mail" type="email" placeholder="cliente@dominio.com" />
+            <div class="grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+              <!-- Apellido lo dejamos oculto o lo quitamos si ya no se usa, pero mapa.js lo referencia. Lo dejo opcional/oculto o type="hidden" si queremos sacarlo visualmente. 
+                     El usuario pidio "Nombre del Local". En clientes.html no hay apellido.
+                     Para evitar error en JS, lo dejo hidden o simplemente lo dejo pero sin required.
+                     Mejor: lo dejo como hidden. -->
+              <input type="hidden" id="apellido" />
+
+              <div class="field">
+                <label for="telefono" style="text-decoration: underline; font-weight: bold;">Teléfono (Celular)
+                  *</label>
+                <input class="input" id="telefono" required />
+              </div>
+              <div class="field">
+                <label for="mail">Mail</label>
+                <input class="input" id="mail" type="email" placeholder="cliente@dominio.com" />
+              </div>
             </div>
 
             <div class="field">
-              <label for="direccion">Dirección</label>
-              <input class="input" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" />
+              <label for="direccion" style="text-decoration: underline; font-weight: bold;">Dirección *</label>
+              <input class="input" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" required />
             </div>
 
             <div class="field">
-              <label for="rubro">Rubro</label>
-              <input class="input" id="rubro" placeholder="Ej: Gastronomía, Retail" />
+              <label for="horarios_atencion">Horarios de atención</label>
+              <!-- Helpers -->
+              <div style="display:flex; flex-direction:column; gap:4px; margin-bottom: 6px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_lun" value="Lun"> Lun</label>
+                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_mar" value="Mar"> Mar</label>
+                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_mie" value="Mié"> Mié</label>
+                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_jue" value="Jue"> Jue</label>
+                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_vie" value="Vie"> Vie</label>
+                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_sab" value="Sáb"> Sáb</label>
+                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_dom" value="Dom"> Dom</label>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <input type="time" id="time_apertura" style="width:auto;" class="input" />
+                  <span>a</span>
+                  <input type="time" id="time_cierre" style="width:auto;" class="input" />
+                </div>
+              </div>
+              <input class="input" id="horarios_atencion" placeholder="Ej: Lun a Vie 09:00 - 18:00 hs" />
+            </div>
+
+            <div class="field">
+              <label for="rubro" style="text-decoration: underline; font-weight: bold;">Rubro *</label>
+              <select class="input" id="rubro" required>
+                <option value="">Seleccionar rubro...</option>
+                <option value="Kiosco">Kiosco</option>
+                <option value="Carnicería">Carnicería</option>
+                <option value="Almacén">Almacén</option>
+                <option value="Autoservicios">Autoservicios</option>
+                <option value="Pescadería">Pescadería</option>
+                <option value="Librería">Librería</option>
+                <option value="Panadería">Panadería</option>
+                <option value="Ferretería">Ferretería</option>
+                <option value="Farmacia">Farmacia</option>
+                <option value="Granja">Granja</option>
+                <option value="Fiambrería">Fiambrería</option>
+                <option value="Vinoteca">Vinoteca</option>
+                <option value="Pet Shop">Pet Shop</option>
+                <option value="Verdulería">Verdulería</option>
+                <option value="Heladería">Heladería</option>
+                <option value="Gastronómico">Gastronómico</option>
+                <option value="Accesorios de Celular">Accesorios de Celular</option>
+                <option value="Dietética">Dietética</option>
+                <option value="Cotillón">Cotillón</option>
+                <option value="Artículos de Limpieza">Artículos de Limpieza</option>
+                <option value="Papelera">Papelera</option>
+              </select>
             </div>
 
             <div class="field">
