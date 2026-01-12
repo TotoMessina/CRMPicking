@@ -613,6 +613,18 @@
             </div>
 
             <div class="field">
+              <label>Interés</label>
+              <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+                <span style="font-size:0.85em; width:30px;">Bajo</span>
+                <input type="range" class="interest-slider" min="1" max="3" step="1" id="sliderInteres" style="flex:1;">
+                <span style="font-size:0.85em; width:30px; text-align:right;">Alto</span>
+              </div>
+              <div style="text-align:center; font-weight:bold; margin-top:2px; font-size:0.9em; min-height:1.2em;"
+                id="labelInteres">-</div>
+              <input type="hidden" id="interes">
+            </div>
+
+            <div class="field">
               <label for="estado">Estado</label>
               <select class="input" id="estado" required>
                 <option value="1 - Cliente relevado">1 - Cliente relevado</option>

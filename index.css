@@ -1,0 +1,44 @@
+/* Interest Slider (Red to Green) */
+.interest-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(90deg, #ff4d4d 0%, #ffd93d 50%, #6bcb77 100%);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+}
+
+.interest-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border: 2px solid var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin-top: -6px;
+  /* center thumb */
+}
+
+/* Firefox */
+.interest-slider::-moz-range-track {
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(90deg, #ff4d4d 0%, #ffd93d 50%, #6bcb77 100%);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.interest-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border: 2px solid var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}

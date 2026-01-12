@@ -124,6 +124,18 @@ function resetFormulario() {
     if (document.getElementById("nombre_local")) document.getElementById("nombre_local").value = "";
     if (document.getElementById("cuit")) document.getElementById("cuit").value = "";
     if (document.getElementById("horarios_atencion")) document.getElementById("horarios_atencion").value = "";
+    if (document.getElementById("rubro")) document.getElementById("rubro").value = "";
+    if (document.getElementById("estado")) document.getElementById("estado").value = "1 - Cliente relevado";
+    if (document.getElementById("responsable")) document.getElementById("responsable").value = "";
+    if (document.getElementById("interes")) document.getElementById("interes").value = "Bajo";
+    const slider = document.getElementById("sliderInteres");
+    if (slider) {
+      slider.value = 1;
+      const l = document.getElementById("labelInteres");
+      if (l) l.textContent = "Bajo";
+    }
+
+    if (document.getElementById("fecha_proximo_contacto")) document.getElementById("fecha_proximo_contacto").value = "";
     if (document.getElementById("venta_digital")) {
       document.getElementById("venta_digital").value = "false";
       toggleVentaDigital(false);
@@ -580,7 +592,7 @@ async function fetchClientesData(start, end, filters) {
   let query = supabaseClient
     .from("clientes")
     .select(
-      "id, nombre, nombre_local, telefono, mail, direccion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad, created_at",
+      "id, nombre, nombre_local, telefono, mail, direccion, rubro, estado, responsable, interes, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad, created_at",
       { count: "exact" }
     )
     .eq("activo", true);
@@ -826,6 +838,7 @@ async function guardarCliente(e) {
   const estado = ESTADOS_VALIDOS_MAP[estadoRaw] || estadoRaw || "1 - Cliente relevado";
   const responsableSelect = document.getElementById("responsable");
   const responsable = responsableSelect ? responsableSelect.value : "";
+  const interes = document.getElementById("interes").value;
   const fechaProx = document.getElementById("fecha_proximo_contacto").value;
   const horaProxInput = document.getElementById("hora_proximo_contacto");
   const horaProx = horaProxInput ? horaProxInput.value : "";
@@ -865,6 +878,7 @@ async function guardarCliente(e) {
     rubro: rubro || "Sin definir",
     estado,
     responsable: responsable || null,
+    interes: interes || null,
     fecha_proximo_contacto: fechaProx || null,
     hora_proximo_contacto: horaProx || null,
     notas: notas || null,
@@ -961,6 +975,17 @@ function editarCliente(id) {
 
   const responsableSelect = document.getElementById("responsable");
   if (responsableSelect) responsableSelect.value = cliente.responsable || "";
+
+  const valInteres = cliente.interes || "Bajo";
+  document.getElementById("interes").value = valInteres;
+
+  const slider = document.getElementById("sliderInteres");
+  if (slider) {
+    const mapRev = { "Bajo": 1, "Medio": 2, "Alto": 3 };
+    slider.value = mapRev[valInteres] || 1;
+    const l = document.getElementById("labelInteres");
+    if (l) l.textContent = valInteres;
+  }
 
   document.getElementById("fecha_proximo_contacto").value = cliente.fecha_proximo_contacto || "";
 
@@ -1338,6 +1363,19 @@ document.addEventListener("DOMContentLoaded", () => {
   loadFilters();
 
   const filtrosIds = ["filtroNombre", "filtroTelefono", "filtroDireccion", "filtroRubro", "filtroEstado", "filtroResponsable"];
+
+  // NUEVO: Sync Slider (Interés)
+  const slider = document.getElementById("sliderInteres");
+  if (slider) {
+    const mapVal = { "1": "Bajo", "2": "Medio", "3": "Alto" };
+    slider.addEventListener("input", () => {
+      const txt = mapVal[slider.value] || "-";
+      const label = document.getElementById("labelInteres");
+      if (label) label.textContent = txt;
+      const el = document.getElementById("interes");
+      if (el) el.value = txt;
+    });
+  }
 
   const aplicarFiltrosDebounced = debounce(() => {
     saveFilters();

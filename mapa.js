@@ -376,6 +376,18 @@ function initMap() {
     const el = document.getElementById(id);
     if (el) el.addEventListener("change", actualizarHorarioTexto);
   });
+
+  // NUEVO: Sync Slider (Interés)
+  const slider = document.getElementById("sliderInteres");
+  const label = document.getElementById("labelInteres");
+  if (slider && label) {
+    const mapVal = { "1": "Bajo", "2": "Medio", "3": "Alto" };
+    slider.addEventListener("input", () => {
+      const txt = mapVal[slider.value] || "-";
+      label.textContent = txt;
+      setFormValue("interes", txt);
+    });
+  }
 }
 
 // ========= Geolocation =========
@@ -448,7 +460,17 @@ function resetModalToCreate(lat, lng) {
   setFormValue("horarios_atencion", "");
   setFormValue("responsable", "");
   setFormValue("responsable", "");
-  setFormValue("estado", "3 - Primer Ingreso");
+  setFormValue("interes", "Bajo");
+
+  // Reset Slider
+  const slider = document.getElementById("sliderInteres");
+  if (slider) {
+    slider.value = 1;
+    const label = document.getElementById("labelInteres");
+    if (label) label.textContent = "Bajo";
+  }
+
+  setFormValue("estado", "1 - Cliente relevado");
   setFormValue("cuit", "");
   setFormValue("notas", "");
   setFormValue("fecha_proximo_contacto", "");
@@ -487,6 +509,18 @@ function fillModalForEdit(rec) {
   setFormValue("rubro", rec.rubro ?? "");
   setFormValue("horarios_atencion", rec.horarios_atencion ?? "");
   setFormValue("responsable", rec.responsable ?? "");
+  const valInteres = rec.interes || "Bajo";
+  setFormValue("interes", valInteres);
+
+  // Set Slider
+  const slider = document.getElementById("sliderInteres");
+  if (slider) {
+    const mapRev = { "Bajo": 1, "Medio": 2, "Alto": 3 };
+    slider.value = mapRev[valInteres] || 1;
+    const label = document.getElementById("labelInteres");
+    if (label) label.textContent = valInteres;
+  }
+
   setFormValue("estado", normalizeEstado(rec.estado) || "4 - Local Creado");
 
   setFormValue("cuit", rec.cuit ?? "");
@@ -560,7 +594,7 @@ function getColorForCreator(user) {
 async function loadRecords() {
   const { data, error } = await supabaseClient
     .from("clientes")
-    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto")
+    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto,interes")
     .eq("activo", true)
     .not("lat", "is", null)
     .not("lng", "is", null)
@@ -800,6 +834,7 @@ async function onSubmitForm(e) {
     rubro,
     horarios_atencion: getFormValue("horarios_atencion").trim() || null,
     responsable: getFormValue("responsable").trim() || null,
+    interes: getFormValue("interes").trim() || null,
     estado,
     fecha_proximo_contacto: fechaProx || null,
     hora_proximo_contacto: horaProx || null,
