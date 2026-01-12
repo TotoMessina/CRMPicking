@@ -20,6 +20,7 @@ Orientado a la gestión integral de **Clientes (B2B)**, **Consumidores (B2C)** y
 - Gestión completa de cartera de clientes.
 - Estados comerciales personalizables.
 - **Excel Import/Export**: Carga masiva y reportes sin recargas de página.
+- **Ordenamiento Inteligente**: Los clientes más recientes aparecen primero.
 - **Historial de Actividad**: Registro detallado de gestiones.
 - Filtros avanzados persistentes.
 
@@ -53,6 +54,8 @@ Orientado a la gestión integral de **Clientes (B2B)**, **Consumidores (B2C)** y
 ### 🗺️ Mapa Interactivo
 - Visualización geoespacial con **Leaflet**.
 - Clusters para zonas densas con **MarkerCluster**.
+- **Optimización de Rutas**: Generación automática de itinerarios eficientes entre clientes seleccionados (Nearest Neighbor).
+- **Cálculo de Distancias**: Estimación de kilometraje y visualización de recorrido en el mapa.
 - Alta rápida de clientes desde ubicación actual.
 
 ---
@@ -67,7 +70,7 @@ Orientado a la gestión integral de **Clientes (B2B)**, **Consumidores (B2C)** y
   - **Supabase**: PostgreSQL, Auth, Edge Functions.
 - **Librerías Clave**:
   - `Chart.js`: Visualización de datos y gráficos.
-  - `Leaflet` + `Leaflet.markercluster`: Mapas.
+  - `Leaflet` + `Leaflet.markercluster` + `Leaflet Routing Machine`: Mapas y enrutamiento.
   - `FullCalendar`: Gestión de agenda.
   - `SheetJS (XLSX)`: I/O de archivos Excel.
   - `Toastify`: Notificaciones UI.
@@ -113,14 +116,6 @@ Orientado a la gestión integral de **Clientes (B2B)**, **Consumidores (B2C)** y
 3.  **Base de Datos**:
     *   Ejecutar scripts SQL de inicialización en Supabase (Tablas `clientes`, `repartidores`, etc.).
     *   Habilitar políticas RLS.
-
----
-
-## ✨ Próximos Pasos (Roadmap)
-
-- [ ] Integración con WhatsApp API.
-- [ ] Notificaciones Push.
-- [ ] App Móvil PWA (Progressive Web App).
 
 ---
 

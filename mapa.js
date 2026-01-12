@@ -447,8 +447,17 @@ function resetModalToCreate(lat, lng) {
   setFormValue("rubro", "");
   setFormValue("horarios_atencion", "");
   setFormValue("responsable", "");
-  setFormValue("estado", "3 - Primer Ingreso"); // Default state updated? checking clientes.js logic, usually 3 or 4.
-  setFormValue("fecha_contacto", currentISODate());
+  setFormValue("responsable", "");
+  setFormValue("estado", "3 - Primer Ingreso");
+  setFormValue("cuit", "");
+  setFormValue("notas", "");
+  setFormValue("fecha_proximo_contacto", "");
+  setFormValue("hora_proximo_contacto", "");
+  setFormValue("venta_digital", "false");
+  setFormValue("venta_digital_cual", "");
+
+  if (document.getElementById("sin_proximo_contacto")) document.getElementById("sin_proximo_contacto").checked = false;
+  if (document.getElementById("divVentaDigitalCual")) document.getElementById("divVentaDigitalCual").style.display = "none";
 
   // Clear helpers
   ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom"].forEach(id => {
@@ -479,7 +488,26 @@ function fillModalForEdit(rec) {
   setFormValue("horarios_atencion", rec.horarios_atencion ?? "");
   setFormValue("responsable", rec.responsable ?? "");
   setFormValue("estado", normalizeEstado(rec.estado) || "4 - Local Creado");
-  setFormValue("fecha_contacto", rec.fecha_contacto ?? "");
+
+  setFormValue("cuit", rec.cuit ?? "");
+  setFormValue("notas", rec.notas ?? "");
+  setFormValue("fecha_proximo_contacto", rec.fecha_proximo_contacto ?? "");
+  setFormValue("hora_proximo_contacto", rec.hora_proximo_contacto ?? "");
+
+  // Logic for sin_proximo_contacto
+  const chkSinProx = document.getElementById("sin_proximo_contacto");
+  if (chkSinProx) {
+    const sinFecha = !rec.fecha_proximo_contacto && !rec.hora_proximo_contacto;
+    chkSinProx.checked = sinFecha;
+  }
+
+  // Logic for venta_digital
+  const isDigital = !!rec.venta_digital;
+  setFormValue("venta_digital", isDigital ? "true" : "false");
+  setFormValue("venta_digital_cual", rec.venta_digital_cual ?? "");
+
+  const divCual = document.getElementById("divVentaDigitalCual");
+  if (divCual) divCual.style.display = isDigital ? "block" : "none";
 
   // Reset helpers (we don't parse back from text yet)
   ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom"].forEach(id => {
@@ -532,7 +560,7 @@ function getColorForCreator(user) {
 async function loadRecords() {
   const { data, error } = await supabaseClient
     .from("clientes")
-    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at")
+    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto")
     .eq("activo", true)
     .not("lat", "is", null)
     .not("lng", "is", null)
@@ -752,9 +780,19 @@ async function onSubmitForm(e) {
   }
   */
 
+  const cuit = getFormValue("cuit").trim();
+  const notas = getFormValue("notas").trim();
+  const fechaProx = getFormValue("fecha_proximo_contacto");
+  const horaProx = getFormValue("hora_proximo_contacto");
+  const sinProximo = document.getElementById("sin_proximo_contacto")?.checked;
+
+  const venta_digital = getFormValue("venta_digital") === "true";
+  const venta_digital_cual = getFormValue("venta_digital_cual").trim();
+
   const payload = {
     nombre,
     nombre_local,
+    cuit: cuit || null,
     apellido: getFormValue("apellido").trim() || null,
     telefono,
     mail: getFormValue("mail").trim() || null,
@@ -763,11 +801,20 @@ async function onSubmitForm(e) {
     horarios_atencion: getFormValue("horarios_atencion").trim() || null,
     responsable: getFormValue("responsable").trim() || null,
     estado,
-    fecha_contacto: getFormValue("fecha_contacto") || null,
+    fecha_proximo_contacto: fechaProx || null,
+    hora_proximo_contacto: horaProx || null,
+    notas: notas || null,
+    venta_digital,
+    venta_digital_cual: venta_digital ? (venta_digital_cual || null) : null,
     lat,
     lng,
     activo: true,
   };
+
+  if (sinProximo) {
+    payload.fecha_proximo_contacto = null;
+    payload.hora_proximo_contacto = null;
+  }
 
   try {
     elBtnGuardar.disabled = true;
@@ -1324,6 +1371,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // NUEVO: rutas
   wireRouteUi();
+
+  // NUEVO: Venta digital toggle logic
+  const selVenta = document.getElementById("venta_digital");
+  const divCual = document.getElementById("divVentaDigitalCual");
+  if (selVenta && divCual) {
+    selVenta.addEventListener("change", () => {
+      divCual.style.display = (selVenta.value === "true") ? "block" : "none";
+    });
+  }
 
   // Cargar data + ubicar (opcional)
   try {

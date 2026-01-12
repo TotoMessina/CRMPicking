@@ -518,6 +518,11 @@
               </div>
             </div>
 
+            <div class="field">
+              <label for="cuit">CUIT</label>
+              <input class="input" id="cuit" placeholder="Ej: 30-12345678-9" />
+            </div>
+
             <div class="grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
               <!-- Apellido lo dejamos oculto o lo quitamos si ya no se usa, pero mapa.js lo referencia. Lo dejo opcional/oculto o type="hidden" si queremos sacarlo visualmente. 
                      El usuario pidio "Nombre del Local". En clientes.html no hay apellido.
@@ -619,9 +624,43 @@
               </select>
             </div>
 
+            <div class="field field-inline">
+              <label for="fecha_proximo_contacto">Próximo contacto</label>
+              <div class="field-inline-inner" style="display:flex; gap:8px;">
+                <input type="date" id="fecha_proximo_contacto" class="input" />
+              </div>
+            </div>
+
             <div class="field">
-              <label for="fecha_contacto">Cuándo se contactó</label>
-              <input class="input" id="fecha_contacto" type="date" />
+              <label for="hora_proximo_contacto">Horario</label>
+              <input type="time" id="hora_proximo_contacto" class="input" />
+            </div>
+
+            <div class="field">
+              <label>
+                <input type="checkbox" id="sin_proximo_contacto" />
+                Marcar como contactado y sin próximo contacto
+              </label>
+            </div>
+
+            <div class="field field-notas">
+              <label for="notas">Notas</label>
+              <textarea id="notas" class="input" rows="3"
+                placeholder="Comentarios, acuerdos, próximos pasos..."></textarea>
+            </div>
+
+            <div class="field">
+              <label for="venta_digital">¿Vendió de forma digital?</label>
+              <select id="venta_digital" class="input">
+                <option value="false">No</option>
+                <option value="true">Sí</option>
+              </select>
+            </div>
+
+            <div class="field" id="divVentaDigitalCual" style="display:none;">
+              <label for="venta_digital_cual">¿Cuál/Plataforma?</label>
+              <input type="text" id="venta_digital_cual" class="input"
+                placeholder="Ej: PedidosYa, Web propia, Instagram..." />
             </div>
 
             <div class="modal-actions" style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
