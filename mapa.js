@@ -532,10 +532,11 @@ function getColorForCreator(user) {
 async function loadRecords() {
   const { data, error } = await supabaseClient
     .from("clientes")
-    .select("id,nombre,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por")
+    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at")
     .eq("activo", true)
     .not("lat", "is", null)
-    .not("lng", "is", null);
+    .not("lng", "is", null)
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
 

@@ -580,7 +580,7 @@ async function fetchClientesData(start, end, filters) {
   let query = supabaseClient
     .from("clientes")
     .select(
-      "id, nombre, telefono, mail, direccion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad",
+      "id, nombre, nombre_local, telefono, mail, direccion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad, created_at",
       { count: "exact" }
     )
     .eq("activo", true);
@@ -600,7 +600,7 @@ async function fetchClientesData(start, end, filters) {
 
   // Order
   query = query
-    .order("ultima_actividad", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .order("id", { ascending: true });
 
   const { data, error, count } = await query.range(start, end);
