@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios | CRM PickingUp</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <div class="logo-pu">
+                        <div class="sidebar-logo">PU</div>
+                        <div class="sidebar-title">PickingUp</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-user"
+                style="margin-top: 0; background: transparent; border: none; padding: 0 16px 16px 16px;">
+                <div class="user-info">
+                    <span class="muted">Usuario:</span>
+                    <strong id="currentUserName">Cargando...</strong>
+                </div>
+            </div>
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
+                Modo noche 🌙
+            </button>
+
+            <nav class="sidebar-nav" aria-label="Navegación principal">
+                <ul class="sidebar-menu">
+                    <li><a href="index.html">📍 Inicio</a></li>
+                    <li><a href="clientes.html">🏢 Clientes</a></li>
+                    <li><a href="consumidores.html">👥 Consumidores</a></li>
+                    <li><a href="repartidores.html">🚚 Repartidores</a></li>
+                    <li><a href="calendario.html">📅 Calendario</a></li>
+                    <li><a href="mapa.html">🗺️ Mapa Clientes</a></li>
+                    <li><a href="mapa_repartidores.html">🏍️ Mapa Repartidores</a></li>
+                    <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+                    <li><a href="tickets.html">🎫 Tickets</a></li>
+                    <li class="spacer"></li>
+                    <li><a href="usuarios.html" class="active">👥 Usuarios</a></li>
+                    <li><a href="configuracion.html">⚙️ Configuración</a></li>
+                    <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+                </ul>
+            </nav>
+
+        </aside>
+
+        <div class="app-content">
+            <main class="container">
+                <h1>Gestión de Usuarios</h1>
+
+                <section class="controls">
+                    <div class="filters">
+                        <input type="text" id="filtroNombre" placeholder="Buscar por nombre o email..."
+                            style="width: 300px;">
+                        <select id="filtroRol">
+                            <option value="">Todos los roles</option>
+                            <option value="Administrador">Administrador</option>
+                            <option value="Activador">Activador</option>
+                            <option value="user">Usuario (default)</option>
+                        </select>
+                    </div>
+                    <button type="button" id="btnRefrescar" class="btn-secundario">Refrescar</button>
+                </section>
+
+                <section class="table-container">
+                    <table class="tabla-datos">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaUsuarios">
+                            <!-- JS render -->
+                        </tbody>
+                    </table>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR ROL -->
+    <div class="modal-overlay" id="modalRol" style="display:none">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Editar Rol de Usuario</h2>
+                <button type="button" class="close-modal" id="btnCerrarModalRol">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="formRol" class="form-stack">
+                    <input type="hidden" id="editUserId">
+                    <p id="editUserName" style="margin-bottom: 1rem; font-weight: bold;"></p>
+
+                    <div class="field">
+                        <label for="selectRol">Rol</label>
+                        <select id="selectRol" required>
+                            <option value="user">User (Defecto)</option>
+                            <option value="Activador">Activador</option>
+                            <option value="Administrador">Administrador</option>
+                        </select>
+                    </div>
+
+                    <div class="field-checkbox">
+                        <label>
+                            <input type="checkbox" id="checkActivo">
+                            Usuario Activo
+                        </label>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secundario" id="btnCancelarRol">Cancelar</button>
+                        <button type="submit" class="btn-primario">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="auth.js"></script>
+    <script src="common.js"></script>
+    <script src="guard.js"></script>
+    <script src="usuarios.js"></script>
+</body>
+
+</html>

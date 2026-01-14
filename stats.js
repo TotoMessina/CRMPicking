@@ -110,6 +110,7 @@ const CHARTS = {
   estados: null,
   responsables: null,
   creados: null, // NUEVO
+  activadoresDia: null, // NUEVO
   promedio: null,
   altas: null,
   estadosConsumidores: null,
@@ -608,6 +609,7 @@ async function renderAllByRange() {
     "chartEstados",
     "chartResponsables",
     "chartCreados", // NUEVO
+    "chartActivadoresDia", // NUEVO
     "chartPromedioResponsable",
     "chartAltasDiarias",
     "chartAltasDiarias",
@@ -751,6 +753,97 @@ async function renderAllByRange() {
     "listaCreados",
     creados.map(([label, count]) => ({ label, value: fmtInt(count) }))
   );
+
+  // =======================================================
+  // ACTIVADORES (Rendimiento)
+  // =======================================================
+  // 1. Identificar usuarios con rol 'Activador'
+  const { data: usersActivadores } = await supabaseClient
+    .from(CFG.tables.usuarios)
+    .select("nombre")
+    .eq("activo", true)
+    .ilike("role", "%activador%"); // Case insensitive match
+
+  const setActivadores = new Set();
+  if (usersActivadores) {
+    usersActivadores.forEach(u => {
+      if (u.nombre) setActivadores.add(normName(u.nombre));
+    });
+  }
+
+  console.log("Activadores encontrados:", usersActivadores); // Debug
+
+  // 2. Filtrar clientes creados en rango por esos activadores
+  // Ya tenemos 'clientesMeta' pero solo tiene "rubro,estado,responsable,creado_por,activo"
+  // Necesitamos la FECHA de creacion para el grafico diario.
+  // Vamos a hacer fetch extra o usar 'clientsCreatedInRange' si lo tuvieramos.
+  // Hacemos un fetch especifico para esto:
+
+  const clientesCreadosRango = await fetchAll(
+    CFG.tables.clientes,
+    "creado_por,created_at",
+    (q) => q.eq("activo", true).gte("created_at", fromISO)
+  );
+
+  const activadoresSeriesMap = new Map(); // key=day, count=total
+  // Inicializar dias en 0
+  for (const b of buckets) {
+    activadoresSeriesMap.set(b.key, 0);
+  }
+
+  const conteoPorActivador = new Map(); // key=nombre, value=count
+
+  for (const c of clientesCreadosRango) {
+    const creador = cleanName(c.creado_por);
+    if (!creador) continue;
+    const k = normName(creador);
+
+    // Es activador?
+    if (setActivadores.has(k)) {
+      // Sumar al total del activador
+      conteoPorActivador.set(creador, (conteoPorActivador.get(creador) || 0) + 1);
+
+      // Sumar al dia
+      const d = parseDate(c.created_at);
+      if (d) {
+        const dk = toLocalDayKey(d);
+        if (activadoresSeriesMap.has(dk)) {
+          activadoresSeriesMap.set(dk, activadoresSeriesMap.get(dk) + 1);
+        }
+      }
+    }
+  }
+
+  // Render Chart (Line)
+  const actData = buckets.map(b => activadoresSeriesMap.get(b.key) || 0);
+  destroyChart("activadoresDia");
+  CHARTS.activadoresDia = makeLineTwoDatasets( // Reutilizamos makeLineTwoDatasets hackeado a 1 dataset o hacemos makeLine
+    "chartActivadoresDia",
+    buckets.map(b => b.label),
+    "Altas", actData,
+    "", [] // segundo dataset vacio
+  );
+  // Hack: hide second dataset if empty? 
+  // Mejor usamos un makeBar o hacemos un helper makeLine simple. 
+  // Usaremos makeBar que se ve bien para "volumen diario".
+  destroyChart("activadoresDia");
+  CHARTS.activadoresDia = makeBar(
+    "chartActivadoresDia",
+    buckets.map(b => b.label),
+    actData
+  );
+
+  // Render List
+  const listActiv = [...conteoPorActivador.entries()]
+    .sort((a, b) => b[1] - a[1]) // mayor o menor
+    .map(([name, count]) => ({ label: name, value: fmtInt(count) }));
+
+  if (listActiv.length === 0 && setActivadores.size > 0) {
+    // Mostrar 0 si no hubo altas pero hay activadores? O vacio.
+    // Mostremos "Sin actividad reciente"
+  }
+
+  renderUlList("listaActivadoresTotal", listActiv);
 
   // =======================================================
   // Promedio contactos por responsable EN RANGO (CANON)

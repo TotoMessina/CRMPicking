@@ -127,6 +127,7 @@ function resetFormulario() {
     if (document.getElementById("rubro")) document.getElementById("rubro").value = "";
     if (document.getElementById("estado")) document.getElementById("estado").value = "1 - Cliente relevado";
     if (document.getElementById("responsable")) document.getElementById("responsable").value = "";
+    if (document.getElementById("estilo_contacto")) document.getElementById("estilo_contacto").value = "Sin definir";
     if (document.getElementById("interes")) document.getElementById("interes").value = "Bajo";
     const slider = document.getElementById("sliderInteres");
     if (slider) {
@@ -222,6 +223,9 @@ function saveFilters() {
   const filtroRubro = document.getElementById("filtroRubro");
   const filtroEstado = document.getElementById("filtroEstado");
   const filtroResponsable = document.getElementById("filtroResponsable");
+  const filtroInteres = document.getElementById("filtroInteres");
+  const filtroVisitas = document.getElementById("filtroVisitas");
+  const filtroEstilo = document.getElementById("filtroEstilo");
 
   const data = {
     nombre: filtroNombre ? filtroNombre.value : "",
@@ -230,6 +234,9 @@ function saveFilters() {
     rubro: filtroRubro ? filtroRubro.value : "",
     estado: filtroEstado ? filtroEstado.value : "Todos",
     responsable: filtroResponsable ? filtroResponsable.value : "",
+    estilo: filtroEstilo ? filtroEstilo.value : "",
+    interes: filtroInteres ? filtroInteres.value : "",
+    visitas: filtroVisitas ? filtroVisitas.value : "",
   };
 
   localStorage.setItem(FILTERS_KEY, JSON.stringify(data));
@@ -247,6 +254,9 @@ function loadFilters() {
     const filtroRubro = document.getElementById("filtroRubro");
     const filtroEstado = document.getElementById("filtroEstado");
     const filtroResponsable = document.getElementById("filtroResponsable");
+    const filtroInteres = document.getElementById("filtroInteres");
+    const filtroVisitas = document.getElementById("filtroVisitas");
+    const filtroEstilo = document.getElementById("filtroEstilo");
 
     if (filtroNombre && typeof f.nombre === "string") filtroNombre.value = f.nombre;
     if (filtroTelefono && typeof f.telefono === "string") filtroTelefono.value = f.telefono;
@@ -254,6 +264,9 @@ function loadFilters() {
     if (filtroRubro && typeof f.rubro === "string") filtroRubro.value = f.rubro;
     if (filtroEstado && typeof f.estado === "string") filtroEstado.value = f.estado;
     if (filtroResponsable && typeof f.responsable === "string") filtroResponsable.value = f.responsable;
+    if (filtroInteres && typeof f.interes === "string") filtroInteres.value = f.interes;
+    if (filtroVisitas && typeof f.visitas === "string") filtroVisitas.value = f.visitas;
+    if (filtroEstilo && typeof f.estilo === "string") filtroEstilo.value = f.estilo;
   } catch (e) {
     console.warn("No se pudieron cargar filtros desde localStorage:", e);
   }
@@ -586,16 +599,64 @@ async function ensureRubrosCache() {
 async function fetchClientesData(start, end, filters) {
   const {
     nombre, telefono, direccion, rubro,
-    estado, responsable, agendaMode, agendaDate, hoyStr
+    estado, responsable, agendaMode, agendaDate, hoyStr,
+    interes, visitas, estilo
   } = filters;
 
+  // 1. Filtro de Visitas (Pre-filter IDs)
+  let allowedIds = null;
+
+  if (visitas) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0); // Inicio de hoy
+
+    let dateFrom = null;
+
+    if (visitas === "hoy") {
+      dateFrom = d.toISOString();
+    } else if (visitas === "semana") {
+      // Ajustar al lunes de esta semana (o domingo según prefieras)
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // ajustar si lunes es 1
+      d.setDate(diff);
+      dateFrom = d.toISOString();
+    } else if (visitas === "mes") {
+      d.setDate(1);
+      dateFrom = d.toISOString();
+    }
+
+    if (dateFrom) {
+      // Buscamos en actividades qué clientes tuvieron actividad >= dateFrom
+      const { data: acts, error: errActs } = await supabaseClient
+        .from("actividades")
+        .select("cliente_id")
+        .gte("fecha", dateFrom);
+
+      if (!errActs && acts) {
+        allowedIds = [...new Set(acts.map(a => a.cliente_id))];
+      } else {
+        // En caso de error o vacío, si se pidió filtro y falló, asumimos 0 resultados o mostramos vacio
+        allowedIds = [];
+      }
+    }
+  }
+
+  // 2. Query Principal
   let query = supabaseClient
     .from("clientes")
     .select(
-      "id, nombre, nombre_local, telefono, mail, direccion, rubro, estado, responsable, interes, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad, created_at",
+      "id, nombre, nombre_local, telefono, mail, direccion, rubro, estado, responsable, interes, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad, venta_digital, venta_digital_cual, created_at",
       { count: "exact" }
     )
     .eq("activo", true);
+
+  // Apply Visit filter
+  if (allowedIds !== null) {
+    if (allowedIds.length === 0) {
+      return { data: [], error: null, count: 0 };
+    }
+    query = query.in("id", allowedIds);
+  }
 
   // Agenda Filters
   if (agendaMode === "fecha" && agendaDate) query = query.eq("fecha_proximo_contacto", agendaDate);
@@ -609,6 +670,12 @@ async function fetchClientesData(start, end, filters) {
   if (direccion) query = query.ilike("direccion", `%${direccion}%`);
   if (rubro) query = query.eq("rubro", rubro);
   if (responsable) query = query.eq("responsable", responsable);
+
+  // Nuevo: Interés
+  if (interes) query = query.eq("interes", interes);
+
+  // Nuevo: Estilo
+  // if (estilo) query = query.eq("estilo_contacto", estilo);
 
   // Order
   query = query
@@ -698,6 +765,7 @@ function createClienteCardHTML(cliente, actividades) {
           <div class="card-tags">
             <span class="tag ${claseEstado}">Estado: ${cliente.estado}</span>
             ${cliente.rubro ? `<span class="tag">Rubro: ${cliente.rubro}</span>` : ""}
+            ${cliente.estilo_contacto ? `<span class="tag tag-estilo">Estilo: ${cliente.estilo_contacto}</span>` : ""}
             ${responsable ? `<span class="tag tag-responsable">Resp: ${responsable}</span>` : ""}
           </div>
 
@@ -762,6 +830,9 @@ async function cargarClientes() {
     rubro: getVal("filtroRubro"),
     estado: getVal("filtroEstado"),
     responsable: getVal("filtroResponsable"),
+    interes: getVal("filtroInteres"),
+    visitas: getVal("filtroVisitas"),
+    estilo: getVal("filtroEstilo"),
     agendaMode,
     agendaDate,
     hoyStr: new Date().toISOString().split("T")[0]
@@ -839,6 +910,7 @@ async function guardarCliente(e) {
   const responsableSelect = document.getElementById("responsable");
   const responsable = responsableSelect ? responsableSelect.value : "";
   const interes = document.getElementById("interes").value;
+  const estilo_contacto = document.getElementById("estilo_contacto") ? document.getElementById("estilo_contacto").value : "Sin definir";
   const fechaProx = document.getElementById("fecha_proximo_contacto").value;
   const horaProxInput = document.getElementById("hora_proximo_contacto");
   const horaProx = horaProxInput ? horaProxInput.value : "";
@@ -879,6 +951,7 @@ async function guardarCliente(e) {
     estado,
     responsable: responsable || null,
     interes: interes || null,
+    // estilo_contacto: estilo_contacto || null,
     fecha_proximo_contacto: fechaProx || null,
     hora_proximo_contacto: horaProx || null,
     notas: notas || null,
@@ -976,6 +1049,9 @@ function editarCliente(id) {
   const responsableSelect = document.getElementById("responsable");
   if (responsableSelect) responsableSelect.value = cliente.responsable || "";
 
+  const estiloContactoSelect = document.getElementById("estilo_contacto");
+  if (estiloContactoSelect) estiloContactoSelect.value = cliente.estilo_contacto || "Sin definir";
+
   const valInteres = cliente.interes || "Bajo";
   document.getElementById("interes").value = valInteres;
 
@@ -1029,6 +1105,7 @@ function descargarModeloExcel() {
     "rubro",
     "estado",
     "responsable",
+    "estilo_contacto",
     "fecha_proximo_contacto",
     "hora_proximo_contacto",
     "notas",
@@ -1362,7 +1439,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 5) Filtros (cargar desde localStorage + guardar con debounce)
   loadFilters();
 
-  const filtrosIds = ["filtroNombre", "filtroTelefono", "filtroDireccion", "filtroRubro", "filtroEstado", "filtroResponsable"];
+  const filtrosIds = ["filtroNombre", "filtroTelefono", "filtroDireccion", "filtroRubro", "filtroEstado", "filtroResponsable", "filtroInteres", "filtroVisitas", "filtroEstilo"];
 
   // NUEVO: Sync Slider (Interés)
   const slider = document.getElementById("sliderInteres");

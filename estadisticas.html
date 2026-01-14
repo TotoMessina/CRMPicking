@@ -49,6 +49,7 @@
           <li><a href="estadisticas.html" class="active">📊 Estadísticas</a></li>
           <li><a href="tickets.html">🎫 Tickets</a></li>
           <li class="spacer"></li>
+          <li><a href="usuarios.html">👥 Usuarios</a></li>
           <li><a href="configuracion.html">⚙️ Configuración</a></li>
           <li><a href="#" id="btnLogout">🚪 Salir</a></li>
         </ul>
@@ -276,6 +277,24 @@
           <div class="list-box">
             <h3>Detalle</h3>
             <ul id="listaCreados" class="stats-list"></ul>
+          </div>
+        </section>
+
+        <!-- ACTIVADORES -->
+        <section class="panel">
+          <header class="panel-header">
+            <h2>Rendimiento de Activadores</h2>
+            <p>Clientes dados de alta por usuarios con rol 'Activador'.</p>
+          </header>
+
+          <div class="chart-box"><canvas id="chartActivadoresDia"></canvas></div>
+
+          <div class="panel-grid-2" style="margin-top: 1rem;">
+            <div class="list-box">
+              <h3>Total por Activador</h3>
+              <ul id="listaActivadoresTotal" class="stats-list"></ul>
+            </div>
+            <!-- Podemos agregar mas metricas aqui si se quiere -->
           </div>
         </section>
 

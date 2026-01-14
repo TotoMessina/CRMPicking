@@ -47,6 +47,7 @@
           <li><a href="estadisticas.html">📊 Estadísticas</a></li>
           <li><a href="tickets.html">🎫 Tickets</a></li>
           <li class="spacer"></li>
+          <li><a href="usuarios.html">👥 Usuarios</a></li>
           <li><a href="configuracion.html">⚙️ Configuración</a></li>
           <li><a href="#" id="btnLogout">🚪 Salir</a></li>
         </ul>
@@ -100,6 +101,28 @@
               <option value="Nati">Nati</option>
               <option value="Dani">Dani</option>
               <option value="Otro">Otro</option>
+            </select>
+
+            <select id="filtroInteres">
+              <option value="">Todos los intereses</option>
+              <option value="Bajo">Bajo</option>
+              <option value="Medio">Medio</option>
+              <option value="Alto">Alto</option>
+            </select>
+
+            <select id="filtroVisitas" style="min-width: 160px;">
+              <option value="">Todas las visitas</option>
+              <option value="hoy">Visitados hoy</option>
+              <option value="semana">Visitados esta semana</option>
+              <option value="mes">Visitados este mes</option>
+            </select>
+
+            <select id="filtroEstilo">
+              <option value="">Todos los estilos</option>
+              <option value="Sin definir">Sin definir</option>
+              <option value="Dueño">Dueño</option>
+              <option value="Empleado">Empleado</option>
+              <option value="Cerrado">Cerrado</option>
             </select>
           </div>
 
@@ -234,6 +257,16 @@
                   <option value="4 - Local Creado">4 - Local Creado</option>
                   <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
                   <option value="6 - Local No Interesado">6 - Local No Interesado</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="estilo_contacto">Estilo de contacto</label>
+                <select id="estilo_contacto">
+                  <option value="Sin definir">Sin definir</option>
+                  <option value="Dueño">Dueño</option>
+                  <option value="Empleado">Empleado</option>
+                  <option value="Cerrado">Cerrado</option>
                 </select>
               </div>
 

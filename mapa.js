@@ -106,6 +106,22 @@ const ESTADO_COLOR = {
   "6 - Local No Interesado": "#5f5f5fff",
 };
 
+// Colors for Interest
+const INTERES_COLORS = {
+  "Bajo": "#22c55e",   // green-500
+  "Medio": "#eab308",  // yellow-500
+  "Alto": "#ef4444",   // red-500
+  "Sin interés": "#94a3b8" // slate-400
+};
+
+// Colors for Contact Style
+const ESTILO_COLORS = {
+  "Dueño": "#3b82f6",     // blue-500
+  "Empleado": "#eab308",  // yellow-500
+  "Cerrado": "#9ca3af",   // gray-400
+  "Sin definir": "#64748b" // slate-500
+};
+
 // ========= Leaflet/map state =========
 let map;
 let markersLayer;
@@ -460,6 +476,7 @@ function resetModalToCreate(lat, lng) {
   setFormValue("horarios_atencion", "");
   setFormValue("responsable", "");
   setFormValue("responsable", "");
+  setFormValue("estilo_contacto", "Sin definir");
   setFormValue("interes", "Bajo");
 
   // Reset Slider
@@ -509,6 +526,7 @@ function fillModalForEdit(rec) {
   setFormValue("rubro", rec.rubro ?? "");
   setFormValue("horarios_atencion", rec.horarios_atencion ?? "");
   setFormValue("responsable", rec.responsable ?? "");
+  setFormValue("estilo_contacto", rec.estilo_contacto ?? "Sin definir");
   const valInteres = rec.interes || "Bajo";
   setFormValue("interes", valInteres);
 
@@ -569,7 +587,7 @@ function openEditModal(rec) {
 
 // ========= Supabase CRUD =========
 // 9) COLOR MODE & FILTER
-let colorMode = "estado"; // "estado" | "creador"
+let colorMode = "estado"; // "estado" | "creador" | "interes" | "estilo"
 let activeFilter = null;  // Value to filter by (or null)
 const CREATOR_COLORS = {}; // user -> hex
 
@@ -664,6 +682,14 @@ function renderMarkers() {
     let color = "#94a3b8";
     if (colorMode === "creador") {
       color = getColorForCreator(rec.creado_por);
+    } else if (colorMode === "interes") {
+      const i = rec.interes || "Bajo";
+      color = INTERES_COLORS[i] || INTERES_COLORS["Sin interés"];
+      if (activeFilter && i !== activeFilter) continue;
+    } else if (colorMode === "estilo") {
+      const e = rec.estilo_contacto || "Sin definir";
+      color = ESTILO_COLORS[e] || ESTILO_COLORS["Sin definir"];
+      if (activeFilter && e !== activeFilter) continue;
     } else {
       color = colorFromEstado(rec.estado);
     }
@@ -769,6 +795,16 @@ function renderLegend() {
       const color = getColorForCreator(c);
       legend.appendChild(createItem(c, color));
     }
+  } else if (colorMode === "interes") {
+    // Interest levels
+    ["Bajo", "Medio", "Alto"].forEach(level => {
+      legend.appendChild(createItem(level, INTERES_COLORS[level]));
+    });
+  } else if (colorMode === "estilo") {
+    // Contact Style
+    ["Sin definir", "Dueño", "Empleado", "Cerrado"].forEach(level => {
+      legend.appendChild(createItem(level, ESTILO_COLORS[level]));
+    });
   } else {
     // Normal storage
     for (const est of ESTADOS) {
@@ -780,12 +816,21 @@ function renderLegend() {
 
 // Toggle logic
 function toggleColorMode() {
-  colorMode = (colorMode === "estado") ? "creador" : "estado";
+  if (colorMode === "estado") colorMode = "creador";
+  else if (colorMode === "creador") colorMode = "interes";
+  else if (colorMode === "interes") colorMode = "estilo";
+  else colorMode = "estado";
+
   activeFilter = null; // Reset filter on mode switch
   renderMarkers(); // re-renders markers & legend
 
   const btn = document.getElementById("btnToggleColor");
-  if (btn) btn.textContent = (colorMode === "estado") ? "Ver por Creador" : "Ver por Estado";
+  if (btn) {
+    if (colorMode === "estado") btn.textContent = "Ver por Estado";
+    else if (colorMode === "creador") btn.textContent = "Ver por Creador";
+    else if (colorMode === "interes") btn.textContent = "Ver por Interés";
+    else btn.textContent = "Ver por Estilo";
+  }
 }
 // ========= Form submit/delete =========
 async function onSubmitForm(e) {
@@ -801,6 +846,10 @@ async function onSubmitForm(e) {
   const direccion = getFormValue("direccion").trim();
   const rubro = getFormValue("rubro").trim();
 
+  const responsable = getFormValue("responsable");
+  const estilo_contacto = getFormValue("estilo_contacto") || "Sin definir";
+  const interes = getFormValue("interes");
+
   if (!nombre) return alert("El Nombre (Contacto) es obligatorio.");
   if (!nombre_local) return alert("El Nombre del Local es obligatorio.");
   if (!telefono) return alert("El Teléfono es obligatorio.");
@@ -808,12 +857,6 @@ async function onSubmitForm(e) {
   if (!rubro) return alert("El Rubro es obligatorio.");
 
   const estado = normalizeEstado(getFormValue("estado"));
-  /*
-  if (!ESTADOS.includes(estado)) {
-    return alert("Estado inválido.");
-  }
-  */
-
   const cuit = getFormValue("cuit").trim();
   const notas = getFormValue("notas").trim();
   const fechaProx = getFormValue("fecha_proximo_contacto");
@@ -835,6 +878,7 @@ async function onSubmitForm(e) {
     horarios_atencion: getFormValue("horarios_atencion").trim() || null,
     responsable: getFormValue("responsable").trim() || null,
     interes: getFormValue("interes").trim() || null,
+    // estilo_contacto: getFormValue("estilo_contacto").trim() || null,
     estado,
     fecha_proximo_contacto: fechaProx || null,
     hora_proximo_contacto: horaProx || null,
