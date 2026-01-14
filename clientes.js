@@ -1092,7 +1092,12 @@ function editarCliente(id) {
 // =========================================================
 // 9) EXCEL: DESCARGAR MODELO / IMPORTAR / EXPORTAR
 // =========================================================
+// Descargar modelo Excel para importar
 function descargarModeloExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert("La librería Excel (SheetJS) no se ha cargado. Revisa tu conexión.");
+    return;
+  }
   const wb = XLSX.utils.book_new();
 
   const headers = [
@@ -1124,7 +1129,7 @@ function descargarModeloExcel() {
 
   try {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1132,7 +1137,7 @@ function descargarModeloExcel() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch (e) {
     alert("Error: " + e.message);
   }
@@ -1142,7 +1147,7 @@ function descargarModeloExcel() {
 async function exportarExcel() {
   const { data: clientes, error: errCli } = await supabaseClient
     .from("clientes")
-    .from("clientes")
+
     .select("id, nombre, nombre_local, cuit, telefono, direccion, horarios_atencion, rubro, estado, responsable, estilo_contacto, fecha_proximo_contacto, hora_proximo_contacto, notas, venta_digital, venta_digital_cual, interes")
     .eq("activo", true);
 
@@ -1210,7 +1215,7 @@ async function exportarExcel() {
 
   try {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1218,7 +1223,7 @@ async function exportarExcel() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch (e) {
     alert("Error: " + e.message);
   }

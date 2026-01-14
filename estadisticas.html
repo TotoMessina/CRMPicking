@@ -84,7 +84,6 @@
           </header>
 
           <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
-
             <!-- Proyección Crecimiento -->
             <article class="kpi-card" style="position:relative; overflow:hidden;">
               <div class="kpi-label">Proyección (3 Meses)</div>
@@ -108,9 +107,52 @@
               <div class="kpi-meta">Clientes activos recientes</div>
               <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">❤️</div>
             </article>
-
           </div>
         </section>
+
+        <!-- ACTIVADORES (MOVIDO AL TOP) -->
+        <section class="panel" style="margin-bottom: 25px;">
+          <header class="panel-header">
+            <h2>Rendimiento de Activadores</h2>
+            <p>Clientes dados de alta por usuarios con rol 'Activador'.</p>
+          </header>
+
+          <div class="chart-box"><canvas id="chartActivadoresDia"></canvas></div>
+
+          <div class="panel-grid-2" style="margin-top: 1rem;">
+            <div class="list-box" style="grid-column: span 2;">
+              <h3>Detalle por Activador y Estado</h3>
+              <div class="table-box">
+                <table class="table-modern">
+                  <thead>
+                    <tr>
+                      <th>Activador</th>
+                      <th>Total Altas</th>
+                      <th>Estados (Detalle)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaActivadoresDetalle"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CRECIMIENTO (ALTAS DIARIAS) -->
+        <section class="panel" style="margin-bottom: 25px;">
+          <header class="panel-header">
+            <h2>Crecimiento diario (Altas Clientes)</h2>
+            <p>Nuevos clientes por día (últimos 30 días).</p>
+          </header>
+
+          <div class="chart-box"><canvas id="chartAltasDiarias"></canvas></div>
+
+          <div class="list-box">
+            <h3>Últimos 7 días</h3>
+            <ul id="listaAltasDiarias" class="stats-list"></ul>
+          </div>
+        </section>
+
 
         <!-- KPIs CLIENTES -->
         <section class="kpi-grid">
@@ -204,24 +246,12 @@
           </article>
         </section>
 
-        <!-- Rubros + Estados (Clientes) -->
+        <!-- Estados + Creado Por (Clientes) - Mantenemos ESTADOS y CREADO POR como info secundaria -->
         <section class="panel-grid-2">
           <article class="panel">
             <header class="panel-header">
-              <h2>Rubros (Clientes)</h2>
-              <p>Distribución por rubro.</p>
-            </header>
-            <div class="chart-box"><canvas id="chartRubros"></canvas></div>
-            <div class="list-box">
-              <h3>Detalle</h3>
-              <ul id="listaRubros" class="stats-list"></ul>
-            </div>
-          </article>
-
-          <article class="panel">
-            <header class="panel-header">
               <h2>Estados (Clientes)</h2>
-              <p>Distribución por estado.</p>
+              <p>Distribución por estado de gestión.</p>
             </header>
             <div class="chart-box"><canvas id="chartEstados"></canvas></div>
             <div class="list-box">
@@ -229,25 +259,10 @@
               <ul id="listaEstados" class="stats-list"></ul>
             </div>
           </article>
-        </section>
-
-        <!-- Responsables + Promedio (Clientes) -->
-        <section class="panel-grid-2">
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Responsables (Clientes)</h2>
-              <p>Cartera asignada por responsable.</p>
-            </header>
-            <div class="chart-box"><canvas id="chartResponsables"></canvas></div>
-            <div class="list-box">
-              <h3>Detalle</h3>
-              <ul id="listaResponsables" class="stats-list"></ul>
-            </div>
-          </article>
 
           <article class="panel">
             <header class="panel-header">
-              <h2>Promedio de contactos por responsable (Clientes)</h2>
+              <h2>Promedio de contactos (Equipo)</h2>
               <p>Contactos 30d / clientes asignados.</p>
             </header>
             <div class="chart-box"><canvas id="chartPromedioResponsable"></canvas></div>
@@ -257,8 +272,8 @@
                   <tr>
                     <th>Responsable</th>
                     <th>Clientes</th>
-                    <th>Contactos (30d)</th>
-                    <th>Promedio</th>
+                    <th>Contactos</th>
+                    <th>Avg</th>
                   </tr>
                 </thead>
                 <tbody id="tablaPromedioResponsable"></tbody>
@@ -267,52 +282,22 @@
           </article>
         </section>
 
-        <!-- Creado Por (Clientes) -->
         <section class="panel">
           <header class="panel-header">
-            <h2>Creado por (Clientes)</h2>
-            <p>Distribución por usuario creador (quién dio de alta al cliente).</p>
+            <h2>Rubros (Clientes)</h2>
+            <p>Distribución por rubro.</p>
           </header>
-          <div class="chart-box"><canvas id="chartCreados"></canvas></div>
+          <div class="chart-box"><canvas id="chartRubros"></canvas></div>
           <div class="list-box">
             <h3>Detalle</h3>
-            <ul id="listaCreados" class="stats-list"></ul>
-          </div>
-        </section>
-
-        <!-- ACTIVADORES -->
-        <section class="panel">
-          <header class="panel-header">
-            <h2>Rendimiento de Activadores</h2>
-            <p>Clientes dados de alta por usuarios con rol 'Activador'.</p>
-          </header>
-
-          <div class="chart-box"><canvas id="chartActivadoresDia"></canvas></div>
-
-          <div class="panel-grid-2" style="margin-top: 1rem;">
-            <div class="list-box" style="grid-column: span 2;">
-              <h3>Detalle por Activador y Estado</h3>
-              <div class="table-box">
-                <table class="table-modern">
-                  <thead>
-                    <tr>
-                      <th>Activador</th>
-                      <th>Total Altas</th>
-                      <th>Estados (Detalle)</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tablaActivadoresDetalle"></tbody>
-                </table>
-              </div>
-            </div>
-            <!-- Podemos agregar mas metricas aqui si se quiere -->
+            <ul id="listaRubros" class="stats-list"></ul>
           </div>
         </section>
 
         <section class="panel">
           <header class="panel-header">
             <h2>Actividad por usuario (Clientes)</h2>
-            <p>Últimos 30 días.</p>
+            <p>Ranking de actividad últimos 30 días.</p>
           </header>
           <div class="list-box">
             <h3>Detalle</h3>
@@ -320,152 +305,8 @@
           </div>
         </section>
 
-        <!-- CRECIMIENTO (ALTAS DIARIAS) -->
-        <section class="panel">
-          <header class="panel-header">
-            <h2>Crecimiento diario (Altas)</h2>
-            <p>Nuevos clientes y nuevos consumidores por día (últimos 30 días).</p>
-          </header>
 
-          <div class="chart-box"><canvas id="chartAltasDiarias"></canvas></div>
 
-          <div class="list-box">
-            <h3>Últimos 7 días</h3>
-            <ul id="listaAltasDiarias" class="stats-list"></ul>
-          </div>
-        </section>
-
-        <!-- CONSUMIDORES -->
-        <section class="panel">
-          <header class="panel-header">
-            <h2>Consumidores finales</h2>
-            <p>KPIs y estado de consumidores.</p>
-          </header>
-
-          <section class="kpi-grid" style="margin-top: 10px;">
-            <article class="kpi-card">
-              <div class="kpi-label">Consumidores</div>
-              <div class="kpi-value" id="statTotalConsumidores">-</div>
-              <div class="kpi-meta">Base</div>
-            </article>
-            <article class="kpi-card">
-              <div class="kpi-label">Actividades consumidores 7 días</div>
-              <div class="kpi-value" id="statConsAct7">-</div>
-              <div class="kpi-meta">Contactos recientes</div>
-            </article>
-            <article class="kpi-card">
-              <div class="kpi-label">Actividades consumidores 30 días</div>
-              <div class="kpi-value" id="statConsAct30">-</div>
-              <div class="kpi-meta">Volumen mensual</div>
-            </article>
-          </section>
-        </section>
-
-        <section class="panel-grid-2">
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Embudo de Conversión (Consumidores)</h2>
-              <p>Avance por etapas del pipeline.</p>
-            </header>
-            <div class="chart-box"><canvas id="chartFunnelConsumidores"></canvas></div>
-            <div class="list-box">
-              <h3>Tasas de conversión</h3>
-              <ul id="listaFunnelConsumidores" class="stats-list"></ul>
-            </div>
-          </article>
-
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Embudo de Conversión (Repartidores)</h2>
-              <p>Pipeline de reclutamiento.</p>
-            </header>
-            <div class="chart-box"><canvas id="chartFunnelRepartidores"></canvas></div>
-            <div class="list-box">
-              <h3>Tasas de conversión</h3>
-              <ul id="listaFunnelRepartidores" class="stats-list"></ul>
-            </div>
-          </article>
-        </section>
-
-        <section class="panel-grid-2">
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Estados (Consumidores)</h2>
-              <p>Distribución total por estado.</p>
-            </header>
-            <div class="chart-box"><canvas id="chartEstadosConsumidores"></canvas></div>
-            <div class="list-box">
-              <h3>Detalle</h3>
-              <ul id="listaEstadosConsumidores" class="stats-list"></ul>
-            </div>
-          </article>
-
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Actividad por usuario (Consumidores)</h2>
-              <p>Últimos 30 días.</p>
-            </header>
-            <div class="list-box">
-              <h3>Detalle</h3>
-              <ul id="listaActividadUsuariosConsumidores" class="stats-list"></ul>
-            </div>
-          </article>
-        </section>
-
-        <!-- REPARTIDORES -->
-        <section class="panel">
-          <header class="panel-header">
-            <h2>Repartidores</h2>
-            <p>KPIs y estado de la flota.</p>
-          </header>
-
-          <section class="kpi-grid" style="margin-top: 10px;">
-            <article class="kpi-card">
-              <div class="kpi-label">Repartidores</div>
-              <div class="kpi-value" id="statTotalRepartidores">-</div>
-              <div class="kpi-meta">Base total</div>
-            </article>
-            <!-- Futuros KPIs de actividad aquí -->
-          </section>
-        </section>
-
-        <section class="panel-grid-2">
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Estados (Repartidores)</h2>
-              <p>Distribución por estado.</p>
-            </header>
-            <div class="chart-box"><canvas id="chartEstadosRepartidores"></canvas></div>
-            <div class="list-box">
-              <h3>Detalle</h3>
-              <ul id="listaEstadosRepartidores" class="stats-list"></ul>
-            </div>
-          </article>
-
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Localidades (Repartidores)</h2>
-              <p>Top 10 localidades.</p>
-            </header>
-            <div class="chart-box"><canvas id="chartLocalidadRepartidores"></canvas></div>
-            <div class="list-box">
-              <h3>Detalle</h3>
-              <ul id="listaLocalidadRepartidores" class="stats-list"></ul>
-            </div>
-          </article>
-        </section>
-
-        <section class="panel">
-          <header class="panel-header">
-            <h2>Responsables (Repartidores)</h2>
-            <p>Cartera asignada por responsable.</p>
-          </header>
-          <div class="chart-box"><canvas id="chartResponsableRepartidores"></canvas></div>
-          <div class="list-box">
-            <h3>Detalle</h3>
-            <ul id="listaResponsableRepartidores" class="stats-list"></ul>
-          </div>
-        </section>
 
         <footer class="stats-footer">
           <span class="muted">CRM Stats</span>

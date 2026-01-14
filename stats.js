@@ -80,6 +80,9 @@ function getAuthUserName() {
 // =========================================================
 // CONFIG
 // =========================================================
+// =========================================================
+// CONFIG & THEME
+// =========================================================
 const CFG = {
   tables: {
     clientes: "clientes",
@@ -92,14 +95,29 @@ const CFG = {
   },
   pageSize: 1000,
   ranges: [
-    { value: "7d", label: "Lapso: 7 días", days: 7 },
-    { value: "30d", label: "Lapso: 30 días", days: 30 },
-    { value: "60d", label: "Lapso: 60 días", days: 60 },
-    { value: "90d", label: "Lapso: 90 días", days: 90 },
-    { value: "6m", label: "Lapso: 6 meses", days: 182 },
-    { value: "1y", label: "Lapso: 1 año", days: 365 },
+    { value: "7d", label: "7 días", days: 7 },
+    { value: "30d", label: "30 días", days: 30 },
+    { value: "60d", label: "60 días", days: 60 },
+    { value: "90d", label: "90 días", days: 90 },
+    { value: "6m", label: "6 meses", days: 182 },
+    { value: "1y", label: "1 año", days: 365 },
   ],
   chartMinHeight: 320,
+};
+
+// Modern Theme Palette
+const THEME = {
+  colors: {
+    primary: '#4f46e5', // Indigo 600
+    secondary: '#10b981', // Emerald 500
+    accent: '#f59e0b', // Amber 500
+    danger: '#ef4444', // Red 500
+    info: '#3b82f6', // Blue 500
+    slate: '#475569', // Slate 600
+    grid: 'rgba(255, 255, 255, 0.05)',
+    text: '#94a3b8', // Slate 400
+  },
+  fontFamily: "'Inter', sans-serif",
 };
 
 // =========================================================
@@ -108,18 +126,10 @@ const CFG = {
 const CHARTS = {
   rubros: null,
   estados: null,
-  responsables: null,
-  creados: null, // NUEVO
-  activadoresDia: null, // NUEVO
+  creados: null,
+  activadoresDia: null,
   promedio: null,
   altas: null,
-  estadosConsumidores: null,
-  estadosRepartidores: null,
-  localidadRepartidores: null,
-  localidadRepartidores: null,
-  responsableRepartidores: null,
-  funnelConsumidores: null,
-  funnelRepartidores: null,
 };
 
 // =========================================================
@@ -169,32 +179,32 @@ function escapeHtml(s) {
 }
 
 /**
+ * Crea un gradiente vertical simple para fondos de chart
+ */
+function createGradient(ctx, colorStart, colorEnd) {
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, colorStart);
+  gradient.addColorStop(1, colorEnd);
+  return gradient;
+}
+
+/**
  * Quita cualquier "(Histórico)" (o variantes) y normaliza espacios.
- * IMPORTANTE: esto evita que el front se “auto-contamine” con labels.
  */
 function cleanName(name) {
   return String(name || "")
-    .replace(/\(hist[oó]rico\)/gi, "") // elimina "(Histórico)" si ya estaba
-    .replace(/\u00A0/g, " ")          // NBSP
+    .replace(/\(hist[oó]rico\)/gi, "")
+    .replace(/\u00A0/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/**
- * Clave normalizada para comparar/matchear.
- */
 function normName(s) {
   return cleanName(s)
     .normalize("NFKC")
     .toLowerCase();
 }
 
-/**
- * Canoniza un nombre usando el mapa canon (nombre_normalizado => nombre_real_en_usuarios).
- * - Limpia "(Histórico)" si vino “pegado”.
- * - Si existe usuario real, devuelve el nombre exacto del catálogo (ej: "Tincho").
- * - Si no, devuelve el nombre limpio (sin histórico).
- */
 function canonizeName(name, canonMap) {
   const raw = cleanName(name);
   if (!raw) return "";
@@ -202,11 +212,6 @@ function canonizeName(name, canonMap) {
   return canonMap?.get(k) || raw;
 }
 
-/**
- * Devuelve label de display SIN duplicar histórico:
- * - si es real -> "Tincho"
- * - si no es real -> "Tincho (Histórico)"
- */
 function displayNameWithHistoricFlag(name, activeSet) {
   const base = cleanName(name);
   if (!base) return "Sin dato";
@@ -223,14 +228,10 @@ async function fetchAll(table, selectCols, applyFiltersFn) {
   while (true) {
     let q = supabaseClient.from(table).select(selectCols).range(from, from + CFG.pageSize - 1);
     if (typeof applyFiltersFn === "function") q = applyFiltersFn(q);
-
-    // eslint-disable-next-line no-await-in-loop
     const { data, error } = await q;
     if (error) throw error;
-
     const rows = Array.isArray(data) ? data : [];
     out.push(...rows);
-
     if (rows.length < CFG.pageSize) break;
     from += CFG.pageSize;
   }
@@ -247,13 +248,11 @@ async function countExact(table, applyFiltersFn) {
 
 // =========================================================
 // CATÁLOGO DE USUARIOS
-// Fuente: public.usuarios (activos) + históricos desde BD (sin localStorage)
 // =========================================================
 async function getUserUniverse({ fromISO } = {}) {
-  const activeUsers = []; // catálogo “real”
-  const activeSet = new Set(); // normalizado
+  const activeUsers = [];
+  const activeSet = new Set();
 
-  // 1) Usuarios reales (activos)
   const { data: uData, error: uErr } = await supabaseClient
     .from(CFG.tables.usuarios)
     .select("nombre, activo")
@@ -271,25 +270,16 @@ async function getUserUniverse({ fromISO } = {}) {
     }
   }
 
-  // Mapa canon: nombre_normalizado => nombre_real_en_usuarios
   const canon = new Map();
   for (const n of activeUsers) canon.set(normName(n), n);
 
-  // 2) Históricos desde clientes (responsable)
   const histSet = new Set();
-  const clientesHist = await fetchAll(
-    CFG.tables.clientes,
-    "responsable,activo",
-    (q) => q.eq("activo", true).not("responsable", "is", null)
-  );
+  const clientesHist = await fetchAll(CFG.tables.clientes, "responsable,activo", (q) => q.eq("activo", true).not("responsable", "is", null));
   for (const c of clientesHist) {
     const n = cleanName(c?.responsable || "");
-    if (!n) continue;
-    // guardamos limpio, no decorado
-    histSet.add(n);
+    if (n) histSet.add(n);
   }
 
-  // 3) Históricos desde actividades (usuario) (podés limitar por rango)
   const actsHist = await fetchAll(
     CFG.tables.actividades,
     "usuario,fecha",
@@ -301,11 +291,9 @@ async function getUserUniverse({ fromISO } = {}) {
   );
   for (const a of actsHist) {
     const n = cleanName(a?.usuario || "");
-    if (!n) continue;
-    histSet.add(n);
+    if (n) histSet.add(n);
   }
 
-  // Construir lista histórica que no está en activos
   const historicalUsers = [];
   for (const n of histSet) {
     const k = normName(n);
@@ -313,19 +301,12 @@ async function getUserUniverse({ fromISO } = {}) {
   }
   historicalUsers.sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
 
-  // Universo (para selects/otros usos si los agregás): activos + históricos ya marcados
   const universe = [
     ...activeUsers.sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })),
     ...historicalUsers.map((n) => `${n} (Histórico)`),
   ];
 
-  return {
-    activeUsers,
-    historicalUsers,
-    universe,
-    activeSet,
-    canon,
-  };
+  return { activeUsers, historicalUsers, universe, activeSet, canon };
 }
 
 // =========================================================
@@ -362,7 +343,6 @@ function seriesByDay(rows, dateField, buckets) {
     const key = toLocalDayKey(d);
     if (map.has(key)) map.set(key, (map.get(key) || 0) + 1);
   }
-
   return { labels: buckets.map((b) => b.label), data: buckets.map((b) => map.get(b.key) || 0) };
 }
 
@@ -379,17 +359,18 @@ function ensureGlobalRangeSelect() {
   sel = document.createElement("select");
   sel.id = "statsRange";
   sel.className = "btn-secundario";
-  sel.style.minWidth = "220px";
-  sel.style.padding = "10px 12px";
-  sel.style.borderRadius = "12px";
-  sel.style.border = "1px solid rgba(0,0,0,0.18)";
-  sel.style.background = "transparent";
+  // Updated style for more modern look handled in CSS mostly, but basic here
+  sel.style.borderRadius = "8px";
+  sel.style.border = "1px solid rgba(255,255,255,0.1)";
+  sel.style.background = "rgba(255,255,255,0.05)";
   sel.style.cursor = "pointer";
+  sel.style.color = "#fff";
 
   for (const r of CFG.ranges) {
     const opt = document.createElement("option");
     opt.value = r.value;
     opt.textContent = r.label;
+    opt.style.background = "#1e293b"; // Dark bg for options
     sel.appendChild(opt);
   }
   sel.value = "30d";
@@ -422,92 +403,6 @@ function renderUlList(ulId, items) {
   }
 }
 
-function renderFunnelList(id, labels, data) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.innerHTML = "";
-
-  // Calcular % de conversion relativa al paso anterior
-  // Paso 1 = 100% (Base)
-  // Paso 2 = (P2 / P1) %
-  // Paso 3 = (P3 / P2) %
-
-  for (let i = 0; i < labels.length; i++) {
-    const count = data[i];
-    const prev = i > 0 ? data[i - 1] : 0;
-    let rate = "-";
-    let color = "var(--text-muted)";
-
-    if (i > 0 && prev > 0) {
-      const pct = Math.round((count / prev) * 100);
-      rate = `${pct}% conv.`;
-      color = pct >= 50 ? "#4ade80" : "#f87171";
-    } else if (i === 0) {
-      rate = "Base 100%";
-    }
-
-    const li = document.createElement("li");
-    li.style.display = "flex";
-    li.style.justifyContent = "space-between";
-    li.style.marginBottom = "4px";
-    li.innerHTML = `
-            <span>${labels[i]}</span>
-            <div style="text-align:right;">
-                <strong>${fmtInt(count)}</strong>
-                <div style="font-size:0.75rem; color:${color};">${rate}</div>
-            </div>
-        `;
-    el.appendChild(li);
-  }
-}
-
-function makeFunnelChart(id, labels, data, baseColor) {
-  const canvas = $(id);
-  if (!canvas) return null;
-  ensureCanvasHeight(id);
-  const ctx = canvas.getContext("2d");
-
-  // Horizontal Bar simulates Funnel
-  return new Chart(ctx, {
-    type: "bar",
-    indexAxis: 'y', // Horizontal
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Cantidad',
-          data: data,
-          backgroundColor: baseColor,
-          borderRadius: 4,
-          barPercentage: 0.6,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => `${ctx.raw} prospectos`
-          }
-        }
-      },
-      scales: {
-        x: {
-          beginAtZero: true,
-          grid: { display: false }
-        },
-        y: {
-          grid: { display: false }
-        }
-      },
-    },
-  });
-}
-
-
 function renderPromedioTable(rows) {
   const tbody = $("tablaPromedioResponsable");
   if (!tbody) return;
@@ -524,7 +419,7 @@ function renderPromedioTable(rows) {
 }
 
 // =========================================================
-// Chart helpers
+// Chart helpers (MODERN)
 // =========================================================
 function destroyChart(key) {
   if (CHARTS[key]) {
@@ -544,14 +439,86 @@ function ensureCanvasHeight(canvasId) {
   if (c.parentElement) c.parentElement.style.height = `${CFG.chartMinHeight}px`;
 }
 
+// Common Chart Options
+const COMMON_OPTIONS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      labels: {
+        color: THEME.colors.text,
+        font: { family: THEME.fontFamily, size: 12 },
+        usePointStyle: true,
+        boxWidth: 8,
+      }
+    },
+    tooltip: {
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      titleColor: '#fff',
+      bodyColor: '#cbd5e1',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+      padding: 10,
+      cornerRadius: 8,
+      displayColors: true,
+      usePointStyle: true,
+    }
+  },
+  scales: {
+    x: {
+      grid: { display: false },
+      ticks: { color: THEME.colors.text, font: { family: THEME.fontFamily, size: 10 } }
+    },
+    y: {
+      grid: { color: THEME.colors.grid, borderDash: [4, 4] },
+      ticks: { color: THEME.colors.text, font: { family: THEME.fontFamily, size: 10 }, beginAtZero: true }
+    }
+  }
+};
+
 function makeDoughnut(canvasId, labels, values) {
   const canvas = $(canvasId);
   if (!canvas) return null;
   ensureCanvasHeight(canvasId);
+
+  // Colores para Dónut (Palette generated)
+  const bgColors = [
+    THEME.colors.primary,
+    THEME.colors.secondary,
+    THEME.colors.accent,
+    THEME.colors.info,
+    THEME.colors.danger,
+    '#8b5cf6', // Violet
+    '#ec4899', // Pink
+    '#6366f1', // Indigo
+  ];
+
   return new Chart(canvas.getContext("2d"), {
     type: "doughnut",
-    data: { labels, datasets: [{ data: values, borderWidth: 1 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } } },
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: bgColors,
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      ...COMMON_OPTIONS,
+      cutout: '75%', // Thinner ring
+      plugins: {
+        ...COMMON_OPTIONS.plugins,
+        legend: {
+          ...COMMON_OPTIONS.plugins.legend,
+          position: 'right' // Clean look
+        }
+      },
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      }
+    },
   });
 }
 
@@ -559,14 +526,24 @@ function makeBar(canvasId, labels, values) {
   const canvas = $(canvasId);
   if (!canvas) return null;
   ensureCanvasHeight(canvasId);
+
   return new Chart(canvas.getContext("2d"), {
     type: "bar",
-    data: { labels, datasets: [{ data: values, borderWidth: 1 }] },
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: THEME.colors.primary,
+        borderRadius: 4,
+        barPercentage: 0.6,
+      }]
+    },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      ...COMMON_OPTIONS,
+      plugins: {
+        ...COMMON_OPTIONS.plugins,
+        legend: { display: false }
+      }
     },
   });
 }
@@ -575,21 +552,41 @@ function makeLineTwoDatasets(canvasId, labels, aLabel, aData, bLabel, bData) {
   const canvas = $(canvasId);
   if (!canvas) return null;
   ensureCanvasHeight(canvasId);
-  return new Chart(canvas.getContext("2d"), {
+
+  const ctx = canvas.getContext("2d");
+  const gradA = createGradient(ctx, 'rgba(79, 70, 229, 0.4)', 'rgba(79, 70, 229, 0.0)');
+  const gradB = createGradient(ctx, 'rgba(16, 185, 129, 0.4)', 'rgba(16, 185, 129, 0.0)');
+
+  return new Chart(ctx, {
     type: "line",
     data: {
       labels,
       datasets: [
-        { label: aLabel, data: aData, tension: 0.25, fill: false, pointRadius: 2, borderWidth: 2 },
-        { label: bLabel, data: bData, tension: 0.25, fill: false, pointRadius: 2, borderWidth: 2 },
+        {
+          label: aLabel,
+          data: aData,
+          borderColor: THEME.colors.primary,
+          backgroundColor: gradA,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          borderWidth: 2
+        },
+        {
+          label: bLabel,
+          data: bData,
+          borderColor: THEME.colors.secondary,
+          backgroundColor: gradB,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          borderWidth: 2
+        },
       ],
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: true }, tooltip: { enabled: true } },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-    },
+    options: COMMON_OPTIONS,
   });
 }
 
@@ -605,20 +602,10 @@ async function renderAllByRange() {
   [
     "chartRubros",
     "chartEstados",
-    "chartRubros",
-    "chartEstados",
-    "chartResponsables",
-    "chartCreados", // NUEVO
-    "chartActivadoresDia", // NUEVO
+    "chartCreados",
+    "chartActivadoresDia",
     "chartPromedioResponsable",
     "chartAltasDiarias",
-    "chartAltasDiarias",
-    "chartEstadosConsumidores",
-    "chartEstadosRepartidores",
-    "chartLocalidadRepartidores",
-    "chartResponsableRepartidores",
-    "chartFunnelConsumidores",
-    "chartFunnelRepartidores",
   ].forEach(ensureCanvasHeight);
 
   // Catálogo de usuarios (activos + históricos del rango)
@@ -726,16 +713,9 @@ async function renderAllByRange() {
       return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
     });
 
-  destroyChart("responsables");
-  CHARTS.responsables = makeBar(
-    "chartResponsables",
-    respEntries.map((x) => x.name),
-    respEntries.map((x) => x.count)
-  );
-  renderUlList(
-    "listaResponsables",
-    respEntries.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
-  );
+  // destroyChart("responsables");
+  // CHARTS.responsables = ... (Removed from UI)
+  // renderUlList("listaResponsables", ...);
 
   // =======================================================
   // Creado Por (Clientes)
@@ -830,17 +810,16 @@ async function renderAllByRange() {
   }
 
   // Preparar Datasets para Stacked Bar
-  // Colores fijos o generados
   const STATUS_COLORS = {
-    "1 - Cliente relevado": "#94a3b8", // Gray
-    "2 - Local Visitado No Activo": "#f87171", // Red
-    "3 - Primer Ingreso": "#fbbf24", // Amber
-    "4 - Local Creado": "#34d399", // Emerald
-    "5 - Local Visitado Activo": "#60a5fa", // Blue
-    "6 - Local No Interesado": "#ef4444", // Red strong
+    "1 - Cliente relevado": THEME.colors.slate,
+    "2 - Local Visitado No Activo": THEME.colors.danger,
+    "3 - Primer Ingreso": THEME.colors.accent,
+    "4 - Local Creado": THEME.colors.secondary,
+    "5 - Local Visitado Activo": THEME.colors.info,
+    "6 - Local No Interesado": "#ef4444",
     "Sin estado": "#cbd5e1"
   };
-  const getStatusColor = (st) => STATUS_COLORS[st] || "#a78bfa"; // default purple
+  const getStatusColor = (st) => STATUS_COLORS[st] || "#a78bfa";
 
   const sortedStatuses = Array.from(allFoundStatuses).sort();
 
@@ -851,6 +830,8 @@ async function renderAllByRange() {
       data: data,
       backgroundColor: getStatusColor(st),
       stack: 'Stack 0',
+      borderRadius: 4,
+      barPercentage: 0.6,
     };
   });
 
@@ -866,46 +847,42 @@ async function renderAllByRange() {
         datasets: datasets
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        ...COMMON_OPTIONS,
         plugins: {
+          ...COMMON_OPTIONS.plugins,
           tooltip: {
+            ...COMMON_OPTIONS.plugins.tooltip,
             mode: 'index',
             intersect: false
           },
           legend: {
-            position: 'bottom',
-            labels: { boxWidth: 12 }
+            ...COMMON_OPTIONS.plugins.legend,
+            position: 'bottom'
           }
         },
         scales: {
-          x: { stacked: true },
-          y: { stacked: true, beginAtZero: true }
+          x: { ...COMMON_OPTIONS.scales.x, stacked: true },
+          y: { ...COMMON_OPTIONS.scales.y, stacked: true }
         }
       }
     });
   }
 
-  // Render Table Breakdown
+  // Render Table Breakdown (Modern Pills)
   const tbodyActiv = $("tablaActivadoresDetalle");
   if (tbodyActiv) {
     tbodyActiv.innerHTML = "";
-
-    // Ordenar por total descendente
-    const sortedActivs = [...breakdownPorActivador.entries()]
-      .sort((a, b) => b[1].total - a[1].total);
+    const sortedActivs = [...breakdownPorActivador.entries()].sort((a, b) => b[1].total - a[1].total);
 
     if (sortedActivs.length === 0) {
-      tbodyActiv.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1rem;">Sin actividad en este periodo.</td></tr>';
+      tbodyActiv.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1rem; color:var(--text-muted)">Sin actividad reciente.</td></tr>';
     } else {
       for (const [name, data] of sortedActivs) {
-        // Construir HTML de pill de estados
-        // Sort statuses by count desc
         const stEntries = Object.entries(data.statuses).sort((a, b) => b[1] - a[1]);
         const stHtml = stEntries.map(([stName, stCount]) => {
-          // Simple pill style
-          return `<span style="display:inline-block; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:4px; margin-bottom:2px;">
-                        ${escapeHtml(stName)}: <strong>${stCount}</strong>
+          const color = getStatusColor(stName);
+          return `<span style="display:inline-block; background:${color}20; color:${color}; border:1px solid ${color}40; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-right:4px; margin-bottom:2px;">
+                        ${escapeHtml(stName.split('-').pop().trim())}: <strong>${stCount}</strong>
                       </span>`;
         }).join("");
 
@@ -1015,38 +992,40 @@ async function renderAllByRange() {
   // =======================================================
   // Crecimiento diario EN RANGO
   // =======================================================
-  const [cliAltas, conAltas, repAltas] = await Promise.all([
-    fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO)),
-    fetchAll(CFG.tables.consumidores, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO)),
-    fetchAll(CFG.tables.repartidores, "created_at", (q) => q.gte("created_at", fromISO)), // Repartidores no tiene soft delete 'activo' en DB original a veces, revisar. Asumimos traer todos o filtrar por estado != null
-  ]);
-
+  const cliAltas = await fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO));
   const sCli = seriesByDay(cliAltas, "created_at", buckets);
-  const sCon = seriesByDay(conAltas, "created_at", buckets);
-  const sRep = seriesByDay(repAltas, "created_at", buckets);
 
   destroyChart("altas");
-  // Update chart helper for 3 datasets or reuse makeLineTwoDatasets logic manually
   const canvasAltas = $("chartAltasDiarias");
   if (canvasAltas) {
     ensureCanvasHeight("chartAltasDiarias");
     if (CHARTS.altas) CHARTS.altas.destroy();
-    CHARTS.altas = new Chart(canvasAltas.getContext("2d"), {
+
+    // Solo mostramos Clientes
+    const ctx = canvasAltas.getContext("2d");
+    const gradient = createGradient(ctx, 'rgba(59, 130, 246, 0.4)', 'rgba(59, 130, 246, 0.0)');
+
+    CHARTS.altas = new Chart(ctx, {
       type: "line",
       data: {
         labels: buckets.map(b => b.label),
         datasets: [
-          { label: "Clientes", data: sCli.data, tension: 0.25, fill: false, borderColor: "#36a2eb", backgroundColor: "#36a2eb" },
-          { label: "Consumidores", data: sCon.data, tension: 0.25, fill: false, borderColor: "#ff6384", backgroundColor: "#ff6384" },
-          { label: "Repartidores", data: sRep.data, tension: 0.25, fill: false, borderColor: "#ffce56", backgroundColor: "#ffce56" }
+          {
+            label: "Clientes Nuevos",
+            data: sCli.data,
+            tension: 0.4,
+            fill: true,
+            backgroundColor: gradient,
+            borderColor: THEME.colors.info,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            pointBackgroundColor: "#fff",
+            pointBorderColor: THEME.colors.info,
+            borderWidth: 2
+          }
         ],
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: true }, tooltip: { enabled: true } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-      },
+      options: COMMON_OPTIONS,
     });
   }
 
@@ -1055,158 +1034,16 @@ async function renderAllByRange() {
     ulAltas.innerHTML = "";
     const take = Math.min(7, buckets.length);
     for (let i = buckets.length - take; i < buckets.length; i++) {
+      const val = sCli.data[i] || 0;
       const li = document.createElement("li");
-      li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span>
-      <small>
-      Cli: <strong>${fmtInt(sCli.data[i] || 0)}</strong> · 
-      Cons: <strong>${fmtInt(sCon.data[i] || 0)}</strong> · 
-      Rep: <strong>${fmtInt(sRep.data[i] || 0)}</strong>
-      </small>`;
+      li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span> <strong>${fmtInt(val)}</strong>`;
       ulAltas.appendChild(li);
     }
   }
 
   // =======================================================
-  // CONSUMIDORES
+  // CONSUMIDORES / REPARTIDORES: REMOVED FOR CLEANUP
   // =======================================================
-  const totalConsActivos = await countExact(CFG.tables.consumidores, (q) => q.eq("activo", true));
-  setText("statTotalConsumidores", fmtInt(totalConsActivos));
-
-  const consActInRange = await countExact(CFG.tables.actividadesConsumidores, (q) => q.gte("fecha", fromISO));
-  setText("statConsAct7", fmtInt(consActInRange));
-  setText("statConsAct30", fmtInt(consActInRange));
-
-  const consRows = await fetchAll(CFG.tables.consumidores, "estado,activo", (q) => q.eq("activo", true));
-  const estCons = groupCount(consRows, "estado", "Sin estado");
-  destroyChart("estadosConsumidores");
-  CHARTS.estadosConsumidores = makeDoughnut(
-    "chartEstadosConsumidores",
-    estCons.map((x) => x[0]),
-    estCons.map((x) => x[1])
-  );
-  renderUlList("listaEstadosConsumidores", estCons.map(([label, count]) => ({ label, value: fmtInt(count) })));
-
-  // === FUNNEL CONSUMIDORES ===
-  // Etapas del pipe: Lead -> Contactado -> Interesado -> Cliente
-  // Filtramos por estos estados para el funnel
-  const stagesCons = ["Lead", "Contactado", "Interesado", "Cliente"];
-  const funnelConsData = stagesCons.map(stage => {
-    // Find count in estCons array [["Lead", 10], ...]
-    const found = estCons.find(x => x[0] === stage);
-    return found ? found[1] : 0;
-  });
-
-  destroyChart("funnelConsumidores");
-  CHARTS.funnelConsumidores = makeFunnelChart(
-    "chartFunnelConsumidores",
-    stagesCons,
-    funnelConsData,
-    "rgba(59, 130, 246, 0.7)" // Azul
-  );
-  renderFunnelList("listaFunnelConsumidores", stagesCons, funnelConsData);
-
-
-  // Actividad por usuario (consumidores) EN RANGO (CANON + FLAG EN RENDER)
-  const actConsRango = await fetchAll(CFG.tables.actividadesConsumidores, "usuario,fecha", (q) => q.gte("fecha", fromISO));
-
-  const consUsersAgg = new Map();
-  for (const u of activeUsers) consUsersAgg.set(u, 0);
-
-  for (const a of actConsRango) {
-    const uRaw = a?.usuario ? String(a.usuario) : "";
-    const canonUser = uRaw && uRaw.trim() ? canonizeName(uRaw, canon) : "Sin usuario";
-    consUsersAgg.set(canonUser, (consUsersAgg.get(canonUser) || 0) + 1);
-  }
-
-  const consUsersList = Array.from(consUsersAgg.entries())
-    .map(([name, count]) => {
-      const base = cleanName(name) || "Sin usuario";
-      const isReal = activeSet.has(normName(base));
-      return { name: isReal ? base : `${base} (Histórico)`, count, real: isReal };
-    })
-    .sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      if (a.real !== b.real) return a.real ? -1 : 1;
-      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
-    });
-
-  renderUlList(
-    "listaActividadUsuariosConsumidores",
-    consUsersList.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
-  );
-
-  // =======================================================
-  // REPARTIDORES
-  // =======================================================
-  const repRows = await fetchAll(CFG.tables.repartidores, "estado,localidad,responsable", (q) => q); // Traer todos
-  setText("statTotalRepartidores", fmtInt(repRows.length));
-
-  // Estados
-  const estRep = groupCount(repRows, "estado", "Sin estado");
-  destroyChart("estadosRepartidores");
-  CHARTS.estadosRepartidores = makeDoughnut("chartEstadosRepartidores", estRep.map(x => x[0]), estRep.map(x => x[1]));
-  renderUlList("listaEstadosRepartidores", estRep.map(([label, count]) => ({ label, value: fmtInt(count) })));
-
-  // === FUNNEL REPARTIDORES ===
-  // Etapas: Documentación sin gestionar -> Cuenta aun no confirmada -> Cuenta confirmada y repartiendo
-  const stagesRep = ["Documentación sin gestionar", "Cuenta aun no confirmada", "Cuenta confirmada y repartiendo"];
-  const stagesRepShort = ["Sin gestionar", "No confirmada", "Confirmada/Repartiendo"]; // Etiquetas cortas para gráfico
-  const funnelRepData = stagesRep.map(stage => {
-    const found = estRep.find(x => x[0] === stage);
-    return found ? found[1] : 0;
-  });
-
-  destroyChart("funnelRepartidores");
-  CHARTS.funnelRepartidores = makeFunnelChart(
-    "chartFunnelRepartidores",
-    stagesRepShort,
-    funnelRepData,
-    "rgba(245, 158, 11, 0.7)" // Amarillo/Naranja
-  );
-  renderFunnelList("listaFunnelRepartidores", stagesRepShort, funnelRepData);
-
-
-  // Localidades
-  const locRep = groupCount(repRows, "localidad", "Sin localidad");
-  // Top 10 localidades
-  const topLocRep = locRep.slice(0, 10);
-  destroyChart("localidadRepartidores");
-  CHARTS.localidadRepartidores = makeBar(
-    "chartLocalidadRepartidores",
-    topLocRep.map(x => x[0]),
-    topLocRep.map(x => x[1])
-  );
-  renderUlList("listaLocalidadRepartidores", topLocRep.map(([label, count]) => ({ label, value: fmtInt(count) })));
-
-  // Responsables
-  const respRepMap = new Map();
-  // Inicializar usuarios activos en 0
-  for (const u of activeUsers) respRepMap.set(u, 0);
-
-  for (const r of repRows) {
-    const rRaw = r?.responsable ? String(r.responsable) : "";
-    const canonName = rRaw && rRaw.trim() ? canonizeName(rRaw, canon) : "Sin responsable";
-    respRepMap.set(canonName, (respRepMap.get(canonName) || 0) + 1);
-  }
-
-  const respRepEntries = Array.from(respRepMap.entries())
-    .map(([name, count]) => {
-      const base = cleanName(name) || "Sin responsable";
-      const isReal = activeSet.has(normName(base));
-      return { name: isReal ? base : `${base} (Histórico)`, count, real: isReal };
-    })
-    .sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
-    });
-
-  destroyChart("responsableRepartidores");
-  CHARTS.responsableRepartidores = makeBar(
-    "chartResponsableRepartidores",
-    respRepEntries.map(x => x.name),
-    respRepEntries.map(x => x.count)
-  );
-  renderUlList("listaResponsableRepartidores", respRepEntries.map(x => ({ label: x.name, value: fmtInt(x.count) })));
 
   // =======================================================
   // INTELLIGENCE / INSIGHTS

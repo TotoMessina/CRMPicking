@@ -4018,3 +4018,29 @@ button:active {
 #rowAllDay input[type="checkbox"]:checked::after {
   transform: translateX(22px);
 }
+/* Sidebar Badge */
+.sidebar-badge {
+  background-color: var(--danger);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  min-width: 20px;
+  text-align: center;
+  line-height: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  height: 18px;
+}
+
+/* Ensure sidebar links allow flex space */
+.sidebar-menu li a {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+

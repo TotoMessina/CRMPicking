@@ -131,7 +131,7 @@
 
     // 5. SHARED CONSTANTS
     // =========================================================
-     window.ESTADOS_VALIDOS_MAP = {
+    window.ESTADOS_VALIDOS_MAP = {
         "1 - Cliente relevado": "1 - Cliente relevado",
         "2 - Local Visitado No Activo": "2 - Local Visitado No Activo",
         "3 - Primer ingreso": "3 - Primer Ingreso",
@@ -179,6 +179,54 @@
                 window.location.href = href;
             }, 300); // Matches .page-exit animation duration
         });
+    });
+
+    // 7. PENDING TICKETS BADGE
+    // =========================================================
+    async function updateTicketBadge() {
+        if (!window.supabaseClient) return;
+
+        try {
+            // Count pending tickets
+            const { count, error } = await window.supabaseClient
+                .from('tickets')
+                .select('*', { count: 'exact', head: true })
+                .eq('estado', 'Pendiente');
+
+            if (error) throw error;
+
+            // Find "Tickets" link in sidebar
+            const links = document.querySelectorAll('.sidebar-menu a');
+            let ticketLink = null;
+            links.forEach(a => {
+                if (a.getAttribute('href') && a.getAttribute('href').includes('tickets.html')) {
+                    ticketLink = a;
+                }
+            });
+
+            if (ticketLink) {
+                let badge = ticketLink.querySelector('.sidebar-badge');
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'sidebar-badge';
+                        ticketLink.appendChild(badge);
+                    }
+                    badge.textContent = count > 99 ? '99+' : count;
+                } else {
+                    if (badge) badge.remove();
+                }
+            }
+        } catch (e) {
+            console.error("Error updating ticket badge:", e);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // Run initial check
+        updateTicketBadge();
+        // Refresh periodically (e.g. every 30s)
+        setInterval(updateTicketBadge, 30000);
     });
 
 })();
