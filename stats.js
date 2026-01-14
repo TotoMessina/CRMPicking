@@ -781,17 +781,22 @@ async function renderAllByRange() {
 
   const clientesCreadosRango = await fetchAll(
     CFG.tables.clientes,
-    "creado_por,created_at",
+    "creado_por,created_at,estado",
     (q) => q.eq("activo", true).gte("created_at", fromISO)
   );
 
-  const activadoresSeriesMap = new Map(); // key=day, count=total
-  // Inicializar dias en 0
+  // Estructura para el gráfico apilado:
+  // Key = dayKey, Value = Map(status -> count)
+  const dailyStatusMap = new Map();
+  // Inicializar dias
   for (const b of buckets) {
-    activadoresSeriesMap.set(b.key, 0);
+    dailyStatusMap.set(b.key, new Map());
   }
 
-  const conteoPorActivador = new Map(); // key=nombre, value=count
+  const allFoundStatuses = new Set();
+
+  // Estructura: Key=Activador, Value={ total: 0, statuses: { 'Probando': 2, 'No Interesa': 1 } }
+  const breakdownPorActivador = new Map();
 
   for (const c of clientesCreadosRango) {
     const creador = cleanName(c.creado_por);
@@ -800,50 +805,124 @@ async function renderAllByRange() {
 
     // Es activador?
     if (setActivadores.has(k)) {
-      // Sumar al total del activador
-      conteoPorActivador.set(creador, (conteoPorActivador.get(creador) || 0) + 1);
+      // 1. Breakdown Tabla (Total por activador)
+      if (!breakdownPorActivador.has(creador)) {
+        breakdownPorActivador.set(creador, { total: 0, statuses: {} });
+      }
+      const entry = breakdownPorActivador.get(creador);
+      entry.total++;
 
-      // Sumar al dia
+      const st = c.estado || "Sin estado";
+      entry.statuses[st] = (entry.statuses[st] || 0) + 1;
+
+      allFoundStatuses.add(st);
+
+      // 2. Chart (Por dia y estado)
       const d = parseDate(c.created_at);
       if (d) {
         const dk = toLocalDayKey(d);
-        if (activadoresSeriesMap.has(dk)) {
-          activadoresSeriesMap.set(dk, activadoresSeriesMap.get(dk) + 1);
+        if (dailyStatusMap.has(dk)) {
+          const dayMap = dailyStatusMap.get(dk);
+          dayMap.set(st, (dayMap.get(st) || 0) + 1);
         }
       }
     }
   }
 
-  // Render Chart (Line)
-  const actData = buckets.map(b => activadoresSeriesMap.get(b.key) || 0);
-  destroyChart("activadoresDia");
-  CHARTS.activadoresDia = makeLineTwoDatasets( // Reutilizamos makeLineTwoDatasets hackeado a 1 dataset o hacemos makeLine
-    "chartActivadoresDia",
-    buckets.map(b => b.label),
-    "Altas", actData,
-    "", [] // segundo dataset vacio
-  );
-  // Hack: hide second dataset if empty? 
-  // Mejor usamos un makeBar o hacemos un helper makeLine simple. 
-  // Usaremos makeBar que se ve bien para "volumen diario".
-  destroyChart("activadoresDia");
-  CHARTS.activadoresDia = makeBar(
-    "chartActivadoresDia",
-    buckets.map(b => b.label),
-    actData
-  );
+  // Preparar Datasets para Stacked Bar
+  // Colores fijos o generados
+  const STATUS_COLORS = {
+    "1 - Cliente relevado": "#94a3b8", // Gray
+    "2 - Local Visitado No Activo": "#f87171", // Red
+    "3 - Primer Ingreso": "#fbbf24", // Amber
+    "4 - Local Creado": "#34d399", // Emerald
+    "5 - Local Visitado Activo": "#60a5fa", // Blue
+    "6 - Local No Interesado": "#ef4444", // Red strong
+    "Sin estado": "#cbd5e1"
+  };
+  const getStatusColor = (st) => STATUS_COLORS[st] || "#a78bfa"; // default purple
 
-  // Render List
-  const listActiv = [...conteoPorActivador.entries()]
-    .sort((a, b) => b[1] - a[1]) // mayor o menor
-    .map(([name, count]) => ({ label: name, value: fmtInt(count) }));
+  const sortedStatuses = Array.from(allFoundStatuses).sort();
 
-  if (listActiv.length === 0 && setActivadores.size > 0) {
-    // Mostrar 0 si no hubo altas pero hay activadores? O vacio.
-    // Mostremos "Sin actividad reciente"
+  const datasets = sortedStatuses.map(st => {
+    const data = buckets.map(b => dailyStatusMap.get(b.key)?.get(st) || 0);
+    return {
+      label: st,
+      data: data,
+      backgroundColor: getStatusColor(st),
+      stack: 'Stack 0',
+    };
+  });
+
+  // Render Stacked Chart
+  destroyChart("activadoresDia");
+  const canvasAct = $("chartActivadoresDia");
+  if (canvasAct) {
+    ensureCanvasHeight("chartActivadoresDia");
+    CHARTS.activadoresDia = new Chart(canvasAct.getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: buckets.map(b => b.label),
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            mode: 'index',
+            intersect: false
+          },
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12 }
+          }
+        },
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true }
+        }
+      }
+    });
   }
 
-  renderUlList("listaActivadoresTotal", listActiv);
+  // Render Table Breakdown
+  const tbodyActiv = $("tablaActivadoresDetalle");
+  if (tbodyActiv) {
+    tbodyActiv.innerHTML = "";
+
+    // Ordenar por total descendente
+    const sortedActivs = [...breakdownPorActivador.entries()]
+      .sort((a, b) => b[1].total - a[1].total);
+
+    if (sortedActivs.length === 0) {
+      tbodyActiv.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1rem;">Sin actividad en este periodo.</td></tr>';
+    } else {
+      for (const [name, data] of sortedActivs) {
+        // Construir HTML de pill de estados
+        // Sort statuses by count desc
+        const stEntries = Object.entries(data.statuses).sort((a, b) => b[1] - a[1]);
+        const stHtml = stEntries.map(([stName, stCount]) => {
+          // Simple pill style
+          return `<span style="display:inline-block; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:4px; margin-bottom:2px;">
+                        ${escapeHtml(stName)}: <strong>${stCount}</strong>
+                      </span>`;
+        }).join("");
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+             <td>${escapeHtml(name)}</td>
+             <td><strong>${fmtInt(data.total)}</strong></td>
+             <td>${stHtml}</td>
+           `;
+        tbodyActiv.appendChild(tr);
+      }
+    }
+  }
+
+  // Clean up old list if exists (legacy)
+  const oldList = $("listaActivadoresTotal");
+  if (oldList) oldList.innerHTML = "";
 
   // =======================================================
   // Promedio contactos por responsable EN RANGO (CANON)

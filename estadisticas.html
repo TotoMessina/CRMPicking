@@ -290,9 +290,20 @@
           <div class="chart-box"><canvas id="chartActivadoresDia"></canvas></div>
 
           <div class="panel-grid-2" style="margin-top: 1rem;">
-            <div class="list-box">
-              <h3>Total por Activador</h3>
-              <ul id="listaActivadoresTotal" class="stats-list"></ul>
+            <div class="list-box" style="grid-column: span 2;">
+              <h3>Detalle por Activador y Estado</h3>
+              <div class="table-box">
+                <table class="table-modern">
+                  <thead>
+                    <tr>
+                      <th>Activador</th>
+                      <th>Total Altas</th>
+                      <th>Estados (Detalle)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaActivadoresDetalle"></tbody>
+                </table>
+              </div>
             </div>
             <!-- Podemos agregar mas metricas aqui si se quiere -->
           </div>

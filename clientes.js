@@ -1105,17 +1105,18 @@ function descargarModeloExcel() {
     "rubro",
     "estado",
     "responsable",
-    "estilo_contacto",
+    "estilo_contacto", // Added
     "fecha_proximo_contacto",
     "hora_proximo_contacto",
     "notas",
     "venta_digital",
-    "venta_digital_cual"
+    "venta_digital_cual",
+    "interes" // Added for completeness
   ];
 
   const data = [
     headers,
-    ["Ejemplo SRL", "Local Ejemplo", "30-11223344-5", "11-2345-6789", "Av. Rivadavia 1234", "L-V 9-18", "Almacén", "1 - Cliente relevado", "Toto", "2025-01-15", "09:00", "Ejemplo de nota", "false", ""],
+    ["Ejemplo SRL", "Local Ejemplo", "30-11223344-5", "11-2345-6789", "Av. Rivadavia 1234", "L-V 9-18", "Almacén", "1 - Cliente relevado", "Toto", "Dueño", "2025-01-15", "09:00", "Ejemplo de nota", "false", "", "Alto"],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(data);
@@ -1141,7 +1142,8 @@ function descargarModeloExcel() {
 async function exportarExcel() {
   const { data: clientes, error: errCli } = await supabaseClient
     .from("clientes")
-    .select("id, nombre, nombre_local, cuit, telefono, direccion, horarios_atencion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas, venta_digital, venta_digital_cual")
+    .from("clientes")
+    .select("id, nombre, nombre_local, cuit, telefono, direccion, horarios_atencion, rubro, estado, responsable, estilo_contacto, fecha_proximo_contacto, hora_proximo_contacto, notas, venta_digital, venta_digital_cual, interes")
     .eq("activo", true);
 
   if (errCli) {
@@ -1165,21 +1167,28 @@ async function exportarExcel() {
   const wb = XLSX.utils.book_new();
 
   const dataClientes = [
-    ["id", "nombre", "nombre_local", "cuit", "telefono", "direccion", "horarios_atencion", "rubro", "estado", "responsable", "fecha_proximo_contacto", "hora_proximo_contacto", "notas", "venta_digital", "venta_digital_cual"],
+    ["id", "nombre", "nombre_local", "cuit", "telefono", "direccion", "horarios_atencion", "rubro", "estado", "responsable", "estilo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas", "venta_digital", "venta_digital_cual", "interes"],
   ];
 
   (clientes || []).forEach((c) => {
     dataClientes.push([
       c.id,
       c.nombre || "",
+      c.nombre_local || "",
+      c.cuit || "",
       c.telefono || "",
       c.direccion || "",
+      c.horarios_atencion || "",
       c.rubro || "",
       c.estado || "",
       c.responsable || "",
+      c.estilo_contacto || "",
       c.fecha_proximo_contacto || "",
       c.hora_proximo_contacto || "",
       c.notas || "",
+      c.venta_digital || "",
+      c.venta_digital_cual || "",
+      c.interes || ""
     ]);
   });
 
@@ -1257,14 +1266,21 @@ async function importarDesdeExcel(file) {
 
         return {
           nombre,
+          nombre_local: row.nombre_local ? row.nombre_local.toString().trim() : null,
+          cuit: row.cuit ? row.cuit.toString().trim() : null,
           telefono: telefono || null,
           direccion,
           rubro,
+          horarios_atencion: row.horarios_atencion ? row.horarios_atencion.toString().trim() : null,
           estado,
           responsable: responsable || null,
+          estilo_contacto: row.estilo_contacto ? row.estilo_contacto.toString().trim() : "Sin definir",
+          interes: row.interes ? row.interes.toString().trim() : "Bajo",
           fecha_proximo_contacto: fechaProx || null,
           hora_proximo_contacto: horaProx || null,
           notas: notas || null,
+          venta_digital: row.venta_digital === "true" || row.venta_digital === true,
+          venta_digital_cual: row.venta_digital_cual ? row.venta_digital_cual.toString().trim() : null,
           activo: true,
         };
       });
