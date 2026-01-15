@@ -13,6 +13,35 @@
     const SUPABASE_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbGZ0aWtjdnNubml3d2FucmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjcyMjAsImV4cCI6MjA3OTE0MzIyMH0.Z_EsaegFay24E0rOoX2PpwvWasWm5tfLcJiRrgs1nBY";
 
+    // 0. APP VERSION & CACHE CLEARING
+    // =========================================================
+    const CURRENT_APP_VERSION = "2.0"; // Increment this when releasing new code
+    const storedVersion = localStorage.getItem("app_version");
+
+    if (storedVersion !== CURRENT_APP_VERSION) {
+        console.warn(`New App Version detected: ${CURRENT_APP_VERSION} (was ${storedVersion}). Clearing sensitive caches...`);
+
+        // List of keys to clear (safelist others like theme)
+        const keysToClear = ["crm_filters", "crm_filters_mapa", "crm_filters_clientes"]; // Add specific keys if known
+        // Or just clear everything except theme? 
+        // Safer to just clear specific known problem keys or everything if big update.
+        // For now, let's clear keys that might hold stale data structures.
+
+        // If you want to be aggressive:
+        // localStorage.clear(); 
+        // But we want to keep 'usuarioActual' and 'crm_theme' maybe?
+
+        // Let's clear filters which cause logic errors
+        localStorage.removeItem("crm_filters"); // Clientes logic
+        // If there are other filter keys...
+
+        // Update version
+        localStorage.setItem("app_version", CURRENT_APP_VERSION);
+
+        // Optional: Reload to ensure clean slate if we were midway? 
+        // Usually common.js runs first, so we are fine.
+    }
+
     // Expose global supabaseClient
     if (!window.supabaseClient) {
         if (window.CRM_AUTH && window.CRM_AUTH.supabaseClient) {
