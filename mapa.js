@@ -915,7 +915,7 @@ async function onSubmitForm(e) {
     await loadRecords();
   } catch (err) {
     console.error(err);
-    alert("No se pudo guardar. Revisá consola (F12) y tu conexión/URL de Supabase.");
+    alert("Error al guardar: " + (err.message || JSON.stringify(err)));
   } finally {
     elBtnGuardar.disabled = false;
   }

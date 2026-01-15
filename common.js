@@ -222,11 +222,52 @@
         }
     }
 
+    // 8. ROLE BASED ACCESS CONTROL (RBAC)
+    // =========================================================
+    async function applyRolePermissions() {
+        // Wait for Guard to complete
+        if (window.CRM_GUARD_READY) {
+            try { await window.CRM_GUARD_READY; } catch (_) { }
+        }
+
+        const user = window.CRM_USER;
+        if (!user || user.activo !== true) return;
+
+        // DEFINITION OF RESTRICTED PAGES
+        // Pages that ONLY 'Administrador' and 'Activador PickingUp' can see/access.
+        const restrictedPages = ["calendario.html", "tickets.html"];
+        const allowedRoles = ["Administrador", "Activador PickingUp"];
+
+        // If user has full access, do nothing
+        if (allowedRoles.includes(user.role)) return;
+
+        // 1. SIDEBAR: Hide links
+        const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
+        sidebarLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && restrictedPages.some(page => href.includes(page))) {
+                link.parentElement.style.display = 'none'; // Hide the <li>
+            }
+        });
+
+        // 2. ROUTE PROTECTION: Redirect if on restricted page
+        const path = window.location.pathname.toLowerCase();
+        const isRestrictedPath = restrictedPages.some(page => path.includes(page));
+
+        if (isRestrictedPath) {
+            console.warn(`Access denied for role '${user.role}' on page '${path}'`);
+            window.location.replace("index.html");
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
         // Run initial check
         updateTicketBadge();
         // Refresh periodically (e.g. every 30s)
         setInterval(updateTicketBadge, 30000);
+
+        // Apply Permissions
+        applyRolePermissions();
     });
 
 })();
