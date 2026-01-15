@@ -903,6 +903,16 @@ async function onSubmitForm(e) {
       return;
     }
 
+    // VERIFICACIÓN DE SESIÓN (Debug RLS)
+    const { data: { session }, error: sessErr } = await supabaseClient.auth.getSession();
+    if (sessErr || !session) {
+      console.error("Session Check Failed:", sessErr || "No session");
+      alert("Tu sesión parece haber expirado. Por favor recarga la página (F5) e intenta de nuevo.");
+      return;
+    }
+    // Debug info handling for error block
+    const debugUser = session.user.email;
+
     if (!id) {
       // NUEVO: guardar creador
       payload.creado_por = getAuthUserName();
@@ -915,7 +925,7 @@ async function onSubmitForm(e) {
     await loadRecords();
   } catch (err) {
     console.error(err);
-    alert("Error al guardar: " + (err.message || JSON.stringify(err)));
+    alert(`Error al guardar: ${err.message || JSON.stringify(err)}\n(Usuario: ${window.CRM_USER?.nombre || '?'})`);
   } finally {
     elBtnGuardar.disabled = false;
   }

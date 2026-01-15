@@ -265,7 +265,7 @@
         // DEFINITION OF RESTRICTED PAGES
         // Pages that ONLY 'Administrador' and 'Activador PickingUp' can see/access.
         const restrictedPages = ["calendario.html", "tickets.html"];
-        const allowedRoles = ["Administrador", "Activador PickingUp"];
+        const allowedRoles = ["Administrador", "Activador PickingUp", "Empleado"];
 
         // If user has full access, do nothing
         if (allowedRoles.includes(user.role)) return;

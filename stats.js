@@ -873,7 +873,18 @@ async function renderAllByRange() {
           },
           legend: {
             ...COMMON_OPTIONS.plugins.legend,
-            position: 'bottom'
+            position: 'bottom',
+            onClick: function (e, legendItem, legend) {
+              const index = legendItem.datasetIndex;
+              const ci = legend.chart;
+              if (ci.isDatasetVisible(index)) {
+                ci.hide(index);
+                legendItem.hidden = true;
+              } else {
+                ci.show(index);
+                legendItem.hidden = false;
+              }
+            }
           }
         },
         scales: {
