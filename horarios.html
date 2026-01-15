@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Horarios - PickingUp</title>
+
+    <link rel="stylesheet" href="styles.css" />
+
+    <!-- FullCalendar -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <div class="logo-pu">
+                        <div class="sidebar-logo">PU</div>
+                        <div class="sidebar-title">PickingUp</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-user"
+                style="margin-top: 0; background: transparent; border: none; padding: 0 16px 16px 16px;">
+                <div class="user-info">
+                    <span class="muted">Usuario:</span>
+                    <strong id="currentUserName">Cargando...</strong>
+                </div>
+            </div>
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
+
+            <nav class="sidebar-nav" aria-label="Navegación principal">
+                <ul class="sidebar-menu">
+                    <li><a href="index.html">📍 Inicio</a></li>
+                    <li><a href="clientes.html">🏢 Clientes</a></li>
+                    <li><a href="pipeline.html">📊 Pipeline</a></li>
+                    <li><a href="consumidores.html">👥 Consumidores</a></li>
+                    <li><a href="repartidores.html">🚚 Repartidores</a></li>
+                    <li><a href="calendario.html">📅 Calendario</a></li>
+                    <li><a href="horarios.html" class="active">🕒 Horarios</a></li>
+                    <li><a href="mapa.html">🗺️ Mapa Clientes</a></li>
+                    <li><a href="mapa_repartidores.html">🏍️ Mapa Repartidores</a></li>
+                    <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+                    <li><a href="tickets.html">🎫 Tickets</a></li>
+                    <li class="spacer"></li>
+                    <li><a href="usuarios.html">👥 Usuarios</a></li>
+                    <li><a href="configuracion.html">⚙️ Configuración</a></li>
+                    <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+                </ul>
+            </nav>
+
+        </aside>
+
+        <div class="app-content">
+
+            <main class="container calendar-page">
+                <header class="calendar-topbar">
+                    <div class="calendar-title">
+                        <h1>Horarios y Turnos</h1>
+                        <p>Gestión de jornadas, vacaciones y horas extra.</p>
+                    </div>
+
+                    <div class="calendar-actions">
+                        <!-- Stats Summary Widget -->
+                        <div id="statsWidget"
+                            style="display:none; gap:16px; font-size:13px; align-items:center; background:rgba(255,255,255,0.05); padding:4px 12px; border-radius:8px; margin-right:16px;">
+                            <span><strong id="statHoras">0</strong> hs Totales</span>
+                            <span style="color:#f59e0b"><strong id="statExtras">0</strong> hs Extra</span>
+                            <span style="color:#10b981"><strong id="statVaca">0</strong> dias Vac.</span>
+                        </div>
+                        <button id="btnNuevoTurno" class="btn-primario">+ Cargar Turno</button>
+                        <button id="btnCargaMasiva" class="btn-secundario" style="margin-left:8px;">⚡ Carga
+                            Masiva</button>
+                    </div>
+                </header>
+
+                <section class="calendar-toolbar">
+                    <div class="calendar-filters">
+                        <label class="field">
+                            <span class="field-label">Filtrar por Empleado</span>
+                            <select id="filtroEmpleado">
+                                <option value="">Todos</option>
+                            </select>
+                        </label>
+
+                        <label class="field">
+                            <span class="field-label">Mes/Vista</span>
+                            <!-- FullCalendar controls usually handled by library, but we can add external helpers -->
+                            <span id="currentMonthLabel" style="font-weight:bold; margin-left:8px;"></span>
+                        </label>
+
+                        <button id="btnRefrescar" class="btn-secundario">Actualizar</button>
+                    </div>
+                </section>
+
+                <section class="panel calendar-shell">
+                    <div id="calendar"></div>
+                </section>
+
+            </main>
+
+            <script src="auth.js?v=2"></script>
+            <script src="common.js?v=2"></script>
+            <script src="guard.js?v=2"></script>
+            <script src="horarios.js?v=2"></script>
+
+            <!-- Modal Turno -->
+            <div id="modalTurno" class="modal" aria-hidden="true" style="display:none;" data-close="true">
+                <div class="modal-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <h3 id="modalTitulo" style="margin:0;">Cargar Turno</h3>
+                        <button class="modal-close" type="button" data-close="true">×</button>
+                    </div>
+
+                    <form id="formTurno">
+                        <input type="hidden" id="turnoId" value="">
+
+                        <label class="field">
+                            <span class="field-label">Empleado / Usuario</span>
+                            <select id="inputUsuario" required>
+                                <option value="">Seleccionar...</option>
+                            </select>
+                        </label>
+
+                        <label class="field">
+                            <span class="field-label">Tipo de Registro</span>
+                            <select id="inputTipo" required>
+                                <option value="jornada">Jornada Laboral</option>
+                                <option value="extra">Horas Extra</option>
+                                <option value="vacaciones">Vacaciones / Ausencia</option>
+                            </select>
+                        </label>
+
+                        <div class="form-row-2">
+                            <label class="field">
+                                <span class="field-label">Inicio</span>
+                                <input id="inputInicio" type="datetime-local" required />
+                            </label>
+
+                            <label class="field">
+                                <span class="field-label">Fin</span>
+                                <input id="inputFin" type="datetime-local" required />
+                            </label>
+                        </div>
+
+                        <label class="field">
+                            <span class="field-label">Notas</span>
+                            <textarea id="inputNotas" rows="3" placeholder="Detalles opcionales..."></textarea>
+                        </label>
+
+                        <div class="modal-actions">
+                            <button type="submit" class="btn-primario">Guardar</button>
+                            <button type="button" id="btnEliminarTurno" class="btn-delete"
+                                style="display:none;">Eliminar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Carga Masiva -->
+            <div id="modalMasivo" class="modal" aria-hidden="true" style="display:none;" data-close="true">
+                <div class="modal-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <h3 style="margin:0;">⚡ Carga Masiva de Horarios</h3>
+                        <button class="modal-close" type="button" data-close="true">×</button>
+                    </div>
+
+                    <form id="formMasivo">
+                        <p class="muted" style="margin-bottom:16px;">Genera múltiples turnos repetitivos en un rango de
+                            fechas.</p>
+
+                        <label class="field">
+                            <span class="field-label">Empleado</span>
+                            <select id="masivoUsuario" required>
+                                <option value="">Seleccionar...</option>
+                            </select>
+                        </label>
+
+                        <div class="form-row-2">
+                            <label class="field">
+                                <span class="field-label">Desde Fecha</span>
+                                <input id="masivoDesde" type="date" required />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Hasta Fecha</span>
+                                <input id="masivoHasta" type="date" required />
+                            </label>
+                        </div>
+
+                        <div class="field">
+                            <span class="field-label">Días de la semana</span>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+                                <label><input type="checkbox" name="dias" value="1" checked> Lun</label>
+                                <label><input type="checkbox" name="dias" value="2" checked> Mar</label>
+                                <label><input type="checkbox" name="dias" value="3" checked> Mié</label>
+                                <label><input type="checkbox" name="dias" value="4" checked> Jue</label>
+                                <label><input type="checkbox" name="dias" value="5" checked> Vie</label>
+                                <label><input type="checkbox" name="dias" value="6"> Sáb</label>
+                                <label><input type="checkbox" name="dias" value="0"> Dom</label>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <label class="field">
+                                <span class="field-label">Hora Inicio</span>
+                                <input id="masivoHoraInicio" type="time" value="09:00" required />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Hora Fin</span>
+                                <input id="masivoHoraFin" type="time" value="17:00" required />
+                            </label>
+                        </div>
+
+                        <label class="field">
+                            <span class="field-label">Tipo</span>
+                            <select id="masivoTipo">
+                                <option value="jornada">Jornada Laboral</option>
+                                <option value="extra">Horas Extra</option>
+                                <option value="vacaciones">Vacaciones</option>
+                            </select>
+                        </label>
+
+                        <label class="field">
+                            <span class="field-label">Notas (para todos)</span>
+                            <input id="masivoNotas" type="text" />
+                        </label>
+
+                        <div class="modal-actions">
+                            <button type="submit" class="btn-primario">Generar Turnos</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+
+</html>
