@@ -612,7 +612,7 @@ function getColorForCreator(user) {
 async function loadRecords() {
   const { data, error } = await supabaseClient
     .from("clientes")
-    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto,interes")
+    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto,interes,estilo_contacto")
     .eq("activo", true)
     .not("lat", "is", null)
     .not("lng", "is", null)
@@ -878,7 +878,7 @@ async function onSubmitForm(e) {
     horarios_atencion: getFormValue("horarios_atencion").trim() || null,
     responsable: getFormValue("responsable").trim() || null,
     interes: getFormValue("interes").trim() || null,
-    // estilo_contacto: getFormValue("estilo_contacto").trim() || null,
+    estilo_contacto: getFormValue("estilo_contacto") || "Sin definir",
     estado,
     fecha_proximo_contacto: fechaProx || null,
     hora_proximo_contacto: horaProx || null,

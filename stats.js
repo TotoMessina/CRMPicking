@@ -128,6 +128,7 @@ const CHARTS = {
   estados: null,
   creados: null,
   activadoresDia: null,
+  activadoresConversion: null,
   promedio: null,
   altas: null,
 };
@@ -604,6 +605,8 @@ async function renderAllByRange() {
     "chartEstados",
     "chartCreados",
     "chartActivadoresDia",
+    "chartActivadoresConversion",
+    "chartRubrosPorActivador",
     "chartPromedioResponsable",
     "chartAltasDiarias",
   ].forEach(ensureCanvasHeight);
@@ -761,7 +764,7 @@ async function renderAllByRange() {
 
   const clientesCreadosRango = await fetchAll(
     CFG.tables.clientes,
-    "creado_por,created_at,estado",
+    "creado_por,created_at,estado,rubro",
     (q) => q.eq("activo", true).gte("created_at", fromISO)
   );
 
@@ -775,8 +778,10 @@ async function renderAllByRange() {
 
   const allFoundStatuses = new Set();
 
-  // Estructura: Key=Activador, Value={ total: 0, statuses: { 'Probando': 2, 'No Interesa': 1 } }
+  // Estructuras para breakdowns
   const breakdownPorActivador = new Map();
+  const rubrosPorActivador = new Map(); // Activator -> Map<Rubro, Count>
+  const allRubrosFound = new Set();
 
   for (const c of clientesCreadosRango) {
     const creador = cleanName(c.creado_por);
@@ -796,6 +801,17 @@ async function renderAllByRange() {
       entry.statuses[st] = (entry.statuses[st] || 0) + 1;
 
       allFoundStatuses.add(st);
+
+      // 2. Breakdown Rubros
+      const rubro = c.rubro || "Sin Rubro";
+      allRubrosFound.add(rubro);
+
+      if (!rubrosPorActivador.has(creador)) {
+        rubrosPorActivador.set(creador, new Map());
+      }
+      const rMap = rubrosPorActivador.get(creador);
+      rMap.set(rubro, (rMap.get(rubro) || 0) + 1);
+
 
       // 2. Chart (Por dia y estado)
       const d = parseDate(c.created_at);
@@ -868,6 +884,83 @@ async function renderAllByRange() {
     });
   }
 
+  // Render CONVERSION CHART (Horizontal Bar)
+  destroyChart("activadoresConversion");
+  const canvasConv = $("chartActivadoresConversion");
+  if (canvasConv) {
+    ensureCanvasHeight("chartActivadoresConversion");
+
+    // Calculate Conversion Rates
+    // "Conversion" = (Status 4 + Status 5) / Total
+    const conversionData = [];
+
+    for (const [name, data] of breakdownPorActivador.entries()) {
+      const total = data.total || 0;
+      if (total === 0) continue;
+
+      let effective = 0;
+      // Check exact strings or partials if needed. Using logic from keys.
+      // Status keys might be "4 - Local Creado", "5 - Local Visitado Activo"
+      for (const stKey in data.statuses) {
+        if (stKey.startsWith("4") || stKey.startsWith("5")) {
+          effective += data.statuses[stKey];
+        }
+      }
+
+      const rate = (effective / total) * 100;
+      conversionData.push({ name, rate, total, effective });
+    }
+
+    // Sort by Rate (High to Low)
+    conversionData.sort((a, b) => b.rate - a.rate);
+
+    const labels = conversionData.map(d => `${d.name} (${Math.round(d.rate)}%)`);
+    const values = conversionData.map(d => d.rate);
+
+    // Gradient Green to Blue
+    const ctxConv = canvasConv.getContext("2d");
+    const gradConv = createGradient(ctxConv, THEME.colors.secondary, THEME.colors.primary);
+
+    CHARTS.activadoresConversion = new Chart(ctxConv, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Efectividad %",
+          data: values,
+          backgroundColor: gradConv,
+          borderRadius: 4,
+          barPercentage: 0.6,
+        }]
+      },
+      options: {
+        ...COMMON_OPTIONS,
+        indexAxis: 'y', // Horizontal
+        plugins: {
+          ...COMMON_OPTIONS.plugins,
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const idx = ctx.dataIndex;
+                const item = conversionData[idx];
+                return `${Math.round(item.rate)}% (${item.effective}/${item.total})`;
+              }
+            }
+          },
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            ...COMMON_OPTIONS.scales.x,
+            max: 100,
+            ticks: { ...COMMON_OPTIONS.scales.x.ticks, callback: (v) => v + '%' }
+          },
+          y: { ...COMMON_OPTIONS.scales.y }
+        }
+      }
+    });
+  }
+
   // Render Table Breakdown (Modern Pills)
   const tbodyActiv = $("tablaActivadoresDetalle");
   if (tbodyActiv) {
@@ -895,6 +988,34 @@ async function renderAllByRange() {
         tbodyActiv.appendChild(tr);
       }
     }
+  }
+
+  // Render DOUGHNUT Chart (Rubros [Activadores] - Sorted)
+  destroyChart("rubrosPorActivador");
+  const canvasRub = $("chartRubrosPorActivador");
+  if (canvasRub) {
+    ensureCanvasHeight("chartRubrosPorActivador");
+
+    // Aggregate ALL rubros from filtered activators
+    // rubrosPorActivador variable structure was: Map<Activator, Map<Rubro, Count>>
+    // We need to flatten it.
+
+    const aggregatedRubros = new Map();
+
+    for (const [activator, rMap] of rubrosPorActivador.entries()) {
+      for (const [rubro, count] of rMap.entries()) {
+        aggregatedRubros.set(rubro, (aggregatedRubros.get(rubro) || 0) + count);
+      }
+    }
+
+    // Sort Big to Small
+    const rubrosSorted = [...aggregatedRubros.entries()].sort((a, b) => b[1] - a[1]);
+
+    // Labels & Data
+    const rLabels = rubrosSorted.map(x => x[0]);
+    const rValues = rubrosSorted.map(x => x[1]);
+
+    CHARTS.rubrosPorActivador = makeDoughnut("chartRubrosPorActivador", rLabels, rValues);
   }
 
   // Clean up old list if exists (legacy)

@@ -41,6 +41,7 @@
         <ul class="sidebar-menu">
           <li><a href="index.html">📍 Inicio</a></li>
           <li><a href="clientes.html">🏢 Clientes</a></li>
+          <li><a href="pipeline.html">📊 Pipeline</a></li>
           <li><a href="consumidores.html">👥 Consumidores</a></li>
           <li><a href="repartidores.html">🚚 Repartidores</a></li>
           <li><a href="calendario.html">📅 Calendario</a></li>
@@ -117,7 +118,18 @@
             <p>Clientes dados de alta por usuarios con rol 'Activador'.</p>
           </header>
 
-          <div class="chart-box"><canvas id="chartActivadoresDia"></canvas></div>
+          <div class="panel-grid-2">
+            <div class="chart-box">
+              <h3 style="margin-bottom:10px; font-size: 0.9rem; opacity:0.8; text-align:center;">Altas por Día (Barras
+                Apiladas)</h3>
+              <canvas id="chartActivadoresDia"></canvas>
+            </div>
+            <div class="chart-box">
+              <h3 style="margin-bottom:10px; font-size: 0.9rem; opacity:0.8; text-align:center;">Conversión (Efectividad
+                %)</h3>
+              <canvas id="chartActivadoresConversion"></canvas>
+            </div>
+          </div>
 
           <div class="panel-grid-2" style="margin-top: 1rem;">
             <div class="list-box" style="grid-column: span 2;">
@@ -302,6 +314,17 @@
           <div class="list-box">
             <h3>Detalle</h3>
             <ul id="listaActividadUsuarios" class="stats-list"></ul>
+          </div>
+        </section>
+
+        <!-- Rubros por activador -->
+        <section class="panel" style="margin-top: 20px;">
+          <header class="panel-header">
+            <h2>Distribución de Rubros (Activadores)</h2>
+            <p>Qué tipos de comercio están gestionando los activadores.</p>
+          </header>
+          <div class="chart-box" style="height: 350px;">
+            <canvas id="chartRubrosPorActivador"></canvas>
           </div>
         </section>
 
