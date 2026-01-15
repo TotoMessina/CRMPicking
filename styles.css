@@ -4200,3 +4200,122 @@ button:active {
   background: rgba(59, 130, 246, 0.1);
   border: 2px dashed rgba(59, 130, 246, 0.4);
 }
+
+/* ===========================
+   STATS TOOLBAR & CONTROLS
+   =========================== */
+
+/* Topbar Container */
+.stats-topbar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+  .stats-topbar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+}
+
+.stats-topbar-left {
+  flex: 1;
+}
+
+/* Actions Container */
+.stats-topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elevated);
+  padding: 6px 10px;
+  border-radius: var(--radius-lg);
+  /* 14px */
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Preset Select */
+.stats-preset-select {
+  border: 1px solid transparent;
+  background: transparent;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  outline: none;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.stats-preset-select:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.stats-preset-select option {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+/* Date Inputs */
+.stats-date-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stats-date-input {
+  border: 1px solid var(--border);
+  /* Subtle border */
+  background: var(--bg);
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 130px;
+  /* Ensure enough space for date */
+}
+
+.stats-date-input:hover {
+  border-color: var(--accent-soft);
+}
+
+.stats-date-input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.stats-date-separator {
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 0 2px;
+}
+
+/* Dark Mode Overrides for Inputs */
+[data-theme="dark"] .stats-date-input {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+[data-theme="dark"] .stats-date-input:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Refresh Button Override (if needed specific spacing) */
+#btnRefrescarStats {
+  height: 34px !important;
+  /* Visual align with inputs */
+  padding: 0 16px;
+  font-size: 13px;
+}

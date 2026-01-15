@@ -164,6 +164,15 @@ function toLocalDayKey(dateObj) {
 }
 function parseDate(value) {
   if (!value) return null;
+  // Fix: "YYYY-MM-DD" is parsed as UTC midnight by default in JS. 
+  // We want Local Midnight. Appending "T00:00:00" usually forces local parsing in modern browsers,
+  // or we can use the constructor with arguments.
+
+  if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -250,7 +259,7 @@ async function countExact(table, applyFiltersFn) {
 // =========================================================
 // CATÁLOGO DE USUARIOS
 // =========================================================
-async function getUserUniverse({ fromISO } = {}) {
+async function getUserUniverse({ fromISO, toISO } = {}) {
   const activeUsers = [];
   const activeSet = new Set();
 
@@ -287,6 +296,7 @@ async function getUserUniverse({ fromISO } = {}) {
     (q) => {
       let qq = q.not("usuario", "is", null);
       if (fromISO) qq = qq.gte("fecha", fromISO);
+      if (toISO) qq = qq.lt("fecha", toISO); // Strict less than end of day (or lte if inclusive)
       return qq;
     }
   );
@@ -323,13 +333,26 @@ function groupCount(rows, field, emptyLabel = "Sin dato") {
   return [...m.entries()].sort((a, b) => b[1] - a[1]);
 }
 
-function buildDayBuckets(daysBack) {
-  const today = startOfLocalDay(new Date());
-  const start = addDays(today, -(daysBack - 1));
+function buildDayBuckets(startDate, endDate) {
   const buckets = [];
-  for (let i = 0; i < daysBack; i++) {
-    const day = addDays(start, i);
-    buckets.push({ key: toLocalDayKey(day), label: `${pad2(day.getDate())}/${pad2(day.getMonth() + 1)}` });
+  // Copia segura de start
+  let current = new Date(startDate);
+  // Asegurar horas 0
+  current.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  // Safety break: max 366 days to avoid infinite loops
+  let count = 0;
+  while (current <= end && count < 370) {
+    buckets.push({
+      key: toLocalDayKey(current),
+      label: `${pad2(current.getDate())}/${pad2(current.getMonth() + 1)}`
+    });
+    // Avanzar 1 dia
+    current.setDate(current.getDate() + 1);
+    count++;
   }
   return buckets;
 }
@@ -350,44 +373,50 @@ function seriesByDay(rows, dateField, buckets) {
 // =========================================================
 // UI: select único
 // =========================================================
-function ensureGlobalRangeSelect() {
-  const actions = document.querySelector(".stats-topbar-actions");
-  if (!actions) return null;
+// =========================================================
+// UI: select único
+// =========================================================
 
-  let sel = $("statsRange");
-  if (sel) return sel;
+function syncDatesFromPreset(preset) {
+  const fromEl = $("dateFrom");
+  const toEl = $("dateTo");
+  if (!fromEl || !toEl) return;
 
-  sel = document.createElement("select");
-  sel.id = "statsRange";
-  sel.className = "btn-secundario";
-  // Updated style for more modern look handled in CSS mostly, but basic here
-  sel.style.borderRadius = "8px";
-  sel.style.border = "1px solid rgba(255,255,255,0.1)";
-  sel.style.background = "rgba(255,255,255,0.05)";
-  sel.style.cursor = "pointer";
-  sel.style.color = "#fff";
+  if (preset === "custom") return;
 
-  for (const r of CFG.ranges) {
-    const opt = document.createElement("option");
-    opt.value = r.value;
-    opt.textContent = r.label;
-    opt.style.background = "#1e293b"; // Dark bg for options
-    sel.appendChild(opt);
-  }
-  sel.value = "30d";
+  const found = CFG.ranges.find((r) => r.value === preset);
+  if (!found) return;
 
-  const btn = $("btnRefrescarStats");
-  if (btn) actions.insertBefore(sel, btn);
-  else actions.prepend(sel);
+  const today = new Date();
+  const toDate = new Date(today);
+  const fromDate = addDays(today, -(found.days - 1));
 
-  return sel;
+  fromEl.value = toLocalDayKey(fromDate);
+  toEl.value = toLocalDayKey(toDate);
 }
 
-function getRangeDays() {
-  const sel = $("statsRange");
-  const v = sel?.value || "30d";
-  const found = CFG.ranges.find((r) => r.value === v);
-  return found?.days || 30;
+function getRangeDates() {
+  const fromEl = $("dateFrom");
+  const toEl = $("dateTo");
+
+  // Default to 30d if invalid
+  if (!fromEl?.value || !toEl?.value) {
+    const today = new Date();
+    const from = addDays(today, -29);
+    return { from: startOfLocalDay(from), to: startOfLocalDay(today) };
+  }
+
+  const from = parseDate(fromEl.value);
+  const to = parseDate(toEl.value);
+
+  // Fallback if parse fails
+  if (!from || !to) {
+    const today = new Date();
+    const f = addDays(today, -29);
+    return { from: startOfLocalDay(f), to: startOfLocalDay(today) };
+  }
+
+  return { from: startOfLocalDay(from), to: startOfLocalDay(to) };
 }
 
 // =========================================================
@@ -595,10 +624,17 @@ function makeLineTwoDatasets(canvasId, labels, aLabel, aData, bLabel, bData) {
 // RENDER: TODO según lapso
 // =========================================================
 async function renderAllByRange() {
-  const days = getRangeDays();
-  const today0 = startOfLocalDay(new Date());
-  const fromISO = isoFromLocalStart(addDays(today0, -(days - 1)));
-  const buckets = buildDayBuckets(days);
+  const { from: fromDate, to: toDate } = getRangeDates();
+
+  // fromISO: start of fromDate
+  // toISO: start of (toDate + 1 day) -> para usar con less-than si queremos incluir el toDate completo
+
+  const fromISO = isoFromLocalStart(fromDate);
+
+  const nextDay = addDays(toDate, 1);
+  const toISO = isoFromLocalStart(nextDay);
+
+  const buckets = buildDayBuckets(fromDate, toDate);
 
   [
     "chartRubros",
@@ -660,12 +696,12 @@ async function renderAllByRange() {
   setText("statSinFechaText", fmtInt(sinFecha));
 
   // Actividades clientes EN RANGO
-  const actInRange = await countExact(CFG.tables.actividades, (q) => q.gte("fecha", fromISO));
+  const actInRange = await countExact(CFG.tables.actividades, (q) => q.gte("fecha", fromISO).lt("fecha", toISO));
   setText("statAct7", fmtInt(actInRange));
   setText("statAct30", fmtInt(actInRange));
 
   // Salud cartera EN RANGO
-  const activosEnRango = await countExact(CFG.tables.clientes, (q) => q.eq("activo", true).gte("ultima_actividad", fromISO));
+  const activosEnRango = await countExact(CFG.tables.clientes, (q) => q.eq("activo", true).gte("ultima_actividad", fromISO).lt("ultima_actividad", toISO));
   const dormidosEnRango = await countExact(CFG.tables.clientes, (q) =>
     q.eq("activo", true).lt("ultima_actividad", fromISO).not("ultima_actividad", "is", null)
   );
@@ -765,7 +801,7 @@ async function renderAllByRange() {
   const clientesCreadosRango = await fetchAll(
     CFG.tables.clientes,
     "creado_por,created_at,estado,rubro",
-    (q) => q.eq("activo", true).gte("created_at", fromISO)
+    (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO)
   );
 
   // Estructura para el gráfico apilado:
@@ -925,6 +961,14 @@ async function renderAllByRange() {
     // Sort by Rate (High to Low)
     conversionData.sort((a, b) => b.rate - a.rate);
 
+    console.log("Conversion Data:", conversionData); // Debug
+
+    if (conversionData.length === 0) {
+      // Show empty state if needed, or just clear
+      destroyChart("activadoresConversion");
+      return;
+    }
+
     const labels = conversionData.map(d => `${d.name} (${Math.round(d.rate)}%)`);
     const values = conversionData.map(d => d.rate);
 
@@ -945,28 +989,46 @@ async function renderAllByRange() {
         }]
       },
       options: {
-        ...COMMON_OPTIONS,
-        indexAxis: 'y', // Horizontal
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y', // Horizontal Layout
         plugins: {
-          ...COMMON_OPTIONS.plugins,
+          legend: { display: false },
           tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            titleColor: '#fff',
+            bodyColor: '#cbd5e1',
+            padding: 10,
+            cornerRadius: 8,
             callbacks: {
               label: (ctx) => {
-                const idx = ctx.dataIndex;
-                const item = conversionData[idx];
+                const item = conversionData[ctx.dataIndex];
+                if (!item) return "";
                 return `${Math.round(item.rate)}% (${item.effective}/${item.total})`;
               }
             }
-          },
-          legend: { display: false }
+          }
         },
         scales: {
           x: {
-            ...COMMON_OPTIONS.scales.x,
+            // Value Axis (Horizontal)
+            min: 0,
             max: 100,
-            ticks: { ...COMMON_OPTIONS.scales.x.ticks, callback: (v) => v + '%' }
+            grid: { color: THEME.colors.grid, borderDash: [4, 4] },
+            ticks: {
+              color: THEME.colors.text,
+              font: { family: THEME.fontFamily, size: 10 },
+              callback: (v) => v + '%'
+            }
           },
-          y: { ...COMMON_OPTIONS.scales.y }
+          y: {
+            // Category Axis (Vertical)
+            grid: { display: false },
+            ticks: {
+              color: THEME.colors.text,
+              font: { family: THEME.fontFamily, size: 11 }
+            }
+          }
         }
       }
     });
@@ -1050,7 +1112,7 @@ async function renderAllByRange() {
     if (!clientesPorResp.has(u)) clientesPorResp.set(u, 0);
   }
 
-  const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", (q) => q.gte("fecha", fromISO));
+  const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", (q) => q.gte("fecha", fromISO).lt("fecha", toISO));
 
   const contactosPorUser = new Map();
   for (const a of actsRango) {
@@ -1124,7 +1186,7 @@ async function renderAllByRange() {
   // =======================================================
   // Crecimiento diario EN RANGO
   // =======================================================
-  const cliAltas = await fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO));
+  const cliAltas = await fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO));
   const sCli = seriesByDay(cliAltas, "created_at", buckets);
 
   destroyChart("altas");
@@ -1272,16 +1334,36 @@ function calculateInsights({ cliAltas, actInRange, totalClientesActivos, activos
 // UI Wiring
 // =========================================================
 function wireUi() {
-  ensureGlobalRangeSelect();
+  // ensureGlobalRangeSelect(); // Removed, elements are in HTML
 
-  const sel = $("statsRange");
-  if (sel) {
-    sel.addEventListener("change", async () => {
-      try {
-        await renderAllByRange();
-      } catch (e) {
-        console.error(e);
-        alert(`Error al aplicar lapso: ${e?.message || e}`);
+  const presetSel = $("statsRangePreset");
+  const dateFrom = $("dateFrom");
+  const dateTo = $("dateTo");
+
+  if (presetSel) {
+    // Init dates
+    syncDatesFromPreset(presetSel.value);
+
+    presetSel.addEventListener("change", () => {
+      syncDatesFromPreset(presetSel.value);
+    });
+  }
+
+  // If user touches dates, switch preset to custom
+  const onDateChange = () => {
+    if (presetSel) presetSel.value = "custom";
+  };
+  if (dateFrom) dateFrom.addEventListener("change", onDateChange);
+  if (dateTo) dateTo.addEventListener("change", onDateChange);
+
+  // Note: we do NOT auto-refresh on change anymore, user must click Update (per request "posibilidad de ver lapsos de tiempo a gusto" usually implies setting range then searching, avoids heavy queries on every date tick)
+  // But original code refreshed on preset change. We can keep that for preset.
+
+  if (presetSel) {
+    presetSel.addEventListener("change", async () => {
+      // If standard preset, auto-refresh. If custom (via dropdown select?), maybe wait.
+      if (presetSel.value !== "custom") {
+        try { await renderAllByRange(); } catch (e) { console.error(e); }
       }
     });
   }

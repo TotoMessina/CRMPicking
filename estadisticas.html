@@ -71,6 +71,25 @@
           </div>
 
           <div class="stats-topbar-actions">
+            <!-- Preset Selector -->
+            <select id="statsRangePreset" class="stats-preset-select">
+              <option value="7d">Últimos 7 días</option>
+              <option value="30d" selected>Últimos 30 días</option>
+              <option value="60d">Últimos 60 días</option>
+              <option value="90d">Últimos 90 días</option>
+              <option value="6m">Últimos 6 meses</option>
+              <option value="1y">Último año</option>
+              <option value="custom">Personalizado</option>
+            </select>
+
+            <!-- Date Range Inputs -->
+            <div class="stats-date-wrapper">
+              <input type="date" id="dateFrom" class="stats-date-input" aria-label="Fecha desde">
+              <span class="stats-date-separator">→</span>
+              <input type="date" id="dateTo" class="stats-date-input" aria-label="Fecha hasta">
+            </div>
+
+            <!-- Refresh Button -->
             <button type="button" id="btnRefrescarStats" class="btn-secundario">Actualizar</button>
           </div>
         </header>
