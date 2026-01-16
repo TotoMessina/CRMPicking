@@ -800,7 +800,7 @@ async function renderAllByRange() {
 
   const clientesCreadosRango = await fetchAll(
     CFG.tables.clientes,
-    "creado_por,created_at,estado,rubro",
+    "creado_por,created_at,estado,rubro,interes",
     (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO)
   );
 
@@ -888,6 +888,38 @@ async function renderAllByRange() {
   });
 
   // Render Stacked Chart
+  // Plugin for Data Labels (Activadores)
+  const dataLabelsPluginActivadores = {
+    id: 'customDataLabelsActivadores',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, i) => {
+        const meta = chart.getDatasetMeta(i);
+        if (meta.hidden) return;
+        meta.data.forEach((element, index) => {
+          const val = dataset.data[index];
+          if (val > 0) {
+            const { x, y, base } = element.getProps(['x', 'y', 'base'], true);
+            const cachedY = (y + base) / 2;
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `bold 11px ${THEME.fontFamily}`;
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 3;
+            // Slightly smaller threshold/size than the main daily chart if bars are thin
+            if (Math.abs(base - y) > 12) {
+              ctx.fillText(val, x, cachedY);
+            }
+            ctx.restore();
+          }
+        });
+      });
+    }
+  };
+
   destroyChart("activadoresDia");
   const canvasAct = $("chartActivadoresDia");
   if (canvasAct) {
@@ -898,6 +930,7 @@ async function renderAllByRange() {
         labels: buckets.map(b => b.label),
         datasets: datasets
       },
+      plugins: [dataLabelsPluginActivadores],
       options: {
         ...COMMON_OPTIONS,
         plugins: {
@@ -1089,6 +1122,283 @@ async function renderAllByRange() {
     const rValues = rubrosSorted.map(x => x[1]);
 
     CHARTS.rubrosPorActivador = makeDoughnut("chartRubrosPorActivador", rLabels, rValues);
+  }
+
+  // =========================================================
+  // Render STACKED BAR Chart (Rubros [Activadores] - SOLO ACTIVOS - DIARIO)
+  // =========================================================
+  destroyChart("rubrosActivadorActivos");
+  const canvasRubActivos = $("chartRubrosActivadorActivos");
+  if (canvasRubActivos) {
+    ensureCanvasHeight("chartRubrosActivadorActivos");
+
+    // 1. Filter Data & Group by Day + Rubro
+    // Structure: Map<Rubro, Map<DayKey, Count>>
+    const rubroDayMap = new Map();
+    const allRubrosActivosFound = new Set();
+    const TARGET_STATUS_PREFIX = "5";
+
+    for (const c of clientesCreadosRango) {
+      const creador = cleanName(c.creado_por);
+      if (!creador) continue;
+      const k = normName(creador);
+
+      if (setActivadores.has(k)) {
+        const st = c.estado || "";
+        if (st.startsWith(TARGET_STATUS_PREFIX)) {
+          const rubro = c.rubro || "Sin Rubro";
+          allRubrosActivosFound.add(rubro);
+
+          const d = parseDate(c.created_at);
+          if (d) {
+            const dk = toLocalDayKey(d);
+
+            if (!rubroDayMap.has(rubro)) {
+              rubroDayMap.set(rubro, new Map());
+            }
+            const dMap = rubroDayMap.get(rubro);
+            dMap.set(dk, (dMap.get(dk) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    const allRubrosActivos = Array.from(allRubrosActivosFound).sort();
+
+    if (allRubrosActivos.length > 0) {
+      // Palette (Same as above)
+      const rubroColors = [
+        THEME.colors.primary,
+        THEME.colors.secondary,
+        THEME.colors.accent,
+        THEME.colors.danger,
+        THEME.colors.info,
+        '#8b5cf6', // Violet
+        '#ec4899', // Pink
+        '#14b8a6', // Teal
+        '#f97316', // Orange
+        '#6366f1', // Indigo
+        '#84cc16', // Lime
+      ];
+
+      const datasetsActivos = allRubrosActivos.map((rubro, idx) => {
+        // Map over buckets (Days) to ensure chronological order and zeros
+        const data = buckets.map(b => {
+          const dMap = rubroDayMap.get(rubro);
+          return dMap ? (dMap.get(b.key) || 0) : 0;
+        });
+
+        return {
+          label: rubro,
+          data: data,
+          backgroundColor: rubroColors[idx % rubroColors.length],
+          stack: 'Stack 0',
+        };
+      });
+
+      // Plugin for Data Labels (IMPROVED VISIBILITY & CENTERING)
+      const dataLabelsPluginActivos = {
+        id: 'customDataLabelsActivos',
+        afterDatasetsDraw(chart) {
+          const { ctx } = chart;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            if (meta.hidden) return;
+            meta.data.forEach((element, index) => {
+              const val = dataset.data[index];
+              if (val > 0) {
+                // Get Props. For a vertical bar, x is center width-wise.
+                // y is the 'end' of the bar (top for positive).
+                // base is the 'start' of the bar (bottom for positive).
+                // width is bar width.
+                // height is bar length (can be negative if goes down, usually positive for standard bars here).
+
+                // However, Chart.js elements have .getCenterPoint() which is safest.
+                // But .getProps returns raw properties.
+
+                const { x, y, base } = element.getProps(['x', 'y', 'base'], true);
+
+                // Calculate vertical center
+                // For a standard vertical bar: y is top, base is bottom.
+                const cachedY = (y + base) / 2;
+
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // Increase font size and weight
+                ctx.font = `bold 12px ${THEME.fontFamily}`;
+
+                // Color & Shadow for contrast
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 3;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+
+                // Draw if height is sufficient
+                if (Math.abs(base - y) > 14) {
+                  ctx.fillText(val, x, cachedY);
+                }
+                ctx.restore();
+              }
+            });
+          });
+        }
+      };
+
+      CHARTS.rubrosActivadorActivos = new Chart(canvasRubActivos.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: buckets.map(b => b.label), // X-Axis = Days
+          datasets: datasetsActivos
+        },
+        plugins: [dataLabelsPluginActivos],
+        options: {
+          ...COMMON_OPTIONS,
+          plugins: {
+            ...COMMON_OPTIONS.plugins,
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                // Show total for the day in footer or title?
+                // Default stack tooltip is fine.
+              }
+            },
+            legend: { ...COMMON_OPTIONS.plugins.legend, position: 'top' }
+          },
+          scales: {
+            x: {
+              ...COMMON_OPTIONS.scales.x,
+              stacked: true
+            },
+            y: {
+              ...COMMON_OPTIONS.scales.y,
+              stacked: true,
+              ticks: { ...COMMON_OPTIONS.scales.y.ticks, precision: 0 }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // =========================================================
+  // Render STACKED BAR Chart (Interés Diario)
+  // =========================================================
+  destroyChart("interesDiario");
+  const canvasInteres = $("chartInteresDiario");
+  if (canvasInteres) {
+    ensureCanvasHeight("chartInteresDiario");
+
+    // 1. Group Data by Day + Interes
+    const interesDayMap = new Map(); // Interes -> Map<DayKey, Count>
+    const allInteresFound = new Set();
+
+    for (const c of clientesCreadosRango) {
+      const interesRaw = c.interes || "Sin interés";
+      const interes = cleanName(interesRaw) || "Sin interés";
+      allInteresFound.add(interes);
+
+      const d = parseDate(c.created_at);
+      if (d) {
+        const dk = toLocalDayKey(d);
+
+        if (!interesDayMap.has(interes)) {
+          interesDayMap.set(interes, new Map());
+        }
+        const dMap = interesDayMap.get(interes);
+        dMap.set(dk, (dMap.get(dk) || 0) + 1);
+      }
+    }
+
+    // Sort Interests: Alto > Medio > Bajo > Others > Sin interés
+    const priority = { "Alto": 10, "Medio": 5, "Bajo": 1, "Sin interés": -1 };
+    const allInteres = Array.from(allInteresFound).sort((a, b) => {
+      const pA = priority[a] !== undefined ? priority[a] : 0;
+      const pB = priority[b] !== undefined ? priority[b] : 0;
+      return pB - pA;
+    });
+
+    if (allInteres.length > 0) {
+      // Assign Colors based on Level
+      const getInteresColor = (label) => {
+        if (label === 'Alto') return THEME.colors.danger;     // Red
+        if (label === 'Medio') return THEME.colors.accent;    // Yellow/Amber
+        if (label === 'Bajo') return THEME.colors.info;       // Blue
+        if (label === 'Sin interés') return THEME.colors.slate;
+        return THEME.colors.primary;
+      };
+
+      const datasetsInteres = allInteres.map((intLabel) => {
+        const data = buckets.map(b => {
+          const dMap = interesDayMap.get(intLabel);
+          return dMap ? (dMap.get(b.key) || 0) : 0;
+        });
+
+        return {
+          label: intLabel,
+          data: data,
+          backgroundColor: getInteresColor(intLabel),
+          stack: 'Stack 0',
+        };
+      });
+
+      // Data Labels Plugin (Centered on Bar)
+      const dataLabelsPluginInteres = {
+        id: 'customDataLabelsInteres',
+        afterDatasetsDraw(chart) {
+          const { ctx } = chart;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            if (meta.hidden) return;
+            meta.data.forEach((element, index) => {
+              const val = dataset.data[index];
+              if (val > 0) {
+                const { x, y, base } = element.getProps(['x', 'y', 'base'], true);
+                const cachedY = (y + base) / 2;
+
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = `bold 12px ${THEME.fontFamily}`;
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 3;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+
+                if (Math.abs(base - y) > 14) {
+                  ctx.fillText(val, x, cachedY);
+                }
+                ctx.restore();
+              }
+            });
+          });
+        }
+      };
+
+      CHARTS.interesDiario = new Chart(canvasInteres.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: buckets.map(b => b.label),
+          datasets: datasetsInteres
+        },
+        plugins: [dataLabelsPluginInteres],
+        options: {
+          ...COMMON_OPTIONS,
+          plugins: {
+            ...COMMON_OPTIONS.plugins,
+            tooltip: { mode: 'index', intersect: false },
+            legend: { ...COMMON_OPTIONS.plugins.legend, position: 'top' }
+          },
+          scales: {
+            x: { ...COMMON_OPTIONS.scales.x, stacked: true },
+            y: { ...COMMON_OPTIONS.scales.y, stacked: true, ticks: { ...COMMON_OPTIONS.scales.y.ticks, precision: 0 } }
+          }
+        }
+      });
+    }
   }
 
   // Clean up old list if exists (legacy)
