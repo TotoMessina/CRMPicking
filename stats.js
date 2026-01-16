@@ -469,6 +469,45 @@ function ensureCanvasHeight(canvasId) {
   if (c.parentElement) c.parentElement.style.height = `${CFG.chartMinHeight}px`;
 }
 
+/**
+ * Renders a simple summary table: Category | Total
+ */
+function renderSummaryTable(containerId, title, dataMap) {
+  const container = $(containerId);
+  if (!container) return;
+
+  // Convert map to sorted array (Desc)
+  const sortedData = [...dataMap.entries()].sort((a, b) => b[1] - a[1]);
+
+  let html = `
+    <table class="table-modern table-sm mb-0">
+      <thead>
+        <tr>
+          <th>${title}</th>
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  if (sortedData.length === 0) {
+    html += `<tr><td colspan="2" class="text-center muted">Sin datos</td></tr>`;
+  } else {
+    for (const [key, val] of sortedData) {
+      if (val > 0) {
+        html += `
+        <tr>
+          <td>${key}</td>
+          <td class="text-end"><strong>${val}</strong></td>
+        </tr>`;
+      }
+    }
+  }
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
 // Common Chart Options
 const COMMON_OPTIONS = {
   responsive: true,
@@ -1096,32 +1135,147 @@ async function renderAllByRange() {
     }
   }
 
-  // Render DOUGHNUT Chart (Rubros [Activadores] - Sorted)
+  // Render DAILY STACKED BAR Chart (Rubros [Activadores] - TOTAL)
   destroyChart("rubrosPorActivador");
   const canvasRub = $("chartRubrosPorActivador");
   if (canvasRub) {
     ensureCanvasHeight("chartRubrosPorActivador");
 
-    // Aggregate ALL rubros from filtered activators
-    // rubrosPorActivador variable structure was: Map<Activator, Map<Rubro, Count>>
-    // We need to flatten it.
+    // 1. Group Data by Day + Rubro (All statuses)
+    const rubrosTotalDayMap = new Map(); // Rubro -> Map<DayKey, Count>
+    const allRubrosTotalFound = new Set();
 
-    const aggregatedRubros = new Map();
+    for (const c of clientesCreadosRango) {
+      const creador = cleanName(c.creado_por);
+      if (!creador) continue;
+      const k = normName(creador);
 
-    for (const [activator, rMap] of rubrosPorActivador.entries()) {
-      for (const [rubro, count] of rMap.entries()) {
-        aggregatedRubros.set(rubro, (aggregatedRubros.get(rubro) || 0) + count);
+      // Only Activators
+      if (setActivadores.has(k)) {
+        const rubro = c.rubro || "Sin Rubro";
+        allRubrosTotalFound.add(rubro);
+
+        const d = parseDate(c.created_at);
+        if (d) {
+          const dk = toLocalDayKey(d);
+
+          if (!rubrosTotalDayMap.has(rubro)) {
+            rubrosTotalDayMap.set(rubro, new Map());
+          }
+          const dMap = rubrosTotalDayMap.get(rubro);
+          dMap.set(dk, (dMap.get(dk) || 0) + 1);
+        }
       }
     }
 
-    // Sort Big to Small
-    const rubrosSorted = [...aggregatedRubros.entries()].sort((a, b) => b[1] - a[1]);
+    const allRubrosTotal = Array.from(allRubrosTotalFound);
 
-    // Labels & Data
-    const rLabels = rubrosSorted.map(x => x[0]);
-    const rValues = rubrosSorted.map(x => x[1]);
+    // ----------------------------------------------------
+    // SORTING & TABLE GENERATION
+    // ----------------------------------------------------
+    // 1. Calculate totals
+    const rubrosTotalsMap = new Map();
+    for (const rubro of allRubrosTotal) {
+      let total = 0;
+      const dMap = rubrosTotalDayMap.get(rubro);
+      if (dMap) {
+        for (const count of dMap.values()) total += count;
+      }
+      rubrosTotalsMap.set(rubro, total);
+    }
 
-    CHARTS.rubrosPorActivador = makeDoughnut("chartRubrosPorActivador", rLabels, rValues);
+    // 2. Sort Descending
+    allRubrosTotal.sort((a, b) => (rubrosTotalsMap.get(b) || 0) - (rubrosTotalsMap.get(a) || 0));
+
+    // 3. Render Table
+    renderSummaryTable("tableRubrosTotalContainer", "Rubro", rubrosTotalsMap);
+
+
+    if (allRubrosTotal.length > 0) {
+      // Reuse Color Palette
+      const rubroColors = [
+        THEME.colors.primary,
+        THEME.colors.secondary,
+        THEME.colors.accent,
+        THEME.colors.danger,
+        THEME.colors.info,
+        '#8b5cf6', // Violet
+        '#ec4899', // Pink
+        '#14b8a6', // Teal
+        '#f97316', // Orange
+        '#6366f1', // Indigo
+        '#84cc16', // Lime
+      ];
+
+      const datasetsRubrosTotal = allRubrosTotal.map((rubro, idx) => {
+        const data = buckets.map(b => {
+          const dMap = rubrosTotalDayMap.get(rubro);
+          return dMap ? (dMap.get(b.key) || 0) : 0;
+        });
+
+        return {
+          label: rubro,
+          data: data,
+          backgroundColor: rubroColors[idx % rubroColors.length],
+          stack: 'Stack 0',
+        };
+      });
+
+      // Customized Data Labels Plugin
+      const dataLabelsPluginRubrosTotal = {
+        id: 'customDataLabelsRubrosTotal',
+        afterDatasetsDraw(chart) {
+          const { ctx } = chart;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            if (meta.hidden) return;
+            meta.data.forEach((element, index) => {
+              const val = dataset.data[index];
+              if (val > 0) {
+                const { x, y, base } = element.getProps(['x', 'y', 'base'], true);
+                const cachedY = (y + base) / 2;
+
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = `bold 12px ${THEME.fontFamily}`;
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 3;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+
+                if (Math.abs(base - y) > 14) {
+                  ctx.fillText(val, x, cachedY);
+                }
+                ctx.restore();
+              }
+            });
+          });
+        }
+      };
+
+      CHARTS.rubrosPorActivador = new Chart(canvasRub.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: buckets.map(b => b.label),
+          datasets: datasetsRubrosTotal
+        },
+        plugins: [dataLabelsPluginRubrosTotal],
+        options: {
+          ...COMMON_OPTIONS,
+          plugins: {
+            ...COMMON_OPTIONS.plugins,
+            tooltip: { mode: 'index', intersect: false },
+            legend: { ...COMMON_OPTIONS.plugins.legend, position: 'top' }
+          },
+          scales: {
+            x: { ...COMMON_OPTIONS.scales.x, stacked: true },
+            y: { ...COMMON_OPTIONS.scales.y, stacked: true, ticks: { ...COMMON_OPTIONS.scales.y.ticks, precision: 0 } }
+          }
+        }
+      });
+    }
   }
 
   // =========================================================

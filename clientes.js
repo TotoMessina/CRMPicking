@@ -1144,11 +1144,11 @@ function descargarModeloExcel() {
 }
 
 // Exportar todos los clientes + historial
+// Exportar todos los clientes + historial
 async function exportarExcel() {
   const { data: clientes, error: errCli } = await supabaseClient
     .from("clientes")
-
-    .select("id, nombre, nombre_local, cuit, telefono, direccion, horarios_atencion, rubro, estado, responsable, estilo_contacto, fecha_proximo_contacto, hora_proximo_contacto, notas, venta_digital, venta_digital_cual, interes")
+    .select("id, nombre, nombre_local, cuit, telefono, direccion, horarios_atencion, rubro, estado, responsable, estilo_contacto, fecha_proximo_contacto, hora_proximo_contacto, notas, venta_digital, venta_digital_cual, interes, creado_por, created_at")
     .eq("activo", true);
 
   if (errCli) {
@@ -1172,7 +1172,7 @@ async function exportarExcel() {
   const wb = XLSX.utils.book_new();
 
   const dataClientes = [
-    ["id", "nombre", "nombre_local", "cuit", "telefono", "direccion", "horarios_atencion", "rubro", "estado", "responsable", "estilo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas", "venta_digital", "venta_digital_cual", "interes"],
+    ["id", "nombre", "nombre_local", "cuit", "telefono", "direccion", "horarios_atencion", "rubro", "estado", "responsable", "estilo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas", "venta_digital", "venta_digital_cual", "interes", "creado_por", "created_at"],
   ];
 
   (clientes || []).forEach((c) => {
@@ -1193,7 +1193,9 @@ async function exportarExcel() {
       c.notas || "",
       c.venta_digital || "",
       c.venta_digital_cual || "",
-      c.interes || ""
+      c.interes || "",
+      c.creado_por || "",
+      c.created_at || ""
     ]);
   });
 
