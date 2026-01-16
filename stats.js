@@ -1135,95 +1135,54 @@ async function renderAllByRange() {
     }
   }
 
-  // Render DAILY STACKED BAR Chart (Rubros [Activadores] - TOTAL)
+  // Render HORIZONTAL BAR Chart (Total Rubros)
   destroyChart("rubrosPorActivador");
   const canvasRub = $("chartRubrosPorActivador");
   if (canvasRub) {
     ensureCanvasHeight("chartRubrosPorActivador");
 
-    // 1. Group Data by Day + Rubro (All statuses)
-    const rubrosTotalDayMap = new Map(); // Rubro -> Map<DayKey, Count>
-    const allRubrosTotalFound = new Set();
+    // 1. Group Data: Rubro -> Count
+    const rubroTotalMap = new Map();
+    console.log("DEBUG: Processing Rubros Chart. Total Clients in Range:", clientesCreadosRango.length);
 
+    let countFlor = 0;
     for (const c of clientesCreadosRango) {
-      const creador = cleanName(c.creado_por);
-      if (!creador) continue;
-      const k = normName(creador);
+      // Filter ONLY 'Flor' (User Request)
+      const creator = (c.creado_por || "").toLowerCase();
+      if (!creator.includes("flor")) continue;
+      countFlor++;
 
-      // Only Activators
-      if (setActivadores.has(k)) {
-        const rubro = c.rubro || "Sin Rubro";
-        allRubrosTotalFound.add(rubro);
-
-        const d = parseDate(c.created_at);
-        if (d) {
-          const dk = toLocalDayKey(d);
-
-          if (!rubrosTotalDayMap.has(rubro)) {
-            rubrosTotalDayMap.set(rubro, new Map());
-          }
-          const dMap = rubrosTotalDayMap.get(rubro);
-          dMap.set(dk, (dMap.get(dk) || 0) + 1);
-        }
-      }
+      const rubro = c.rubro || "Sin Rubro";
+      rubroTotalMap.set(rubro, (rubroTotalMap.get(rubro) || 0) + 1);
     }
+    console.log(`DEBUG: Filtered ${countFlor} clients for 'Flor'.`);
 
-    const allRubrosTotal = Array.from(allRubrosTotalFound);
+    // 2. Sort Rubros by Total (High to Low)
+    const sortedRubros = [...rubroTotalMap.keys()].sort((a, b) => rubroTotalMap.get(b) - rubroTotalMap.get(a));
+    const sortedValues = sortedRubros.map(r => rubroTotalMap.get(r));
 
-    // ----------------------------------------------------
-    // SORTING & TABLE GENERATION
-    // ----------------------------------------------------
-    // 1. Calculate totals
-    const rubrosTotalsMap = new Map();
-    for (const rubro of allRubrosTotal) {
-      let total = 0;
-      const dMap = rubrosTotalDayMap.get(rubro);
-      if (dMap) {
-        for (const count of dMap.values()) total += count;
-      }
-      rubrosTotalsMap.set(rubro, total);
-    }
+    // 3. Render Table (Summarized by Rubro)
+    renderSummaryTable("tableRubrosTotalContainer", "Rubro", rubroTotalMap);
 
-    // 2. Sort Descending
-    allRubrosTotal.sort((a, b) => (rubrosTotalsMap.get(b) || 0) - (rubrosTotalsMap.get(a) || 0));
-
-    // 3. Render Table
-    renderSummaryTable("tableRubrosTotalContainer", "Rubro", rubrosTotalsMap);
-
-
-    if (allRubrosTotal.length > 0) {
-      // Reuse Color Palette
-      const rubroColors = [
+    if (sortedRubros.length > 0) {
+      // Color Palette (reuse or simple)
+      const rubroColors = THEME.colors.primary; // Single color or gradient for simple bar? 
+      // User asked for "grafico de rubros de los clientes" -> usually distinct colors per rubro look nice, OR single color.
+      // Let's use the palette to match the previous aesthetic.
+      const palette = [
         THEME.colors.primary,
         THEME.colors.secondary,
         THEME.colors.accent,
         THEME.colors.danger,
         THEME.colors.info,
-        '#8b5cf6', // Violet
-        '#ec4899', // Pink
-        '#14b8a6', // Teal
-        '#f97316', // Orange
-        '#6366f1', // Indigo
-        '#84cc16', // Lime
+        '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'
       ];
 
-      const datasetsRubrosTotal = allRubrosTotal.map((rubro, idx) => {
-        const data = buckets.map(b => {
-          const dMap = rubrosTotalDayMap.get(rubro);
-          return dMap ? (dMap.get(b.key) || 0) : 0;
-        });
+      const bgColors = sortedRubros.map((_, i) => palette[i % palette.length]);
 
-        return {
-          label: rubro,
-          data: data,
-          backgroundColor: rubroColors[idx % rubroColors.length],
-          stack: 'Stack 0',
-        };
-      });
-
-      // Customized Data Labels Plugin
-      const dataLabelsPluginRubrosTotal = {
-        id: 'customDataLabelsRubrosTotal',
+      // Customized Data Labels (Centered or End)
+      const dataLabelsPluginRubro = {
+        id: 'customDataLabelsRubro',
         afterDatasetsDraw(chart) {
           const { ctx } = chart;
           chart.data.datasets.forEach((dataset, i) => {
@@ -1233,20 +1192,23 @@ async function renderAllByRange() {
               const val = dataset.data[index];
               if (val > 0) {
                 const { x, y, base } = element.getProps(['x', 'y', 'base'], true);
-                const cachedY = (y + base) / 2;
+                // Horizontal: x is end, base is start.
+
+                // If bar is long enough, center text. Else output at end?
+                // Visual consistency: Center text if possible.
+                const centerX = (x + base) / 2;
 
                 ctx.save();
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.font = `bold 12px ${THEME.fontFamily}`;
+                ctx.font = `bold 11px ${THEME.fontFamily}`;
                 ctx.fillStyle = '#ffffff';
                 ctx.shadowColor = 'rgba(0,0,0,0.8)';
                 ctx.shadowBlur = 3;
-                ctx.shadowOffsetX = 1;
-                ctx.shadowOffsetY = 1;
 
-                if (Math.abs(base - y) > 14) {
-                  ctx.fillText(val, x, cachedY);
+                const barWidth = Math.abs(x - base);
+                if (barWidth > 14) {
+                  ctx.fillText(val, centerX, y);
                 }
                 ctx.restore();
               }
@@ -1258,25 +1220,42 @@ async function renderAllByRange() {
       CHARTS.rubrosPorActivador = new Chart(canvasRub.getContext("2d"), {
         type: "bar",
         data: {
-          labels: buckets.map(b => b.label),
-          datasets: datasetsRubrosTotal
+          labels: sortedRubros,
+          datasets: [{
+            label: "Clientes",
+            data: sortedValues,
+            backgroundColor: bgColors,
+            borderRadius: 4,
+            barPercentage: 0.7,
+          }]
         },
-        plugins: [dataLabelsPluginRubrosTotal],
+        plugins: [dataLabelsPluginRubro],
         options: {
           ...COMMON_OPTIONS,
+          indexAxis: 'y', // HORIZONTAL
           plugins: {
             ...COMMON_OPTIONS.plugins,
             tooltip: { mode: 'index', intersect: false },
-            legend: { ...COMMON_OPTIONS.plugins.legend, position: 'top' }
+            legend: { display: false } // No legend needed for single dataset category chart (labels are axis)
           },
           scales: {
-            x: { ...COMMON_OPTIONS.scales.x, stacked: true },
-            y: { ...COMMON_OPTIONS.scales.y, stacked: true, ticks: { ...COMMON_OPTIONS.scales.y.ticks, precision: 0 } }
+            x: {
+              ...COMMON_OPTIONS.scales.x,
+              display: true,
+              grid: { display: true, color: THEME.colors.grid },
+            },
+            y: {
+              ...COMMON_OPTIONS.scales.y,
+              grid: { display: false },
+              ticks: { autoSkip: false }
+            }
           }
         }
       });
     }
   }
+
+
 
   // =========================================================
   // Render STACKED BAR Chart (Rubros [Activadores] - SOLO ACTIVOS - DIARIO)
@@ -1553,165 +1532,165 @@ async function renderAllByRange() {
         }
       });
     }
-  }
 
-  // Clean up old list if exists (legacy)
-  const oldList = $("listaActivadoresTotal");
-  if (oldList) oldList.innerHTML = "";
+    // Clean up old list if exists (legacy)
+    const oldList = $("listaActivadoresTotal");
+    if (oldList) oldList.innerHTML = "";
 
-  // =======================================================
-  // Promedio contactos por responsable EN RANGO (CANON)
-  // =======================================================
-  const clientesActivos = await fetchAll(CFG.tables.clientes, "id,responsable,activo", (q) => q.eq("activo", true));
+    // =======================================================
+    // Promedio contactos por responsable EN RANGO (CANON)
+    // =======================================================
+    const clientesActivos = await fetchAll(CFG.tables.clientes, "id,responsable,activo", (q) => q.eq("activo", true));
 
-  const clientesPorResp = new Map();
-  for (const c of clientesActivos) {
-    const rRaw = c?.responsable ? String(c.responsable) : "";
-    const canonResp = rRaw && rRaw.trim() ? canonizeName(rRaw, canon) : "Sin responsable";
-    clientesPorResp.set(canonResp, (clientesPorResp.get(canonResp) || 0) + 1);
-  }
-
-  // Asegurar que usuarios reales aparezcan en tabla de promedio
-  for (const u of activeUsers) {
-    if (!clientesPorResp.has(u)) clientesPorResp.set(u, 0);
-  }
-
-  const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", (q) => q.gte("fecha", fromISO).lt("fecha", toISO));
-
-  const contactosPorUser = new Map();
-  for (const a of actsRango) {
-    const uRaw = a?.usuario ? String(a.usuario) : "";
-    const canonUser = uRaw && uRaw.trim() ? canonizeName(uRaw, canon) : "Sin usuario";
-    contactosPorUser.set(canonUser, (contactosPorUser.get(canonUser) || 0) + 1);
-  }
-
-  const promRows = [];
-  for (const [respName, cantClientes] of clientesPorResp.entries()) {
-    const base = cleanName(respName) || "Sin responsable";
-    const contactos = contactosPorUser.get(respName) || 0;
-    const isReal = activeSet.has(normName(base));
-    promRows.push({
-      resp: isReal ? base : `${base} (Histórico)`,
-      clientes: cantClientes,
-      contactos,
-      promedio: (cantClientes ? contactos / cantClientes : 0).toFixed(2),
-      real: isReal,
-    });
-  }
-
-  promRows.sort((a, b) => {
-    const pa = Number(a.promedio);
-    const pb = Number(b.promedio);
-    if (pb !== pa) return pb - pa;
-    if (a.real !== b.real) return a.real ? -1 : 1;
-    return a.resp.localeCompare(b.resp, "es", { sensitivity: "base" });
-  });
-
-  destroyChart("promedio");
-  CHARTS.promedio = makeBar(
-    "chartPromedioResponsable",
-    promRows.map((x) => x.resp),
-    promRows.map((x) => Number(x.promedio))
-  );
-  renderPromedioTable(promRows);
-
-  // =======================================================
-  // Actividad por usuario (clientes) EN RANGO (CANON + FLAG EN RENDER)
-  // =======================================================
-  const actUsersAgg = new Map();
-
-  // seed: usuarios reales con 0
-  for (const u of activeUsers) actUsersAgg.set(u, 0);
-
-  // sumar actividades (canonizando)
-  for (const a of actsRango) {
-    const uRaw = a?.usuario ? String(a.usuario) : "";
-    const canonUser = uRaw && uRaw.trim() ? canonizeName(uRaw, canon) : "Sin usuario";
-    actUsersAgg.set(canonUser, (actUsersAgg.get(canonUser) || 0) + 1);
-  }
-
-  const actUsersList = Array.from(actUsersAgg.entries())
-    .map(([name, count]) => {
-      const base = cleanName(name) || "Sin usuario";
-      const isReal = activeSet.has(normName(base));
-      return { name: isReal ? base : `${base} (Histórico)`, count, real: isReal };
-    })
-    .sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      if (a.real !== b.real) return a.real ? -1 : 1;
-      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
-    });
-
-  renderUlList(
-    "listaActividadUsuarios",
-    actUsersList.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
-  );
-
-  // =======================================================
-  // Crecimiento diario EN RANGO
-  // =======================================================
-  const cliAltas = await fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO));
-  const sCli = seriesByDay(cliAltas, "created_at", buckets);
-
-  destroyChart("altas");
-  const canvasAltas = $("chartAltasDiarias");
-  if (canvasAltas) {
-    ensureCanvasHeight("chartAltasDiarias");
-    if (CHARTS.altas) CHARTS.altas.destroy();
-
-    // Solo mostramos Clientes
-    const ctx = canvasAltas.getContext("2d");
-    const gradient = createGradient(ctx, 'rgba(59, 130, 246, 0.4)', 'rgba(59, 130, 246, 0.0)');
-
-    CHARTS.altas = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: buckets.map(b => b.label),
-        datasets: [
-          {
-            label: "Clientes Nuevos",
-            data: sCli.data,
-            tension: 0.4,
-            fill: true,
-            backgroundColor: gradient,
-            borderColor: THEME.colors.info,
-            pointRadius: 0,
-            pointHoverRadius: 6,
-            pointBackgroundColor: "#fff",
-            pointBorderColor: THEME.colors.info,
-            borderWidth: 2
-          }
-        ],
-      },
-      options: COMMON_OPTIONS,
-    });
-  }
-
-  const ulAltas = $("listaAltasDiarias");
-  if (ulAltas) {
-    ulAltas.innerHTML = "";
-    const take = Math.min(7, buckets.length);
-    for (let i = buckets.length - take; i < buckets.length; i++) {
-      const val = sCli.data[i] || 0;
-      const li = document.createElement("li");
-      li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span> <strong>${fmtInt(val)}</strong>`;
-      ulAltas.appendChild(li);
+    const clientesPorResp = new Map();
+    for (const c of clientesActivos) {
+      const rRaw = c?.responsable ? String(c.responsable) : "";
+      const canonResp = rRaw && rRaw.trim() ? canonizeName(rRaw, canon) : "Sin responsable";
+      clientesPorResp.set(canonResp, (clientesPorResp.get(canonResp) || 0) + 1);
     }
+
+    // Asegurar que usuarios reales aparezcan en tabla de promedio
+    for (const u of activeUsers) {
+      if (!clientesPorResp.has(u)) clientesPorResp.set(u, 0);
+    }
+
+    const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", (q) => q.gte("fecha", fromISO).lt("fecha", toISO));
+
+    const contactosPorUser = new Map();
+    for (const a of actsRango) {
+      const uRaw = a?.usuario ? String(a.usuario) : "";
+      const canonUser = uRaw && uRaw.trim() ? canonizeName(uRaw, canon) : "Sin usuario";
+      contactosPorUser.set(canonUser, (contactosPorUser.get(canonUser) || 0) + 1);
+    }
+
+    const promRows = [];
+    for (const [respName, cantClientes] of clientesPorResp.entries()) {
+      const base = cleanName(respName) || "Sin responsable";
+      const contactos = contactosPorUser.get(respName) || 0;
+      const isReal = activeSet.has(normName(base));
+      promRows.push({
+        resp: isReal ? base : `${base} (Histórico)`,
+        clientes: cantClientes,
+        contactos,
+        promedio: (cantClientes ? contactos / cantClientes : 0).toFixed(2),
+        real: isReal,
+      });
+    }
+
+    promRows.sort((a, b) => {
+      const pa = Number(a.promedio);
+      const pb = Number(b.promedio);
+      if (pb !== pa) return pb - pa;
+      if (a.real !== b.real) return a.real ? -1 : 1;
+      return a.resp.localeCompare(b.resp, "es", { sensitivity: "base" });
+    });
+
+    destroyChart("promedio");
+    CHARTS.promedio = makeBar(
+      "chartPromedioResponsable",
+      promRows.map((x) => x.resp),
+      promRows.map((x) => Number(x.promedio))
+    );
+    renderPromedioTable(promRows);
+
+    // =======================================================
+    // Actividad por usuario (clientes) EN RANGO (CANON + FLAG EN RENDER)
+    // =======================================================
+    const actUsersAgg = new Map();
+
+    // seed: usuarios reales con 0
+    for (const u of activeUsers) actUsersAgg.set(u, 0);
+
+    // sumar actividades (canonizando)
+    for (const a of actsRango) {
+      const uRaw = a?.usuario ? String(a.usuario) : "";
+      const canonUser = uRaw && uRaw.trim() ? canonizeName(uRaw, canon) : "Sin usuario";
+      actUsersAgg.set(canonUser, (actUsersAgg.get(canonUser) || 0) + 1);
+    }
+
+    const actUsersList = Array.from(actUsersAgg.entries())
+      .map(([name, count]) => {
+        const base = cleanName(name) || "Sin usuario";
+        const isReal = activeSet.has(normName(base));
+        return { name: isReal ? base : `${base} (Histórico)`, count, real: isReal };
+      })
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        if (a.real !== b.real) return a.real ? -1 : 1;
+        return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+      });
+
+    renderUlList(
+      "listaActividadUsuarios",
+      actUsersList.map((x) => ({ label: x.name, value: fmtInt(x.count) }))
+    );
+
+    // =======================================================
+    // Crecimiento diario EN RANGO
+    // =======================================================
+    const cliAltas = await fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO));
+    const sCli = seriesByDay(cliAltas, "created_at", buckets);
+
+    destroyChart("altas");
+    const canvasAltas = $("chartAltasDiarias");
+    if (canvasAltas) {
+      ensureCanvasHeight("chartAltasDiarias");
+      if (CHARTS.altas) CHARTS.altas.destroy();
+
+      // Solo mostramos Clientes
+      const ctx = canvasAltas.getContext("2d");
+      const gradient = createGradient(ctx, 'rgba(59, 130, 246, 0.4)', 'rgba(59, 130, 246, 0.0)');
+
+      CHARTS.altas = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: buckets.map(b => b.label),
+          datasets: [
+            {
+              label: "Clientes Nuevos",
+              data: sCli.data,
+              tension: 0.4,
+              fill: true,
+              backgroundColor: gradient,
+              borderColor: THEME.colors.info,
+              pointRadius: 0,
+              pointHoverRadius: 6,
+              pointBackgroundColor: "#fff",
+              pointBorderColor: THEME.colors.info,
+              borderWidth: 2
+            }
+          ],
+        },
+        options: COMMON_OPTIONS,
+      });
+    }
+
+    const ulAltas = $("listaAltasDiarias");
+    if (ulAltas) {
+      ulAltas.innerHTML = "";
+      const take = Math.min(7, buckets.length);
+      for (let i = buckets.length - take; i < buckets.length; i++) {
+        const val = sCli.data[i] || 0;
+        const li = document.createElement("li");
+        li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span> <strong>${fmtInt(val)}</strong>`;
+        ulAltas.appendChild(li);
+      }
+    }
+
+    // =======================================================
+    // CONSUMIDORES / REPARTIDORES: REMOVED FOR CLEANUP
+    // =======================================================
+
+    // =======================================================
+    // INTELLIGENCE / INSIGHTS
+    // =======================================================
+    calculateInsights({
+      cliAltas,
+      actInRange: actsRango, // Pasamos las filas reales (actsRango) en lugar del count
+      totalClientesActivos,
+      activosEnRango: activosEnRango
+    }, buckets);
   }
-
-  // =======================================================
-  // CONSUMIDORES / REPARTIDORES: REMOVED FOR CLEANUP
-  // =======================================================
-
-  // =======================================================
-  // INTELLIGENCE / INSIGHTS
-  // =======================================================
-  calculateInsights({
-    cliAltas,
-    actInRange: actsRango, // Pasamos las filas reales (actsRango) en lugar del count
-    totalClientesActivos,
-    activosEnRango: activosEnRango
-  }, buckets);
 }
 
 // Helper para Insights
