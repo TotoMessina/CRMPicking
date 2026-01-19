@@ -4369,3 +4369,70 @@ fieldset legend:hover {
   line-height: 1;
   border-radius: 6px;
 }
+
+/* ===========================
+   WIZARD FORMS
+   =========================== */
+.wizard-steps {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  gap: 8px;
+}
+
+.step-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.3s ease;
+}
+
+.step-indicator.active {
+  background: var(--accent);
+  transform: scale(1.2);
+}
+
+.step-indicator.completed {
+  background: #10b981;
+  /* green */
+}
+
+.wizard-step {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.wizard-step.active {
+  display: block;
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Hide fieldset borders in wizard for cleaner look */
+.wizard-step fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent !important;
+}
+
+.wizard-step fieldset legend {
+  display: none;
+  /* Hide legend in wizard if we use headers */
+}
+
+.step-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--accent);
+  display: block;
+  text-align: center;
+}

@@ -1429,6 +1429,63 @@ document.addEventListener("DOMContentLoaded", () => {
   // Reflejar usuario autenticado
   usuarioActual = getAuthProfileName() || usuarioActual || "";
   localStorage.setItem("usuarioActual", usuarioActual);
+  // ===================================
+  // WIZARD LOGIC
+  // ===================================
+  let currentStep = 1;
+  const totalSteps = 3;
+
+  function initWizard() {
+    currentStep = 1;
+    showStep(1);
+  }
+
+  function showStep(step) {
+    // Hide all
+    document.querySelectorAll(".wizard-step").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(".step-indicator").forEach(el => el.classList.remove("active", "completed"));
+
+    // Show current
+    const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
+    if (stepEl) stepEl.classList.add("active");
+
+    // Updates indicators
+    for (let i = 1; i <= totalSteps; i++) {
+      const ind = document.querySelector(`.step-indicator[data-step="${i}"]`);
+      if (i < step) ind.classList.add("completed");
+      if (i === step) ind.classList.add("active");
+    }
+
+    // Update Buttons
+    const btnPrev = document.getElementById("btnWizardPrev");
+    const btnNext = document.getElementById("btnWizardNext");
+    const btnGuardar = document.getElementById("btnGuardar");
+
+    if (btnPrev) btnPrev.style.visibility = step === 1 ? "hidden" : "visible";
+
+    if (step === totalSteps) {
+      if (btnNext) btnNext.style.display = "none";
+      if (btnGuardar) btnGuardar.style.display = "inline-flex";
+    } else {
+      if (btnNext) btnNext.style.display = "inline-flex";
+      if (btnGuardar) btnGuardar.style.display = "none";
+    }
+  }
+
+  function validateStep(step) {
+    const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
+    if (!stepEl) return true;
+
+    const inputs = stepEl.querySelectorAll("input, select");
+    for (const input of inputs) {
+      if (!input.checkValidity()) {
+        input.reportValidity();
+        return false;
+      }
+    }
+    return true;
+  }
+
   const currentUserNameEl = document.getElementById("currentUserName");
   if (currentUserNameEl) currentUserNameEl.textContent = usuarioActual || "-";
 
@@ -1449,7 +1506,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 3) Modal cliente: abrir/cerrar + overlay click + ESC
   const btnNuevo = document.getElementById("btnNuevoCliente");
-  if (btnNuevo) btnNuevo.addEventListener("click", openNuevoClienteModal);
+  if (btnNuevo) btnNuevo.addEventListener("click", () => {
+    openNuevoClienteModal();
+    initWizard();
+  });
+
+  const btnNext = document.getElementById("btnWizardNext");
+  const btnPrev = document.getElementById("btnWizardPrev");
+
+  if (btnNext) btnNext.addEventListener("click", () => {
+    if (validateStep(currentStep)) {
+      currentStep++;
+      showStep(currentStep);
+    }
+  });
+
+  if (btnPrev) btnPrev.addEventListener("click", () => {
+    if (currentStep > 1) {
+      currentStep--;
+      showStep(currentStep);
+    }
+  });
 
   const btnCerrarModal = document.getElementById("btnCerrarModalCliente");
   if (btnCerrarModal) btnCerrarModal.addEventListener("click", () => {
@@ -1622,6 +1699,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (action === "editar") {
         openEditarClienteModal(id);
+        initWizard();
       } else if (action === "eliminar") {
         eliminarCliente(id);
       } else if (action === "actividad") {

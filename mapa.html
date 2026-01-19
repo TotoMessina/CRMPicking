@@ -14,6 +14,8 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <!-- Leaflet Routing Machine -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <!-- Leaflet Draw -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 
   <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -38,6 +40,26 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
+    }
+
+    .zone-selector {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-elevated);
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .zone-selector select {
+      border: none;
+      background: transparent;
+      font-size: 0.9em;
+      outline: none;
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 600;
     }
 
     #map {
@@ -473,6 +495,15 @@
               Refrescar
             </button>
 
+            <!-- Zone Type Selector -->
+            <div class="zone-selector">
+              <span style="font-size:0.85em; font-weight:600;">Zona:</span>
+              <select id="zoneTypeSelect">
+                <option value="today">🔵 Hoy</option>
+                <option value="done">🔴 Realizada</option>
+              </select>
+            </div>
+
             <button type="button" id="btnToggleColor" class="btn-secundario">
               Ver por Creador
             </button>
@@ -508,15 +539,51 @@
             <input type="hidden" id="lat" />
             <input type="hidden" id="lng" />
 
-            <!-- SECCIÓN 1: DATOS DEL LOCAL -->
-            <fieldset
-              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(255,255,255,0.5);">
-              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">🏪 Datos del Local</legend>
+            <!-- WIZARD INDICATOR -->
+            <div class="wizard-steps">
+              <div class="step-indicator active" data-step="1"></div>
+              <div class="step-indicator" data-step="2"></div>
+              <div class="step-indicator" data-step="3"></div>
+            </div>
+
+            <!-- STEP 1: DATOS BÁSICOS -->
+            <div class="wizard-step active" data-step="1">
+              <div class="step-title">1. Datos del Local y Contacto</div>
               <div class="grid-2">
                 <div class="field">
                   <label for="nombre_local" style="font-weight:600;">Nombre del Local *</label>
                   <input class="input" id="nombre_local" required placeholder="Ej: Kiosco Pepe" />
                 </div>
+                <!-- Hidden apellido -->
+                <input type="hidden" id="apellido" />
+
+                <div class="field">
+                  <label for="direccion" style="font-weight:600;">Dirección *</label>
+                  <input class="input" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" required />
+                </div>
+                <div class="field">
+                  <label for="nombre" style="font-weight:600;">Nombre del Contacto *</label>
+                  <input class="input" id="nombre" required placeholder="Nombre de la persona" />
+                </div>
+                <div class="field">
+                  <label for="telefono" style="font-weight:600;">Teléfono *</label>
+                  <input class="input" id="telefono" required placeholder="Celular / WhatsApp" />
+                </div>
+                <div class="field">
+                  <label for="mail">Mail</label>
+                  <input class="input" id="mail" type="email" placeholder="email@dominio.com" />
+                </div>
+                <div class="field">
+                  <label for="cuit">CUIT</label>
+                  <input class="input" id="cuit" placeholder="Ej: 30-12345678-9" />
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 2: CLASIFICACIÓN -->
+            <div class="wizard-step" data-step="2">
+              <div class="step-title">2. Clasificación del Cliente</div>
+              <div class="grid-2">
                 <div class="field">
                   <label for="rubro" style="font-weight:600;">Rubro *</label>
                   <select class="input" id="rubro" required>
@@ -545,45 +612,6 @@
                     <option value="Mercería">Mercería</option>
                   </select>
                 </div>
-                <div class="field" style="grid-column: 1 / -1;">
-                  <label for="direccion" style="font-weight:600;">Dirección *</label>
-                  <input class="input" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" required />
-                </div>
-              </div>
-            </fieldset>
-
-            <!-- SECCIÓN 2: CONTACTO -->
-            <fieldset
-              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(255,255,255,0.5);">
-              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">👤 Contacto</legend>
-              <div class="grid-2">
-                <div class="field">
-                  <label for="nombre" style="font-weight:600;">Nombre Rep. *</label>
-                  <input class="input" id="nombre" required placeholder="Nombre de la persona" />
-                </div>
-                <!-- Hidden apellido field if needed for logic compatibility -->
-                <input type="hidden" id="apellido" />
-
-                <div class="field">
-                  <label for="telefono" style="font-weight:600;">Teléfono *</label>
-                  <input class="input" id="telefono" required placeholder="Celular / WhatsApp" />
-                </div>
-                <div class="field">
-                  <label for="mail">Mail</label>
-                  <input class="input" id="mail" type="email" placeholder="email@dominio.com" />
-                </div>
-                <div class="field">
-                  <label for="cuit">CUIT</label>
-                  <input class="input" id="cuit" placeholder="Ej: 30-12345678-9" />
-                </div>
-              </div>
-            </fieldset>
-
-            <!-- SECCIÓN 3: GESTIÓN -->
-            <fieldset
-              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(255,255,255,0.5);">
-              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">📊 Gestión</legend>
-              <div class="grid-2">
                 <div class="field">
                   <label for="estado">Estado</label>
                   <select class="input" id="estado" required>
@@ -633,17 +661,15 @@
                   <input type="hidden" id="interes">
                 </div>
               </div>
-            </fieldset>
+            </div>
 
-            <!-- SECCIÓN 4: AGENDA (VISITAS) -->
-            <fieldset
-              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(255,255,255,0.5);">
-              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">📅 Agenda</legend>
+            <!-- STEP 3: AGENDA Y CIERRE -->
+            <div class="wizard-step" data-step="3">
+              <div class="step-title">3. Agenda y Notas</div>
               <div class="grid-2">
                 <div class="field" style="grid-column: 1 / -1;">
                   <label for="fecha_proximo_contacto">Próximo contacto</label>
                   <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
-                    <!-- Quick Buttons (JS Handler needed for these specific IDs if reused) -->
                     <button type="button" class="btn-secundario btn-small" id="mapBtnQuickHoy">Hoy</button>
                     <button type="button" class="btn-secundario btn-small" id="mapBtnQuickManiana">Mañana</button>
                     <button type="button" class="btn-secundario btn-small" id="mapBtnQuickProxSemana">1 Sem</button>
@@ -659,15 +685,7 @@
                     <span style="font-size:0.9em;">Marcar como contactado y <strong>sin próximo contacto</strong></span>
                   </label>
                 </div>
-              </div>
-            </fieldset>
 
-            <!-- SECCIÓN 5: DETALLES EXTRA -->
-            <fieldset
-              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(0,0,0,0.02);">
-              <legend style="font-weight:600; padding:0 6px; color:var(--text-muted); cursor:pointer;"
-                onclick="this.parentElement.classList.toggle('collapsed')">🔽 Adicionales (Horarios, Notas)</legend>
-              <div class="grid extra-content">
                 <div class="field" style="grid-column: 1 / -1;">
                   <label for="horarios_atencion">Horarios de atención</label>
                   <div style="display:flex; flex-direction:column; gap:4px; margin-bottom: 6px;">
@@ -696,7 +714,7 @@
                 </div>
 
                 <div class="field">
-                  <label for="venta_digital">¿Vendió de forma digital?</label>
+                  <label for="venta_digital">¿Venta digital?</label>
                   <select id="venta_digital" class="input">
                     <option value="false">No</option>
                     <option value="true">Sí</option>
@@ -704,91 +722,115 @@
                 </div>
 
                 <div class="field" id="divVentaDigitalCual" style="display:none;">
-                  <label for="venta_digital_cual">¿Cuál/Plataforma?</label>
+                  <label for="venta_digital_cual">Plataforma</label>
                   <input type="text" id="venta_digital_cual" class="input" placeholder="Ej: PedidosYa..." />
                 </div>
               </div>
-            </fieldset>
+            </div>
 
+            <!-- CONTROLES WIZARD -->
+            <div class="wizard-actions">
+              <button type="button" id="btnWizardPrev" class="btn-secundario"
+                style="visibility:hidden;">Anterior</button>
 
-            <div class="modal-actions" style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
-              <div class="muted" id="coordHint">Lat/Lng: -</div>
               <div style="display:flex; gap:10px;">
                 <button type="button" id="btnEliminar" class="btn-delete" style="display:none;">Eliminar</button>
-                <button type="submit" id="btnGuardar" class="btn-primario">Guardar</button>
+                <button type="button" id="btnWizardNext" class="btn-primario">Siguiente</button>
+                <button type="submit" id="btnGuardar" class="btn-primario" style="display:none;">Guardar</button>
               </div>
             </div>
-          </form>
+            <option value="false">No</option>
+            <option value="true">Sí</option>
+            </select>
+        </div>
+
+        <div class="field" id="divVentaDigitalCual" style="display:none;">
+          <label for="venta_digital_cual">¿Cuál/Plataforma?</label>
+          <input type="text" id="venta_digital_cual" class="input" placeholder="Ej: PedidosYa..." />
         </div>
       </div>
+      </fieldset>
 
-      <!-- NUEVO: MODAL RUTA -->
-      <div id="modalRuta" class="modal" aria-hidden="true" style="display:none;" data-close="true">
-        <div class="modal-content">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h2 style="margin:0;">Optimizar ruta</h2>
-            <button type="button" id="btnCerrarModalRuta" class="btn-secundario" data-close="true">Cerrar</button>
-          </div>
 
-          <div class="grid-2">
-            <div class="field">
-              <label for="routeSearch">Buscar clientes</label>
-              <input class="input" id="routeSearch" placeholder="Escribí para filtrar..." />
-            </div>
-
-            <div class="field">
-              <label for="routeStart">Origen</label>
-              <select class="input" id="routeStart"></select>
-            </div>
-
-            <div class="field">
-              <label class="muted" style="margin-top:4px;">
-                Seleccioná los clientes que querés visitar (se requiere lat/lng en la ficha).
-              </label>
-              <div class="route-listbox" id="routeList"></div>
-            </div>
-
-            <div class="field">
-              <label for="routeReturn">Opciones</label>
-              <div style="display:flex; flex-direction:column; gap:10px;">
-                <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
-                  <input type="checkbox" id="routeReturn" />
-                  <span>Volver al origen (cierra el circuito)</span>
-                </label>
-
-                <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
-                  <input type="checkbox" id="routeAutoCenter" checked />
-                  <span>Centrar el mapa al generar la ruta</span>
-                </label>
-
-                <div class="muted" id="routeHint" style="font-size:12px;">
-                  Tip: si querés usar “Mi ubicación” como origen, primero tocá “Ubicarme”.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-actions" style="margin-top:16px;">
-            <div class="muted" id="routeCount" style="margin-right:auto;">0 seleccionados</div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <button type="button" id="btnSeleccionarTodos" class="btn-secundario">Seleccionar todos</button>
-              <button type="button" id="btnDeseleccionarTodos" class="btn-secundario">Limpiar selección</button>
-              <button type="button" id="btnGenerarRuta" class="btn-primario">Generar ruta</button>
-            </div>
-          </div>
+      <div class="modal-actions" style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+        <div class="muted" id="coordHint">Lat/Lng: -</div>
+        <div style="display:flex; gap:10px;">
+          <button type="button" id="btnEliminar" class="btn-delete" style="display:none;">Eliminar</button>
+          <button type="submit" id="btnGuardar" class="btn-primario">Guardar</button>
         </div>
       </div>
-
-      <!-- Leaflet JS -->
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-      <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-
-      <script src="auth.js?v=2"></script>
-      <script src="common.js?v=2"></script>
-      <script src="guard.js?v=2"></script>
-      <script src="mapa.js?v=2"></script>
+      </form>
     </div>
+  </div>
+
+  <!-- NUEVO: MODAL RUTA -->
+  <div id="modalRuta" class="modal" aria-hidden="true" style="display:none;" data-close="true">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="margin:0;">Optimizar ruta</h2>
+        <button type="button" id="btnCerrarModalRuta" class="btn-secundario" data-close="true">Cerrar</button>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="routeSearch">Buscar clientes</label>
+          <input class="input" id="routeSearch" placeholder="Escribí para filtrar..." />
+        </div>
+
+        <div class="field">
+          <label for="routeStart">Origen</label>
+          <select class="input" id="routeStart"></select>
+        </div>
+
+        <div class="field">
+          <label class="muted" style="margin-top:4px;">
+            Seleccioná los clientes que querés visitar (se requiere lat/lng en la ficha).
+          </label>
+          <div class="route-listbox" id="routeList"></div>
+        </div>
+
+        <div class="field">
+          <label for="routeReturn">Opciones</label>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
+              <input type="checkbox" id="routeReturn" />
+              <span>Volver al origen (cierra el circuito)</span>
+            </label>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px;">
+              <input type="checkbox" id="routeAutoCenter" checked />
+              <span>Centrar el mapa al generar la ruta</span>
+            </label>
+
+            <div class="muted" id="routeHint" style="font-size:12px;">
+              Tip: si querés usar “Mi ubicación” como origen, primero tocá “Ubicarme”.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:16px;">
+        <div class="muted" id="routeCount" style="margin-right:auto;">0 seleccionados</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button type="button" id="btnSeleccionarTodos" class="btn-secundario">Seleccionar todos</button>
+          <button type="button" id="btnDeseleccionarTodos" class="btn-secundario">Limpiar selección</button>
+          <button type="button" id="btnGenerarRuta" class="btn-primario">Generar ruta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+  <script src="auth.js?v=2"></script>
+  <script src="common.js?v=2"></script>
+  <script src="guard.js?v=2"></script>
+  <script src="mapa.js?v=2"></script>
+  </div>
   </div>
 </body>
 

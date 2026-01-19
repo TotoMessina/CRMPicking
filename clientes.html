@@ -165,14 +165,48 @@
           <form id="formCliente" style="margin-top:12px;">
             <input type="hidden" id="clienteId" />
 
-            <!-- SECCIÓN 1: DATOS DEL LOCAL -->
-            <fieldset style="border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px;">
-              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">🏪 Datos del Local</legend>
+            <!-- WIZARD INDICATOR -->
+            <div class="wizard-steps">
+              <div class="step-indicator active" data-step="1"></div>
+              <div class="step-indicator" data-step="2"></div>
+              <div class="step-indicator" data-step="3"></div>
+            </div>
+
+            <!-- STEP 1: DATOS BÁSICOS -->
+            <div class="wizard-step active" data-step="1">
+              <div class="step-title">1. Datos del Local y Contacto</div>
               <div class="grid">
                 <div class="field">
                   <label for="nombre_local" style="font-weight:600;">Nombre del Local *</label>
                   <input type="text" id="nombre_local" required placeholder="Ej: Kiosco Pepe" />
                 </div>
+                <div class="field">
+                  <label for="direccion" style="font-weight:600;">Dirección *</label>
+                  <input type="text" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" required />
+                </div>
+                <div class="field">
+                  <label for="nombre" style="font-weight:600;">Nombre del Contacto *</label>
+                  <input type="text" id="nombre" required placeholder="Nombre de la persona" />
+                </div>
+                <div class="field">
+                  <label for="telefono" style="font-weight:600;">Teléfono *</label>
+                  <input type="text" id="telefono" required placeholder="Celular / WhatsApp" />
+                </div>
+                <div class="field">
+                  <label for="mail">Mail</label>
+                  <input type="email" id="mail" placeholder="email@dominio.com" />
+                </div>
+                <div class="field">
+                  <label for="cuit">CUIT</label>
+                  <input type="text" id="cuit" placeholder="Ej: 30-12345678-9" />
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 2: CLASIFICACIÓN -->
+            <div class="wizard-step" data-step="2">
+              <div class="step-title">2. Clasificación del Cliente</div>
+              <div class="grid">
                 <div class="field">
                   <label for="rubro" style="font-weight:600;">Rubro *</label>
                   <select id="rubro" required>
@@ -201,40 +235,6 @@
                     <option value="Mercería">Mercería</option>
                   </select>
                 </div>
-                <div class="field" style="grid-column: 1 / -1;">
-                  <label for="direccion" style="font-weight:600;">Dirección *</label>
-                  <input type="text" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" required />
-                </div>
-              </div>
-            </fieldset>
-
-            <!-- SECCIÓN 2: CONTACTO -->
-            <fieldset style="border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px;">
-              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">👤 Contacto</legend>
-              <div class="grid">
-                <div class="field">
-                  <label for="nombre" style="font-weight:600;">Nombre Rep. *</label>
-                  <input type="text" id="nombre" required placeholder="Nombre de la persona" />
-                </div>
-                <div class="field">
-                  <label for="telefono" style="font-weight:600;">Teléfono *</label>
-                  <input type="text" id="telefono" required placeholder="Celular / WhatsApp" />
-                </div>
-                <div class="field">
-                  <label for="mail">Mail</label>
-                  <input type="email" id="mail" placeholder="email@dominio.com" />
-                </div>
-                <div class="field">
-                  <label for="cuit">CUIT</label>
-                  <input type="text" id="cuit" placeholder="Ej: 30-12345678-9" />
-                </div>
-              </div>
-            </fieldset>
-
-            <!-- SECCIÓN 3: GESTIÓN -->
-            <fieldset style="border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px;">
-              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">📊 Gestión</legend>
-              <div class="grid">
                 <div class="field">
                   <label for="estado">Estado</label>
                   <select id="estado">
@@ -282,16 +282,15 @@
                   <input type="hidden" id="interes">
                 </div>
               </div>
-            </fieldset>
+            </div>
 
-            <!-- SECCIÓN 4: AGENDA (VISITAS) -->
-            <fieldset style="border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px;">
-              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">📅 Agenda</legend>
+            <!-- STEP 3: AGENDA Y CIERRE -->
+            <div class="wizard-step" data-step="3">
+              <div class="step-title">3. Agenda y Notas</div>
               <div class="grid">
                 <div class="field field-inline" style="grid-column: 1 / -1;">
                   <label for="fecha_proximo_contacto">Próxima Visita</label>
                   <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    <!-- Quick Buttons (JS Handler needed for these specific IDs if reused) -->
                     <button type="button" class="btn-secundario btn-small" id="btnQuickHoy">Hoy</button>
                     <button type="button" class="btn-secundario btn-small" id="btnQuickManiana">Mañana</button>
                     <button type="button" class="btn-secundario btn-small" id="btnQuickProxSemana">1 Sem</button>
@@ -307,17 +306,9 @@
                     <span style="font-size:0.9em;">Marcar como contactado y <strong>sin próximo contacto</strong></span>
                   </label>
                 </div>
-              </div>
-            </fieldset>
 
-            <!-- SECCIÓN 5: DETALLES EXTRA -->
-            <fieldset
-              style="border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(0,0,0,0.02);">
-              <legend style="font-weight:600; padding:0 6px; color:var(--text-muted); cursor:pointer;"
-                onclick="this.parentElement.classList.toggle('collapsed')">🔽 Adicionales (Horarios, Notas)</legend>
-              <div class="grid extra-content">
                 <div class="field" style="grid-column: 1 / -1;">
-                  <label for="horarios_atencion">Horarios de atención</label>
+                  <label>Horarios de atención</label>
                   <div style="display:flex; flex-direction:column; gap:4px; margin-bottom: 6px;">
                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
                       <label style="font-size:0.8em;"><input type="checkbox" id="chk_lun" value="Lun"> L</label>
@@ -354,7 +345,19 @@
                   <input type="text" id="venta_digital_cual" placeholder="Ej: Whatsapp, PedidosYa..." />
                 </div>
               </div>
-            </fieldset>
+            </div>
+
+            <!-- CONTROLES WIZARD -->
+            <div class="wizard-actions">
+              <button type="button" id="btnWizardPrev" class="btn-secundario"
+                style="visibility:hidden;">Anterior</button>
+
+              <div style="display:flex; gap:10px;">
+                <button type="button" id="btnCancelarEdicion" class="btn-secundario btn-delete">Cancelar</button>
+                <button type="button" id="btnWizardNext" class="btn-primario">Siguiente</button>
+                <button type="submit" id="btnGuardar" class="btn-primario" style="display:none;">Guardar</button>
+              </div>
+            </div>
 
             <div class="form-actions" style="justify-content: flex-end; gap: 12px; margin-top:20px;">
               <button type="button" id="btnCancelarEdicion" class="btn-secundario">Cancelar</button>

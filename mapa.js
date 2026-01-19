@@ -578,11 +578,13 @@ function fillModalForEdit(rec) {
 function openCreateModalAt(lat, lng) {
   resetModalToCreate(lat, lng);
   setModalOpen(true);
+  initWizard();
 }
 
 function openEditModal(rec) {
   fillModalForEdit(rec);
   setModalOpen(true);
+  initWizard();
 }
 
 // ========= Supabase CRUD =========
@@ -1441,6 +1443,234 @@ function wireRouteUi() {
   });
 }
 
+// ===================================
+// WIZARD LOGIC (MAPA)
+// ===================================
+let currentStep = 1;
+const totalSteps = 3;
+
+function initWizard() {
+  currentStep = 1;
+  showStep(1);
+}
+
+function showStep(step) {
+  // Hide all
+  document.querySelectorAll(".wizard-step").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".step-indicator").forEach(el => el.classList.remove("active", "completed"));
+
+  // Show current
+  const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
+  if (stepEl) stepEl.classList.add("active");
+
+  // Updates indicators
+  for (let i = 1; i <= totalSteps; i++) {
+    const ind = document.querySelector(`.step-indicator[data-step="${i}"]`);
+    if (i < step) ind.classList.add("completed");
+    if (i === step) ind.classList.add("active");
+  }
+
+  // Update Buttons
+  const btnPrev = document.getElementById("btnWizardPrev");
+  const btnNext = document.getElementById("btnWizardNext");
+  const btnGuardar = document.getElementById("btnGuardar");
+
+  if (btnPrev) btnPrev.style.visibility = step === 1 ? "hidden" : "visible";
+
+  if (step === totalSteps) {
+    if (btnNext) btnNext.style.display = "none";
+    if (btnGuardar) btnGuardar.style.display = "inline-flex";
+  } else {
+    if (btnNext) btnNext.style.display = "inline-flex";
+    if (btnGuardar) btnGuardar.style.display = "none";
+  }
+}
+
+function validateStep(step) {
+  const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
+  if (!stepEl) return true;
+
+  const inputs = stepEl.querySelectorAll("input, select");
+  for (const input of inputs) {
+    if (!input.checkValidity()) {
+      input.reportValidity();
+      return false;
+    }
+  }
+  return true;
+}
+
+// ========= ZONAS (Manzanas Tachadas) =========
+let drawnItems;
+
+// Helper to bind popup
+function bindZonePopup(layer, zoneId) {
+  const popupContent = document.createElement("div");
+  popupContent.style.textAlign = "center";
+  popupContent.innerHTML = `
+    <div style="margin-bottom:8px; font-weight:bold;">Zona</div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <button class="btn-secundario btn-small" onclick="updateZoneColor('${zoneId}', '#3b82f6')">🔵 Marcar "Hoy"</button>
+      <button class="btn-secundario btn-small" onclick="updateZoneColor('${zoneId}', '#ef4444')">🔴 Marcar "Realizada"</button>
+      <hr style="width:100%; border:0; border-top:1px solid #ccc; margin:4px 0;">
+      <button class="btn-delete btn-small" onclick="deleteZoneById('${zoneId}')">🗑️ Eliminar</button>
+    </div>
+  `;
+  layer.bindPopup(popupContent);
+}
+
+// Global functions for popup actions
+window.updateZoneColor = async (id, color) => {
+  const { error } = await supabaseClient
+    .from('zones')
+    .update({ color: color })
+    .eq('id', id);
+
+  if (error) {
+    console.error("Error updating zone:", error);
+    showToast("Error al actualizar zona.", "error");
+    return;
+  }
+
+  // Find layer and update style
+  drawnItems.eachLayer(layer => {
+    if (layer.zoneId == id) {
+      layer.setStyle({ color: color });
+      layer.closePopup();
+    }
+  });
+  showToast("Zona actualizada.", "success");
+};
+
+window.deleteZoneById = async (id) => {
+  if (!confirm("¿Eliminar esta zona?")) return;
+
+  const { error } = await supabaseClient
+    .from('zones')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error("Error deleting zone:", error);
+    showToast("Error al eliminar zona.", "error");
+    return;
+  }
+
+  drawnItems.eachLayer(layer => {
+    if (layer.zoneId == id) {
+      drawnItems.removeLayer(layer);
+    }
+  });
+  showToast("Zona eliminada.", "success");
+};
+
+function initDrawControl() {
+  drawnItems = new L.FeatureGroup();
+  map.addLayer(drawnItems);
+
+  const drawControl = new L.Control.Draw({
+    draw: {
+      polygon: {
+        allowIntersection: false,
+        showArea: true,
+        shapeOptions: {
+          color: '#ef4444', // Red
+          fillOpacity: 0.4
+        }
+      },
+      marker: false,
+      polyline: false,
+      circle: false,
+      circlemarker: false,
+      rectangle: {
+        shapeOptions: {
+          color: '#ef4444',
+          fillOpacity: 0.4
+        }
+      }
+    },
+    edit: {
+      featureGroup: drawnItems,
+      remove: true,
+      edit: false // Simplification: only add/remove for now
+    }
+  });
+  map.addControl(drawControl);
+
+  map.on(L.Draw.Event.CREATED, async function (e) {
+    const layer = e.layer;
+
+    // Determine color based on selection
+    const zoneType = document.getElementById("zoneTypeSelect")?.value || "today";
+    const color = (zoneType === "today") ? "#3b82f6" : "#ef4444";
+
+    layer.setStyle({ color: color, fillOpacity: 0.4 });
+    drawnItems.addLayer(layer);
+
+    // Save to DB
+    const shape = layer.toGeoJSON();
+    const coords = shape.geometry.coordinates[0].map(p => ({ lat: p[1], lng: p[0] }));
+
+    if (!coords || coords.length < 3) return;
+
+    const { data, error } = await supabaseClient
+      .from('zones')
+      .insert([{
+        coordinates: coords,
+        color: color,
+        created_at: new Date()
+      }])
+      .select();
+
+    if (error) {
+      console.error("Error saving zone:", error);
+      alert("Error al guardar la zona.");
+      drawnItems.removeLayer(layer);
+    } else {
+      const newId = data[0].id;
+      layer.zoneId = newId;
+      bindZonePopup(layer, newId);
+    }
+  });
+
+  map.on(L.Draw.Event.DELETED, async function (e) {
+    const layers = e.layers;
+    layers.eachLayer(async function (layer) {
+      if (layer.zoneId) {
+        const { error } = await supabaseClient
+          .from('zones')
+          .delete()
+          .eq('id', layer.zoneId);
+
+        if (error) console.error("Error deleting zone:", error);
+      }
+    });
+  });
+}
+
+async function loadZones() {
+  const { data, error } = await supabaseClient
+    .from('zones')
+    .select('*');
+
+  if (error) {
+    console.error("Error loading zones:", error);
+    return;
+  }
+
+  data.forEach(zone => {
+    if (!zone.coordinates) return;
+    const polygon = L.polygon(zone.coordinates, {
+      color: zone.color || '#ef4444',
+      fillOpacity: 0.4
+    });
+    polygon.zoneId = zone.id;
+    bindZonePopup(polygon, zone.id);
+
+    drawnItems.addLayer(polygon);
+  });
+}
+
 // ========= Init =========
 document.addEventListener("DOMContentLoaded", async () => {
   const profile = await requireAuthOrRedirect();
@@ -1490,6 +1720,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   // NUEVO: rutas
   wireRouteUi();
 
+  // Wizard Buttons
+  const btnNext = document.getElementById("btnWizardNext");
+  const btnPrev = document.getElementById("btnWizardPrev");
+
+  if (btnNext) btnNext.addEventListener("click", () => {
+    if (validateStep(currentStep)) {
+      currentStep++;
+      showStep(currentStep);
+    }
+  });
+
+  if (btnPrev) btnPrev.addEventListener("click", () => {
+    if (currentStep > 1) {
+      currentStep--;
+      showStep(currentStep);
+    }
+  });
+
   // NUEVO: Venta digital toggle logic
   const selVenta = document.getElementById("venta_digital");
   const divCual = document.getElementById("divVentaDigitalCual");
@@ -1512,9 +1760,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Cargar data + ubicar (opcional)
   try {
     await loadRecords();
+
+    // Zonas
+    initDrawControl();
+    await loadZones();
   } catch (err) {
     console.error(err);
-    showToast("No se pudieron cargar los clientes. Revisá tu conexión.", "error");
+    showToast("No se pudieron cargar los datos.", "error");
   }
 
   // Ubicación inicial (no obliga)
