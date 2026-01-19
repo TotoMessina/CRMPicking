@@ -508,186 +508,208 @@
             <input type="hidden" id="lat" />
             <input type="hidden" id="lng" />
 
-            <!-- Grid de 2 columnas para campos cortos -->
-            <div class="grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-              <div class="field">
-                <label for="nombre" style="text-decoration: underline; font-weight: bold;">Nombre (Contacto) *</label>
-                <input class="input" id="nombre" required />
-              </div>
-              <div class="field">
-                <label for="nombre_local" style="text-decoration: underline; font-weight: bold;">Nombre del Local
-                  *</label>
-                <input class="input" id="nombre_local" required />
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="cuit">CUIT</label>
-              <input class="input" id="cuit" placeholder="Ej: 30-12345678-9" />
-            </div>
-
-            <div class="grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-              <!-- Apellido lo dejamos oculto o lo quitamos si ya no se usa, pero mapa.js lo referencia. Lo dejo opcional/oculto o type="hidden" si queremos sacarlo visualmente. 
-                     El usuario pidio "Nombre del Local". En clientes.html no hay apellido.
-                     Para evitar error en JS, lo dejo hidden o simplemente lo dejo pero sin required.
-                     Mejor: lo dejo como hidden. -->
-              <input type="hidden" id="apellido" />
-
-              <div class="field">
-                <label for="telefono" style="text-decoration: underline; font-weight: bold;">Teléfono (Celular)
-                  *</label>
-                <input class="input" id="telefono" required />
-              </div>
-              <div class="field">
-                <label for="mail">Mail</label>
-                <input class="input" id="mail" type="email" placeholder="cliente@dominio.com" />
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="direccion" style="text-decoration: underline; font-weight: bold;">Dirección *</label>
-              <input class="input" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" required />
-            </div>
-
-            <div class="field">
-              <label for="horarios_atencion">Horarios de atención</label>
-              <!-- Helpers -->
-              <div style="display:flex; flex-direction:column; gap:4px; margin-bottom: 6px;">
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_lun" value="Lun"> Lun</label>
-                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_mar" value="Mar"> Mar</label>
-                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_mie" value="Mié"> Mié</label>
-                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_jue" value="Jue"> Jue</label>
-                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_vie" value="Vie"> Vie</label>
-                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_sab" value="Sáb"> Sáb</label>
-                  <label style="font-size:0.85em;"><input type="checkbox" id="chk_dom" value="Dom"> Dom</label>
+            <!-- SECCIÓN 1: DATOS DEL LOCAL -->
+            <fieldset
+              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(255,255,255,0.5);">
+              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">🏪 Datos del Local</legend>
+              <div class="grid-2">
+                <div class="field">
+                  <label for="nombre_local" style="font-weight:600;">Nombre del Local *</label>
+                  <input class="input" id="nombre_local" required placeholder="Ej: Kiosco Pepe" />
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <input type="time" id="time_apertura" style="width:auto;" class="input" />
-                  <span>a</span>
-                  <input type="time" id="time_cierre" style="width:auto;" class="input" />
+                <div class="field">
+                  <label for="rubro" style="font-weight:600;">Rubro *</label>
+                  <select class="input" id="rubro" required>
+                    <option value="">Seleccionar rubro...</option>
+                    <option value="Kiosco">Kiosco</option>
+                    <option value="Carnicería">Carnicería</option>
+                    <option value="Almacén">Almacén</option>
+                    <option value="Autoservicios">Autoservicios</option>
+                    <option value="Pescadería">Pescadería</option>
+                    <option value="Librería">Librería</option>
+                    <option value="Panadería">Panadería</option>
+                    <option value="Ferretería">Ferretería</option>
+                    <option value="Farmacia">Farmacia</option>
+                    <option value="Granja">Granja</option>
+                    <option value="Fiambrería">Fiambrería</option>
+                    <option value="Vinoteca">Vinoteca</option>
+                    <option value="Pet Shop">Pet Shop</option>
+                    <option value="Verdulería">Verdulería</option>
+                    <option value="Heladería">Heladería</option>
+                    <option value="Gastronómico">Gastronómico</option>
+                    <option value="Accesorios de Celular">Accesorios de Celular</option>
+                    <option value="Dietética">Dietética</option>
+                    <option value="Cotillón">Cotillón</option>
+                    <option value="Artículos de Limpieza">Artículos de Limpieza</option>
+                    <option value="Papelera">Papelera</option>
+                    <option value="Mercería">Mercería</option>
+                  </select>
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                  <label for="direccion" style="font-weight:600;">Dirección *</label>
+                  <input class="input" id="direccion" placeholder="Ej: Av. Rivadavia 1234, Haedo" required />
                 </div>
               </div>
-              <input class="input" id="horarios_atencion" placeholder="Ej: Lun a Vie 09:00 - 18:00 hs" />
-            </div>
+            </fieldset>
 
-            <div class="field">
-              <label for="rubro" style="text-decoration: underline; font-weight: bold;">Rubro *</label>
-              <select class="input" id="rubro" required>
-                <option value="">Seleccionar rubro...</option>
-                <option value="Kiosco">Kiosco</option>
-                <option value="Carnicería">Carnicería</option>
-                <option value="Almacén">Almacén</option>
-                <option value="Autoservicios">Autoservicios</option>
-                <option value="Pescadería">Pescadería</option>
-                <option value="Librería">Librería</option>
-                <option value="Panadería">Panadería</option>
-                <option value="Ferretería">Ferretería</option>
-                <option value="Farmacia">Farmacia</option>
-                <option value="Granja">Granja</option>
-                <option value="Fiambrería">Fiambrería</option>
-                <option value="Vinoteca">Vinoteca</option>
-                <option value="Pet Shop">Pet Shop</option>
-                <option value="Verdulería">Verdulería</option>
-                <option value="Heladería">Heladería</option>
-                <option value="Gastronómico">Gastronómico</option>
-                <option value="Accesorios de Celular">Accesorios de Celular</option>
-                <option value="Dietética">Dietética</option>
-                <option value="Cotillón">Cotillón</option>
-                <option value="Artículos de Limpieza">Artículos de Limpieza</option>
-                <option value="Papelera">Papelera</option>
-                <option value="Mercería">Mercería</option>
-              </select>
-            </div>
+            <!-- SECCIÓN 2: CONTACTO -->
+            <fieldset
+              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(255,255,255,0.5);">
+              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">👤 Contacto</legend>
+              <div class="grid-2">
+                <div class="field">
+                  <label for="nombre" style="font-weight:600;">Nombre Rep. *</label>
+                  <input class="input" id="nombre" required placeholder="Nombre de la persona" />
+                </div>
+                <!-- Hidden apellido field if needed for logic compatibility -->
+                <input type="hidden" id="apellido" />
 
-            <div class="field">
-              <label for="estilo_contacto">Estilo de contacto</label>
-              <select class="input" id="estilo_contacto">
-                <option value="Sin definir">Sin definir</option>
-                <option value="Dueño">Dueño</option>
-                <option value="Empleado">Empleado</option>
-                <option value="Cerrado">Cerrado</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="responsable">Responsable</label>
-              <select class="input" id="responsable">
-                <option value="">(Sin asignar)</option>
-                <option value="Flor">Flor</option>
-                <option value="Toto">Toto</option>
-                <option value="Ruben">Ruben</option>
-                <option value="Tincho(B)">Tincho(B)</option>
-                <option value="Fran">Fran</option>
-                <option value="Ari">Ari</option>
-                <option value="Nati">Nati</option>
-                <option value="Dani">Dani</option>
-                <option value="Otro">Otro</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label>Interés</label>
-              <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
-                <span style="font-size:0.85em; width:30px;">Bajo</span>
-                <input type="range" class="interest-slider" min="1" max="3" step="1" id="sliderInteres" style="flex:1;">
-                <span style="font-size:0.85em; width:30px; text-align:right;">Alto</span>
+                <div class="field">
+                  <label for="telefono" style="font-weight:600;">Teléfono *</label>
+                  <input class="input" id="telefono" required placeholder="Celular / WhatsApp" />
+                </div>
+                <div class="field">
+                  <label for="mail">Mail</label>
+                  <input class="input" id="mail" type="email" placeholder="email@dominio.com" />
+                </div>
+                <div class="field">
+                  <label for="cuit">CUIT</label>
+                  <input class="input" id="cuit" placeholder="Ej: 30-12345678-9" />
+                </div>
               </div>
-              <div style="text-align:center; font-weight:bold; margin-top:2px; font-size:0.9em; min-height:1.2em;"
-                id="labelInteres">-</div>
-              <input type="hidden" id="interes">
-            </div>
+            </fieldset>
 
-            <div class="field">
-              <label for="estado">Estado</label>
-              <select class="input" id="estado" required>
-                <option value="1 - Cliente relevado">1 - Cliente relevado</option>
-                <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-                <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
-                <option value="4 - Local Creado">4 - Local Creado</option>
-                <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
-                <option value="6 - Local No Interesado">6 - Local No Interesado</option>
-              </select>
-            </div>
+            <!-- SECCIÓN 3: GESTIÓN -->
+            <fieldset
+              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(255,255,255,0.5);">
+              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">📊 Gestión</legend>
+              <div class="grid-2">
+                <div class="field">
+                  <label for="estado">Estado</label>
+                  <select class="input" id="estado" required>
+                    <option value="1 - Cliente relevado">1 - Cliente relevado</option>
+                    <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
+                    <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
+                    <option value="4 - Local Creado">4 - Local Creado</option>
+                    <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
+                    <option value="6 - Local No Interesado">6 - Local No Interesado</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="responsable">Responsable</label>
+                  <select class="input" id="responsable">
+                    <option value="">(Sin asignar)</option>
+                    <option value="Flor">Flor</option>
+                    <option value="Toto">Toto</option>
+                    <option value="Ruben">Ruben</option>
+                    <option value="Tincho(B)">Tincho(B)</option>
+                    <option value="Fran">Fran</option>
+                    <option value="Ari">Ari</option>
+                    <option value="Nati">Nati</option>
+                    <option value="Dani">Dani</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="estilo_contacto">Estilo de contacto</label>
+                  <select class="input" id="estilo_contacto">
+                    <option value="Sin definir">Sin definir</option>
+                    <option value="Dueño">Dueño</option>
+                    <option value="Empleado">Empleado</option>
+                    <option value="Cerrado">Cerrado</option>
+                  </select>
+                </div>
 
-            <div class="field field-inline">
-              <label for="fecha_proximo_contacto">Próximo contacto</label>
-              <div class="field-inline-inner" style="display:flex; gap:8px;">
-                <input type="date" id="fecha_proximo_contacto" class="input" />
+                <div class="field">
+                  <label>Interés</label>
+                  <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+                    <span style="font-size:0.85em;">Bajo</span>
+                    <input type="range" class="interest-slider" min="1" max="3" step="1" id="sliderInteres"
+                      style="flex:1;">
+                    <span style="font-size:0.85em;">Alto</span>
+                  </div>
+                  <div style="text-align:center; font-weight:bold; margin-top:2px; font-size:0.9em;" id="labelInteres">-
+                  </div>
+                  <input type="hidden" id="interes">
+                </div>
               </div>
-            </div>
+            </fieldset>
 
-            <div class="field">
-              <label for="hora_proximo_contacto">Horario</label>
-              <input type="time" id="hora_proximo_contacto" class="input" />
-            </div>
+            <!-- SECCIÓN 4: AGENDA (VISITAS) -->
+            <fieldset
+              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(255,255,255,0.5);">
+              <legend style="font-weight:600; padding:0 6px; color:var(--accent);">📅 Agenda</legend>
+              <div class="grid-2">
+                <div class="field" style="grid-column: 1 / -1;">
+                  <label for="fecha_proximo_contacto">Próximo contacto</label>
+                  <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+                    <!-- Quick Buttons (JS Handler needed for these specific IDs if reused) -->
+                    <button type="button" class="btn-secundario btn-small" id="mapBtnQuickHoy">Hoy</button>
+                    <button type="button" class="btn-secundario btn-small" id="mapBtnQuickManiana">Mañana</button>
+                    <button type="button" class="btn-secundario btn-small" id="mapBtnQuickProxSemana">1 Sem</button>
+                  </div>
+                  <div style="display:flex; gap:8px;">
+                    <input type="date" id="fecha_proximo_contacto" class="input" style="flex:1;" />
+                    <input type="time" id="hora_proximo_contacto" class="input" style="width:100px;" />
+                  </div>
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="sin_proximo_contacto" />
+                    <span style="font-size:0.9em;">Marcar como contactado y <strong>sin próximo contacto</strong></span>
+                  </label>
+                </div>
+              </div>
+            </fieldset>
 
-            <div class="field">
-              <label>
-                <input type="checkbox" id="sin_proximo_contacto" />
-                Marcar como contactado y sin próximo contacto
-              </label>
-            </div>
+            <!-- SECCIÓN 5: DETALLES EXTRA -->
+            <fieldset
+              style="border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:12px; margin-bottom:12px; background:rgba(0,0,0,0.02);">
+              <legend style="font-weight:600; padding:0 6px; color:var(--text-muted); cursor:pointer;"
+                onclick="this.parentElement.classList.toggle('collapsed')">🔽 Adicionales (Horarios, Notas)</legend>
+              <div class="grid extra-content">
+                <div class="field" style="grid-column: 1 / -1;">
+                  <label for="horarios_atencion">Horarios de atención</label>
+                  <div style="display:flex; flex-direction:column; gap:4px; margin-bottom: 6px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                      <label style="font-size:0.85em;"><input type="checkbox" id="chk_lun" value="Lun"> L</label>
+                      <label style="font-size:0.85em;"><input type="checkbox" id="chk_mar" value="Mar"> M</label>
+                      <label style="font-size:0.85em;"><input type="checkbox" id="chk_mie" value="Mié"> M</label>
+                      <label style="font-size:0.85em;"><input type="checkbox" id="chk_jue" value="Jue"> J</label>
+                      <label style="font-size:0.85em;"><input type="checkbox" id="chk_vie" value="Vie"> V</label>
+                      <label style="font-size:0.85em;"><input type="checkbox" id="chk_sab" value="Sáb"> S</label>
+                      <label style="font-size:0.85em;"><input type="checkbox" id="chk_dom" value="Dom"> D</label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <input type="time" id="time_apertura" style="width:auto;" class="input" />
+                      <span>a</span>
+                      <input type="time" id="time_cierre" style="width:auto;" class="input" />
+                    </div>
+                  </div>
+                  <input class="input" id="horarios_atencion" placeholder="Ej: Lun a Vie 09:00 - 18:00 hs" />
+                </div>
 
-            <div class="field field-notas">
-              <label for="notas">Notas</label>
-              <textarea id="notas" class="input" rows="3"
-                placeholder="Comentarios, acuerdos, próximos pasos..."></textarea>
-            </div>
+                <div class="field field-notas" style="grid-column: 1 / -1;">
+                  <label for="notas">Notas</label>
+                  <textarea id="notas" class="input" rows="3"
+                    placeholder="Comentarios, acuerdos, próximos pasos..."></textarea>
+                </div>
 
-            <div class="field">
-              <label for="venta_digital">¿Vendió de forma digital?</label>
-              <select id="venta_digital" class="input">
-                <option value="false">No</option>
-                <option value="true">Sí</option>
-              </select>
-            </div>
+                <div class="field">
+                  <label for="venta_digital">¿Vendió de forma digital?</label>
+                  <select id="venta_digital" class="input">
+                    <option value="false">No</option>
+                    <option value="true">Sí</option>
+                  </select>
+                </div>
 
-            <div class="field" id="divVentaDigitalCual" style="display:none;">
-              <label for="venta_digital_cual">¿Cuál/Plataforma?</label>
-              <input type="text" id="venta_digital_cual" class="input"
-                placeholder="Ej: PedidosYa, Web propia, Instagram..." />
-            </div>
+                <div class="field" id="divVentaDigitalCual" style="display:none;">
+                  <label for="venta_digital_cual">¿Cuál/Plataforma?</label>
+                  <input type="text" id="venta_digital_cual" class="input" placeholder="Ej: PedidosYa..." />
+                </div>
+              </div>
+            </fieldset>
+
 
             <div class="modal-actions" style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
               <div class="muted" id="coordHint">Lat/Lng: -</div>

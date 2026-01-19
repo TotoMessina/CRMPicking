@@ -1499,6 +1499,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // Quick Date Buttons
+  const btnHoy = document.getElementById("mapBtnQuickHoy");
+  if (btnHoy) btnHoy.addEventListener("click", () => setQuickDate(0));
+
+  const btnManiana = document.getElementById("mapBtnQuickManiana");
+  if (btnManiana) btnManiana.addEventListener("click", () => setQuickDate(1));
+
+  const btnProxSemana = document.getElementById("mapBtnQuickProxSemana");
+  if (btnProxSemana) btnProxSemana.addEventListener("click", () => setQuickDate(7));
+
   // Cargar data + ubicar (opcional)
   try {
     await loadRecords();
