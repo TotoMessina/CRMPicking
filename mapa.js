@@ -1512,6 +1512,7 @@ function bindZonePopup(layer, zoneId) {
     <div style="display:flex; flex-direction:column; gap:6px;">
       <button class="btn-secundario btn-small" onclick="updateZoneColor('${zoneId}', '#3b82f6')">🔵 Marcar "Hoy"</button>
       <button class="btn-secundario btn-small" onclick="updateZoneColor('${zoneId}', '#ef4444')">🔴 Marcar "Realizada"</button>
+      <button class="btn-secundario btn-small" onclick="updateZoneColor('${zoneId}', '#f97316')">🟠 Marcar "Extra"</button>
       <hr style="width:100%; border:0; border-top:1px solid #ccc; margin:4px 0;">
       <button class="btn-delete btn-small" onclick="deleteZoneById('${zoneId}')">🗑️ Eliminar</button>
     </div>
@@ -1602,7 +1603,10 @@ function initDrawControl() {
 
     // Determine color based on selection
     const zoneType = document.getElementById("zoneTypeSelect")?.value || "today";
-    const color = (zoneType === "today") ? "#3b82f6" : "#ef4444";
+    let color = "#3b82f6"; // Default Blue
+    if (zoneType === "done") color = "#ef4444";
+    if (zoneType === "extra") color = "#f97316";
+
 
     layer.setStyle({ color: color, fillOpacity: 0.4 });
     drawnItems.addLayer(layer);
