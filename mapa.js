@@ -612,7 +612,7 @@ function getColorForCreator(user) {
 async function loadRecords() {
   const { data, error } = await supabaseClient
     .from("clientes")
-    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto,interes,estilo_contacto")
+    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto,interes,estilo_contacto,status_date,status_history")
     .eq("activo", true)
     .not("lat", "is", null)
     .not("lng", "is", null)
@@ -912,6 +912,35 @@ async function onSubmitForm(e) {
     }
     // Debug info handling for error block
     const debugUser = session.user.email;
+
+    // --- HISTORY TRACKING (Added) ---
+    const nowISO = new Date().toISOString();
+    if (id) {
+      // UPDATE
+      const currentRec = recordsCache.find(r => r.id == id);
+      // We can rely on recordsCache because we are editing a marker that was loaded.
+      // However, to be safe, if not found (rare), we skip history update or allow default behavior.
+      if (currentRec) {
+        if (normalizeEstado(currentRec.estado) !== estado) {
+          // Changed
+          const history = currentRec.status_history || [];
+          const oldStatusStart = currentRec.status_date || currentRec.created_at || nowISO;
+          history.push({
+            status: currentRec.estado,
+            start_date: oldStatusStart,
+            end_date: nowISO
+          });
+          payload.status_history = history;
+          payload.status_date = nowISO;
+        }
+      }
+    } else {
+      payload.status_history = [];
+      payload.status_date = nowISO;
+      // MAPA: Arranque con 1 visita
+      payload.visitas = 1;
+    }
+    // --------------------------------
 
     if (!id) {
       // NUEVO: guardar creador

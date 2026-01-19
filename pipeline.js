@@ -215,13 +215,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Update Backend
         try {
-            // 1. Update Client
+            // 1. Prepare Update Logic
+            const nowISO = new Date().toISOString();
+            const updatePayload = {
+                estado: newStatus,
+                updated_at: nowISO
+            };
+
+            // TRACKING HISTORY
+            // client is already found in local state 'client' (line 210)
+            // Ensure we have current data. 'client' comes from loadClients which does 'select *'
+            if (client) {
+                const history = client.status_history || [];
+                const oldStatusStart = client.status_date || client.created_at || nowISO;
+
+                // Archive old status
+                history.push({
+                    status: client.estado, // old status
+                    start_date: oldStatusStart,
+                    end_date: nowISO
+                });
+
+                updatePayload.status_history = history;
+                updatePayload.status_date = nowISO;
+            }
+
+            // 1. Update Client in DB
             const { error } = await window.supabaseClient
                 .from('clientes')
-                .update({
-                    estado: newStatus,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updatePayload)
                 .eq('id', clientId);
 
             if (error) throw error;

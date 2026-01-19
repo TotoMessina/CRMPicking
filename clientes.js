@@ -777,6 +777,11 @@ function createClienteCardHTML(cliente, actividades) {
             <button class="btn-quick" data-action="prox-maniana" data-id="${cliente.id}">Mañana</button>
             <button class="btn-quick" data-action="prox-sinfecha" data-id="${cliente.id}">Sin fecha</button>
           </div>
+
+          <div class="card-visitas" style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+             <strong>Visitas: ${cliente.visitas || 0}</strong>
+             <button class="btn-circle" data-action="sumar-visita" data-id="${cliente.id}" title="Sumar visita">+</button>
+          </div>
         </div>
 
         <div class="card-buttons">
@@ -963,6 +968,47 @@ async function guardarCliente(e) {
     payload.fecha_proximo_contacto = null;
     payload.hora_proximo_contacto = null;
   }
+
+  // --- TRACKING HISTORY LOGIC START ---
+  const nowISO = new Date().toISOString();
+
+  if (id) {
+    // 1) Fetch current state (status + feches)
+    //    We need to know the OLD status to see if it changed.
+    const { data: currentClient, error: fetchErr } = await supabaseClient
+      .from("clientes")
+      .select("estado, status_date, status_history, created_at")
+      .eq("id", id)
+      .single();
+
+    if (!fetchErr && currentClient) {
+      if (currentClient.estado !== estado) {
+        // STATUS CHANGED
+        const history = currentClient.status_history || [];
+        const oldStatusStart = currentClient.status_date || currentClient.created_at || nowISO;
+
+        // Archive old status
+        history.push({
+          status: currentClient.estado,
+          start_date: oldStatusStart,
+          end_date: nowISO
+        });
+
+        // Update payload
+        payload.status_history = history;
+        payload.status_date = nowISO;
+      } else {
+        // STATUS UNCHANGED
+        // Improve: if currentClient.status_date is null, fix it?
+        // For now, do nothing -> status_date remains as is.
+      }
+    }
+  } else {
+    // NEW CLIENT
+    payload.status_date = nowISO;
+    payload.status_history = [];
+  }
+  // --- TRACKING HISTORY LOGIC END ---
 
   let error;
   let newId = id;
@@ -1594,6 +1640,45 @@ document.addEventListener("DOMContentLoaded", () => {
         actualizarProximoContactoRapido(id, "maniana");
       } else if (action === "prox-sinfecha") {
         actualizarProximoContactoRapido(id, "sinfecha");
+      } else if (action === "sumar-visita") {
+        // INCREMENTAR VISITA
+        // Opción A: update optimista UI + update DB
+        // Opción B: update DB + reload
+        (async () => {
+          try {
+            // 1. Get current count (from UI or cache check?)
+            // UI text is "Visitas: X"
+            const container = btn.parentElement;
+            const strong = container.querySelector('strong');
+            let currentVal = 0;
+            if (strong) {
+              const parts = strong.textContent.split(':');
+              if (parts.length > 1) currentVal = parseInt(parts[1].trim()) || 0;
+            }
+
+            // 2. Increment in DB via RPC or UPDATE
+            // Simple Update: visitas = currentVal + 1
+            const newVal = currentVal + 1;
+
+            // Update DB
+            const { error } = await supabaseClient
+              .from('clientes')
+              .update({ visitas: newVal })
+              .eq('id', id);
+
+            if (error) throw error;
+
+            // 3. UI Update (Optimistic)
+            if (strong) strong.textContent = `Visitas: ${newVal}`;
+
+            // Optional: Log activity?
+            // await agregarActividad(id, `Visita registrada (Total: ${newVal})`);
+
+          } catch (err) {
+            console.error(err);
+            alert("Error al sumar visita");
+          }
+        })();
       }
     });
   }
