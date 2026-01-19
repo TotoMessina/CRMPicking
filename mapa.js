@@ -612,7 +612,7 @@ function getColorForCreator(user) {
 async function loadRecords() {
   const { data, error } = await supabaseClient
     .from("clientes")
-    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto,interes,estilo_contacto,status_date,status_history")
+    .select("id,nombre,nombre_local,apellido,direccion,rubro,estado,responsable,lat,lng,creado_por,created_at,cuit,notas,venta_digital,venta_digital_cual,fecha_proximo_contacto,hora_proximo_contacto,interes,estilo_contacto,status_date,status_history,visitas")
     .eq("activo", true)
     .not("lat", "is", null)
     .not("lng", "is", null)

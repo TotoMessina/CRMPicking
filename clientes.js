@@ -645,7 +645,7 @@ async function fetchClientesData(start, end, filters) {
   let query = supabaseClient
     .from("clientes")
     .select(
-      "id, nombre, nombre_local, telefono, mail, direccion, rubro, estado, responsable, interes, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad, venta_digital, venta_digital_cual, created_at",
+      "id, nombre, nombre_local, telefono, mail, direccion, rubro, estado, responsable, interes, estilo_contacto, visitas, status_history, status_date, fecha_proximo_contacto, hora_proximo_contacto, notas, ultima_actividad, venta_digital, venta_digital_cual, created_at",
       { count: "exact" }
     )
     .eq("activo", true);
@@ -1646,21 +1646,19 @@ document.addEventListener("DOMContentLoaded", () => {
         // Opción B: update DB + reload
         (async () => {
           try {
-            // 1. Get current count (from UI or cache check?)
-            // UI text is "Visitas: X"
-            const container = btn.parentElement;
-            const strong = container.querySelector('strong');
-            let currentVal = 0;
-            if (strong) {
-              const parts = strong.textContent.split(':');
-              if (parts.length > 1) currentVal = parseInt(parts[1].trim()) || 0;
-            }
+            // 1. Fetch current count from DB to be safe
+            const { data: currentData, error: fetchErr } = await supabaseClient
+              .from('clientes')
+              .select('visitas')
+              .eq('id', id)
+              .single();
 
-            // 2. Increment in DB via RPC or UPDATE
-            // Simple Update: visitas = currentVal + 1
+            if (fetchErr) throw fetchErr;
+
+            const currentVal = currentData.visitas || 0;
             const newVal = currentVal + 1;
 
-            // Update DB
+            // 2. Update DB
             const { error } = await supabaseClient
               .from('clientes')
               .update({ visitas: newVal })
@@ -1668,7 +1666,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (error) throw error;
 
-            // 3. UI Update (Optimistic)
+            // 3. UI Update
+            const container = btn.parentElement;
+            const strong = container.querySelector('strong');
             if (strong) strong.textContent = `Visitas: ${newVal}`;
 
             // Optional: Log activity?
