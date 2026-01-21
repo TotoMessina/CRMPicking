@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Proveedores - CRM PickingUp!</title>
+
+    <link rel="stylesheet" href="styles.css" />
+    <!-- FullCalendar -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        .prov-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            height: calc(100vh - 100px);
+        }
+
+        @media (max-width: 768px) {
+            .prov-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+        }
+
+        .prov-sidebar {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(2, 6, 23, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        :root[data-theme="dark"] .prov-sidebar {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .prov-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .prov-item {
+            background: var(--bg-card);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .prov-item:hover {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        :root[data-theme="dark"] .prov-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .prov-item.active {
+            border-color: var(--primary);
+            background: rgba(var(--primary-rgb), 0.1);
+        }
+
+        .prov-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .prov-meta {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        /* Calendar tweaks */
+        #calendar {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 16px;
+            height: 100%;
+        }
+
+        /* Access denied overlay */
+        #accessDenied {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-app);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="accessDenied" style="display:none;">
+        <h2>Acceso Restringido</h2>
+        <p>Solo administradores pueden ver esta página.</p>
+        <a href="index.html" class="btn-primario">Volver al Inicio</a>
+    </div>
+
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <div class="logo-pu">
+                        <div class="sidebar-logo">PU</div>
+                        <div class="sidebar-title">PickingUp</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-user"
+                style="margin-top: 0; background: transparent; border: none; padding: 0 16px 16px 16px;">
+                <div class="user-info">
+                    <span class="muted">Usuario:</span>
+                    <strong id="currentUserName">Cargando...</strong>
+                </div>
+            </div>
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">Modo</button>
+
+            <nav class="sidebar-nav" aria-label="Navegación principal">
+                <ul class="sidebar-menu">
+                    <li><a href="index.html">📍 Inicio</a></li>
+                    <li><a href="clientes.html">🏢 Clientes</a></li>
+                    <li><a href="pipeline.html">📊 Pipeline</a></li>
+                    <li><a href="consumidores.html">👥 Consumidores</a></li>
+                    <li><a href="repartidores.html">🚚 Repartidores</a></li>
+                    <li><a href="proveedores.html" class="active">🏭 Proveedores</a></li>
+                    <li><a href="calendario.html">📅 Calendario</a></li>
+                    <li><a href="horarios.html">🕒 Horarios</a></li>
+                    <li><a href="mapa.html">🗺️ Mapa Clientes</a></li>
+                    <li><a href="mapa_repartidores.html">🏍️ Mapa Repartidores</a></li>
+                    <li><a href="kiosco.html">🏪 Mapa Kiosco</a></li>
+                    <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+                    <li><a href="tickets.html">🎫 Tickets</a></li>
+                    <li><a href="calificaciones.html">⭐ Calificaciones</a></li>
+                    <li class="spacer"></li>
+                    <li><a href="usuarios.html">👥 Usuarios</a></li>
+                    <li><a href="configuracion.html">⚙️ Configuración</a></li>
+                    <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="app-content">
+            <main class="container">
+                <header class="calendar-topbar" style="margin-bottom: 16px;">
+                    <div>
+                        <h1>Gestión de Proveedores</h1>
+                        <p class="muted">Seguimiento de pedidos, plazos e ideas.</p>
+                    </div>
+                </header>
+
+                <div class="prov-layout">
+                    <!-- SIDEBAR: LISTA PROVEEDORES -->
+                    <aside class="prov-sidebar">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <h3 style="margin:0;">Proveedores</h3>
+                            <button id="btnNuevoProveedor" class="btn-mini btn-primario">+</button>
+                        </div>
+                        <input type="text" id="busquedaProv" placeholder="Buscar..." class="input-small"
+                            style="width:100%; margin-bottom:8px;">
+
+                        <div id="listaProveedores" class="prov-list">
+                            <!-- Items inserted by JS -->
+                            <div class="muted text-center" style="padding:20px;">Cargando...</div>
+                        </div>
+                    </aside>
+
+                    <!-- MAIN: CALENDARIO -->
+                    <section>
+                        <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                            <button id="btnNuevoEvento" class="btn-secundario">+ Evento / Pedido</button>
+                            <div class="muted" style="font-size:0.85rem; margin-left:auto;">
+                                <span
+                                    style="display:inline-block; width:10px; height:10px; background:#3b82f6; border-radius:50%; margin-right:4px;"></span>Pedido
+                                <span
+                                    style="display:inline-block; width:10px; height:10px; background:#eab308; border-radius:50%; margin-left:8px; margin-right:4px;"></span>Idea
+                                <span
+                                    style="display:inline-block; width:10px; height:10px; background:#ef4444; border-radius:50%; margin-left:8px; margin-right:4px;"></span>Plazo
+                            </div>
+                        </div>
+                        <div id="calendar"></div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+
+
+    <!-- MODAL PROVEEDOR -->
+    <div id="modalProveedor" class="modal" style="display:none;" aria-hidden="true" data-close="true">
+        <div class="modal-content">
+            <div class="modal-head">
+                <h3 id="modalTitleProv">Nuevo Proveedor</h3>
+                <button type="button" class="modal-close" data-close="true">×</button>
+            </div>
+            <form id="formProveedor">
+                <input type="hidden" id="provId">
+                <div class="field">
+                    <label>Nombre *</label>
+                    <input type="text" id="provNombre" required placeholder="Ej: Distribuidora Oeste">
+                </div>
+                <div class="field">
+                    <label>Contacto</label>
+                    <input type="text" id="provContacto" placeholder="Nombre del vendedor">
+                </div>
+                <div class="field">
+                    <label>Teléfono</label>
+                    <input type="text" id="provTelefono">
+                </div>
+                <div class="field">
+                    <label>Rubro</label>
+                    <input type="text" id="provRubro">
+                </div>
+                <div class="field">
+                    <label>Notas</label>
+                    <textarea id="provNotas" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="btnEliminarProv" class="btn-delete"
+                        style="display:none;">Eliminar</button>
+                    <button type="submit" class="btn-primario">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EVENTO PROVEEDOR -->
+    <div id="modalEvento" class="modal" style="display:none;" aria-hidden="true" data-close="true">
+        <div class="modal-content">
+            <div class="modal-head">
+                <h3 id="modalTitleEvento">Nuevo Evento</h3>
+                <button type="button" class="modal-close" data-close="true">×</button>
+            </div>
+            <form id="formEventoProv">
+                <input type="hidden" id="eventId">
+
+                <div class="field">
+                    <label>Proveedor *</label>
+                    <select id="eventProvId" required>
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Tipo</label>
+                    <select id="eventTipo">
+                        <option value="pedido">Pedido</option>
+                        <option value="plazo">Plazo / Vencimiento</option>
+                        <option value="idea">Idea / Proyecto</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Título *</label>
+                    <input type="text" id="eventTitulo" required placeholder="Ej: Pedido de gaseosas">
+                </div>
+
+                <div class="grid-2">
+                    <div class="field">
+                        <label>Inicio (Fecha Pedido)</label>
+                        <input type="datetime-local" id="eventInicio" required>
+                    </div>
+                    <div class="field">
+                        <label>Fin (Deadline Estimado)</label>
+                        <input type="datetime-local" id="eventFin">
+                    </div>
+                </div>
+
+                <div class="field"
+                    style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px; border: 1px dashed #ccc;">
+                    <label>Cierre Real (Para calcular demora)</label>
+                    <input type="datetime-local" id="eventReal">
+                    <small class="muted">Completar cuando llegue el pedido.</small>
+                </div>
+
+                <div class="field">
+                    <label>Estado</label>
+                    <select id="eventEstado">
+                        <option value="pendiente">Pendiente</option>
+                        <option value="completado">Completado / Recibido</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Descripción</label>
+                    <textarea id="eventDesc" rows="3"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" id="btnEliminarEvent" class="btn-delete"
+                        style="display:none;">Eliminar</button>
+                    <button type="submit" class="btn-primario">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="auth.js?v=2"></script>
+    <script src="common.js?v=2"></script>
+    <script src="guard.js?v=2"></script>
+    <script src="proveedores.js?v=1"></script>
+</body>
+
+</html>

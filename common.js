@@ -312,7 +312,8 @@
             "tickets.html": ["Administrador", "Activador PickingUp", "Empleado", "Admin"],
             "horarios.html": ["Administrador", "Admin"],
             "calificaciones.html": ["Administrador", "Admin", "kiosco"], // Only Admin & Kiosco
-            "kiosco.html": ["Administrador", "Admin", "kiosco"] // Only Admin & Kiosco
+            "kiosco.html": ["Administrador", "Admin", "kiosco"], // Only Admin & Kiosco
+            "proveedores.html": ["Administrador", "Admin"] // Only Admin
         };
 
         const currentRole = user.role; // Use original casing for array check
