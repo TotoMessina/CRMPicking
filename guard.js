@@ -61,7 +61,13 @@
     }
 
     if (user && isLoginPage()) {
-      location.replace(DEFAULT_AFTER_LOGIN);
+      // Check role before redirect
+      const perfil = await loadProfileNameFromUsuarios(supabaseClient, user);
+      if (perfil.role && perfil.role.toLowerCase() === "kiosco") {
+        location.replace("kiosco.html");
+      } else {
+        location.replace(DEFAULT_AFTER_LOGIN);
+      }
       return { ok: true, reason: "session_redirect_app" };
     }
 

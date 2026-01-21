@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calificaciones - CRM PickingUp</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .star-rating {
+            color: #f59e0b;
+            font-size: 1.1em;
+        }
+
+        .star-muted {
+            color: #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <div class="logo-pu">
+                        <div class="sidebar-logo">PU</div>
+                        <div class="sidebar-title">PickingUp</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-user"
+                style="margin-top: 0; background: transparent; border: none; padding: 0 16px 16px 16px;">
+                <div class="user-info">
+                    <span class="muted">Usuario:</span>
+                    <strong id="currentUserName">Cargando...</strong>
+                </div>
+            </div>
+
+            <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
+                Modo noche 🌙
+            </button>
+
+            <nav class="sidebar-nav" aria-label="Navegación principal">
+                <ul class="sidebar-menu">
+                    <li><a href="index.html">📍 Inicio</a></li>
+                    <li><a href="clientes.html">🏢 Clientes</a></li>
+                    <li><a href="pipeline.html">📊 Pipeline</a></li>
+                    <li><a href="consumidores.html">👥 Consumidores</a></li>
+                    <li><a href="repartidores.html">🚚 Repartidores</a></li>
+                    <li><a href="calendario.html">📅 Calendario</a></li>
+                    <li><a href="horarios.html">🕒 Horarios</a></li>
+                    <li><a href="mapa.html">🗺️ Mapa Clientes</a></li>
+                    <li><a href="mapa_repartidores.html">🏍️ Mapa Repartidores</a></li>
+                    <li><a href="kiosco.html">🏪 Mapa Kiosco</a></li>
+                    <li><a href="estadisticas.html">📊 Estadísticas</a></li>
+                    <li><a href="tickets.html">🎫 Tickets</a></li>
+                    <li><a href="calificaciones.html" class="active">⭐ Calificaciones</a></li>
+                    <li class="spacer"></li>
+                    <li><a href="usuarios.html">👥 Usuarios</a></li>
+                    <li><a href="configuracion.html">⚙️ Configuración</a></li>
+                    <li><a href="#" id="btnLogout">🚪 Salir</a></li>
+                </ul>
+            </nav>
+
+        </aside>
+
+        <div class="app-content">
+            <main class="container">
+                <header
+                    style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1>Calificaciones y Feedback</h1>
+                        <p class="muted">Puntuaciones recibidas de los kioscos.</p>
+                    </div>
+                    <button id="btnRefresh" class="btn-secundario">🔄 Actualizar</button>
+                </header>
+
+                <section class="controls">
+                    <div class="filters">
+                        <select id="filterScore">
+                            <option value="todos">Todos los puntajes</option>
+                            <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4)</option>
+                            <option value="3">⭐⭐⭐ (3)</option>
+                            <option value="2">⭐⭐ (2)</option>
+                            <option value="1">⭐ (1)</option>
+                        </select>
+                        <select id="filterStatus">
+                            <option value="todos">Todos los estados</option>
+                            <option value="Nuevo" selected>Nuevos</option>
+                            <option value="Leído">Leídos</option>
+                            <option value="Archivado">Archivados</option>
+                        </select>
+                        <input type="text" id="searchInput" placeholder="Buscar kiosco..." />
+                    </div>
+                    <button id="btnNewRating" class="btn-primario" style="margin-left:auto;">+ Nueva
+                        Calificación</button>
+                </section>
+
+                <!-- Bento Grid for Ratings -->
+                <div class="bento-grid" id="ratingsGrid">
+                    <!-- Loading state -->
+                    <div class="bento-card" style="grid-column: span 3; text-align: center; padding: 40px;">
+                        <p>Cargando calificaciones...</p>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Ver Calificación -->
+    <div id="modalRating" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="btnCloseModal">×</button>
+            <div class="modal-header" style="padding:0; border:none;">
+                <h2 id="modalTitle">Detalle de Calificación</h2>
+            </div>
+
+            <div class="modal-body" style="padding: 16px 0;">
+                <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-body); border-radius: 8px;">
+                    <p><strong>Kiosco:</strong> <span id="modalKioscoName">Nombre</span></p>
+                    <p style="margin-top:4px;"><strong>Puntaje:</strong> <span id="modalStars"
+                            class="star-rating"></span></p>
+                    <p style="margin-top:4px;"><strong>Aspecto:</strong> <span id="modalAspect"
+                            class="badge">General</span></p>
+                    <p style="margin-top:4px;"><strong>Atendido por:</strong> <span id="modalAttendedBy"></span></p>
+                    <p style="font-size: 0.85rem; margin-top:4px;" class="muted" id="modalDate">...</p>
+                </div>
+                <div style="margin-bottom: 24px;">
+                    <label style="display:block; margin-bottom: 8px; font-weight: 500;">Comentario:</label>
+                    <div id="modalComment" style="white-space: pre-wrap; line-height: 1.5; font-style:italic;">...</div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                <div class="form-group">
+                    <label for="selectNewStatus">Estado:</label>
+                    <select id="selectNewStatus" class="form-control">
+                        <option value="Nuevo">Nuevo</option>
+                        <option value="Leído">Leído</option>
+                        <option value="Archivado">Archivado</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secundario" id="btnDeleteRating"
+                    style="color: #ef4444; border-color: #ef4444;">🗑️ Eliminar</button>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn-secundario" id="btnCancel">Cerrar</button>
+                    <button type="button" class="btn-primary" id="btnSaveStatus">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear Calificación (Simple manual entry) -->
+    <div id="modalCreate" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="btnCloseCreate">×</button>
+            <h2>Nueva Calificación</h2>
+            <form id="formCreate" style="margin-top:16px;">
+                <div class="field">
+                    <label>Nombre del Kiosco/Cliente *</label>
+                    <input type="text" id="inpNewName" class="input" required placeholder="Ej: Kiosco Pepe">
+                    <!-- Future: Autocomplete from DB -->
+                </div>
+                <div class="field">
+                    <label>Puntaje *</label>
+                    <div class="segmented-control">
+                        <input type="radio" name="newScore" value="1" id="sc1"><label for="sc1">1</label>
+                        <input type="radio" name="newScore" value="2" id="sc2"><label for="sc2">2</label>
+                        <input type="radio" name="newScore" value="3" id="sc3"><label for="sc3">3</label>
+                        <input type="radio" name="newScore" value="4" id="sc4"><label for="sc4">4</label>
+                        <input type="radio" name="newScore" value="5" id="sc5" checked><label for="sc5">5</label>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Aspecto (Opcional)</label>
+                    <select id="inpNewAspect" class="input">
+                        <option value="General">General</option>
+                        <option value="Atención">Atención</option>
+                        <option value="Limpieza">Limpieza</option>
+                        <option value="Stock">Stock</option>
+                        <option value="Precio">Precio</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Comentario</label>
+                    <textarea id="inpNewComment" class="input" rows="3"></textarea>
+                </div>
+                <div class="modal-actions" style="margin-top:20px;">
+                    <button type="button" class="btn-secundario" id="btnCancelCreate">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script src="auth.js"></script>
+    <script src="guard.js"></script>
+    <script src="calificaciones.js"></script>
+</body>
+
+</html>

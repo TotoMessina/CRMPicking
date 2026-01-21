@@ -839,7 +839,7 @@ async function renderAllByRange() {
 
   const clientesCreadosRango = await fetchAll(
     CFG.tables.clientes,
-    "creado_por,created_at,estado,rubro,interes",
+    "creado_por,created_at,estado,rubro,interes,status_history", // Added status_history
     (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO)
   );
 
@@ -865,7 +865,10 @@ async function renderAllByRange() {
 
     // Es activador?
     if (setActivadores.has(k)) {
-      // 1. Breakdown Tabla (Total por activador)
+      // 1. Breakdown Tabla (Total por activador - basado en clientes CREADOS en rango, o activos?)
+      // Si usamos este loop, estamos iterando clientes CREADOS en el rango.
+      // El breakdown tabla muestra "Total Gestión" sobre estos clientes.
+
       if (!breakdownPorActivador.has(creador)) {
         breakdownPorActivador.set(creador, { total: 0, statuses: {} });
       }
@@ -888,13 +891,45 @@ async function renderAllByRange() {
       rMap.set(rubro, (rMap.get(rubro) || 0) + 1);
 
 
-      // 2. Chart (Por dia y estado)
-      const d = parseDate(c.created_at);
-      if (d) {
+      // 3. Chart Timeline (Por dia y estado - USANDO HISTORIAL)
+      const history = Array.isArray(c.status_history) ? c.status_history : [];
+      const events = [];
+      let lastHistoryEnd = null;
+
+      // A. History Events
+      history.forEach(h => {
+        if (h.status && h.start_date) {
+          events.push({ status: h.status, date: h.start_date });
+        }
+        if (h.end_date) {
+          const ed = new Date(h.end_date);
+          if (!lastHistoryEnd || ed > lastHistoryEnd) lastHistoryEnd = ed;
+        }
+      });
+
+      // B. Current Status Event
+      const currentStartDate = lastHistoryEnd ? lastHistoryEnd.toISOString() : c.created_at;
+      if (c.estado && currentStartDate) {
+        events.push({ status: c.estado, date: currentStartDate });
+      }
+
+      // C. Process Events into Buckets
+      for (const e of events) {
+        const d = parseDate(e.date);
+        if (!d) continue;
+
+        // Filter by range?
+        if (d < fromDate || d >= toDate) continue;
+
         const dk = toLocalDayKey(d);
+        const evtSt = cleanName(e.status); // Use event status, not current
+
         if (dailyStatusMap.has(dk)) {
           const dayMap = dailyStatusMap.get(dk);
-          dayMap.set(st, (dayMap.get(st) || 0) + 1);
+          dayMap.set(evtSt, (dayMap.get(evtSt) || 0) + 1);
+
+          // Add status to global set if found in timeline (might be different from current state)
+          allFoundStatuses.add(evtSt);
         }
       }
     }
@@ -1626,42 +1661,134 @@ async function renderAllByRange() {
     );
 
     // =======================================================
-    // Crecimiento diario EN RANGO
+    // Crecimiento diario EN RANGO (Desglosado por Estado)
     // =======================================================
-    const cliAltas = await fetchAll(CFG.tables.clientes, "created_at,activo", (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO));
-    const sCli = seriesByDay(cliAltas, "created_at", buckets);
+    const cliAltas = await fetchAll(
+      CFG.tables.clientes,
+      "created_at,activo,status_history,estado",
+      (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO)
+    );
+
+    // Process Data: Status -> Day -> Count
+    const statusDailyBuckets = new Map();
+    const allStatusesFound = new Set();
+
+    // We iterate clients created in this range. 
+    // We check their history. If they had a status change ON a specific day in this range, we count it?
+    // OR do we just count their *current* status on their *creation* day?
+    // User: "me gustaria que en el grafico esten todos los datos reflejados de estado, tanto los viejos como los nuevos"
+    // "al pasar de un estado al otro actualmente se me actualiza sobre el dia en el que se creo"
+    // This confirms they want the HISTORY events.
+
+    for (const c of cliAltas) {
+      const history = Array.isArray(c.status_history) ? c.status_history : [];
+      const events = [];
+
+      // Trackeamos el último end_date para saber inicio del estado actual
+      let lastHistoryEnd = null;
+
+      // 1. Add History Events based on user structure: 
+      // { "status": "...", "end_date": "...", "start_date": "..." }
+      history.forEach(h => {
+        // El evento ocurrió en start_date
+        if (h.status && h.start_date) {
+          events.push({ status: h.status, date: h.start_date });
+        }
+
+        if (h.end_date) {
+          const ed = new Date(h.end_date);
+          if (!lastHistoryEnd || ed > lastHistoryEnd) {
+            lastHistoryEnd = ed;
+          }
+        }
+      });
+
+      // 2. Current Status Event
+      // El estado actual (c.estado) empezó cuando terminó el último histórico.
+      // Si no hubo histórico, usamos created_at como fallback.
+      const currentStartDate = lastHistoryEnd ? lastHistoryEnd.toISOString() : c.created_at;
+
+      if (c.estado && currentStartDate) {
+        events.push({ status: c.estado, date: currentStartDate });
+      }
+
+      // 3. Process Events
+      for (const e of events) {
+        const d = parseDate(e.date);
+        if (!d) continue;
+
+        // Only count if event is within the requested range?
+        if (d < fromDate || d >= toDate) continue;
+
+        const dk = toLocalDayKey(d);
+        const st = cleanName(e.status);
+        allStatusesFound.add(st);
+
+        if (!statusDailyBuckets.has(st)) statusDailyBuckets.set(st, new Map());
+        const dMap = statusDailyBuckets.get(st);
+        dMap.set(dk, (dMap.get(dk) || 0) + 1);
+      }
+    }
+
+    // Prepare Stacked Bar Data
+    const sortedStatuses = Array.from(allStatusesFound).sort();
+    // Helper for colors
+    const getStColor = (st) => {
+      if (st.includes('1')) return THEME.colors.slate;
+      if (st.includes('3')) return THEME.colors.primary; // Primer ingreso
+      if (st.includes('4')) return THEME.colors.info;    // Creado
+      if (st.includes('5')) return THEME.colors.secondary; // Activo
+      if (st.includes('6')) return THEME.colors.danger;  // No interesado
+      return THEME.colors.accent; // 2 or others
+    };
+
+    const datasetsAltas = sortedStatuses.map(st => {
+      return {
+        label: st,
+        data: buckets.map(b => {
+          const map = statusDailyBuckets.get(st);
+          return map ? (map.get(b.key) || 0) : 0;
+        }),
+        backgroundColor: getStColor(st),
+        stack: 'Stack 0'
+      };
+    });
 
     destroyChart("altas");
     const canvasAltas = $("chartAltasDiarias");
     if (canvasAltas) {
       ensureCanvasHeight("chartAltasDiarias");
-      if (CHARTS.altas) CHARTS.altas.destroy();
 
-      // Solo mostramos Clientes
       const ctx = canvasAltas.getContext("2d");
-      const gradient = createGradient(ctx, 'rgba(59, 130, 246, 0.4)', 'rgba(59, 130, 246, 0.0)');
-
       CHARTS.altas = new Chart(ctx, {
-        type: "line",
+        type: "bar", // Stacked Bar
         data: {
           labels: buckets.map(b => b.label),
-          datasets: [
-            {
-              label: "Clientes Nuevos",
-              data: sCli.data,
-              tension: 0.4,
-              fill: true,
-              backgroundColor: gradient,
-              borderColor: THEME.colors.info,
-              pointRadius: 0,
-              pointHoverRadius: 6,
-              pointBackgroundColor: "#fff",
-              pointBorderColor: THEME.colors.info,
-              borderWidth: 2
-            }
-          ],
+          datasets: datasetsAltas
         },
-        options: COMMON_OPTIONS,
+        options: {
+          ...COMMON_OPTIONS,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            ...COMMON_OPTIONS.plugins,
+            tooltip: {
+              callbacks: {
+                footer: (items) => {
+                  const total = items.reduce((a, b) => a + b.parsed.y, 0);
+                  return 'Total: ' + total;
+                }
+              }
+            },
+            legend: { ...COMMON_OPTIONS.plugins.legend, display: true, position: 'top' }
+          },
+          scales: {
+            x: { ...COMMON_OPTIONS.scales.x, stacked: true },
+            y: { ...COMMON_OPTIONS.scales.y, stacked: true }
+          }
+        },
       });
     }
 
@@ -1670,7 +1797,12 @@ async function renderAllByRange() {
       ulAltas.innerHTML = "";
       const take = Math.min(7, buckets.length);
       for (let i = buckets.length - take; i < buckets.length; i++) {
-        const val = sCli.data[i] || 0;
+        // Calculate Total from all status datasets for this day
+        let val = 0;
+        if (datasetsAltas) {
+          val = datasetsAltas.reduce((acc, ds) => acc + (ds.data[i] || 0), 0);
+        }
+
         const li = document.createElement("li");
         li.innerHTML = `<span>${escapeHtml(buckets[i].label)}</span> <strong>${fmtInt(val)}</strong>`;
         ulAltas.appendChild(li);

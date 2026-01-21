@@ -1622,6 +1622,7 @@ function initDrawControl() {
       .insert([{
         coordinates: coords,
         color: color,
+        scope: 'client_map', // Scoped to Client Map
         created_at: new Date()
       }])
       .select();
@@ -1655,7 +1656,8 @@ function initDrawControl() {
 async function loadZones() {
   const { data, error } = await supabaseClient
     .from('zones')
-    .select('*');
+    .select('*')
+    .eq('scope', 'client_map'); // Only load client map zones
 
   if (error) {
     console.error("Error loading zones:", error);

@@ -264,14 +264,58 @@
         const user = window.CRM_USER;
         if (!user || user.activo !== true) return;
 
-        const userRole = user.role || "User";
+        const userRole = (user.role || "User").toLowerCase();
+        const path = window.location.pathname.toLowerCase();
+        const isKioscoPage = path.includes("kiosco.html");
+
+        // --- KIOSCO ROLE LOGIC ---
+        if (userRole === "kiosco") {
+            const allowedKiosco = ["kiosco.html", "configuracion.html", "calificaciones.html", "login.html"];
+            // Check if current page is allowed
+            // We use 'some' because path might be full path e.g. /configuracion.html
+            const isAllowed = allowedKiosco.some(p => path.includes(p));
+
+            if (!isAllowed) {
+                console.warn("Kiosco role restricted.");
+                window.location.replace("kiosco.html");
+                return;
+            }
+
+            // Restore strict visibility for Kiosco: Hide non-whitelisted links
+            const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
+            sidebarLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (!href) return;
+                const isLinkAllowed = allowedKiosco.some(p => href.toLowerCase().includes(p));
+                // Special case: Logout is always allowed (has no href or check id) - usually id="btnLogout"
+                if (!isLinkAllowed && !link.id.includes("Logout")) {
+                    link.parentElement.style.display = 'none';
+                }
+            });
+            return;
+        }
+
+        // --- NON-KIOSCO LOGIC ---
+        // Allow Admins to access Kiosco page, block others
+        const isAdmin = ["admin", "administrador"].includes(userRole.toLowerCase());
+
+        if (isKioscoPage) {
+            if (!isAdmin && userRole !== "kiosco") {
+                window.location.replace("index.html");
+                return;
+            }
+        }
 
         // Definition of Page Permissions (Page -> Allowed Roles)
         const permissions = {
-            "calendario.html": ["Administrador", "Activador PickingUp", "Empleado"],
-            "tickets.html": ["Administrador", "Activador PickingUp", "Empleado"],
-            "horarios.html": ["Administrador", "Admin"]
+            "calendario.html": ["Administrador", "Activador PickingUp", "Empleado", "Admin"],
+            "tickets.html": ["Administrador", "Activador PickingUp", "Empleado", "Admin"],
+            "horarios.html": ["Administrador", "Admin"],
+            "calificaciones.html": ["Administrador", "Admin", "kiosco"], // Only Admin & Kiosco
+            "kiosco.html": ["Administrador", "Admin", "kiosco"] // Only Admin & Kiosco
         };
+
+        const currentRole = user.role; // Use original casing for array check
 
         // 1. SIDEBAR: Hide restricted links
         const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
@@ -279,23 +323,23 @@
             const href = link.getAttribute('href');
             if (!href) return;
 
-            // Check if this link points to a restricted page
+            // simple check: if href contains a restricted page name
             for (const [page, allowedRoles] of Object.entries(permissions)) {
-                if (href.includes(page)) {
-                    if (!allowedRoles.includes(userRole)) {
-                        link.parentElement.style.display = 'none'; // Hide <li>
+                if (href.toLowerCase().includes(page)) { // Use includes to handle ./kiosco.html etc
+                    const rolesLower = allowedRoles.map(r => r.toLowerCase());
+                    if (!rolesLower.includes(userRole)) {
+                        link.parentElement.style.display = 'none';
                     }
                 }
             }
         });
 
-        // 2. ROUTE PROTECTION: Redirect if on restricted page
-        const path = window.location.pathname.toLowerCase();
-
+        // 2. PROTECT CURRENT PAGE
         for (const [page, allowedRoles] of Object.entries(permissions)) {
             if (path.includes(page)) {
-                if (!allowedRoles.includes(userRole)) {
-                    console.warn(`Access denied for role '${userRole}' on page '${path}'`);
+                const rolesLower = allowedRoles.map(r => r.toLowerCase());
+                if (!rolesLower.includes(userRole)) {
+                    console.warn(`Access denied to ${page}`);
                     window.location.replace("index.html");
                     return;
                 }
@@ -303,11 +347,12 @@
         }
     }
 
+    // --- Init ---
     document.addEventListener("DOMContentLoaded", () => {
         // Run initial check
-        updateTicketBadge();
+        if (window.updateTicketBadge) updateTicketBadge();
         // Refresh periodically (e.g. every 30s)
-        setInterval(updateTicketBadge, 30000);
+        if (window.updateTicketBadge) setInterval(updateTicketBadge, 30000);
 
         // Apply Permissions
         applyRolePermissions();
