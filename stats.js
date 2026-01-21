@@ -919,7 +919,7 @@ async function renderAllByRange() {
         if (!d) continue;
 
         // Filter by range?
-        if (d < fromDate || d >= toDate) continue;
+        if (d < fromDate || d >= nextDay) continue;
 
         const dk = toLocalDayKey(d);
         const evtSt = cleanName(e.status); // Use event status, not current
@@ -1277,7 +1277,7 @@ async function renderAllByRange() {
             x: {
               ...COMMON_OPTIONS.scales.x,
               display: true,
-              grid: { display: true, color: THEME.colors.grid },
+              grid: { color: THEME.colors.grid },
             },
             y: {
               ...COMMON_OPTIONS.scales.y,
@@ -1718,7 +1718,7 @@ async function renderAllByRange() {
         if (!d) continue;
 
         // Only count if event is within the requested range?
-        if (d < fromDate || d >= toDate) continue;
+        if (d < fromDate || d >= nextDay) continue;
 
         const dk = toLocalDayKey(d);
         const st = cleanName(e.status);

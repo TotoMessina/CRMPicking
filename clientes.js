@@ -142,6 +142,7 @@ function resetFormulario() {
       toggleVentaDigital(false);
     }
     if (document.getElementById("venta_digital_cual")) document.getElementById("venta_digital_cual").value = "";
+    if (document.getElementById("created_at_input")) document.getElementById("created_at_input").value = "";
 
     // Reset Horarios Helpers
     ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom"].forEach(id => {
@@ -964,6 +965,17 @@ async function guardarCliente(e) {
     venta_digital_cual: venta_digital ? (venta_digital_cual || null) : null
   };
 
+  // CHECK: Fecha Manual de Alta
+  const manualDate = document.getElementById("created_at_input") ? document.getElementById("created_at_input").value : null;
+  if (manualDate) {
+    // Append current time to ensure it's not shifted by UTC
+    const now = new Date();
+    // Format: YYYY-MM-DDTHH:mm:ss.sssZ
+    // manualDate is YYYY-MM-DD
+    const timePart = now.toISOString().split('T')[1];
+    payload.created_at = `${manualDate}T${timePart}`;
+  }
+
   if (sinProximo) {
     payload.fecha_proximo_contacto = null;
     payload.hora_proximo_contacto = null;
@@ -1017,11 +1029,39 @@ async function guardarCliente(e) {
     const { error: errUpdate } = await supabaseClient.from("clientes").update(payload).eq("id", id);
     error = errUpdate;
     if (!error) {
+      // Check if created_at was manually updated
+      const manualDate = document.getElementById("created_at_input").value;
+      if (manualDate) {
+        // We keep the time if possible, or just date?
+        // If we just send YYYY-MM-DD, supabase might set time to 00:00 or reject if timestamptz.
+        // Ideally we preserve the original time if it's just a date correction, but simple is best:
+        // Append T12:00:00Z to ensure it's midday or current time? 
+        // Let's use T00:00:00 or T12:00:00.
+        // However, if it's a NEW date, we might want current time?
+        // User wants to BACKDATE.
+
+        // If we update created_at separately or in payload?
+        // Payload is already defined above... wait, I need to add it to payload BEFORE update.
+        // But I can do a separate update if needed, or better ADD IT TO PAYLOAD.
+      }
+
       await agregarActividad(id, sinProximo ? "Cliente actualizado y marcado sin próximo contacto." : "Cliente actualizado");
     }
   } else {
     // NUEVO: Agregamos el creador
     payload.creado_por = usuarioActual;
+
+    // Manual Created At (only for new clients? Or Edit too? User said "creation form").
+    // Let's support both.
+    const manualDate = document.getElementById("created_at_input").value;
+    if (manualDate) {
+      // Append current time to the selected date to avoid 00:00 UTC shift issues?
+      // Or just use the date string, Supabase handles YYYY-MM-DD as 00:00.
+      // Let's append current TIME to the selected date.
+      const now = new Date();
+      const timePart = now.toISOString().split('T')[1];
+      payload.created_at = `${manualDate}T${timePart}`;
+    }
 
     const { data, error: errInsert } = await supabaseClient
       .from("clientes")
@@ -1129,6 +1169,10 @@ function editarCliente(id) {
   document.getElementById("venta_digital").value = isDigital ? "true" : "false";
   toggleVentaDigital(isDigital);
   document.getElementById("venta_digital_cual").value = cliente.venta_digital_cual || "";
+
+  if (document.getElementById("created_at_input") && cliente.created_at) {
+    document.getElementById("created_at_input").value = cliente.created_at.split('T')[0];
+  }
 
 
   document.getElementById("tituloForm").textContent = "Editar cliente";
