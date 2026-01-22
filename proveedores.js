@@ -203,8 +203,17 @@ function renderIdeasBoard(events) {
 
             const provName = idea.proveedores?.nombre || "Sin Prov.";
 
+            // Status Icon/Text
+            let statusIcon = "";
+            let titleClass = "idea-card-title";
+            if (idea.estado === "completado") {
+                statusIcon = "✅ ";
+                // titleClass += " text-decoration-line-through"; // Optional: strike through
+            }
+            else if (idea.estado === "cancelado") statusIcon = "❌ ";
+
             card.innerHTML = `
-                <div class="idea-card-title">${escapeHtml(idea.titulo)}</div>
+                <div class="${titleClass}">${statusIcon}${escapeHtml(idea.titulo)}</div>
                 <div class="idea-card-prov">${escapeHtml(provName)}</div>
             `;
             card.addEventListener("click", () => openModalEvento(idea));
@@ -309,6 +318,62 @@ async function updateEventDates(id, start, end) {
         loadEvents(); // Revert
     }
 }
+
+// ==========================================
+// HISTORIAL LOGIC
+// ==========================================
+async function loadHistory(eventId) {
+    const listEl = document.getElementById("historialList");
+    listEl.innerHTML = '<div class="muted text-center" style="padding:10px;">Cargando historial...</div>';
+
+    const { data, error } = await supabaseClient
+        .from('eventos_historial')
+        .select('*')
+        .eq('evento_id', eventId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("Error loading history:", error);
+        listEl.innerHTML = '<div class="muted text-center text-danger">Error al cargar historial.</div>';
+        return;
+    }
+
+    renderHistory(data || []);
+}
+
+function renderHistory(items) {
+    const listEl = document.getElementById("historialList");
+    listEl.innerHTML = "";
+
+    if (items.length === 0) {
+        listEl.innerHTML = '<div class="muted text-center" style="padding:10px;">Sin historial.</div>';
+        return;
+    }
+
+    items.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+
+        const dateStr = new Date(item.created_at).toLocaleString('es-AR', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+        });
+
+        const userLabel = item.usuario_email ? ` • <strong>${getInitials(item.usuario_email)}</strong>` : '';
+
+        div.innerHTML = `
+            <div class="history-meta">
+                ${dateStr}${userLabel}
+            </div>
+            <div class="history-text">${escapeHtml(item.comentario)}</div>
+        `;
+        listEl.appendChild(div);
+    });
+}
+
+function getInitials(email) {
+    return email.split('@')[0];
+}
+
 
 // ==========================================
 // MODALS LOGIC
@@ -522,6 +587,38 @@ function bindUIEvents() {
         document.getElementById("modalTitleEvento").textContent = "Nueva Idea";
         document.getElementById("eventTipo").value = "idea";
         document.getElementById("eventInicio").value = ""; // No date for ideas by default
+    });
+
+    // History Add Button
+    document.getElementById("btnHistorialAdd").addEventListener("click", async () => {
+        console.log("Btn Historial Clicked");
+        const eventId = document.getElementById("eventId").value;
+        const input = document.getElementById("historialInput");
+        const text = input.value.trim();
+
+        if (!eventId) {
+            alert("Primero guarda el evento antes de agregar notas.");
+            return;
+        }
+        if (!text) return;
+
+        const userEmail = window.CRM_USER?.email || null;
+
+        const { error } = await supabaseClient
+            .from('eventos_historial')
+            .insert([{
+                evento_id: eventId,
+                comentario: text,
+                usuario_email: userEmail
+            }]);
+
+        if (error) {
+            console.error("Error saving history:", error);
+            alert("Error al guardar nota: " + error.message);
+        } else {
+            input.value = "";
+            loadHistory(eventId); // Refresh
+        }
     });
 
     // Busqueda

@@ -209,12 +209,113 @@
             position: fixed;
             inset: 0;
             background: var(--bg-app);
-            z-index: 9999;
+            z-index: 10000;
+            /* Higher than modal */
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             gap: 16px;
+        }
+
+        /* Modal Improvements */
+        .modal-content.wide {
+            max-width: 800px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-grid .field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* History Section Styles */
+        .history-box {
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 20px;
+        }
+
+        .history-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--bg-card);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .history-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .history-input-group input {
+            flex-grow: 1;
+            /* Grow to fill space */
+            width: auto;
+            /* Reset */
+            min-width: 0;
+            /* Allow flex shrink */
+            height: 38px;
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.1);
+            background: #fff;
+            z-index: 20;
+            position: relative;
+        }
+
+        /* Smaller button class specifically for this */
+        .btn-history-send {
+            flex: 0 0 auto;
+            /* Do NOT grow */
+            width: auto !important;
+            /* Force auto width */
+            padding: 0 16px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-meta {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-bottom: 2px;
+        }
+
+        .history-text {
+            font-size: 0.9rem;
+            line-height: 1.4;
         }
     </style>
 </head>
@@ -373,7 +474,7 @@
 
     <!-- MODAL EVENTO PROVEEDOR -->
     <div id="modalEvento" class="modal" style="display:none;" aria-hidden="true" data-close="true">
-        <div class="modal-content">
+        <div class="modal-content wide">
             <div class="modal-head">
                 <h3 id="modalTitleEvento">Nuevo Evento</h3>
                 <button type="button" class="modal-close" data-close="true">×</button>
@@ -381,37 +482,38 @@
             <form id="formEventoProv">
                 <input type="hidden" id="eventId">
 
-                <div class="field">
-                    <label>Proveedor *</label>
-                    <select id="eventProvId" required>
-                        <option value="">Seleccione...</option>
-                    </select>
-                </div>
+                <div class="form-grid">
+                    <!-- Column 1 -->
+                    <div class="field">
+                        <label>Proveedor *</label>
+                        <select id="eventProvId" required>
+                            <option value="">Seleccione...</option>
+                        </select>
+                    </div>
 
-                <div class="field">
-                    <label>Tipo</label>
-                    <select id="eventTipo">
-                        <option value="pedido">Pedido</option>
-                        <option value="plazo">Plazo / Vencimiento</option>
-                        <option value="idea">Idea / Proyecto</option>
-                        <option value="otro">Otro</option>
-                    </select>
-                </div>
+                    <div class="field">
+                        <label>Tipo</label>
+                        <select id="eventTipo">
+                            <option value="pedido">Pedido</option>
+                            <option value="plazo">Plazo / Vencimiento</option>
+                            <option value="idea">Idea / Proyecto</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
 
-                <!-- NEW: Sección for Ideas -->
-                <div class="field" id="fieldSeccion">
-                    <label>Título del Grupo / Sección</label>
-                    <input type="text" id="eventSeccion" list="seccionesList"
-                        placeholder="Ej: PickingUp Azul, Mejoras...">
-                    <datalist id="seccionesList"></datalist>
-                </div>
+                    <!-- Column 2 -->
+                    <div class="field">
+                        <label>Título *</label>
+                        <input type="text" id="eventTitulo" required placeholder="Ej: Pedido de gaseosas">
+                    </div>
 
-                <div class="field">
-                    <label>Título *</label>
-                    <input type="text" id="eventTitulo" required placeholder="Ej: Pedido de gaseosas">
-                </div>
+                    <div class="field" id="fieldSeccion">
+                        <label>Título del Grupo / Sección</label>
+                        <input type="text" id="eventSeccion" list="seccionesList" placeholder="Ej: PickingUp Azul...">
+                        <datalist id="seccionesList"></datalist>
+                    </div>
 
-                <div class="grid-2">
+                    <!-- Dates Row -->
                     <div class="field">
                         <label>Inicio (Fecha Pedido)</label>
                         <input type="datetime-local" id="eventInicio" required>
@@ -420,33 +522,48 @@
                         <label>Fin (Deadline Estimado)</label>
                         <input type="datetime-local" id="eventFin">
                     </div>
+
+                    <div class="field">
+                        <label>Cierre Real</label>
+                        <input type="datetime-local" id="eventReal">
+                    </div>
+
+                    <div class="field">
+                        <label>Estado</label>
+                        <select id="eventEstado">
+                            <option value="pendiente">Pendiente</option>
+                            <option value="completado">Completado / Recibido</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                    </div>
+
+                    <div class="field full-width">
+                        <label>Descripción</label>
+                        <textarea id="eventDesc" rows="2"></textarea>
+                    </div>
                 </div>
 
-                <div class="field"
-                    style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px; border: 1px dashed #ccc;">
-                    <label>Cierre Real (Para calcular demora)</label>
-                    <input type="datetime-local" id="eventReal">
-                    <small class="muted">Completar cuando llegue el pedido.</small>
-                </div>
+                <!-- HISTORIAL / BITÁCORA -->
+                <div id="historialSection" class="field full-width history-box">
+                    <div class="history-title">
+                        <span>📝 Historial / Avances</span>
+                    </div>
 
-                <div class="field">
-                    <label>Estado</label>
-                    <select id="eventEstado">
-                        <option value="pendiente">Pendiente</option>
-                        <option value="completado">Completado / Recibido</option>
-                        <option value="cancelado">Cancelado</option>
-                    </select>
-                </div>
+                    <div id="historialList" class="history-list">
+                        <div class="muted text-center" style="padding:10px;">Sin historial.</div>
+                    </div>
 
-                <div class="field">
-                    <label>Descripción</label>
-                    <textarea id="eventDesc" rows="3"></textarea>
+                    <div class="history-input-group">
+                        <input type="text" id="historialInput" placeholder="Escribe una nota de avance aquí..."
+                            autocomplete="off">
+                        <button type="button" id="btnHistorialAdd" class="btn-primario btn-history-send">Enviar</button>
+                    </div>
                 </div>
 
                 <div class="modal-actions">
                     <button type="button" id="btnEliminarEvent" class="btn-delete"
-                        style="display:none;">Eliminar</button>
-                    <button type="submit" class="btn-primario">Guardar</button>
+                        style="display:none; margin-right: auto;">Eliminar</button>
+                    <button type="submit" class="btn-primario">Guardar Cambios</button>
                 </div>
             </form>
         </div>
