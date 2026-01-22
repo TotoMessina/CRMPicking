@@ -29,7 +29,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Note: 'role' is in profiles/users table. 
     // Usually auth logic sets CRM_USER.role
 
-    if ((window.CRM_USER?.role || "").toLowerCase() !== 'administrador') {
+    // Check role from window.CRM_USER (populated by auth/guard)
+    // Allow 'administrador' OR 'empleado'
+    const role = (window.CRM_USER?.role || "").toLowerCase();
+
+    if (role !== 'administrador' && role !== 'empleado') {
         const denyEl = document.getElementById("accessDenied");
         if (denyEl) denyEl.style.display = "flex";
         document.querySelector(".app-shell").style.display = "none";
@@ -116,10 +120,18 @@ async function loadEvents() {
     }
 
     allEvents = data || [];
+
+    // Separate events: 
+    // Calendar = has start date
+    // Ideas Board = no start date (or explicit type check if preferred, but user said "no dates")
+    const calendarEvents = allEvents.filter(e => e.fecha_inicio);
+
     if (calendar) {
         calendar.removeAllEvents();
-        calendar.addEventSource(mapEventsToCalendar(allEvents));
+        calendar.addEventSource(mapEventsToCalendar(calendarEvents));
     }
+
+    renderIdeasBoard(allEvents);
 }
 
 // ==========================================
@@ -144,6 +156,62 @@ function renderProveedoresList(list) {
         `;
         el.addEventListener("click", () => openModalProveedor(p));
         container.appendChild(el);
+    });
+}
+
+function renderIdeasBoard(events) {
+    const container = document.getElementById("ideasContainer");
+    container.innerHTML = "";
+
+    // Filter logic: Ideas that don't have a start date
+    // OR specifically type 'idea' without dates.
+    // Let's assume ANY event without a start date is a "Backlog Item / Idea".
+    const ideas = events.filter(e => !e.fecha_inicio);
+
+    if (ideas.length === 0) {
+        container.innerHTML = '<div class="muted text-center" style="padding:20px; font-style:italic;">No hay ideas pendientes.</div>';
+        return;
+    }
+
+    // Group by 'seccion'
+    const groups = {};
+    ideas.forEach(e => {
+        const sec = e.seccion || "General";
+        if (!groups[sec]) groups[sec] = [];
+        groups[sec].push(e);
+    });
+
+    // Sort sections alphabetically? Or maybe "General" first/last? 
+    // Let's just do alphabetical for now.
+    const sortedSections = Object.keys(groups).sort();
+
+    sortedSections.forEach(sectionTitle => {
+        const sectionEl = document.createElement("div");
+        sectionEl.className = "idea-section";
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "idea-section-title";
+        titleEl.textContent = sectionTitle;
+        sectionEl.appendChild(titleEl);
+
+        groups[sectionTitle].forEach(idea => {
+            const card = document.createElement("div");
+            card.className = "idea-card";
+            // Color stripe based on type?
+            const color = TYPE_COLORS[idea.tipo] || "#eab308";
+            card.style.borderLeftColor = color;
+
+            const provName = idea.proveedores?.nombre || "Sin Prov.";
+
+            card.innerHTML = `
+                <div class="idea-card-title">${escapeHtml(idea.titulo)}</div>
+                <div class="idea-card-prov">${escapeHtml(provName)}</div>
+            `;
+            card.addEventListener("click", () => openModalEvento(idea));
+            sectionEl.appendChild(card);
+        });
+
+        container.appendChild(sectionEl);
     });
 }
 
@@ -322,11 +390,23 @@ const modalEvent = document.getElementById("modalEvento");
 const formEvent = document.getElementById("formEventoProv");
 
 function openModalEvento(ev = null) {
+    // Populate Datalist for Secciones
+    const dl = document.getElementById("seccionesList");
+    dl.innerHTML = "";
+    // Extract unique sections from allEvents
+    const distinctSections = [...new Set(allEvents.map(e => e.seccion).filter(s => !!s))].sort();
+    distinctSections.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s;
+        dl.appendChild(opt);
+    });
+
     if (ev) {
-        document.getElementById("modalTitleEvento").textContent = "Editar Evento";
+        document.getElementById("modalTitleEvento").textContent = "Editar Evento / Idea";
         document.getElementById("eventId").value = ev.id;
         document.getElementById("eventProvId").value = ev.proveedor_id;
         document.getElementById("eventTipo").value = ev.tipo || "pedido";
+        document.getElementById("eventSeccion").value = ev.seccion || ""; // NEW
         document.getElementById("eventTitulo").value = ev.titulo;
         document.getElementById("eventInicio").value = toLocalInput(ev.fecha_inicio);
         document.getElementById("eventFin").value = toLocalInput(ev.fecha_fin);
@@ -334,19 +414,37 @@ function openModalEvento(ev = null) {
         document.getElementById("eventEstado").value = ev.estado || "pendiente";
         document.getElementById("eventDesc").value = ev.descripcion || "";
         document.getElementById("btnEliminarEvent").style.display = "inline-flex";
+
+        // If it's an idea (no date), maybe don't enforce required on date? 
+        // We will remove 'required' attribute from logic if needed, but HTML has `required` on `eventInicio`.
+        // Let's toggle it.
+        toggleDateRequired();
     } else {
         document.getElementById("modalTitleEvento").textContent = "Nuevo Evento";
         formEvent.reset();
         document.getElementById("eventId").value = "";
+        document.getElementById("eventSeccion").value = "";
 
-        // Default start now
+        // Determine context? If clicked "Nueva Idea", maybe clear date.
+        // We can pass a flag or handle separate button clicks.
+        // For now, default to NOW, but user can clear it.
         const now = new Date();
         document.getElementById("eventInicio").value = toLocalInput(now.toISOString());
         document.getElementById("btnEliminarEvent").style.display = "none";
+        toggleDateRequired();
     }
 
     modalEvent.style.display = "flex";
     modalEvent.setAttribute("aria-hidden", "false");
+}
+
+function toggleDateRequired() {
+    // If user selects "Idea", maybe dates become optional?
+    // Or just let them clear it. 
+    // The HTML has `required` on `eventInicio`. We should remove it or manage it.
+    const inputStart = document.getElementById("eventInicio");
+    // Remove fixed required. We will validate in JS or let browser validate if present.
+    inputStart.removeAttribute("required");
 }
 
 formEvent.addEventListener("submit", async (e) => {
@@ -359,13 +457,19 @@ formEvent.addEventListener("submit", async (e) => {
         return;
     }
 
+    // Dates can be empty (null) for Ideas
+    const startVal = document.getElementById("eventInicio").value;
+    const endVal = document.getElementById("eventFin").value;
+    const realVal = document.getElementById("eventReal").value;
+
     const payload = {
         proveedor_id: provId,
         tipo: document.getElementById("eventTipo").value,
+        seccion: document.getElementById("eventSeccion").value || null, // NEW
         titulo: document.getElementById("eventTitulo").value,
-        fecha_inicio: toISO(document.getElementById("eventInicio").value),
-        fecha_fin: toISO(document.getElementById("eventFin").value),
-        fecha_real_cierre: toISO(document.getElementById("eventReal").value),
+        fecha_inicio: startVal ? toISO(startVal) : null,
+        fecha_fin: endVal ? toISO(endVal) : null,
+        fecha_real_cierre: realVal ? toISO(realVal) : null,
         estado: document.getElementById("eventEstado").value,
         descripcion: document.getElementById("eventDesc").value || null
     };
@@ -380,7 +484,12 @@ formEvent.addEventListener("submit", async (e) => {
     }
 
     if (error) {
-        alert("Error guardando evento");
+        console.error(error);
+        if (error.code === '42703') { // Undefined column
+            alert("Error: La columna 'seccion' no existe en la base de datos. Por favor contacta al desarrollador.");
+        } else {
+            alert("Error guardando evento: " + error.message);
+        }
     } else {
         modalEvent.style.display = "none";
         loadEvents();
@@ -390,7 +499,7 @@ formEvent.addEventListener("submit", async (e) => {
 document.getElementById("btnEliminarEvent").addEventListener("click", async () => {
     const id = document.getElementById("eventId").value;
     if (!id) return;
-    if (!confirm("¿Eliminar este evento?")) return;
+    if (!confirm("¿Eliminar este evento/idea?")) return;
 
     const { error } = await supabaseClient.from('eventos_proveedores').delete().eq('id', id);
     if (error) alert("Error eliminando");
@@ -407,6 +516,13 @@ document.getElementById("btnEliminarEvent").addEventListener("click", async () =
 function bindUIEvents() {
     document.getElementById("btnNuevoProveedor").addEventListener("click", () => openModalProveedor());
     document.getElementById("btnNuevoEvento").addEventListener("click", () => openModalEvento());
+    document.getElementById("btnNuevaIdea").addEventListener("click", () => {
+        openModalEvento();
+        // Override for "Nueva Idea":
+        document.getElementById("modalTitleEvento").textContent = "Nueva Idea";
+        document.getElementById("eventTipo").value = "idea";
+        document.getElementById("eventInicio").value = ""; // No date for ideas by default
+    });
 
     // Busqueda
     document.getElementById("busquedaProv").addEventListener("input", (e) => {
