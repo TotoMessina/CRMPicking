@@ -484,6 +484,11 @@ function openModalEvento(ev = null) {
         // We will remove 'required' attribute from logic if needed, but HTML has `required` on `eventInicio`.
         // Let's toggle it.
         toggleDateRequired();
+
+        // Load History
+        document.getElementById("historialSection").style.display = "block";
+        loadHistory(ev.id);
+
     } else {
         document.getElementById("modalTitleEvento").textContent = "Nuevo Evento";
         formEvent.reset();
@@ -497,6 +502,9 @@ function openModalEvento(ev = null) {
         document.getElementById("eventInicio").value = toLocalInput(now.toISOString());
         document.getElementById("btnEliminarEvent").style.display = "none";
         toggleDateRequired();
+
+        // Hide history for new
+        document.getElementById("historialSection").style.display = "none";
     }
 
     modalEvent.style.display = "flex";
