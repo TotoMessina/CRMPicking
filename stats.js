@@ -659,33 +659,32 @@ function makeLineTwoDatasets(canvasId, labels, aLabel, aData, bLabel, bData) {
   });
 }
 
-function makeLinePink(canvasId, labels, data, label) {
+function makeBarPink(canvasId, labels, data, label) {
   const canvas = $(canvasId);
   if (!canvas) return null;
   ensureCanvasHeight(canvasId);
 
-  const ctx = canvas.getContext("2d");
-  const grad = createGradient(ctx, 'rgba(236, 72, 153, 0.4)', 'rgba(236, 72, 153, 0.0)'); // Pink-500
-
-  return new Chart(ctx, {
-    type: "line",
+  return new Chart(canvas.getContext("2d"), {
+    type: "bar",
     data: {
       labels,
       datasets: [
         {
           label,
           data,
-          borderColor: '#ec4899', // Pink-500
-          backgroundColor: grad,
-          tension: 0.4,
-          fill: true,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          borderWidth: 2
+          backgroundColor: '#ec4899', // Pink-500
+          borderRadius: 4,
+          barPercentage: 0.6,
         }
       ],
     },
-    options: COMMON_OPTIONS,
+    options: {
+      ...COMMON_OPTIONS,
+      plugins: {
+        ...COMMON_OPTIONS.plugins,
+        legend: { display: false }
+      }
+    },
   });
 }
 
@@ -738,7 +737,9 @@ async function renderAllByRange() {
   destroyChart("consumidoresEvolucion"); // Key not in CHARTS object yet, need to add if strictly typed, but JS is loose. 
   // Better add to CHARTS object above to be cleaner, but it works.
   // Actually, let's just assign it to a new key.
-  CHARTS.consumidoresEvolucion = makeLinePink(
+  destroyChart("consumidoresEvolucion");
+
+  CHARTS.consumidoresEvolucion = makeBarPink(
     "chartConsumidoresEvolucion",
     consSeries.labels,
     consSeries.data,
