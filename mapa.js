@@ -823,6 +823,7 @@ function toggleColorMode() {
   else if (colorMode === "interes") colorMode = "estilo";
   else colorMode = "estado";
 
+  console.log("Mode switched to:", colorMode);
   activeFilter = null; // Reset filter on mode switch
   renderMarkers(); // re-renders markers & legend
 
@@ -1505,23 +1506,88 @@ let drawnItems;
 
 // Helper to bind popup
 function bindZonePopup(layer, zoneId) {
-  const popupContent = document.createElement("div");
-  popupContent.style.textAlign = "center";
-  popupContent.innerHTML = `
-    <div style="margin-bottom:8px; font-weight:bold;">Zona</div>
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <button class="btn-secundario btn-small" onclick="updateZoneColor('${zoneId}', '#3b82f6')">🔵 Marcar "Hoy"</button>
-      <button class="btn-secundario btn-small" onclick="updateZoneColor('${zoneId}', '#ef4444')">🔴 Marcar "Realizada"</button>
-      <button class="btn-secundario btn-small" onclick="updateZoneColor('${zoneId}', '#f97316')">🟠 Marcar "Extra"</button>
-      <hr style="width:100%; border:0; border-top:1px solid #ccc; margin:4px 0;">
-      <button class="btn-delete btn-small" onclick="deleteZoneById('${zoneId}')">🗑️ Eliminar</button>
-    </div>
-  `;
-  layer.bindPopup(popupContent);
+  const div = document.createElement("div");
+  div.style.textAlign = "center";
+
+  const title = document.createElement("div");
+  title.style.fontWeight = "bold";
+  title.style.marginBottom = "8px";
+  title.textContent = "Zona";
+  div.appendChild(title);
+
+  // Area Calculation
+  let areaStr = "";
+  try {
+    // L.GeometryUtil.geodesicArea is provided by Leaflet Draw
+    // Ensure layer is a polygon
+    if (layer instanceof L.Polygon) {
+      const latlngs = layer.getLatLngs()[0];
+      const area = L.GeometryUtil.geodesicArea(latlngs); // sq meters
+      if (area > 1000000) {
+        areaStr = (area / 1000000).toFixed(2) + " km²";
+      } else {
+        areaStr = area.toFixed(0) + " m²";
+      }
+    }
+  } catch (e) {
+    console.error("Area calc error", e);
+  }
+
+  if (areaStr) {
+    const areaDiv = document.createElement("div");
+    areaDiv.style.fontSize = "0.85em";
+    areaDiv.style.color = "#666";
+    areaDiv.style.marginBottom = "8px";
+    areaDiv.textContent = `Superficie: ${areaStr}`;
+    div.appendChild(areaDiv);
+  }
+
+  const col = document.createElement("div");
+  col.style.display = "flex";
+  col.style.flexDirection = "column";
+  col.style.gap = "6px";
+  div.appendChild(col);
+
+  const colors = [
+    { label: '🔵 Marcar "Hoy"', color: '#3b82f6' },
+    { label: '🔴 Marcar "Realizada"', color: '#ef4444' },
+    { label: '🟠 Marcar "Extra"', color: '#f97316' }
+  ];
+
+  colors.forEach(c => {
+    const btn = document.createElement("button");
+    btn.className = "btn-secundario btn-small";
+    btn.textContent = c.label;
+    // Call global or local function
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation(); // prevent map click?
+      window.updateZoneColor(zoneId, c.color);
+    });
+    col.appendChild(btn);
+  });
+
+  const hr = document.createElement("hr");
+  hr.style.width = "100%";
+  hr.style.border = "0";
+  hr.style.borderTop = "1px solid #ccc";
+  hr.style.margin = "4px 0";
+  col.appendChild(hr);
+
+  const btnDel = document.createElement("button");
+  btnDel.className = "btn-delete btn-small";
+  btnDel.textContent = "🗑️ Eliminar";
+  btnDel.addEventListener("click", (e) => {
+    e.stopPropagation();
+    window.deleteZoneById(zoneId);
+  });
+  col.appendChild(btnDel);
+
+  layer.bindPopup(div);
 }
 
 // Global functions for popup actions
 window.updateZoneColor = async (id, color) => {
+  console.log("updateZoneColor called", id, color);
   const { error } = await supabaseClient
     .from('zones')
     .update({ color: color })
@@ -1534,12 +1600,16 @@ window.updateZoneColor = async (id, color) => {
   }
 
   // Find layer and update style
+  let found = false;
   drawnItems.eachLayer(layer => {
+    // Weak equality for string vs number ID
     if (layer.zoneId == id) {
       layer.setStyle({ color: color });
       layer.closePopup();
+      found = true;
     }
   });
+  console.log("Zone layer found and updated?", found);
   showToast("Zona actualizada.", "success");
 };
 

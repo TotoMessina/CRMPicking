@@ -659,6 +659,36 @@ function makeLineTwoDatasets(canvasId, labels, aLabel, aData, bLabel, bData) {
   });
 }
 
+function makeLinePink(canvasId, labels, data, label) {
+  const canvas = $(canvasId);
+  if (!canvas) return null;
+  ensureCanvasHeight(canvasId);
+
+  const ctx = canvas.getContext("2d");
+  const grad = createGradient(ctx, 'rgba(236, 72, 153, 0.4)', 'rgba(236, 72, 153, 0.0)'); // Pink-500
+
+  return new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label,
+          data,
+          borderColor: '#ec4899', // Pink-500
+          backgroundColor: grad,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          borderWidth: 2
+        }
+      ],
+    },
+    options: COMMON_OPTIONS,
+  });
+}
+
 // =========================================================
 // RENDER: TODO según lapso
 // =========================================================
@@ -683,7 +713,10 @@ async function renderAllByRange() {
     "chartActivadoresConversion",
     "chartRubrosPorActivador",
     "chartPromedioResponsable",
+    "chartRubrosPorActivador",
+    "chartPromedioResponsable",
     "chartAltasDiarias",
+    "chartConsumidoresEvolucion",
   ].forEach(ensureCanvasHeight);
 
   // Catálogo de usuarios (activos + históricos del rango)
@@ -691,6 +724,30 @@ async function renderAllByRange() {
   const activeUsers = userUniverse.activeUsers;
   const activeSet = userUniverse.activeSet;
   const canon = userUniverse.canon;
+
+  // =======================================================
+  // CONSUMIDORES (EVOLUCIÓN)
+  // =======================================================
+  const consumidoresRows = await fetchAll(
+    CFG.tables.consumidores,
+    "created_at",
+    (q) => q.gte("created_at", fromISO).lt("created_at", toISO)
+  );
+
+  const consSeries = seriesByDay(consumidoresRows, "created_at", buckets);
+  destroyChart("consumidoresEvolucion"); // Key not in CHARTS object yet, need to add if strictly typed, but JS is loose. 
+  // Better add to CHARTS object above to be cleaner, but it works.
+  // Actually, let's just assign it to a new key.
+  CHARTS.consumidoresEvolucion = makeLinePink(
+    "chartConsumidoresEvolucion",
+    consSeries.labels,
+    consSeries.data,
+    "Nuevos Consumidores"
+  );
+
+  console.log("DEBUG: Consumidores fetched:", consumidoresRows.length);
+  console.log("DEBUG: Consumidores First 5 dates:", consumidoresRows.slice(0, 5).map(r => r.created_at));
+  console.log("DEBUG: Consumidores Data Series:", consSeries.data);
 
   // =======================================================
   // CLIENTES
@@ -734,10 +791,21 @@ async function renderAllByRange() {
   setText("statVencidosText", fmtInt(vencidos));
   setText("statSinFechaText", fmtInt(sinFecha));
 
-  // Actividades clientes EN RANGO
-  const actInRange = await countExact(CFG.tables.actividades, (q) => q.gte("fecha", fromISO).lt("fecha", toISO));
-  setText("statAct7", fmtInt(actInRange));
-  setText("statAct30", fmtInt(actInRange));
+  // Actividades clientes EN RANGO (Variable)
+  // const actInRange = await countExact(CFG.tables.actividades, (q) => q.gte("fecha", fromISO).lt("fecha", toISO));
+  // setText("statAct7", fmtInt(actInRange)); 
+  // setText("statAct30", fmtInt(actInRange));
+
+  // CORRECCION: Calcular ventanas fijas de 7 y 30 días, independiente del filtro visual
+  const todayISO = isoFromLocalStart(new Date());
+  const start7 = isoFromLocalStart(addDays(todayDate0, -7));
+  const start30 = isoFromLocalStart(addDays(todayDate0, -30));
+
+  const countAct7 = await countExact(CFG.tables.actividades, (q) => q.gte("fecha", start7).lt("fecha", todayISO));
+  const countAct30 = await countExact(CFG.tables.actividades, (q) => q.gte("fecha", start30).lt("fecha", todayISO));
+
+  setText("statAct7", fmtInt(countAct7));
+  setText("statAct30", fmtInt(countAct30));
 
   // Salud cartera EN RANGO
   const activosEnRango = await countExact(CFG.tables.clientes, (q) => q.eq("activo", true).gte("ultima_actividad", fromISO).lt("ultima_actividad", toISO));

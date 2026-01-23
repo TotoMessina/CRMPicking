@@ -1188,6 +1188,7 @@ function descargarModeloExcel() {
     alert("La librería Excel (SheetJS) no se ha cargado. Revisa tu conexión.");
     return;
   }
+  alert("Generando modelo con fecha_creacion...");
   const wb = XLSX.utils.book_new();
 
   const headers = [
@@ -1206,12 +1207,13 @@ function descargarModeloExcel() {
     "notas",
     "venta_digital",
     "venta_digital_cual",
-    "interes" // Added for completeness
+    "interes",
+    "fecha_creacion" // Nuevo campo
   ];
 
   const data = [
     headers,
-    ["Ejemplo SRL", "Local Ejemplo", "30-11223344-5", "11-2345-6789", "Av. Rivadavia 1234", "L-V 9-18", "Almacén", "1 - Cliente relevado", "Toto", "Dueño", "2025-01-15", "09:00", "Ejemplo de nota", "false", "", "Alto"],
+    ["Ejemplo SRL", "Local Ejemplo", "30-11223344-5", "11-2345-6789", "Av. Rivadavia 1234", "L-V 9-18", "Almacén", "1 - Cliente relevado", "Toto", "Dueño", "2025-01-15", "09:00", "Ejemplo de nota", "false", "", "Alto", "2024-01-01"],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(data);
@@ -1361,6 +1363,16 @@ async function importarDesdeExcel(file) {
 
         const notas = row.notas ? row.notas.toString().trim() : "";
 
+        // Custom created_at processing
+        let createdAt = null;
+        const fechaCreacionRaw = excelDateToYMD(row.fecha_creacion || row.created_at || row.fecha_alta);
+        if (fechaCreacionRaw) {
+          // Append current time to make it a valid timestamptz
+          const now = new Date();
+          const timePart = now.toISOString().split('T')[1];
+          createdAt = `${fechaCreacionRaw}T${timePart}`;
+        }
+
         return {
           nombre,
           nombre_local: row.nombre_local ? row.nombre_local.toString().trim() : null,
@@ -1378,7 +1390,9 @@ async function importarDesdeExcel(file) {
           notas: notas || null,
           venta_digital: row.venta_digital === "true" || row.venta_digital === true,
           venta_digital_cual: row.venta_digital_cual ? row.venta_digital_cual.toString().trim() : null,
+          venta_digital_cual: row.venta_digital_cual ? row.venta_digital_cual.toString().trim() : null,
           activo: true,
+          created_at: createdAt // may be null (db default) or specific date
         };
       });
 
@@ -1445,406 +1459,404 @@ function cerrarActividadModal() {
 // =========================================================
 // 11) INIT DOMContentLoaded
 // =========================================================
-document.addEventListener("DOMContentLoaded", () => {
-  // 1) Tema (Manejado por common.js)
 
+document.addEventListener("DOMContentLoaded", async () => {
+  // Esperar a que guard.js termine (evita rebotes)
+  if (window.CRM_GUARD_READY) await window.CRM_GUARD_READY;
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    // Esperar a que guard.js termine (evita rebotes)
-    if (window.CRM_GUARD_READY) await window.CRM_GUARD_READY;
+  // Si el guard te redirigió, esto ni corre; pero por seguridad:
+  if (!(window.CRM_USER && window.CRM_USER.activo)) return;
 
-    // Si el guard te redirigió, esto ni corre; pero por seguridad:
-    if (!(window.CRM_USER && window.CRM_USER.activo)) return;
-
-    // Usuario autenticado
-    usuarioActual = (window.CRM_USER.nombre || "").trim();
-    localStorage.setItem("usuarioActual", usuarioActual);
-
-    const currentUserNameEl = document.getElementById("currentUserName");
-    if (currentUserNameEl) currentUserNameEl.textContent = usuarioActual || "-";
-
-    // A partir de acá, tu init normal:
-    // renderAgendaCalendario();
-    // cargarAgendaStats();
-    // cargarClientes();
-    // ...
-  });
-
-  // Reflejar usuario autenticado
-  usuarioActual = getAuthProfileName() || usuarioActual || "";
+  // Usuario autenticado
+  usuarioActual = (window.CRM_USER.nombre || "").trim();
   localStorage.setItem("usuarioActual", usuarioActual);
-  // ===================================
-  // WIZARD LOGIC
-  // ===================================
-  let currentStep = 1;
-  const totalSteps = 3;
-
-  function initWizard() {
-    currentStep = 1;
-    showStep(1);
-  }
-
-  function showStep(step) {
-    // Hide all
-    document.querySelectorAll(".wizard-step").forEach(el => el.classList.remove("active"));
-    document.querySelectorAll(".step-indicator").forEach(el => el.classList.remove("active", "completed"));
-
-    // Show current
-    const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
-    if (stepEl) stepEl.classList.add("active");
-
-    // Updates indicators
-    for (let i = 1; i <= totalSteps; i++) {
-      const ind = document.querySelector(`.step-indicator[data-step="${i}"]`);
-      if (i < step) ind.classList.add("completed");
-      if (i === step) ind.classList.add("active");
-    }
-
-    // Update Buttons
-    const btnPrev = document.getElementById("btnWizardPrev");
-    const btnNext = document.getElementById("btnWizardNext");
-    const btnGuardar = document.getElementById("btnGuardar");
-
-    if (btnPrev) btnPrev.style.visibility = step === 1 ? "hidden" : "visible";
-
-    if (step === totalSteps) {
-      if (btnNext) btnNext.style.display = "none";
-      if (btnGuardar) btnGuardar.style.display = "inline-flex";
-    } else {
-      if (btnNext) btnNext.style.display = "inline-flex";
-      if (btnGuardar) btnGuardar.style.display = "none";
-    }
-  }
-
-  function validateStep(step) {
-    const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
-    if (!stepEl) return true;
-
-    const inputs = stepEl.querySelectorAll("input, select");
-    for (const input of inputs) {
-      if (!input.checkValidity()) {
-        input.reportValidity();
-        return false;
-      }
-    }
-    return true;
-  }
 
   const currentUserNameEl = document.getElementById("currentUserName");
   if (currentUserNameEl) currentUserNameEl.textContent = usuarioActual || "-";
 
-  // Si existe el <select id="usuarioActual"> (legacy), lo deshabilitamos
-  const selHeader = document.getElementById("usuarioActual");
-  if (selHeader) {
-    selHeader.disabled = true;
-    const opt = Array.from(selHeader.options || []).find(o => o.value === usuarioActual);
-    if (opt) selHeader.value = usuarioActual;
+  // A partir de acá, tu init normal:
+  // renderAgendaCalendario();
+  // cargarAgendaStats();
+  // cargarClientes();
+  // ...
+});
+
+// Reflejar usuario autenticado
+usuarioActual = getAuthProfileName() || usuarioActual || "";
+localStorage.setItem("usuarioActual", usuarioActual);
+// ===================================
+// WIZARD LOGIC
+// ===================================
+let currentStep = 1;
+const totalSteps = 3;
+
+function initWizard() {
+  currentStep = 1;
+  showStep(1);
+}
+
+function showStep(step) {
+  // Hide all
+  document.querySelectorAll(".wizard-step").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".step-indicator").forEach(el => el.classList.remove("active", "completed"));
+
+  // Show current
+  const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
+  if (stepEl) stepEl.classList.add("active");
+
+  // Updates indicators
+  for (let i = 1; i <= totalSteps; i++) {
+    const ind = document.querySelector(`.step-indicator[data-step="${i}"]`);
+    if (i < step) ind.classList.add("completed");
+    if (i === step) ind.classList.add("active");
   }
 
-  // Logout (si existe botón)
-  document.getElementById("btnLogout")?.addEventListener("click", async () => {
-    try { await supabaseClient.auth.signOut(); } catch (_) { }
-    localStorage.removeItem("usuarioActual");
-    window.location.href = "login.html";
-  });
-
-  // 3) Modal cliente: abrir/cerrar + overlay click + ESC
-  const btnNuevo = document.getElementById("btnNuevoCliente");
-  if (btnNuevo) btnNuevo.addEventListener("click", () => {
-    openNuevoClienteModal();
-    initWizard();
-  });
-
-  const btnNext = document.getElementById("btnWizardNext");
+  // Update Buttons
   const btnPrev = document.getElementById("btnWizardPrev");
+  const btnNext = document.getElementById("btnWizardNext");
+  const btnGuardar = document.getElementById("btnGuardar");
 
-  if (btnNext) btnNext.addEventListener("click", () => {
-    if (validateStep(currentStep)) {
-      currentStep++;
-      showStep(currentStep);
+  if (btnPrev) btnPrev.style.visibility = step === 1 ? "hidden" : "visible";
+
+  if (step === totalSteps) {
+    if (btnNext) btnNext.style.display = "none";
+    if (btnGuardar) btnGuardar.style.display = "inline-flex";
+  } else {
+    if (btnNext) btnNext.style.display = "inline-flex";
+    if (btnGuardar) btnGuardar.style.display = "none";
+  }
+}
+
+function validateStep(step) {
+  const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
+  if (!stepEl) return true;
+
+  const inputs = stepEl.querySelectorAll("input, select");
+  for (const input of inputs) {
+    if (!input.checkValidity()) {
+      input.reportValidity();
+      return false;
+    }
+  }
+  return true;
+}
+
+const currentUserNameEl = document.getElementById("currentUserName");
+if (currentUserNameEl) currentUserNameEl.textContent = usuarioActual || "-";
+
+// Si existe el <select id="usuarioActual"> (legacy), lo deshabilitamos
+const selHeader = document.getElementById("usuarioActual");
+if (selHeader) {
+  selHeader.disabled = true;
+  const opt = Array.from(selHeader.options || []).find(o => o.value === usuarioActual);
+  if (opt) selHeader.value = usuarioActual;
+}
+
+// Logout (si existe botón)
+document.getElementById("btnLogout")?.addEventListener("click", async () => {
+  try { await supabaseClient.auth.signOut(); } catch (_) { }
+  localStorage.removeItem("usuarioActual");
+  window.location.href = "login.html";
+});
+
+// 3) Modal cliente: abrir/cerrar + overlay click + ESC
+const btnNuevo = document.getElementById("btnNuevoCliente");
+if (btnNuevo) btnNuevo.addEventListener("click", () => {
+  openNuevoClienteModal();
+  initWizard();
+});
+
+const btnNext = document.getElementById("btnWizardNext");
+const btnPrev = document.getElementById("btnWizardPrev");
+
+if (btnNext) btnNext.addEventListener("click", () => {
+  if (validateStep(currentStep)) {
+    currentStep++;
+    showStep(currentStep);
+  }
+});
+
+if (btnPrev) btnPrev.addEventListener("click", () => {
+  if (currentStep > 1) {
+    currentStep--;
+    showStep(currentStep);
+  }
+});
+
+const btnCerrarModal = document.getElementById("btnCerrarModalCliente");
+if (btnCerrarModal) btnCerrarModal.addEventListener("click", () => {
+  resetFormulario();
+  closeModalCliente();
+});
+
+const btnCancelar = document.getElementById("btnCancelarEdicion");
+if (btnCancelar) btnCancelar.addEventListener("click", () => {
+  resetFormulario();
+  closeModalCliente();
+});
+
+const modalForm = document.getElementById("modalFormCliente");
+if (modalForm) {
+  modalForm.addEventListener("click", (e) => {
+    if (e.target === modalForm) {
+      resetFormulario();
+      closeModalCliente();
     }
   });
+}
 
-  if (btnPrev) btnPrev.addEventListener("click", () => {
-    if (currentStep > 1) {
-      currentStep--;
-      showStep(currentStep);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    const modal = document.getElementById("modalFormCliente");
+    if (modal && modal.style.display === "flex") {
+      resetFormulario();
+      closeModalCliente();
+    }
+  }
+});
+
+// 4) Fecha / sin próximo contacto
+const inputFechaProx = document.getElementById("fecha_proximo_contacto");
+const inputHoraProx = document.getElementById("hora_proximo_contacto");
+const btnPickFecha = document.getElementById("btnPickFecha");
+const chkSinProx = document.getElementById("sin_proximo_contacto");
+
+if (inputFechaProx && btnPickFecha) {
+  btnPickFecha.addEventListener("click", () => {
+    if (inputFechaProx.disabled) {
+      if (chkSinProx) chkSinProx.checked = false;
+      inputFechaProx.disabled = false;
+      if (inputHoraProx) inputHoraProx.disabled = false;
+    }
+
+    if (typeof inputFechaProx.showPicker === "function") inputFechaProx.showPicker();
+    else {
+      inputFechaProx.focus();
+      inputFechaProx.click();
     }
   });
+}
 
-  const btnCerrarModal = document.getElementById("btnCerrarModalCliente");
-  if (btnCerrarModal) btnCerrarModal.addEventListener("click", () => {
-    resetFormulario();
-    closeModalCliente();
+// 5) Filtros (cargar desde localStorage + guardar con debounce)
+loadFilters();
+
+const filtrosIds = ["filtroNombre", "filtroTelefono", "filtroDireccion", "filtroRubro", "filtroEstado", "filtroResponsable", "filtroInteres", "filtroVisitas", "filtroEstilo"];
+
+// NUEVO: Sync Slider (Interés)
+const slider = document.getElementById("sliderInteres");
+if (slider) {
+  const mapVal = { "1": "Bajo", "2": "Medio", "3": "Alto" };
+  slider.addEventListener("input", () => {
+    const txt = mapVal[slider.value] || "-";
+    const label = document.getElementById("labelInteres");
+    if (label) label.textContent = txt;
+    const el = document.getElementById("interes");
+    if (el) el.value = txt;
   });
+}
 
-  const btnCancelar = document.getElementById("btnCancelarEdicion");
-  if (btnCancelar) btnCancelar.addEventListener("click", () => {
-    resetFormulario();
-    closeModalCliente();
-  });
+const aplicarFiltrosDebounced = debounce(() => {
+  saveFilters();
+  currentPage = 1;
+  cargarClientes();
+}, 300);
 
-  const modalForm = document.getElementById("modalFormCliente");
-  if (modalForm) {
-    modalForm.addEventListener("click", (e) => {
-      if (e.target === modalForm) {
-        resetFormulario();
-        closeModalCliente();
-      }
-    });
-  }
+filtrosIds.forEach((id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      const modal = document.getElementById("modalFormCliente");
-      if (modal && modal.style.display === "flex") {
-        resetFormulario();
-        closeModalCliente();
-      }
-    }
-  });
+  const evt = el.tagName === "SELECT" ? "change" : "input";
+  el.addEventListener(evt, aplicarFiltrosDebounced);
 
-  // 4) Fecha / sin próximo contacto
-  const inputFechaProx = document.getElementById("fecha_proximo_contacto");
-  const inputHoraProx = document.getElementById("hora_proximo_contacto");
-  const btnPickFecha = document.getElementById("btnPickFecha");
-  const chkSinProx = document.getElementById("sin_proximo_contacto");
-
-  if (inputFechaProx && btnPickFecha) {
-    btnPickFecha.addEventListener("click", () => {
-      if (inputFechaProx.disabled) {
-        if (chkSinProx) chkSinProx.checked = false;
-        inputFechaProx.disabled = false;
-        if (inputHoraProx) inputHoraProx.disabled = false;
-      }
-
-      if (typeof inputFechaProx.showPicker === "function") inputFechaProx.showPicker();
-      else {
-        inputFechaProx.focus();
-        inputFechaProx.click();
-      }
-    });
-  }
-
-  // 5) Filtros (cargar desde localStorage + guardar con debounce)
-  loadFilters();
-
-  const filtrosIds = ["filtroNombre", "filtroTelefono", "filtroDireccion", "filtroRubro", "filtroEstado", "filtroResponsable", "filtroInteres", "filtroVisitas", "filtroEstilo"];
-
-  // NUEVO: Sync Slider (Interés)
-  const slider = document.getElementById("sliderInteres");
-  if (slider) {
-    const mapVal = { "1": "Bajo", "2": "Medio", "3": "Alto" };
-    slider.addEventListener("input", () => {
-      const txt = mapVal[slider.value] || "-";
-      const label = document.getElementById("labelInteres");
-      if (label) label.textContent = txt;
-      const el = document.getElementById("interes");
-      if (el) el.value = txt;
-    });
-  }
-
-  const aplicarFiltrosDebounced = debounce(() => {
-    saveFilters();
-    currentPage = 1;
-    cargarClientes();
-  }, 300);
-
-  filtrosIds.forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    const evt = el.tagName === "SELECT" ? "change" : "input";
-    el.addEventListener(evt, aplicarFiltrosDebounced);
-
-    el.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        saveFilters();
-        currentPage = 1;
-        cargarClientes();
-      }
-    });
-  });
-
-  // 6) Paginación
-  const pageSizeSelect = document.getElementById("pageSize");
-  if (pageSizeSelect) {
-    pageSizeSelect.addEventListener("change", () => {
-      const val = Number(pageSizeSelect.value);
-      if (!Number.isNaN(val) && (val === 25 || val === 50)) pageSize = val;
+  el.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveFilters();
       currentPage = 1;
       cargarClientes();
-    });
-  }
+    }
+  });
+});
 
-  const btnPrevPagina = document.getElementById("btnPrevPagina");
-  if (btnPrevPagina) {
-    btnPrevPagina.addEventListener("click", () => {
-      if (currentPage > 1) {
-        currentPage--;
-        cargarClientes();
-      }
-    });
-  }
+// 6) Paginación
+const pageSizeSelect = document.getElementById("pageSize");
+if (pageSizeSelect) {
+  pageSizeSelect.addEventListener("change", () => {
+    const val = Number(pageSizeSelect.value);
+    if (!Number.isNaN(val) && (val === 25 || val === 50)) pageSize = val;
+    currentPage = 1;
+    cargarClientes();
+  });
+}
 
-  const btnNextPagina = document.getElementById("btnNextPagina");
-  if (btnNextPagina) {
-    btnNextPagina.addEventListener("click", () => {
-      if (currentPage < totalPages) {
-        currentPage++;
-        cargarClientes();
-      }
-    });
-  }
+const btnPrevPagina = document.getElementById("btnPrevPagina");
+if (btnPrevPagina) {
+  btnPrevPagina.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      cargarClientes();
+    }
+  });
+}
 
-  // 7) Excel
-  const btnDescargarModelo = document.getElementById("btnDescargarModelo");
-  if (btnDescargarModelo) btnDescargarModelo.addEventListener("click", (e) => {
+const btnNextPagina = document.getElementById("btnNextPagina");
+if (btnNextPagina) {
+  btnNextPagina.addEventListener("click", () => {
+    if (currentPage < totalPages) {
+      currentPage++;
+      cargarClientes();
+    }
+  });
+}
+
+// 7) Excel
+const btnDescargarModelo = document.getElementById("btnDescargarModelo");
+if (btnDescargarModelo) btnDescargarModelo.addEventListener("click", (e) => {
+  e.preventDefault();
+  descargarModeloExcel()
+});
+
+const inputExcel = document.getElementById("inputExcel");
+const btnImportarExcel = document.getElementById("btnImportarExcel");
+if (btnImportarExcel && inputExcel) {
+  btnImportarExcel.addEventListener("click", (e) => {
     e.preventDefault();
-    descargarModeloExcel()
+    inputExcel.click()
   });
 
-  const inputExcel = document.getElementById("inputExcel");
-  const btnImportarExcel = document.getElementById("btnImportarExcel");
-  if (btnImportarExcel && inputExcel) {
-    btnImportarExcel.addEventListener("click", (e) => {
-      e.preventDefault();
-      inputExcel.click()
-    });
-
-    inputExcel.addEventListener("change", () => {
-      if (inputExcel.files.length === 1) {
-        importarDesdeExcel(inputExcel.files[0]);
-        inputExcel.value = "";
-      }
-    });
-  }
-
-  const btnExportarExcel = document.getElementById("btnExportarExcel");
-  if (btnExportarExcel) btnExportarExcel.addEventListener("click", (e) => {
-    e.preventDefault();
-    exportarExcel()
+  inputExcel.addEventListener("change", () => {
+    if (inputExcel.files.length === 1) {
+      importarDesdeExcel(inputExcel.files[0]);
+      inputExcel.value = "";
+    }
   });
+}
 
-  // 8) Formulario cliente
-  const formCliente = document.getElementById("formCliente");
-  if (formCliente) formCliente.addEventListener("submit", guardarCliente);
+const btnExportarExcel = document.getElementById("btnExportarExcel");
+if (btnExportarExcel) btnExportarExcel.addEventListener("click", (e) => {
+  e.preventDefault();
+  exportarExcel()
+});
 
-  // 9) Tarjetas (delegación de eventos)
-  const lista = document.getElementById("lista");
-  if (lista) {
-    lista.addEventListener("click", (e) => {
-      const btn = e.target.closest("button");
-      if (!btn) return;
+// 8) Formulario cliente
+const formCliente = document.getElementById("formCliente");
+if (formCliente) formCliente.addEventListener("submit", guardarCliente);
 
-      const id = btn.dataset.id;
-      const action = btn.dataset.action;
+// 9) Tarjetas (delegación de eventos)
+const lista = document.getElementById("lista");
+if (lista) {
+  lista.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
 
-      if (action === "editar") {
-        openEditarClienteModal(id);
-        initWizard();
-      } else if (action === "eliminar") {
-        eliminarCliente(id);
-      } else if (action === "actividad") {
-        abrirActividadModal(id);
-      } else if (action === "toggle-historial") {
-        const card = btn.closest(".card");
-        if (!card) return;
-        const listaHist = card.querySelector(".historial-list");
-        if (!listaHist) return;
-        const visible = listaHist.style.display !== "none";
-        listaHist.style.display = visible ? "none" : "block";
-        btn.textContent = visible ? "Ver historial" : "Ocultar historial";
-      } else if (action === "prox-hoy") {
-        actualizarProximoContactoRapido(id, "hoy");
-      } else if (action === "prox-maniana") {
-        actualizarProximoContactoRapido(id, "maniana");
-      } else if (action === "prox-sinfecha") {
-        actualizarProximoContactoRapido(id, "sinfecha");
-      } else if (action === "sumar-visita") {
-        // INCREMENTAR VISITA
-        // Opción A: update optimista UI + update DB
-        // Opción B: update DB + reload
-        (async () => {
-          try {
-            // 1. Fetch current count from DB to be safe
-            const { data: currentData, error: fetchErr } = await supabaseClient
-              .from('clientes')
-              .select('visitas')
-              .eq('id', id)
-              .single();
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
 
-            if (fetchErr) throw fetchErr;
+    if (action === "editar") {
+      openEditarClienteModal(id);
+      initWizard();
+    } else if (action === "eliminar") {
+      eliminarCliente(id);
+    } else if (action === "actividad") {
+      abrirActividadModal(id);
+    } else if (action === "toggle-historial") {
+      const card = btn.closest(".card");
+      if (!card) return;
+      const listaHist = card.querySelector(".historial-list");
+      if (!listaHist) return;
+      const visible = listaHist.style.display !== "none";
+      listaHist.style.display = visible ? "none" : "block";
+      btn.textContent = visible ? "Ver historial" : "Ocultar historial";
+    } else if (action === "prox-hoy") {
+      actualizarProximoContactoRapido(id, "hoy");
+    } else if (action === "prox-maniana") {
+      actualizarProximoContactoRapido(id, "maniana");
+    } else if (action === "prox-sinfecha") {
+      actualizarProximoContactoRapido(id, "sinfecha");
+    } else if (action === "sumar-visita") {
+      // INCREMENTAR VISITA
+      // Opción A: update optimista UI + update DB
+      // Opción B: update DB + reload
+      (async () => {
+        try {
+          // 1. Fetch current count from DB to be safe
+          const { data: currentData, error: fetchErr } = await supabaseClient
+            .from('clientes')
+            .select('visitas')
+            .eq('id', id)
+            .single();
 
-            const currentVal = currentData.visitas || 0;
-            const newVal = currentVal + 1;
+          if (fetchErr) throw fetchErr;
 
-            // 2. Update DB
-            const { error } = await supabaseClient
-              .from('clientes')
-              .update({ visitas: newVal })
-              .eq('id', id);
+          const currentVal = currentData.visitas || 0;
+          const newVal = currentVal + 1;
 
-            if (error) throw error;
+          // 2. Update DB
+          const { error } = await supabaseClient
+            .from('clientes')
+            .update({ visitas: newVal })
+            .eq('id', id);
 
-            // 3. UI Update
-            const container = btn.parentElement;
-            const strong = container.querySelector('strong');
-            if (strong) strong.textContent = `Visitas: ${newVal}`;
+          if (error) throw error;
 
-            // Optional: Log activity?
-            // await agregarActividad(id, `Visita registrada (Total: ${newVal})`);
+          // 3. UI Update
+          const container = btn.parentElement;
+          const strong = container.querySelector('strong');
+          if (strong) strong.textContent = `Visitas: ${newVal}`;
 
-          } catch (err) {
-            console.error(err);
-            alert("Error al sumar visita");
-          }
-        })();
-      }
-    });
-  }
+          // Optional: Log activity?
+          // await agregarActividad(id, `Visita registrada (Total: ${newVal})`);
 
-  // 10) Modal actividad
-  const btnGuardarActividad = document.getElementById("btnGuardarActividad");
-  const btnCerrarActividad = document.getElementById("btnCerrarActividad");
-  const textareaActividad = document.getElementById("actividadTexto");
+        } catch (err) {
+          console.error(err);
+          alert("Error al sumar visita");
+        }
+      })();
+    }
+  });
+}
 
-  if (btnGuardarActividad && textareaActividad) {
-    btnGuardarActividad.addEventListener("click", async () => {
-      const texto = textareaActividad.value.trim();
-      if (!texto) {
-        showToast("Escribí la actividad antes de guardar.", "warning");
-        return;
-      }
-      if (!clienteActividadID) {
-        showToast("No se encontró el cliente para esta actividad.", "error");
-        return;
-      }
-      await agregarActividad(clienteActividadID, texto);
-      cerrarActividadModal();
-      await cargarClientes();
-      await cargarAgendaStats();
-    });
-  }
+// 10) Modal actividad
+const btnGuardarActividad = document.getElementById("btnGuardarActividad");
+const btnCerrarActividad = document.getElementById("btnCerrarActividad");
+const textareaActividad = document.getElementById("actividadTexto");
 
-  if (btnCerrarActividad) btnCerrarActividad.addEventListener("click", () => cerrarActividadModal());
+if (btnGuardarActividad && textareaActividad) {
+  btnGuardarActividad.addEventListener("click", async () => {
+    const texto = textareaActividad.value.trim();
+    if (!texto) {
+      showToast("Escribí la actividad antes de guardar.", "warning");
+      return;
+    }
+    if (!clienteActividadID) {
+      showToast("No se encontró el cliente para esta actividad.", "error");
+      return;
+    }
+    await agregarActividad(clienteActividadID, texto);
+    cerrarActividadModal();
+    await cargarClientes();
+    await cargarAgendaStats();
+  });
+}
 
-  if (btnCerrarActividad) btnCerrarActividad.addEventListener("click", () => cerrarActividadModal());
+if (btnCerrarActividad) btnCerrarActividad.addEventListener("click", () => cerrarActividadModal());
 
-  // 11) Toggle Venta Digital
-  const selectDigital = document.getElementById("venta_digital");
-  if (selectDigital) {
-    selectDigital.addEventListener("change", (e) => {
-      toggleVentaDigital(e.target.value === "true");
-    });
-  }
+if (btnCerrarActividad) btnCerrarActividad.addEventListener("click", () => cerrarActividadModal());
 
-  // 12) Agenda + stats + primera carga
-  renderAgendaCalendario(); // dispara cargarClientes()
-  cargarAgendaStats();
+// 11) Toggle Venta Digital
+const selectDigital = document.getElementById("venta_digital");
+if (selectDigital) {
+  selectDigital.addEventListener("change", (e) => {
+    toggleVentaDigital(e.target.value === "true");
+  });
+}
 
-  // 12) Check URL Actions (from Dashboard)
+// 12) Agenda + stats + primera carga
+renderAgendaCalendario(); // dispara cargarClientes()
+cargarAgendaStats();
+
+// 12) Check URL Actions (from Dashboard)
+if (window.location.search) {
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("action") === "new") {
     // Clean URL
@@ -1854,7 +1866,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Open Modal
     openNuevoClienteModal();
   }
-});
+}
+}); // End DOMContentLoaded
 
 function toggleVentaDigital(show) {
   const divCual = document.getElementById("divVentaDigitalCual");

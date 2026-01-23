@@ -788,6 +788,14 @@ function mapRowToConsumidor(row) {
   const hora = normalizeTimeHHMM(getRowField(row, "hora_proximo_contacto", "hora"));
   const notas = safeTrim(getRowField(row, "notas", "nota", "observaciones"));
 
+  // Parse fecha_creacion
+  let created_at = null;
+  const fc = excelDateToISO(getRowField(row, "fecha_creacion", "created_at", "fecha_alta"));
+  if (fc) {
+    // Append fixed time (Noon UTC) to avoid timezone shifts
+    created_at = `${fc}T12:00:00.000Z`;
+  }
+
   const activoRaw = getRowField(row, "activo", "active");
   let activo = true;
   if (activoRaw !== "" && activoRaw !== null && activoRaw !== undefined) {
@@ -798,7 +806,8 @@ function mapRowToConsumidor(row) {
 
   const edad = safeTrim(edadRaw) ? Number(edadRaw) : null;
 
-  return {
+  /* Corrected object return */
+  const obj = {
     nombre,
     telefono: telefono || null,
     mail: mail || null,
@@ -813,6 +822,11 @@ function mapRowToConsumidor(row) {
     notas: notas || null,
     activo,
   };
+
+  // Only add created_at if valid, to avoid overwriting with null on updates
+  if (created_at) obj.created_at = created_at;
+
+  return obj;
 }
 
 function descargarModeloConsumidoresExcel() {
@@ -830,6 +844,7 @@ function descargarModeloConsumidoresExcel() {
     "hora_proximo_contacto",
     "notas",
     "activo",
+    "created_at",
   ];
 
   const example = [
@@ -847,6 +862,7 @@ function descargarModeloConsumidoresExcel() {
       hora_proximo_contacto: "16:30",
       notas: "Le interesó promo de fin de año.",
       activo: "true",
+      created_at: "2024-01-01",
     },
   ];
 
@@ -858,7 +874,7 @@ function descargarModeloConsumidoresExcel() {
 
   try {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -866,7 +882,7 @@ function descargarModeloConsumidoresExcel() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch (e) {
     console.error(e);
     alert("Error descargando modelo: " + e.message);
@@ -903,7 +919,8 @@ async function exportarConsumidoresExcel() {
     hora_proximo_contacto: c.hora_proximo_contacto ? String(c.hora_proximo_contacto).slice(0, 5) : "",
     notas: c.notas ?? "",
     activo: c.activo === false ? "false" : "true",
-    created_at: c.created_at ?? "",
+    activo: c.activo === false ? "false" : "true",
+    created_at: c.created_at ? new Date(c.created_at).toLocaleDateString("en-CA") : "", // Local YYYY-MM-DD
     ultima_actividad: c.ultima_actividad ?? "",
   }));
 
@@ -913,7 +930,7 @@ async function exportarConsumidoresExcel() {
 
   try {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -921,7 +938,7 @@ async function exportarConsumidoresExcel() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch (e) {
     console.error(e);
     alert("Error descargando archivo: " + e.message);
@@ -1019,6 +1036,7 @@ function initExcelConsumidoresUI() {
 
   if (typeof XLSX === "undefined") {
     console.error("XLSX no está cargado.");
+    alert("Error crítico: La librería XLSX (Excel) no se pudo cargar. Verificá tu conexión a internet o recargá la página.");
     if (btnModelo) btnModelo.disabled = true;
     if (btnExport) btnExport.disabled = true;
     if (input) input.disabled = true;
@@ -1038,7 +1056,7 @@ function initExcelConsumidoresUI() {
       descargarModeloConsumidoresExcel();
     } catch (e) {
       console.error(e);
-      alert("No se pudo generar el modelo. Revisá consola.");
+      alert("No se pudo generar el modelo. Revisá consola.\n" + e.message);
     }
   });
 
@@ -1048,7 +1066,7 @@ function initExcelConsumidoresUI() {
       await exportarConsumidoresExcel();
     } catch (e) {
       console.error(e);
-      alert("No se pudo exportar. Revisá consola.");
+      alert("No se pudo exportar. Revisá consola.\n" + e.message);
     }
   });
 
