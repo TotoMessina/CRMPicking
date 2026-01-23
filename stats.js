@@ -131,6 +131,7 @@ const CHARTS = {
   activadoresConversion: null,
   promedio: null,
   altas: null,
+  visitasActivacion: null,
 };
 
 // =========================================================
@@ -716,6 +717,7 @@ async function renderAllByRange() {
     "chartPromedioResponsable",
     "chartAltasDiarias",
     "chartConsumidoresEvolucion",
+    "chartVisitasActivacion",
   ].forEach(ensureCanvasHeight);
 
   // Catálogo de usuarios (activos + históricos del rango)
@@ -749,6 +751,35 @@ async function renderAllByRange() {
   console.log("DEBUG: Consumidores fetched:", consumidoresRows.length);
   console.log("DEBUG: Consumidores First 5 dates:", consumidoresRows.slice(0, 5).map(r => r.created_at));
   console.log("DEBUG: Consumidores Data Series:", consSeries.data);
+
+  // =======================================================
+  // VISITAS PARA ACTIVACIÓN
+  // =======================================================
+  const { data: clientesActivosVisitas } = await supabaseClient
+    .from(CFG.tables.clientes)
+    .select("visitas")
+    .eq("activo", true)
+    .eq("estado", "5 - Local Visitado Activo");
+
+  const vMap = new Map();
+  (clientesActivosVisitas || []).forEach((c) => {
+    // Si visitas es null/0, lo tomamos como 1 (mínimo para ser activado usualmente, o dejemos 0 si es real)
+    // Asumiremos que null = 0
+    let v = c.visitas || 0;
+    vMap.set(v, (vMap.get(v) || 0) + 1);
+  });
+
+  // Ordenar por número de visitas
+  const vKeys = [...vMap.keys()].sort((a, b) => a - b);
+  const vLabels = vKeys.map((k) => k === 1 ? "1 Visita" : `${k} Visitas`);
+  const vData = vKeys.map((k) => vMap.get(k));
+
+  destroyChart("visitasActivacion");
+  CHARTS.visitasActivacion = makeBar(
+    "chartVisitasActivacion",
+    vLabels,
+    vData
+  );
 
   // =======================================================
   // CLIENTES
