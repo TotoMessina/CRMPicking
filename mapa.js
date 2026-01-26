@@ -590,7 +590,7 @@ function openEditModal(rec) {
 // ========= Supabase CRUD =========
 // 9) COLOR MODE & FILTER
 let colorMode = "estado"; // "estado" | "creador" | "interes" | "estilo"
-let activeFilter = null;  // Value to filter by (or null)
+let activeFilters = new Set();  // Set of strings to filter by
 const CREATOR_COLORS = {}; // user -> hex
 
 function getColorForCreator(user) {
@@ -667,16 +667,24 @@ async function deleteRecord(id) {
 function renderMarkers() {
   markersLayer.clearLayers();
 
+  const hasFilters = activeFilters.size > 0;
+
   for (const rec of recordsCache) {
     // 1. FILTER CHECK
-    if (activeFilter) {
+    if (hasFilters) {
       if (colorMode === "creador") {
-        const c = (rec.creado_por || "Desconocido").trim(); // Normalize?
-        if (c !== activeFilter) continue;
+        const c = (rec.creado_por || "Desconocido").trim();
+        if (!activeFilters.has(c)) continue;
+      } else if (colorMode === "interes") {
+        const i = rec.interes || "Bajo";
+        if (!activeFilters.has(i)) continue;
+      } else if (colorMode === "estilo") {
+        const e = rec.estilo_contacto || "Sin definir";
+        if (!activeFilters.has(e)) continue;
       } else {
         // Mode estado
         const st = normalizeEstado(rec.estado);
-        if (st !== activeFilter) continue;
+        if (!activeFilters.has(st)) continue;
       }
     }
 
@@ -687,11 +695,9 @@ function renderMarkers() {
     } else if (colorMode === "interes") {
       const i = rec.interes || "Bajo";
       color = INTERES_COLORS[i] || INTERES_COLORS["Sin interés"];
-      if (activeFilter && i !== activeFilter) continue;
     } else if (colorMode === "estilo") {
       const e = rec.estilo_contacto || "Sin definir";
       color = ESTILO_COLORS[e] || ESTILO_COLORS["Sin definir"];
-      if (activeFilter && e !== activeFilter) continue;
     } else {
       color = colorFromEstado(rec.estado);
     }
@@ -767,8 +773,8 @@ function renderLegend() {
     const item = document.createElement("span");
     item.className = "legend-item";
 
-    // Inactive style if filter is ON and this is NOT the selected one
-    if (activeFilter && activeFilter !== label) {
+    // Inactive style if any filter is ON and this is NOT one of the selected ones
+    if (activeFilters.size > 0 && !activeFilters.has(label)) {
       item.classList.add("inactive");
     }
 
@@ -777,10 +783,10 @@ function renderLegend() {
 
     // Interaction
     item.addEventListener("click", () => {
-      if (activeFilter === label) {
-        activeFilter = null; // Toggle OFF
+      if (activeFilters.has(label)) {
+        activeFilters.delete(label); // Toggle OFF
       } else {
-        activeFilter = label; // Toggle ON
+        activeFilters.add(label); // Toggle ON
       }
       renderMarkers();
     });
