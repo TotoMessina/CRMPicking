@@ -652,15 +652,97 @@
         }
     };
 
-    // Init Notifications (will auto-check permission)
+    // 12. LOCATION TRACKER (SENDER)
+    // =========================================================
+    window.LocationTracker = {
+        watchId: null,
+        lastUpdate: 0,
+        MIN_INTERVAL_MS: 30000, // Update DB max every 30s
+        MIN_DISTANCE_M: 20,     // Or if moved significantly (not easy to measure without prev coords)
+
+        init: async function () {
+            // Wait for user to be ready
+            if (window.CRM_GUARD_READY) {
+                try { await window.CRM_GUARD_READY; } catch (_) { }
+            }
+
+            const user = window.CRM_USER;
+            if (!user || !user.activo) return;
+
+            // Role Check: "Activador PickingUp" (or similar)
+            // User request: "usuarios con el rol de Activador PickingUp"
+            const role = (user.role || "").toLowerCase();
+            if (role.includes("activador")) {
+                console.log("[Tracker] User is Activador. Starting GPS...");
+                this.startTracking();
+            }
+        },
+
+        startTracking: function () {
+            if (!navigator.geolocation) return;
+
+            this.watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    this.handlePosition(pos);
+                },
+                (err) => {
+                    console.warn("[Tracker] GPS Error:", err);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 10000,
+                    timeout: 20000
+                }
+            );
+        },
+
+        handlePosition: function (pos) {
+            const now = Date.now();
+            if (now - this.lastUpdate < this.MIN_INTERVAL_MS) {
+                return; // Throttle
+            }
+
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+
+            this.sendUpdate(lat, lng);
+            this.lastUpdate = now;
+        },
+
+        sendUpdate: async function (lat, lng) {
+            const user = window.CRM_USER;
+            if (!user) return;
+
+            try {
+                // Determine Emoji (if not set in DB, default is used there, 
+                // but here we just update lat/lng/last_seen)
+                const { error } = await window.supabaseClient
+                    .from('usuarios')
+                    .update({
+                        lat: lat,
+                        lng: lng,
+                        last_seen: new Date().toISOString()
+                    })
+                    .eq('id', user.id);
+
+                if (error) console.error("[Tracker] DB Update failed", error);
+                else console.log("[Tracker] Location sent", lat, lng);
+
+            } catch (e) {
+                console.error("[Tracker] Exception", e);
+            }
+        }
+    };
+
+    // Init Logic on Load
     document.addEventListener("DOMContentLoaded", () => {
-        // Tiny delay to ensure Auth user is ready? 
-        // Auth is async. Notifications require window.CRM_USER. 
-        // Let's retry init periodically or wait for Auth?
-        // We can init basics, and startListeners checks user. 
-        // But startListeners is called on init.
-        // Let's wait 3s or simpler: hook into same place as OfflineManager
-        setTimeout(() => window.NotificationsManager.init(), 2000);
+        // Tiny delay or rely on common flow
+        setTimeout(() => {
+            // Init Notifications
+            if (window.NotificationsManager) window.NotificationsManager.init();
+            // Init Tracker
+            if (window.LocationTracker) window.LocationTracker.init();
+        }, 3000);
     });
 
 })();

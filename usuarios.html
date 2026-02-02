@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="icon" type="image/png" href="imagen1.png">
+    <link rel="icon" type="image/png" href="imagen1.png">
 </head>
 
 <body>
@@ -105,37 +105,16 @@
             <div class="modal-header">
                 <h2>Editar Rol de Usuario</h2>
                 <button type="button" class="close-modal" id="btnCerrarModalRol">&times;</button>
+                </label>
             </div>
-            <div class="modal-body">
-                <form id="formRol" class="form-stack">
-                    <input type="hidden" id="editUserId">
-                    <p id="editUserName" style="margin-bottom: 1rem; font-weight: bold;"></p>
 
-                    <div class="field">
-                        <label for="selectRol">Rol</label>
-                        <select id="selectRol" required>
-                            <option value="user">User (Defecto)</option>
-                            <option value="Activador PickingUp">Activador PickingUp</option>
-                            <option value="Activador Golomax">Activador Golomax</option>
-                            <option value="Administrador">Administrador</option>
-                            <option value="Empleado">Empleado</option>
-                        </select>
-                    </div>
-
-                    <div class="field-checkbox">
-                        <label>
-                            <input type="checkbox" id="checkActivo">
-                            Usuario Activo
-                        </label>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn-secundario" id="btnCancelarRol">Cancelar</button>
-                        <button type="submit" class="btn-primario">Guardar Cambios</button>
-                    </div>
-                </form>
+            <div class="modal-actions">
+                <button type="button" class="btn-secundario" id="btnCancelarRol">Cancelar</button>
+                <button type="submit" class="btn-primario">Guardar Cambios</button>
             </div>
+            </form>
         </div>
+    </div>
     </div>
 
     <!-- SCRIPTS -->

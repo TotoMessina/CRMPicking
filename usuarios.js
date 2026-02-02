@@ -106,6 +106,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         editUserId.value = u.id;
         editUserName.textContent = `Usuario: ${u.nombre || u.email}`;
         selectRol.value = u.role || "user";
+
+        // Emoji load (new)
+        const selectEmoji = document.getElementById("selectEmoji");
+        if (selectEmoji) {
+            selectEmoji.value = u.avatar_emoji || "📍";
+        }
+
         checkActivo.checked = u.activo === true;
 
         modalRol.style.display = "flex";
@@ -127,12 +134,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             const newRol = selectRol.value;
             const isActive = checkActivo.checked;
 
+            // Emoji save
+            const selectEmoji = document.getElementById("selectEmoji");
+            const newEmoji = selectEmoji ? selectEmoji.value : "📍";
+
             if (!id) return;
 
             try {
                 const { error } = await supabaseClient
                     .from("usuarios")
-                    .update({ role: newRol, activo: isActive })
+                    .update({
+                        role: newRol,
+                        activo: isActive,
+                        avatar_emoji: newEmoji
+                    })
                     .eq("id", id);
 
                 if (error) {
