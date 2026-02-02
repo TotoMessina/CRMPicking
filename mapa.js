@@ -6,16 +6,19 @@
    - Tema: usa localStorage crm_theme (igual que tu app)
 
    NUEVO:
-   - Optimizar ruta entre mÃºltiples clientes (sin API paga):
-     * SeleccionÃ¡s clientes
-     * ElegÃ­s origen (Mi ubicaciÃ³n / un cliente)
-     * Orden recomendado (heurÃ­stica nearest-neighbor)
+   - Optimizar ruta entre múltiples clientes (sin API paga):
+     * Seleccionás clientes
+     * Elegís origen (Mi ubicación / un cliente)
+     * Orden recomendado (heurística nearest-neighbor)
      * Dibuja polyline + resumen + abrir en Google Maps
    ========================================================= */
 
-// ========= SUPABASE (copiÃ¡ los tuyos si difieren) =========
+// ========= SUPABASE (copiá los tuyos si difieren) =========
 // ========= SUPABASE (common.js) =========
-const supabaseClient = window.supabaseClient;
+// const supabaseClient = window.supabaseClient; // Removed to encourage using window.supabaseClient directly or a getter
+function getSupabase() {
+  return window.supabaseClient;
+}
 
 // ========= THEME (igual que Stats/Calendario) =========
 const THEME_KEY = "crm_theme";
@@ -31,7 +34,7 @@ async function requireAuthOrRedirect() {
   if (window.CRM_USER && window.CRM_USER.activo === true) return window.CRM_USER;
 
   try {
-    const { data, error } = await supabaseClient.auth.getSession();
+    const { data, error } = await getSupabase().auth.getSession();
     if (error) throw error;
     const session = data?.session;
     if (!session?.user) {
@@ -40,8 +43,8 @@ async function requireAuthOrRedirect() {
     }
 
     if (!window.CRM_USER) {
-      // Intentar usuarios; si no existe, permitir con sesiÃ³n
-      const { data: perfil, error: e2 } = await supabaseClient
+      // Intentar usuarios; si no existe, permitir con sesión
+      const { data: perfil, error: e2 } = await getSupabase()
         .from("usuarios")
         .select("id, email, nombre, role, activo")
         .eq("id", session.user.id)
@@ -61,7 +64,7 @@ async function requireAuthOrRedirect() {
 
       if (window.CRM_USER && window.CRM_USER.activo === true) {
         localStorage.setItem("usuarioActual", (window.CRM_USER.nombre || "").trim());
-        // FALLBACK: si guard.js no corriÃ³ o no actualizÃ³ el DOM, hacerlo aquÃ­
+        // FALLBACK: si guard.js no corrió o no actualizó el DOM, hacerlo aquí
         const userLabel = document.getElementById("currentUserName");
         if (userLabel && userLabel.textContent === "Cargando...") {
           userLabel.textContent = window.CRM_USER.nombre || "Usuario";
@@ -111,12 +114,12 @@ const INTERES_COLORS = {
   "Bajo": "#22c55e",   // green-500
   "Medio": "#eab308",  // yellow-500
   "Alto": "#ef4444",   // red-500
-  "Sin interÃ©s": "#94a3b8" // slate-400
+  "Sin interés": "#94a3b8" // slate-400
 };
 
 // Colors for Contact Style
 const ESTILO_COLORS = {
-  "DueÃ±o": "#3b82f6",     // blue-500
+  "Dueño": "#3b82f6",     // blue-500
   "Empleado": "#eab308",  // yellow-500
   "Cerrado": "#9ca3af",   // gray-400
   "Sin definir": "#64748b" // slate-500
@@ -187,7 +190,7 @@ function escapeHtml(v) {
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem(THEME_KEY, theme);
-  if (btnToggleTheme) btnToggleTheme.textContent = theme === "dark" ? "Modo dÃ­a â˜€ï¸" : "Modo noche ðŸŒ™";
+  if (btnToggleTheme) btnToggleTheme.textContent = theme === "dark" ? "Modo día ☀️" : "Modo noche 🌙";
 }
 
 function getTheme() {
@@ -364,10 +367,10 @@ async function initMap() {
     const dias = [];
     if (document.getElementById("chk_lun")?.checked) dias.push("Lun");
     if (document.getElementById("chk_mar")?.checked) dias.push("Mar");
-    if (document.getElementById("chk_mie")?.checked) dias.push("MiÃ©");
+    if (document.getElementById("chk_mie")?.checked) dias.push("Mié");
     if (document.getElementById("chk_jue")?.checked) dias.push("Jue");
     if (document.getElementById("chk_vie")?.checked) dias.push("Vie");
-    if (document.getElementById("chk_sab")?.checked) dias.push("SÃ¡b");
+    if (document.getElementById("chk_sab")?.checked) dias.push("Sáb");
     if (document.getElementById("chk_dom")?.checked) dias.push("Dom");
 
     const apertura = document.getElementById("time_apertura")?.value;
@@ -376,8 +379,8 @@ async function initMap() {
     if (dias.length === 0 && !apertura && !cierre) return;
 
     let txt = "";
-    // SimplificaciÃ³n: "Lun a Vie" si estÃ¡n todos
-    const esLunVie = dias.length === 5 && dias[0] === "Lun" && dias[1] === "Mar" && dias[2] === "MiÃ©" && dias[3] === "Jue" && dias[4] === "Vie";
+    // Simplificación: "Lun a Vie" si están todos
+    const esLunVie = dias.length === 5 && dias[0] === "Lun" && dias[1] === "Mar" && dias[2] === "Mié" && dias[3] === "Jue" && dias[4] === "Vie";
 
     if (esLunVie) {
       txt = "Lun a Vie";
@@ -399,7 +402,7 @@ async function initMap() {
     if (el) el.addEventListener("change", actualizarHorarioTexto);
   });
 
-  // NUEVO: Sync Slider (InterÃ©s)
+  // NUEVO: Sync Slider (Interés)
   const slider = document.getElementById("sliderInteres");
   const label = document.getElementById("labelInteres");
   if (slider && label) {
@@ -418,7 +421,7 @@ function updateMyLocationMarker(pos) {
   const latlng = [lat, lng];
 
   if (!myMarker) {
-    myMarker = L.marker(latlng, { title: "Mi ubicaciÃ³n" }).addTo(map);
+    myMarker = L.marker(latlng, { title: "Mi ubicación" }).addTo(map);
   } else {
     myMarker.setLatLng(latlng);
   }
@@ -438,7 +441,7 @@ function updateMyLocationMarker(pos) {
 
 function locateMe({ center = true } = {}) {
   if (!navigator.geolocation) {
-    alert("Tu navegador no soporta geolocalizaciÃ³n.");
+    alert("Tu navegador no soporta geolocalización.");
     return;
   }
 
@@ -453,14 +456,14 @@ function locateMe({ center = true } = {}) {
 
       if (center) map.setView([lat, lng], 16);
 
-      // NUEVO: si el modal de ruta estÃ¡ abierto, refrescamos el origen (para habilitar â€œMi ubicaciÃ³nâ€)
+      // NUEVO: si el modal de ruta está abierto, refrescamos el origen (para habilitar “Mi ubicación”)
       if (elModalRuta && elModalRuta.style.display === "flex") {
         rebuildRouteStartOptions();
       }
     },
     (err) => {
       console.error(err);
-      alert("No se pudo obtener tu ubicaciÃ³n. RevisÃ¡ permisos del navegador.");
+      alert("No se pudo obtener tu ubicación. Revisá permisos del navegador.");
     },
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
   );
@@ -628,7 +631,7 @@ async function loadRecords() {
 
   if (error) throw error;
 
-  // ðŸ”¥ NORMALIZACIÃ“N CLAVE
+  // ðŸ”¥ NORMALIZACIÓN CLAVE
   recordsCache = (data || [])
     .map(r => ({
       ...r,
@@ -700,7 +703,7 @@ function renderMarkers() {
       color = getColorForCreator(rec.creado_por);
     } else if (colorMode === "interes") {
       const i = rec.interes || "Bajo";
-      color = INTERES_COLORS[i] || INTERES_COLORS["Sin interÃ©s"];
+      color = INTERES_COLORS[i] || INTERES_COLORS["Sin interés"];
     } else if (colorMode === "estilo") {
       const e = rec.estilo_contacto || "Sin definir";
       color = ESTILO_COLORS[e] || ESTILO_COLORS["Sin definir"];
@@ -735,7 +738,7 @@ function renderMarkers() {
         <hr style="margin:6px 0; border:0; border-top:1px solid #eee;">
         <div><b>Tel:</b> ${escapeHtml(rec.telefono ?? "")}</div>
         <div><b>Mail:</b> ${escapeHtml(rec.mail ?? "")}</div>
-        <div><b>DirecciÃ³n:</b> ${escapeHtml(rec.direccion ?? "")}</div>
+        <div><b>Dirección:</b> ${escapeHtml(rec.direccion ?? "")}</div>
         <div><b>Rubro:</b> ${escapeHtml(rec.rubro ?? "")}</div>
         <div><b>Responsable:</b> ${escapeHtml(rec.responsable ?? "")}</div>
         
@@ -816,7 +819,7 @@ function renderLegend() {
     });
   } else if (colorMode === "estilo") {
     // Contact Style
-    ["Sin definir", "DueÃ±o", "Empleado", "Cerrado"].forEach(level => {
+    ["Sin definir", "Dueño", "Empleado", "Cerrado"].forEach(level => {
       legend.appendChild(createItem(level, ESTILO_COLORS[level]));
     });
   } else {
@@ -843,7 +846,7 @@ function toggleColorMode() {
   if (btn) {
     if (colorMode === "estado") btn.textContent = "Ver por Estado";
     else if (colorMode === "creador") btn.textContent = "Ver por Creador";
-    else if (colorMode === "interes") btn.textContent = "Ver por InterÃ©s";
+    else if (colorMode === "interes") btn.textContent = "Ver por Interés";
     else btn.textContent = "Ver por Estilo";
   }
 }
@@ -867,8 +870,8 @@ async function onSubmitForm(e) {
 
   if (!nombre) return alert("El Nombre (Contacto) es obligatorio.");
   if (!nombre_local) return alert("El Nombre del Local es obligatorio.");
-  if (!telefono) return alert("El TelÃ©fono es obligatorio.");
-  if (!direccion) return alert("La DirecciÃ³n es obligatoria.");
+  if (!telefono) return alert("El Teléfono es obligatorio.");
+  if (!direccion) return alert("La Dirección es obligatoria.");
   if (!rubro) return alert("El Rubro es obligatorio.");
 
   const estado = normalizeEstado(getFormValue("estado"));
@@ -914,15 +917,15 @@ async function onSubmitForm(e) {
     elBtnGuardar.disabled = true;
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      alert("No hay coordenadas vÃ¡lidas (lat/lng).");
+      alert("No hay coordenadas válidas (lat/lng).");
       return;
     }
 
-    // VERIFICACIÃ“N DE SESIÃ“N (Debug RLS)
+    // VERIFICACIÓN DE SESIÓN (Debug RLS)
     const { data: { session }, error: sessErr } = await supabaseClient.auth.getSession();
     if (sessErr || !session) {
       console.error("Session Check Failed:", sessErr || "No session");
-      alert("Tu sesiÃ³n parece haber expirado. Por favor recarga la pÃ¡gina (F5) e intenta de nuevo.");
+      alert("Tu sesión parece haber expirado. Por favor recarga la página (F5) e intenta de nuevo.");
       return;
     }
     // Debug info handling for error block
@@ -979,7 +982,7 @@ async function onDeleteClick() {
   const id = getFormValue("clienteId").trim();
   if (!id) return;
 
-  const ok = confirm("Â¿Seguro que querÃ©s eliminar este cliente del mapa? (Se marcarÃ¡ como inactivo)");
+  const ok = confirm("¿Seguro que querés eliminar este cliente del mapa? (Se marcará como inactivo)");
   if (!ok) return;
 
   try {
@@ -989,7 +992,7 @@ async function onDeleteClick() {
     await loadRecords();
   } catch (err) {
     console.error(err);
-    alert("No se pudo eliminar. RevisÃ¡ consola.");
+    alert("No se pudo eliminar. Revisá consola.");
   } finally {
     elBtnEliminar.disabled = false;
   }
@@ -1015,14 +1018,14 @@ function rebuildRouteStartOptions() {
   const prev = elRouteStart.value || "";
   elRouteStart.innerHTML = "";
 
-  // Mi ubicaciÃ³n
+  // Mi ubicación
   const optMe = document.createElement("option");
   optMe.value = "__me__";
-  optMe.textContent = lastKnownPos ? "Mi ubicaciÃ³n (GPS)" : "Mi ubicaciÃ³n (GPS) â€” primero tocÃ¡ â€œUbicarmeâ€";
+  optMe.textContent = lastKnownPos ? "Mi ubicación (GPS)" : "Mi ubicación (GPS) ”” primero tocá “Ubicarme”";
   optMe.disabled = !lastKnownPos;
   elRouteStart.appendChild(optMe);
 
-  // Origen en un cliente seleccionado (o en cualquiera, si no hay selecciÃ³n todavÃ­a)
+  // Origen en un cliente seleccionado (o en cualquiera, si no hay selección todavía)
   const pool = selectedRecs.length ? selectedRecs : recordsCache;
   const sorted = pool.slice().sort((a, b) => clientLabel(a).localeCompare(clientLabel(b), "es", { sensitivity: "base" }));
 
@@ -1059,7 +1062,7 @@ function rebuildRouteList(filterText = "") {
     // Si hay filtro, mostramos solo coincidencias.
     // PERO si ya estaba seleccionado, tal vez queramos mostrarlo igual? 
     // Por ahora: comportamiento standard de filtro (oculta lo que no matchea), 
-    // pero la selecciÃ³n se mantiene en el Set.
+    // pero la selección se mantiene en el Set.
     if (q && !hay.includes(q)) continue;
 
     const row = document.createElement("div");
@@ -1197,7 +1200,7 @@ function renderRouteSummary(route) {
 
   const pill4 = document.createElement("span");
   pill4.className = "pill";
-  pill4.textContent = route.returnToOrigin ? "Cierra circuito: SÃ­" : "Cierra circuito: No";
+  pill4.textContent = route.returnToOrigin ? "Cierra circuito: Sí" : "Cierra circuito: No";
   elRouteMeta.appendChild(pill4);
 
   elRouteStops.innerHTML = "";
@@ -1212,7 +1215,7 @@ function renderRouteSummary(route) {
 
 function buildGoogleMapsDirectionsUrl(route) {
   // Google Maps Directions: origin, destination, waypoints
-  // Limit prÃ¡ctico: muchos waypoints puede fallar; manejamos recorte con aviso.
+  // Limit práctico: muchos waypoints puede fallar; manejamos recorte con aviso.
   const origin = `${route.origin.lat},${route.origin.lng}`;
 
   const ordered = route.ordered.slice();
@@ -1221,7 +1224,7 @@ function buildGoogleMapsDirectionsUrl(route) {
   const destinationStop = route.returnToOrigin ? route.origin : ordered[ordered.length - 1];
   const destination = `${destinationStop.lat},${destinationStop.lng}`;
 
-  // waypoints: todos menos el Ãºltimo (si no volvemos), o todos (si volvemos al origen)
+  // waypoints: todos menos el último (si no volvemos), o todos (si volvemos al origen)
   let waypointsStops = [];
   if (route.returnToOrigin) {
     waypointsStops = ordered;
@@ -1229,11 +1232,11 @@ function buildGoogleMapsDirectionsUrl(route) {
     waypointsStops = ordered.slice(0, -1);
   }
 
-  // Recorte defensivo: 23 waypoints suele ser lÃ­mite; dejamos 20 para margen.
+  // Recorte defensivo: 23 waypoints suele ser límite; dejamos 20 para margen.
   const MAX_WAYPOINTS = 20;
   if (waypointsStops.length > MAX_WAYPOINTS) {
     waypointsStops = waypointsStops.slice(0, MAX_WAYPOINTS);
-    alert("La ruta tiene demasiadas paradas para Google Maps. Se abrirÃ¡ con las primeras 20 paradas.");
+    alert("La ruta tiene demasiadas paradas para Google Maps. Se abrirá con las primeras 20 paradas.");
   }
 
   const waypoints = waypointsStops.map((s) => `${s.lat},${s.lng}`).join("|");
@@ -1283,7 +1286,7 @@ function drawRouteOnMap(route, { autoCenter = true } = {}) {
     const r = e.routes[0];
     if (!r) return;
 
-    // Actualizar bounds para el botÃ³n "Centrar"
+    // Actualizar bounds para el botón "Centrar"
     routeBounds = L.latLngBounds(r.coordinates);
 
     // Actualizar resumen con datos REALES de OSRM (distancia en metros -> km)
@@ -1297,8 +1300,8 @@ function drawRouteOnMap(route, { autoCenter = true } = {}) {
   });
 
   // Ocultar el contenedor de instrucciones (si 'show: false' no basta en versiones viejas)
-  // Aunque show:false deberÃ­a, algunos CSS default lo muestran igual vacÃ­o.
-  // PodrÃ­amos inyectar CSS o simplemente dejarlo.
+  // Aunque show:false debería, algunos CSS default lo muestran igual vacío.
+  // Podríamos inyectar CSS o simplemente dejarlo.
   // Para asegurar limpieza, forzamos hide via DOM event 'routingstart' o similar si hiciera falta.
   // Pero con show:false suele, en versiones nuevas, no renderizar el panel.
 
@@ -1307,7 +1310,7 @@ function drawRouteOnMap(route, { autoCenter = true } = {}) {
   // marcadores numerados de paradas
   routeStopsLayer.clearLayers();
 
-  // Origen (si es mi ubicaciÃ³n, mostramos un marker especial)
+  // Origen (si es mi ubicación, mostramos un marker especial)
   const originLabel = route.origin.label;
   const originIcon = L.divIcon({
     className: "",
@@ -1343,7 +1346,7 @@ function drawRouteOnMap(route, { autoCenter = true } = {}) {
 function generateRoute() {
   const selectedIds = getSelectedRouteIds();
   if (selectedIds.length < 2) {
-    showToast("SeleccionÃ¡ al menos 2 clientes para optimizar una ruta.", "warning");
+    showToast("Seleccioná al menos 2 clientes para optimizar una ruta.", "warning");
     return;
   }
 
@@ -1362,7 +1365,7 @@ function generateRoute() {
     );
 
   if (selected.length < 2) {
-    showToast("No hay suficientes clientes con coordenadas vÃ¡lidas.", "warning");
+    showToast("No hay suficientes clientes con coordenadas válidas.", "warning");
     return;
   }
 
@@ -1372,10 +1375,10 @@ function generateRoute() {
 
   if (startValue === "__me__") {
     if (!lastKnownPos) {
-      showToast("Primero tocÃ¡ â€œUbicarmeâ€ para usar tu ubicaciÃ³n como origen.", "warning");
+      showToast("Primero tocá “Ubicarme” para usar tu ubicación como origen.", "warning");
       return;
     }
-    origin = { lat: lastKnownPos.lat, lng: lastKnownPos.lng, label: "Mi ubicaciÃ³n" };
+    origin = { lat: lastKnownPos.lat, lng: lastKnownPos.lng, label: "Mi ubicación" };
   } else {
     const rec = selected.find((s) => String(s.id) === startValue) || selected[0];
     origin = { lat: rec.lat, lng: rec.lng, label: rec.label };
@@ -1385,7 +1388,7 @@ function generateRoute() {
   const stops = selected.filter((s) => !(origin.label === s.label && origin.lat === s.lat && origin.lng === s.lng));
 
   if (!stops.length) {
-    showToast("Si el origen es un cliente, necesitÃ¡s seleccionar al menos otro cliente adicional.", "warning");
+    showToast("Si el origen es un cliente, necesitás seleccionar al menos otro cliente adicional.", "warning");
     return;
   }
 
@@ -1424,7 +1427,7 @@ function wireRouteUi() {
     const q = String(elRouteSearch?.value || "").trim().toLowerCase();
 
     recordsCache.forEach(rec => {
-      // Misma lÃ³gica de filtro que rebuildRouteList
+      // Misma lógica de filtro que rebuildRouteList
       if (Number.isFinite(rec.lat) && Number.isFinite(rec.lng)) {
         const label = clientLabel(rec);
         const hay = `${label} ${rec?.direccion ?? ""} ${rec?.rubro ?? ""}`.toLowerCase();
@@ -1437,7 +1440,7 @@ function wireRouteUi() {
   });
 
   btnDeseleccionarTodos?.addEventListener("click", () => {
-    // Limpiamos todo el Set (mÃ¡s intuitivo que solo limpiar visibles)
+    // Limpiamos todo el Set (más intuitivo que solo limpiar visibles)
     selectedRouteIds.clear();
     rebuildRouteUI();
   });
@@ -1536,9 +1539,9 @@ function bindZonePopup(layer, zoneId) {
       const latlngs = layer.getLatLngs()[0];
       const area = L.GeometryUtil.geodesicArea(latlngs); // sq meters
       if (area > 1000000) {
-        areaStr = (area / 1000000).toFixed(2) + " kmÂ²";
+        areaStr = (area / 1000000).toFixed(2) + " km²";
       } else {
-        areaStr = area.toFixed(0) + " mÂ²";
+        areaStr = area.toFixed(0) + " m²";
       }
     }
   } catch (e) {
@@ -1561,9 +1564,9 @@ function bindZonePopup(layer, zoneId) {
   div.appendChild(col);
 
   const colors = [
-    { label: 'ðŸ”µ Marcar "Hoy"', color: '#3b82f6' },
-    { label: 'ðŸ”´ Marcar "Realizada"', color: '#ef4444' },
-    { label: 'ðŸŸ  Marcar "Extra"', color: '#f97316' }
+    { label: '🔵 Marcar "Hoy"', color: '#3b82f6' },
+    { label: '🔴 Marcar "Realizada"', color: '#ef4444' },
+    { label: '🟠 Marcar "Extra"', color: '#f97316' }
   ];
 
   colors.forEach(c => {
@@ -1587,7 +1590,7 @@ function bindZonePopup(layer, zoneId) {
 
   const btnDel = document.createElement("button");
   btnDel.className = "btn-delete btn-small";
-  btnDel.textContent = "ðŸ—‘ï¸ Eliminar";
+  btnDel.textContent = "🗑️ Eliminar";
   btnDel.addEventListener("click", (e) => {
     e.stopPropagation();
     window.deleteZoneById(zoneId);
@@ -1600,7 +1603,7 @@ function bindZonePopup(layer, zoneId) {
 // Global functions for popup actions
 window.updateZoneColor = async (id, color) => {
   console.log("updateZoneColor called", id, color);
-  const { error } = await supabaseClient
+  const { error } = await getSupabase()
     .from('zones')
     .update({ color: color })
     .eq('id', id);
@@ -1626,9 +1629,9 @@ window.updateZoneColor = async (id, color) => {
 };
 
 window.deleteZoneById = async (id) => {
-  if (!confirm("Â¿Eliminar esta zona?")) return;
+  if (!confirm("¿Eliminar esta zona?")) return;
 
-  const { error } = await supabaseClient
+  const { error } = await getSupabase()
     .from('zones')
     .delete()
     .eq('id', id);
@@ -1699,7 +1702,7 @@ function initDrawControl() {
 
     if (!coords || coords.length < 3) return;
 
-    const { data, error } = await supabaseClient
+    const { data, error } = await getSupabase()
       .from('zones')
       .insert([{
         coordinates: coords,
@@ -1724,7 +1727,7 @@ function initDrawControl() {
     const layers = e.layers;
     layers.eachLayer(async function (layer) {
       if (layer.zoneId) {
-        const { error } = await supabaseClient
+        const { error } = await getSupabase()
           .from('zones')
           .delete()
           .eq('id', layer.zoneId);
@@ -1736,7 +1739,7 @@ function initDrawControl() {
 }
 
 async function loadZones() {
-  const { data, error } = await supabaseClient
+  const { data, error } = await getSupabase()
     .from('zones')
     .select('*')
     .eq('scope', 'client_map'); // Only load client map zones
@@ -1789,7 +1792,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnRegistrarAqui?.addEventListener("click", () => {
     if (!lastKnownPos) {
       locateMe({ center: true });
-      showToast("Primero obtengamos tu ubicaciÃ³n. TocÃ¡ 'Registrar donde estoy' nuevamente.", "info");
+      showToast("Primero obtengamos tu ubicación. Tocá 'Registrar donde estoy' nuevamente.", "info");
       return;
     }
     openCreateModalAt(lastKnownPos.lat, lastKnownPos.lng);
@@ -1866,8 +1869,9 @@ function startLiveTracking() {
   activeTrackerFetcher();
 
   // 2. Realtime Listener
-  if (window.supabaseClient) {
-    window.supabaseClient
+  const sb = getSupabase();
+  if (sb) {
+    sb
       .channel('live-users')
       .on(
         'postgres_changes',
@@ -1884,22 +1888,37 @@ function startLiveTracking() {
 }
 
 async function activeTrackerFetcher() {
-  if (!window.supabaseClient) return;
-  const { data } = await window.supabaseClient
-    .from('usuarios')
-    .select('id, nombre, role, lat, lng, last_seen, avatar_emoji')
-    .not('lat', 'is', null)
-    .eq('activo', true);
+  const sb = getSupabase();
+  if (!sb) return;
 
-  if (data) {
-    data.forEach(u => handleLiveUpdate(u));
+  try {
+    const { data, error } = await sb
+      .from('usuarios')
+      .select('id, nombre, role, lat, lng, last_seen, avatar_emoji')
+      .not('lat', 'is', null)
+      .eq('activo', true);
+
+    if (error) {
+      console.error("[Live] Error fetching users:", error);
+      // Optional: showToast("Error cargando usuarios en vivo", "error");
+      return;
+    }
+
+    if (data) {
+      console.log(`[Live] Found ${data.length} active users with location.`);
+      data.forEach(u => handleLiveUpdate(u));
+    }
+  } catch (err) {
+    console.error("[Live] Exception fetching users:", err);
   }
 }
 
 function handleLiveUpdate(user) {
   if (!user || user.lat === null || user.lng === null) return;
 
-  // 1. Check Recency: If last_seen > 1 hour ago, ignore/remove
+  // 1. Check Recency
+  if (!user.last_seen) return; // Ignore if no timestamp
+
   const lastSeen = new Date(user.last_seen).getTime();
   const now = Date.now();
   const MAX_AGE = 60 * 60 * 1000; // 1 Hour
@@ -1912,6 +1931,10 @@ function handleLiveUpdate(user) {
     }
     return;
   }
+
+  // Clean up if the user is ALREADY on the map but we need to update/recreate?
+  // Actually, we just update position below. 
+
 
   // 2. Create/Update Marker
   const emoji = user.avatar_emoji || "📍";
