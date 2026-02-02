@@ -500,7 +500,7 @@ async function agregarActividad(clienteId, descripcion) {
 }
 
 // Quick actions de próximo contacto
-async function actualizarProximoContactoRapido(clienteId, tipo) {
+async function actualizarProximoContactoRapido(clienteId, tipo, customDate = null) {
   if (!asegurarUsuarioValido()) return;
 
   const hoy = new Date();
@@ -513,6 +513,7 @@ async function actualizarProximoContactoRapido(clienteId, tipo) {
     d.setDate(hoy.getDate() + 1);
     fecha = d.toISOString().split("T")[0];
   } else if (tipo === "sinfecha") fecha = null;
+  else if (tipo === "custom") fecha = customDate;
 
   const payload = { fecha_proximo_contacto: fecha, hora_proximo_contacto: null };
 
@@ -777,6 +778,8 @@ function createClienteCardHTML(cliente, actividades) {
             <button class="btn-quick" data-action="prox-hoy" data-id="${cliente.id}">Hoy</button>
             <button class="btn-quick" data-action="prox-maniana" data-id="${cliente.id}">Mañana</button>
             <button class="btn-quick" data-action="prox-sinfecha" data-id="${cliente.id}">Sin fecha</button>
+            <button class="btn-quick" data-action="prox-calendario" data-id="${cliente.id}" title="Seleccionar fecha personalizada">📅</button>
+            <input type="date" class="quick-date-input" data-id="${cliente.id}" style="position: absolute; width: 0; height: 0; opacity: 0; border: 0; padding: 0; margin: 0; overflow: hidden; pointer-events: none;">
           </div>
 
           <div class="card-visitas" style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
@@ -1773,6 +1776,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         actualizarProximoContactoRapido(id, "maniana");
       } else if (action === "prox-sinfecha") {
         actualizarProximoContactoRapido(id, "sinfecha");
+      } else if (action === "prox-calendario") {
+        // Buscar el input date hermano o relacionado
+        const card = btn.closest(".card");
+        const dateInput = card.querySelector(`.quick-date-input[data-id="${id}"]`);
+        if (dateInput) {
+          if (dateInput.showPicker) {
+            dateInput.showPicker();
+          } else {
+            // Fallback
+            dateInput.click();
+          }
+        }
       } else if (action === "sumar-visita") {
         // INCREMENTAR VISITA
         // Opción A: update optimista UI + update DB
@@ -1812,6 +1827,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             alert("Error al sumar visita");
           }
         })();
+      }
+    });
+
+    // Delegación para el date picker (change)
+    lista.addEventListener("change", (e) => {
+      if (e.target.classList.contains("quick-date-input")) {
+        const id = e.target.dataset.id;
+        const val = e.target.value;
+        if (val) {
+          actualizarProximoContactoRapido(id, "custom", val);
+        }
       }
     });
   }
@@ -1867,6 +1893,38 @@ document.addEventListener("DOMContentLoaded", async () => {
       openNuevoClienteModal();
     }
   }
+  // 13) Quick dates in Modal Form (Botones Hoy, Mañana, 1 Sem)
+  const btnQuickHoy = document.getElementById("btnQuickHoy");
+  const btnQuickManiana = document.getElementById("btnQuickManiana");
+  const btnQuickProxSemana = document.getElementById("btnQuickProxSemana");
+  const inputFechaProxModal = document.getElementById("fecha_proximo_contacto");
+
+  if (inputFechaProxModal) {
+    if (btnQuickHoy) {
+      btnQuickHoy.addEventListener("click", () => {
+        const today = new Date();
+        const ymd = today.toLocaleDateString("sv-SE"); // YYYY-MM-DD
+        inputFechaProxModal.value = ymd;
+      });
+    }
+    if (btnQuickManiana) {
+      btnQuickManiana.addEventListener("click", () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        const ymd = d.toLocaleDateString("sv-SE");
+        inputFechaProxModal.value = ymd;
+      });
+    }
+    if (btnQuickProxSemana) {
+      btnQuickProxSemana.addEventListener("click", () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        const ymd = d.toLocaleDateString("sv-SE");
+        inputFechaProxModal.value = ymd;
+      });
+    }
+  }
+
 }); // End DOMContentLoaded
 
 function toggleVentaDigital(show) {

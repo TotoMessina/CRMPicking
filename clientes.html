@@ -303,8 +303,13 @@
                     <button type="button" class="btn-secundario btn-small" id="btnQuickProxSemana">1 Sem</button>
                   </div>
                   <div class="field-inline-inner" style="margin-top:8px;">
-                    <input type="date" id="fecha_proximo_contacto" class="input" />
-                    <input type="time" id="hora_proximo_contacto" class="input" />
+                    <div style="display:flex; gap:4px; flex:2;">
+                      <input type="date" id="fecha_proximo_contacto" class="input" style="flex:1;"
+                        onclick="try{this.showPicker()}catch(e){}" />
+                      <button type="button" id="btnPickFecha" class="btn-secundario" title="Abrir calendario"
+                        style="padding:0 8px;">📅</button>
+                    </div>
+                    <input type="time" id="hora_proximo_contacto" class="input" style="flex:1;" />
                   </div>
                 </div>
                 <div class="field" style="grid-column: 1 / -1;">

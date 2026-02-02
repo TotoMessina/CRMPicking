@@ -4436,3 +4436,14 @@ fieldset legend:hover {
   display: block;
   text-align: center;
 }
+
+/* Fix for field-inline */
+.field-inline-inner {
+  display: flex;
+  gap: 12px;
+}
+
+.field-inline-inner .input,
+.field-inline-inner input {
+  flex: 1;
+}
