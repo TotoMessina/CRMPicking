@@ -14,7 +14,7 @@
             "type": "image/png"
         },
         {
-            "src": "./imagen2.png",
+            "src": "./imagen1.png",
             "sizes": "512x512",
             "type": "image/png"
         }
