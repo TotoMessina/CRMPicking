@@ -36,6 +36,9 @@
       <button type="button" id="btnToggleTheme" class="btn-secundario theme-toggle">
         Modo noche 🌙
       </button>
+      <button type="button" id="btnEnableNotifications" class="btn-secundario theme-toggle" style="margin-top: 8px;">
+        🔔 Activar Notificaciones
+      </button>
 
       <nav class="sidebar-nav" aria-label="Navegación principal">
         <ul class="sidebar-menu">
@@ -94,6 +97,12 @@
           <div class="bento-card">
             <div class="bento-title" style="font-size:1rem; opacity:0.7;">Clientes Activos</div>
             <div class="bento-stat" id="dashTotalClientes">-</div>
+          </div>
+
+          <!-- 2b. VISITAS HOY -->
+          <div class="bento-card">
+            <div class="bento-title" style="font-size:1rem; opacity:0.7;">Visitas Hoy</div>
+            <div class="bento-stat" id="dashVisitasHoy">-</div>
           </div>
 
           <!-- 3. CREAR VISITA / EVENTO -->

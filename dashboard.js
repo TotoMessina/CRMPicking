@@ -59,6 +59,17 @@ async function loadDashboardKPIs() {
         // Agenda
         setText("dashAgendaCount", agendaHoy ? agendaHoy.length : 0);
 
+        // Visitas Hoy
+        // Consultamos actividades de hoy con descripcion "Visita realizada"
+        const today = new Date().toISOString().split("T")[0];
+        const { count: countVisitas } = await supabaseClient
+            .from("actividades")
+            .select("*", { count: "exact", head: true })
+            .eq("descripcion", "Visita realizada")
+            .gte("fecha", today);
+
+        setText("dashVisitasHoy", countVisitas || 0);
+
         // Intelligence Stub (Podría venir de stats logic real)
         setText("dashInsight", "Martes - Mañana");
 

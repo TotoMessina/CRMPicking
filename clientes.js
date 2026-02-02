@@ -1794,6 +1794,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Opción B: update DB + reload
         (async () => {
           try {
+            // CHECK OFFLINE
+            if (!navigator.onLine) {
+              // 1. Queue Action
+              window.OfflineManager.addToQueue("ADD_VISIT", { clientId: id });
+
+              // 2. Optimistic UI Update (Blind increment)
+              const container = btn.parentElement;
+              const strong = container.querySelector('strong');
+              if (strong) {
+                // Text is "Visitas: 5". Parse number?
+                const parts = strong.textContent.split(':');
+                if (parts.length > 1) {
+                  const num = parseInt(parts[1].trim()) || 0;
+                  strong.textContent = `Visitas: ${num + 1}`;
+                }
+              }
+              window.showToast("Guardado localmente. Se subirá al recuperar conexión.", "info");
+              return;
+            }
+
+            // ONLINE LOGIC (Normal)
             // 1. Fetch current count from DB to be safe
             const { data: currentData, error: fetchErr } = await supabaseClient
               .from('clientes')
@@ -1819,8 +1840,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const strong = container.querySelector('strong');
             if (strong) strong.textContent = `Visitas: ${newVal}`;
 
-            // Optional: Log activity?
-            // await agregarActividad(id, `Visita registrada (Total: ${newVal})`);
+            // Log activity to track timestamp
+            await agregarActividad(id, "Visita realizada");
 
           } catch (err) {
             console.error(err);

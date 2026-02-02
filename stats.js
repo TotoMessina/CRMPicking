@@ -718,6 +718,7 @@ async function renderAllByRange() {
     "chartAltasDiarias",
     "chartConsumidoresEvolucion",
     "chartVisitasActivacion",
+    "chartVisitasEvolucion",
   ].forEach(ensureCanvasHeight);
 
   // Catálogo de usuarios (activos + históricos del rango)
@@ -751,6 +752,29 @@ async function renderAllByRange() {
   console.log("DEBUG: Consumidores fetched:", consumidoresRows.length);
   console.log("DEBUG: Consumidores First 5 dates:", consumidoresRows.slice(0, 5).map(r => r.created_at));
   console.log("DEBUG: Consumidores Data Series:", consSeries.data);
+
+  // =======================================================
+  // VISITAS EVOLUCIÓN (NUEVO)
+  // =======================================================
+  // Filtramos por descripcion = 'Visita realizada'
+  const visitasRows = await fetchAll(
+    CFG.tables.actividades,
+    "fecha",
+    (q) => q
+      .gte("fecha", fromISO)
+      .lt("fecha", toISO)
+      .eq("descripcion", "Visita realizada")
+  );
+
+  const visitasSeries = seriesByDay(visitasRows, "fecha", buckets);
+  destroyChart("visitasEvolucion"); // Use a clean key
+
+  // Reuse makeBar but maybe with a distinct color? Using Primary (Indigo) same as other bars for now.
+  CHARTS.visitasEvolucion = makeBar(
+    "chartVisitasEvolucion",
+    visitasSeries.labels,
+    visitasSeries.data
+  );
 
   // =======================================================
   // VISITAS PARA ACTIVACIÓN

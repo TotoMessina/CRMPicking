@@ -365,6 +365,302 @@
                 .then((reg) => console.log("Service Worker Registered", reg.scope))
                 .catch((err) => console.log("Service Worker Failed", err));
         }
+
+        // Init OfflineManager
+        window.OfflineManager.init();
+    });
+
+    // 10. OFFLINE MANAGER
+    // =========================================================
+    window.OfflineManager = {
+        QUEUE_KEY: "crm_offline_queue",
+
+        init: function () {
+            // Listen for online status
+            window.addEventListener("online", () => {
+                console.log("[Offline] Back online. Syncing...");
+                window.showToast("Recuperamos conexión. Sincronizando...", "info");
+                this.processQueue();
+            });
+
+            window.addEventListener("offline", () => {
+                console.log("[Offline] Connection lost.");
+                window.showToast("Sin conexión. Trabajando en modo Offline.", "warning");
+            });
+
+            // Try processing on load if online
+            if (navigator.onLine) {
+                this.processQueue();
+            }
+        },
+
+        getQueue: function () {
+            try {
+                const str = localStorage.getItem(this.QUEUE_KEY);
+                return str ? JSON.parse(str) : [];
+            } catch (e) {
+                return [];
+            }
+        },
+
+        addToQueue: function (actionType, payload) {
+            const queue = this.getQueue();
+            const item = {
+                id: Date.now() + Math.random(),
+                type: actionType,
+                payload: payload,
+                createdAt: new Date().toISOString()
+            };
+            queue.push(item);
+            localStorage.setItem(this.QUEUE_KEY, JSON.stringify(queue));
+            console.log("[Offline] Added to queue:", item);
+        },
+
+        processQueue: async function () {
+            const queue = this.getQueue();
+            if (queue.length === 0) return;
+
+            console.log(`[Offline] Processing ${queue.length} items...`);
+            const remaining = [];
+            let processedCount = 0;
+
+            for (const item of queue) {
+                try {
+                    await this.executeItem(item);
+                    processedCount++;
+                } catch (err) {
+                    console.error("[Offline] Error processing item:", item, err);
+                    // Keep in queue only if it's a network error?
+                    // For simplicity, we keep it to retry later, unless it's a logic error 
+                    // but verifying logic error is hard. Let's assume we retry.
+                    remaining.push(item);
+                }
+            }
+
+            localStorage.setItem(this.QUEUE_KEY, JSON.stringify(remaining));
+
+            if (processedCount > 0) {
+                window.showToast(`Sincronizados ${processedCount} cambios pendientes.`, "success");
+            }
+        },
+
+        executeItem: async function (item) {
+            if (!window.supabaseClient) throw new Error("Supabase not ready");
+
+            if (item.type === "ADD_VISIT") {
+                // Payload: { clientId }
+                const { clientId } = item.payload;
+                // Logic: Fetch count -> Inc -> Update -> Insert Activity
+
+                // 1. Fetch current
+                const { data: currentData, error: fetchErr } = await window.supabaseClient
+                    .from('clientes')
+                    .select('visitas')
+                    .eq('id', clientId)
+                    .single();
+
+                if (fetchErr) throw fetchErr; // Will retry
+
+                const currentVal = currentData.visitas || 0;
+                const newVal = currentVal + 1;
+
+                // 2. Update DB
+                const { error: updateErr } = await window.supabaseClient
+                    .from('clientes')
+                    .update({ visitas: newVal })
+                    .eq('id', clientId);
+
+                if (updateErr) throw updateErr;
+
+                // 3. Log Activity (Timestamp is NOW, or we could use item.createdAt?)
+                // Let's use item.createdAt to respect when it happened!
+                const { error: actErr } = await window.supabaseClient
+                    .from('actividades')
+                    .insert([{
+                        cliente_id: clientId,
+                        usuario_id: (window.CRM_USER ? window.CRM_USER.id : null), // Fallback? 
+                        usuario: (window.CRM_USER ? window.CRM_USER.nombre : "OfflineSync"),
+                        descripcion: "Visita realizada", // Standard text
+                        fecha: item.createdAt // Backdate to when it happened
+                    }]);
+
+                if (actErr) console.warn("Activity log failed but visit counted", actErr);
+
+            } else if (item.type === "UPDATE_CLIENT") {
+                // Payload: { id, updates }
+                const { id, updates } = item.payload;
+                const { error } = await window.supabaseClient
+                    .from('clientes')
+                    .update(updates)
+                    .eq('id', id);
+                if (error) throw error;
+            }
+        }
+    };
+
+    // 11. NOTIFICATIONS MANAGER (LOCAL PUSH)
+    // =========================================================
+    window.NotificationsManager = {
+        init: function () {
+            // Check support
+            if (!("Notification" in window)) return;
+
+            // Auto-check on load if already granted
+            if (Notification.permission === "granted") {
+                this.startListeners();
+            }
+
+            // Bind UI button if exists
+            const btn = document.getElementById("btnEnableNotifications");
+            if (btn) {
+                if (Notification.permission === "granted") {
+                    btn.style.display = 'none';
+                } else if (Notification.permission === "denied") {
+                    // btn.textContent = "Notificaciones bloqueadas";
+                    // btn.disabled = true;
+                    btn.style.display = 'none'; // Simplify: Hide if denied
+                } else {
+                    btn.addEventListener("click", () => {
+                        this.requestPermission();
+                    });
+                }
+            }
+        },
+
+        requestPermission: async function () {
+            const result = await Notification.requestPermission();
+            if (result === "granted") {
+                window.showToast("Notificaciones activadas", "success");
+                this.startListeners();
+                const btn = document.getElementById("btnEnableNotifications");
+                if (btn) btn.style.display = 'none';
+            } else {
+                window.showToast("No pudimos activar las notificaciones", "warning");
+            }
+        },
+
+        show: function (title, body, tag = null) {
+            if (Notification.permission !== "granted") return;
+            // SW Registration for mobile? Or simple 'new Notification'?
+            // 'new Notification' only works reliably on Desktop. Mobile often requires SW.showNotification.
+            // Let's try SW first if available, else fallback.
+
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                // This promise resolves when SW is active
+                navigator.serviceWorker.ready.then(registration => {
+                    // Check if showNotification is supported (it IS in SW context)
+                    // But accessing registration from window might not work on all browsers for 'showNotification'
+                    // Actually, registration.showNotification is the standard way.
+                    registration.showNotification(title, {
+                        body: body,
+                        icon: 'imagen1.png',
+                        badge: 'imagen1.png', // Android badge
+                        tag: tag || 'general',
+                        vibrate: [200, 100, 200]
+                    });
+                });
+            } else {
+                new Notification(title, {
+                    body: body,
+                    icon: 'imagen1.png'
+                });
+            }
+        },
+
+        startListeners: function () {
+            console.log("[Notif] Starting listeners...");
+            this.startRealtimeAssignments();
+            this.startReminderLoop();
+        },
+
+        startRealtimeAssignments: function () {
+            const user = window.CRM_USER;
+            if (!user || !user.nombre) return;
+            const userName = user.nombre.toLowerCase();
+
+            // Realtime is global in Supabase client
+            window.supabaseClient
+                .channel('assignments-channel')
+                .on(
+                    'postgres_changes',
+                    { event: 'UPDATE', schema: 'public', table: 'clientes' },
+                    (payload) => {
+                        const newData = payload.new;
+                        const oldData = payload.old; // May be empty if RLS policies restrict
+                        // Check if assigned to ME
+                        if (newData.responsable && newData.responsable.toLowerCase() === userName) {
+                            // Check if it WASN'T me before (requires full payload, RLS might hide old)
+                            // Or just notify always on update? Too noisy.
+                            // Let's assume if it matches me, I want to know. 
+                            // Debounce or check logic?
+                            // Simple heuristic: If active and assigned to me.
+                            this.show("Cliente Asignado", `Se te asignó: ${newData.nombre}`);
+                        }
+                    }
+                )
+                .subscribe();
+        },
+
+        startReminderLoop: function () {
+            // Check every 5 minutes
+            const CHECK_INTERVAL = 5 * 60 * 1000;
+
+            const check = async () => {
+                // Fetch agenda today
+                const user = window.CRM_USER;
+                if (!user) return;
+
+                const today = new Date().toISOString().split("T")[0];
+
+                const { data: agenda } = await window.supabaseClient
+                    .from("clientes")
+                    .select("nombre, hora_proximo_contacto")
+                    .eq("fecha_proximo_contacto", today)
+                    .eq("activo", true)
+                    // Filter by user? Yes, ideally. In clientes.js logic it often filters, 
+                    // but here we want ONLY MY visits.
+                    // Assuming 'responsable' column exists.
+                    .ilike("responsable", `%${user.nombre}%`);
+
+                if (!agenda) return;
+
+                const now = new Date();
+                const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+                agenda.forEach(c => {
+                    if (!c.hora_proximo_contacto) return;
+                    // Format "HH:MM"
+                    const [h, m] = c.hora_proximo_contacto.split(":").map(Number);
+                    const targetMinutes = h * 60 + m;
+
+                    const diff = targetMinutes - nowMinutes;
+                    // If between 0 and 60 minutes
+                    if (diff > 0 && diff <= 60) {
+                        // Avoid spamming? We need a tracking mechanism "notified_today_client_ID".
+                        const key = `notif_${today}_${c.nombre}`;
+                        if (!sessionStorage.getItem(key)) {
+                            this.show("Recordatorio de Visita", `En ${diff} min: ${c.nombre}`);
+                            sessionStorage.setItem(key, "true");
+                        }
+                    }
+                });
+            };
+
+            // Run immediately then interval
+            check();
+            setInterval(check, CHECK_INTERVAL);
+        }
+    };
+
+    // Init Notifications (will auto-check permission)
+    document.addEventListener("DOMContentLoaded", () => {
+        // Tiny delay to ensure Auth user is ready? 
+        // Auth is async. Notifications require window.CRM_USER. 
+        // Let's retry init periodically or wait for Auth?
+        // We can init basics, and startListeners checks user. 
+        // But startListeners is called on init.
+        // Let's wait 3s or simpler: hook into same place as OfflineManager
+        setTimeout(() => window.NotificationsManager.init(), 2000);
     });
 
 })();
