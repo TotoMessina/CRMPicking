@@ -11,6 +11,10 @@ const ASSETS_TO_CACHE = [
     "./dashboard.js",
     "./clientes.html",
     "./clientes.js",
+    "./login.html",
+    "./login.js",
+    "./imagen1.png",
+    "./imagen2.png",
     "./manifest.json"
 ];
 
