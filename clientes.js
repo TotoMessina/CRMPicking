@@ -1481,10 +1481,21 @@ function cerrarActividadModal() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Esperar a que guard.js termine (evita rebotes)
-  if (window.CRM_GUARD_READY) await window.CRM_GUARD_READY;
+  try {
+    console.log("[Clientes] Waiting for guard...");
+    if (window.CRM_GUARD_READY) await window.CRM_GUARD_READY;
+    console.log("[Clientes] Guard ready. User:", window.CRM_USER);
+  } catch (e) {
+    console.error("[Clientes] Guard error:", e);
+  }
 
   // Si el guard te redirigió, esto ni corre; pero por seguridad:
-  if (!(window.CRM_USER && window.CRM_USER.activo)) return;
+  if (!(window.CRM_USER && window.CRM_USER.activo)) {
+    console.warn("[Clientes] User not active or invalid, aborting init.");
+    window.showToast("🛑 DIAG: Usuario inválido offline", "error");
+    return;
+  }
+  window.showToast("✅ DIAG: Init Clientes OK", "success");
 
   // Usuario autenticado
   usuarioActual = (window.CRM_USER.nombre || "").trim();
