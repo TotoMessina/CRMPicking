@@ -172,7 +172,66 @@
 
     // 6. PAGE TRANSITIONS
     // =========================================================
+    // 6. PAGE TRANSITIONS & MOBILE NAV
+    // =========================================================
     document.addEventListener("DOMContentLoaded", () => {
+        // --- MOBILE NAV: Inject Hamburger & Overlay ---
+        const shell = document.querySelector('.app-shell');
+        if (shell) {
+            // Check if already injected to avoid duplicates
+            if (document.querySelector('.mobile-menu-btn')) return;
+
+            // Helper to toggle
+            const toggleMenu = () => {
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                if (sidebar && overlay) {
+                    sidebar.classList.toggle('open');
+                    overlay.classList.toggle('active');
+                }
+            };
+
+            // 1. Hamburger Button (Floating FAB)
+            const btn = document.createElement('button');
+            btn.className = 'mobile-menu-btn';
+            btn.innerHTML = '☰';
+            btn.setAttribute('aria-label', 'Abrir menú');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMenu();
+            });
+            shell.appendChild(btn);
+
+            // 2. Overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'sidebar-overlay';
+            overlay.addEventListener('click', toggleMenu);
+            shell.appendChild(overlay);
+
+            // 3. Inject Close Button into Sidebar (if not exists)
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar && !sidebar.querySelector('.sidebar-close-btn')) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'sidebar-close-btn';
+                closeBtn.innerHTML = '✕';
+                closeBtn.setAttribute('aria-label', 'Cerrar menú');
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleMenu();
+                });
+                // Insert as first child
+                sidebar.insertBefore(closeBtn, sidebar.firstChild);
+            }
+
+            // 4. Close on Nav Link Click
+            document.querySelectorAll('.sidebar-nav a, #btnLogout').forEach(link => {
+                link.addEventListener('click', () => {
+                    document.querySelector('.sidebar')?.classList.remove('open');
+                    document.querySelector('.sidebar-overlay')?.classList.remove('active');
+                });
+            });
+        }
+
         // 1. Entrance animation
         document.body.classList.add("page-enter");
 

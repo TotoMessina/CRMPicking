@@ -1985,6 +1985,28 @@ function toggleVentaDigital(show) {
 
 // 12) Auto-fill Horarios Logic
 document.addEventListener("DOMContentLoaded", () => {
+  // --- MOBILE FILTERS: Collapsible Logic ---
+  const filtersContainer = document.querySelector('.filters');
+  if (filtersContainer && window.innerWidth <= 860) {
+    // Create Toggle Button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'btn-toggle-filters';
+    toggleBtn.innerHTML = '🔍 Filtros Avanzados';
+    toggleBtn.type = 'button';
+
+    // Insert it BEFORE the filters div (sibling)
+    filtersContainer.parentNode.insertBefore(toggleBtn, filtersContainer);
+
+    // Hide filters initially on mobile (except search potentially? logic handled by CSS)
+    filtersContainer.classList.add('filters-collapsed');
+
+    toggleBtn.addEventListener('click', () => {
+      filtersContainer.classList.toggle('filters-collapsed');
+      const isCollapsed = filtersContainer.classList.contains('filters-collapsed');
+      toggleBtn.innerHTML = isCollapsed ? '🔍 Filtros Avanzados' : '❌ Ocultar Filtros';
+    });
+  }
+
   const ids = ["chk_lun", "chk_mar", "chk_mie", "chk_jue", "chk_vie", "chk_sab", "chk_dom", "time_apertura", "time_cierre"];
 
   function actualizarHorarioTexto() {

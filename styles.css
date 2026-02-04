@@ -1219,54 +1219,163 @@ body.modal-open {
 }
 
 /* Mobile: sidebar a bottom-bar */
+/* Mobile: sidebar as DRAWER (Off-canvas) */
 @media (max-width: 860px) {
   .app-shell {
     flex-direction: column;
   }
 
+  /* 1. Sidebar hidden by default (off-canvas) */
   .sidebar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    width: auto;
-    height: auto;
-    padding: 10px 10px;
-    border-right: none;
-    border-top: 1px solid rgba(148, 163, 184, 0.25);
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 2147483647 !important;
+    /* Max safe integer for z-index */
+    /* Ensure top most */
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--border);
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+    padding: 12px;
     display: flex;
-    gap: 10px;
-    z-index: 1500;
+    flex-direction: column;
+    overflow-y: auto;
   }
 
+  /* Close Button Style */
+  .sidebar-close-btn {
+    align-self: flex-end;
+    background: transparent;
+    border: 1px solid var(--border);
+    /* Visible border */
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-bottom: 12px;
+    margin-right: 4px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-close-btn:hover {
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* 2. Restore sidebar content for mobile (previously hidden) */
   .sidebar-brand,
   .sidebar-foot {
-    display: none;
-    justify-content: space-between;
+    display: flex;
+    /* Restore brand/footer */
   }
 
   .sidebar-nav {
     width: 100%;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 8px;
-    margin: 0;
+    flex-direction: column;
+    /* Vertical stack */
+    margin-top: 0;
   }
 
   .nav-item {
-    flex: 1;
-    justify-content: center;
-    padding: 10px 8px;
+    justify-content: flex-start;
+    /* Left align */
+    padding: 12px 14px;
+    /* Bigger touch target */
+    font-size: 15px;
   }
 
   .nav-item .nav-dot {
+    display: block;
+    /* Restore dot */
+  }
+
+  /* 3. Hamburger Button (Injected by common.js) */
+  .mobile-menu-btn {
+    display: flex;
+    /* Visible on mobile */
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 100;
+    /* Below sidebar (2000) but above content */
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 24px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+
+  .mobile-menu-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* 4. Overlay Backdrop */
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1900;
+    /* Below sidebar, above everything else */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(2px);
+  }
+
+  .sidebar-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 5. Adjust Content Layout */
+  .app-content .container {
+    margin: 60px auto 24px;
+    /* Top margin for hamburger */
+    padding: 16px;
+  }
+}
+
+/* Base style for mobile button (hidden on desktop only) */
+@media (min-width: 861px) {
+  .mobile-menu-btn {
     display: none;
   }
 
-  /* deja espacio para la bottom-bar */
-  .app-content .container {
-    margin-bottom: 84px;
+  .sidebar-overlay {
+    display: none;
+  }
+}
+
+
+.sidebar-overlay {
+  display: none;
+  /* Only mobile */
+}
+
+@media (max-width: 860px) {
+  .sidebar-overlay {
+    display: block;
   }
 }
 
@@ -1289,15 +1398,216 @@ body.modal-open {
 
 .stats-hero-kicker {
   display: inline-flex;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, .35);
-  background: rgba(37, 99, 235, .08);
-  color: var(--text);
+}
+
+/* ===========================
+   DASHBOARD REFRESH (Mockup Match)
+   =========================== */
+
+/* Header */
+.dashboard-header {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  /* Default desktop */
+  align-items: center;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+/* Mobile Header Adjustment */
+@media (max-width: 860px) {
+  .dashboard-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--bg);
+    /* Solid background to cover scroll */
+    z-index: 800;
+    /* Below sidebar (9999), below hamburger (soon to be checked) */
+    margin: 0;
+    padding: 0 16px;
+    justify-content: center;
+    /* Center Title */
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.25rem;
+    /* Smaller, app-like title */
+    line-height: 60px;
+  }
+
+  /* Hamburger needs to align with this header */
+  .mobile-menu-btn {
+    top: 8px;
+    /* Center vert in 60px header */
+    left: 8px;
+    width: 44px;
+    height: 44px;
+    box-shadow: none;
+    /* Remove FAB shadow for flat look */
+    background: transparent;
+    color: var(--text);
+    /* Dark icon on white header */
+  }
+
+
+  /* Push content down so it starts AFTER the fixed header */
+  .app-content .container {
+    margin-top: calc(80px + env(safe-area-inset-top)) !important;
+    /* Force space for header + Notch */
+    padding-top: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* --- 1. TOUCH TARGETS (Min 44px) --- */
+  button,
+  input,
+  select,
+  textarea,
+  .btn-link {
+    min-height: 44px;
+    font-size: 16px !important;
+    /* Prevent iOS zoom */
+  }
+
+  /* --- 2. STICKY FILTERS --- */
+  .filters {
+    position: sticky;
+    top: calc(60px + env(safe-area-inset-top));
+    /* Below header */
+    z-index: 700;
+    background: var(--bg-elevated);
+    /* Contrast against bg */
+    margin: 0 -16px;
+    /* Stretch full width */
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    /* Stack vertically on mobile */
+    gap: 8px;
+    max-height: 80vh;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+  }
+
+  /* Collapsed State: Only show first input (Nombre) or hide all? */
+  /* Let's hide all but the first child (Name Search) */
+  .filters.filters-collapsed> :not(:first-child) {
+    display: none;
+  }
+
+  /* Style for the Toggle Button (injected by JS) */
+  .btn-toggle-filters {
+    width: 100%;
+    margin-bottom: 8px;
+    background: var(--bg-elevated);
+    color: var(--accent);
+    border: 1px dashed var(--accent);
+    font-size: 13px;
+  }
+
+  /* Adjust first input in collapsed mode */
+  .filters.filters-collapsed {
+    padding: 8px 16px;
+  }
+
+  /* --- 3. NOTCH SUPPORT (Safe Areas) --- */
+  .dashboard-header {
+    padding-top: env(safe-area-inset-top);
+    height: calc(60px + env(safe-area-inset-top));
+    align-items: flex-end;
+    /* Align title to bottom part of header */
+    padding-bottom: 12px;
+    /* Visual center adjustment */
+  }
+
+  .dashboard-header h1 {
+    line-height: 1.2;
+  }
+
+  .mobile-menu-btn {
+    top: calc(8px + env(safe-area-inset-top));
+  }
+
+  .sidebar {
+    padding-top: calc(12px + env(safe-area-inset-top));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+
+/* Hero Welcome Card (Blue Gradient) */
+.hero-welcome {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: white;
+  padding: 24px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
+}
+
+.hero-welcome h1 {
+  font-size: 1.8rem;
+  margin: 0 0 8px;
+  font-weight: 800;
+}
+
+.hero-welcome p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 1rem;
+}
+
+/* Bento Cards Polish */
+.bento-card {
+  border-radius: 20px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: transform 0.1s ease;
+}
+
+.bento-card:active {
+  transform: scale(0.98);
+}
+
+.bento-icon {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.bento-title {
   font-weight: 700;
-  font-size: 12px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+/* Specific: "Nuevo Cliente" Blue Card */
+.card-primary.bento-card {
+  background: linear-gradient(145deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  /* Mockup has a building bg, simplified here with gradient for now */
+}
+
+.card-primary .bento-desc {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.card-primary .bento-action-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  box-shadow: none;
 }
 
 .stats-hero-sub {

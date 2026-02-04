@@ -1,4 +1,4 @@
-const CACHE_NAME = "pickingup-crm-v1";
+const CACHE_NAME = "pickingup-crm-v15";
 // Add files to cache here. Ideally, list all critical assets.
 // For now, we cache the basics to allow app shell to load.
 const ASSETS_TO_CACHE = [
