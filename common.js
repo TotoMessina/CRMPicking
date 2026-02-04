@@ -674,6 +674,7 @@
             const role = (user.role || "").toLowerCase();
             if (role.includes("activador")) {
                 console.log("[Tracker] User is Activador. Starting GPS...");
+                window.showToast("🐞 DIAG: Iniciando GPS de Activador...", "info");
                 this.startTracking();
             }
         },
@@ -687,6 +688,7 @@
                 },
                 (err) => {
                     console.warn("[Tracker] GPS Error:", err);
+                    window.showToast("🐞 DIAG: Error GPS: " + err.message, "error");
                 },
                 {
                     enableHighAccuracy: true,
@@ -711,9 +713,14 @@
 
         sendUpdate: async function (lat, lng) {
             const user = window.CRM_USER;
-            if (!user) return;
-
             try {
+                const userId = user.id || user.userId;
+                if (!userId) {
+                    console.error("[Tracker] User ID missing in CRM_USER object", user);
+                    window.showToast("🐞 DIAG: Error fatal - ID de usuario desconocido", "error");
+                    return;
+                }
+
                 // Determine Emoji (if not set in DB, default is used there, 
                 // but here we just update lat/lng/last_seen)
                 const { error } = await window.supabaseClient
@@ -723,10 +730,16 @@
                         lng: lng,
                         last_seen: new Date().toISOString()
                     })
-                    .eq('id', user.id);
+                    .eq('id', userId);
 
-                if (error) console.error("[Tracker] DB Update failed", error);
-                else console.log("[Tracker] Location sent", lat, lng);
+                if (error) {
+                    console.error("[Tracker] DB Update failed", error);
+                    window.showToast("🐞 DIAG: Error al enviar ubicación a DB", "error");
+                }
+                else {
+                    console.log("[Tracker] Location sent", lat, lng);
+                    // window.showToast("🐞 DIAG: Ubicación enviada OK", "success"); // Too spammy maybe? Uncomment if needed
+                }
 
             } catch (e) {
                 console.error("[Tracker] Exception", e);

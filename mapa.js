@@ -1901,11 +1901,18 @@ async function activeTrackerFetcher() {
     if (error) {
       console.error("[Live] Error fetching users:", error);
       // Optional: showToast("Error cargando usuarios en vivo", "error");
+      window.showToast("🐞 DIAG: Error cargando usuarios: " + error.message, "error");
       return;
     }
 
     if (data) {
       console.log(`[Live] Found ${data.length} active users with location.`);
+      if (data.length === 0) {
+        // Only show once per session or it's annoying? For now show it.
+        // window.showToast("🐞 DIAG: 0 Activadores encontrados", "warning");
+      } else {
+        // window.showToast(`🐞 DIAG: ${data.length} Activadores encontrados`, "success");
+      }
       data.forEach(u => handleLiveUpdate(u));
     }
   } catch (err) {
@@ -1929,6 +1936,8 @@ function handleLiveUpdate(user) {
       window.liveTrackingLayer.removeLayer(m);
       delete liveMarkersMap[user.id];
     }
+    const mins = Math.round((now - lastSeen) / 60000);
+    console.warn(`[Live] Skipping user ${user.nombre} (Last seen ${mins} min ago)`);
     return;
   }
 

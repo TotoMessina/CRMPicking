@@ -76,7 +76,7 @@
       window.CRM_USER = {
         activo: perfil.activo === true,
         nombre: (perfil.nombre || (user.email || "Usuario").split("@")[0]).trim(),
-        userId: perfil.id || user.id,
+        id: perfil.id || user.id,
         email: perfil.email || user.email || "",
         role: perfil.role || "user",
       };
