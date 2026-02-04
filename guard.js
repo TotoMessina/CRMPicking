@@ -45,6 +45,24 @@
 
   async function runGuard() {
     const supabaseClient = window.CRM_AUTH?.supabaseClient;
+
+    // OFFLINE BYPASS: If offline and we have a cached user, assume valid to allow entry.
+    if (!navigator.onLine) {
+      const cachedUser = localStorage.getItem("usuarioActual");
+      if (cachedUser) {
+        console.log("[Guard] Offline mode detected. Using cached user identity.");
+        window.CRM_USER = {
+          activo: true,
+          nombre: cachedUser,
+          id: "OFFLINE_USER", // Dummy ID, common.js/clientes.js should handle this
+          email: "offline@local",
+          role: "user"
+        };
+        // Try to restore more details if we had them (optional, but "usuarioActual" is just name)
+        return { ok: true, reason: "offline_bypass" };
+      }
+    }
+
     if (!supabaseClient) {
       console.error("guard.js: falta auth.js o supabaseClient no inicializado.");
       window.CRM_USER = { activo: false, nombre: "" };

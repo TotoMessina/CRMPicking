@@ -1592,6 +1592,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 3) Modal cliente: abrir/cerrar + overlay click + ESC
   const btnNuevo = document.getElementById("btnNuevoCliente");
   if (btnNuevo) btnNuevo.addEventListener("click", () => {
+    console.log("[UI] Clicked Nuevo Cliente");
+    // window.showToast("Abriendo modal...", "info"); // Optional trace
     openNuevoClienteModal();
     initWizard();
   });
