@@ -494,6 +494,15 @@
                     .update(updates)
                     .eq('id', id);
                 if (error) throw error;
+                if (error) throw error;
+            } else if (item.type === "CREATE_CLIENT") {
+                // Payload: { ...clientData }
+                // We assume payload has all necessary fields.
+                // If ID was generated locally, it should be in payload.
+                const { error } = await window.supabaseClient
+                    .from('clientes')
+                    .insert([item.payload]);
+                if (error) throw error;
             }
         }
     };

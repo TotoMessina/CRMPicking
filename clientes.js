@@ -1028,6 +1028,22 @@ async function guardarCliente(e) {
   let error;
   let newId = id;
 
+  // OFFLINE HANDLING
+  if (!navigator.onLine) {
+    if (id) {
+      window.OfflineManager.addToQueue("UPDATE_CLIENT", { id, updates: payload });
+      showToast("Sin conexión. Cambios guardados para sincronizar.", "info");
+    } else {
+      // Ensure created_por is set for offline creates
+      payload.creado_por = usuarioActual;
+      window.OfflineManager.addToQueue("CREATE_CLIENT", payload);
+      showToast("Sin conexión. Cliente nuevo guardado en cola.", "info");
+    }
+    resetFormulario();
+    closeModalCliente();
+    return;
+  }
+
   if (id) {
     const { error: errUpdate } = await supabaseClient.from("clientes").update(payload).eq("id", id);
     error = errUpdate;
