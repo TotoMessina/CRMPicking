@@ -816,7 +816,21 @@ async function cargarClientes() {
   const listaDiv = document.getElementById("lista");
   if (!listaDiv) return;
 
-  listaDiv.innerHTML = "<p>Cargando...</p>";
+  // Show SKELETON instead of text
+  listaDiv.innerHTML = `
+      <div class="skeleton-card">
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+      </div>
+      <div class="skeleton-card">
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+      </div>
+       <div class="skeleton-card">
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+      </div>
+  `;
 
   // Helper inputs
   const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };

@@ -1012,6 +1012,202 @@ body.modal-open {
   }
 }
 
+@media (max-width: 768px) {
+  .stats-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .stats-topbar-actions {
+    /* Toolbar Container */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    background: var(--bg-elevated);
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  }
+
+  /* Unified Input Styles */
+  .stats-preset-select,
+  .stats-date-input,
+  .stats-type-selector select,
+  #filterActivator {
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+
+  .stats-preset-select:hover,
+  .stats-date-input:hover,
+  #filterActivator:hover {
+    border-color: var(--accent);
+    background-color: var(--bg-hover);
+  }
+
+  .stats-preset-select:focus,
+  .stats-date-input:focus,
+  #filterActivator:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  /* Date Wrapper */
+  .stats-date-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg);
+    padding: 4px;
+    /* subtle wrapper */
+    border-radius: 8px;
+  }
+
+  .stats-date-separator {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  /* Refresh Button - Prominent */
+  #btnRefrescarStats {
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  #btnRefrescarStats:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    filter: brightness(1.1);
+  }
+
+  #btnRefrescarStats:active {
+    transform: translateY(0);
+  }
+
+  #btnRefrescarStats:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Mobile Stack */
+  @media (max-width: 768px) {
+    .stats-topbar-actions {
+      width: 100%;
+      flex-direction: column;
+      /* Stack vertically */
+      align-items: stretch;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .stats-preset-select,
+    #filterActivator,
+    .stats-type-selector,
+    .stats-type-selector select,
+    .stats-date-wrapper,
+    #btnRefrescarStats {
+      width: 100%;
+      flex: none;
+    }
+
+    .stats-date-wrapper {
+      justify-content: space-between;
+    }
+
+    .stats-date-input {
+      flex: 1;
+      /* Inputs take half width */
+      width: auto;
+    }
+  }
+
+  .chart-box {
+    height: 250px;
+  }
+
+  /* Smaller charts on mobile */
+}
+
+/* Empty State */
+.stats-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  background: var(--bg-elevated);
+  border-radius: 16px;
+  border: 2px dashed var(--border);
+  margin: 20px 0;
+  animation: fadeIn 0.4s ease;
+}
+
+.stats-empty-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+  animation: bounce 2s infinite;
+}
+
+.stats-empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.stats-empty-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 400px;
+  margin-bottom: 24px;
+}
+
+@keyframes bounce {
+
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-10px);
+  }
+
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+/* 6. Stats Tabs (Segmented Control) */
+
 /* ===========================
    FORM HEADER / TOGGLE
    =========================== */
@@ -1598,6 +1794,121 @@ body.modal-open {
   background: linear-gradient(145deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   /* Mockup has a building bg, simplified here with gradient for now */
+}
+
+.card-primary .bento-desc {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.card-primary .bento-action-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  box-shadow: none;
+}
+
+/* ===========================
+   PREMIUM MOBILE FEATURES
+   =========================== */
+
+/* 1. Floating Action Button (FAB) */
+.fab-btn {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  border: none;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  /* Above regular content, below dialogs */
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fab-btn:active {
+  transform: scale(0.9) rotate(90deg);
+}
+
+/* 2. Skeleton Loading */
+.skeleton-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+
+.skeleton-line {
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  animation: skeleton-pulse 1.5s infinite;
+}
+
+.skeleton-line.short {
+  width: 40%;
+}
+
+.skeleton-line.medium {
+  width: 70%;
+}
+
+.skeleton-line.icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+
+  100% {
+    opacity: 0.6;
+  }
+}
+
+[data-theme="dark"] .skeleton-line {
+  background: #1e293b;
+}
+
+/* 3. Pull-to-Refresh Indicator */
+.ptr-indicator {
+  height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: height 0.2s ease;
+}
+
+.ptr-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ptr-spin 0.6s linear infinite;
+}
+
+@keyframes ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 }
 
 .card-primary .bento-desc {
@@ -4753,7 +5064,20 @@ fieldset legend:hover {
   gap: 12px;
 }
 
+
 .field-inline-inner .input,
 .field-inline-inner input {
   flex: 1;
+}
+
+/* -----------------------------------------------------
+   STRICT TAB VISIBILITY FIX
+   ----------------------------------------------------- */
+.tab-content {
+  display: none !important;
+}
+
+.tab-content.active {
+  display: block !important;
+  animation: fadeIn 0.4s ease forwards;
 }

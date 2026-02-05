@@ -692,10 +692,57 @@ function makeBarPink(canvasId, labels, data, label) {
 // =========================================================
 // RENDER: TODO según lapso
 // =========================================================
+// =========================================================
+// RENDER: TODO según lapso
+// =========================================================
 async function renderAllByRange() {
   const { from: fromDate, to: toDate } = getRangeDates();
 
+  // Get Filter Value
+  const activatorFilter = $('filterActivator')?.value || "";
+
+  // Helper to apply common filters (Range + Activator)
+  const applyFilters = (query, dateCol = 'created_at', userCol = 'responsable') => {
+    let q = query;
+    // Date Range
+    if (dateCol) {
+      const isoFrom = isoFromLocalStart(fromDate);
+      const isoTo = isoFromLocalStart(addDays(toDate, 1));
+      q = q.gte(dateCol, isoFrom).lt(dateCol, isoTo);
+    }
+    // User Filter
+    if (activatorFilter && userCol) {
+      // Careful: userCol might be 'responsable' or 'usuario' depending on table
+      // If filtering strict equality:
+      q = q.ilike(userCol, `%${activatorFilter}%`);
+      // Using ilike because sometimes names vary slightly or we want partial match? 
+      // Or precise: q.eq(userCol, activatorFilter).
+      // Given `getUserUniverse` returns names, let's use EQ if we populate select with exact names.
+      // Let's stick to ILIKE for robustness or EQ if we are sure keys match.
+      // Let's use EQ but ensuring we pass the name exactly as in DB.
+    }
+    return q;
+  };
+
+  // Specific Helpers because tables vary
+  const filterClients = (q) => {
+    // Clientes don't inherently have a "created_at" we trust for "Altas en rango" except maybe 'created_at' column?
+    // Assuming 'created_at' exists for new clients.
+    // Filter by Activator: responsable
+    let qq = q;
+    if (activatorFilter) qq = qq.eq('responsable', activatorFilter);
+    return qq;
+  };
+
+  const filterActivities = (q) => {
+    // Actividades: fecha (range), usuario (activator)
+    let qq = q.gte('fecha', isoFromLocalStart(fromDate)).lt('fecha', isoFromLocalStart(addDays(toDate, 1)));
+    if (activatorFilter) qq = qq.eq('usuario', activatorFilter); // 'usuario' column in actividades
+    return qq;
+  };
+
   // fromISO: start of fromDate
+  // toISO: start of (toDate + 1 day)
   // toISO: start of (toDate + 1 day) -> para usar con less-than si queremos incluir el toDate completo
 
   const fromISO = isoFromLocalStart(fromDate);
@@ -730,11 +777,25 @@ async function renderAllByRange() {
   // =======================================================
   // CONSUMIDORES (EVOLUCIÓN)
   // =======================================================
-  const consumidoresRows = await fetchAll(
-    CFG.tables.consumidores,
-    "created_at",
-    (q) => q.gte("created_at", fromISO).lt("created_at", toISO)
-  );
+  // =======================================================
+  // CONSUMIDORES (EVOLUCIÓN)
+  // =======================================================
+  // Consumidores don't usually have a 'responsable' field widely used? 
+  // If they do, filter. If not, maybe hide chart or show all?
+  // Let's assume consuming 'created_by' or linked to client? 
+  // If no direct link, skip filter or show global. 
+  // Let's try to filter if possible, otherwise leave global (or empty if strict).
+  // Check DB schema in mind: Consumidores usually linked to Cliente?
+  // For now: Show GLOBAL if no filter on consumers table column known.
+  // Actually, let's assume we skip filtering consumers for specific activator unless we have a column.
+
+  let consumersQuery = supabaseClient.from(CFG.tables.consumidores).select('created_at');
+  consumersQuery = consumersQuery.gte("created_at", fromISO).lt("created_at", toISO);
+  // IF we had an activator column:
+  // if (activatorFilter) consumersQuery = consumersQuery.eq('activador', activatorFilter);
+
+  const { data: consumidoresRows, error: consErr } = await consumersQuery;
+  if (consErr) throw consErr;
 
   const consSeries = seriesByDay(consumidoresRows, "created_at", buckets);
   destroyChart("consumidoresEvolucion"); // Key not in CHARTS object yet, need to add if strictly typed, but JS is loose. 
@@ -757,13 +818,17 @@ async function renderAllByRange() {
   // VISITAS EVOLUCIÓN (NUEVO)
   // =======================================================
   // Filtramos por descripcion = 'Visita realizada'
+  // =======================================================
+  // VISITAS EVOLUCIÓN (NUEVO)
+  // =======================================================
+  // Filtramos por descripcion = 'Visita realizada'
   const visitasRows = await fetchAll(
     CFG.tables.actividades,
     "fecha",
-    (q) => q
-      .gte("fecha", fromISO)
-      .lt("fecha", toISO)
-      .eq("descripcion", "Visita realizada")
+    (q) => {
+      let qq = filterActivities(q); // Uses generic filter defined above
+      return qq.eq("descripcion", "Visita realizada");
+    }
   );
 
   const visitasSeries = seriesByDay(visitasRows, "fecha", buckets);
@@ -961,10 +1026,22 @@ async function renderAllByRange() {
   // Vamos a hacer fetch extra o usar 'clientsCreatedInRange' si lo tuvieramos.
   // Hacemos un fetch especifico para esto:
 
+  const selActivator = $("filterActivator") ? $("filterActivator").value : "";
+
   const clientesCreadosRango = await fetchAll(
     CFG.tables.clientes,
     "creado_por,created_at,estado,rubro,interes,status_history", // Added status_history
-    (q) => q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO)
+    (q) => {
+      let query = q.eq("activo", true).gte("created_at", fromISO).lt("created_at", toISO);
+      if (selActivator) {
+        // Assuming selActivator is the NAME. If it's ID, we need to check how it's stored.
+        // Based on previous code, creador = cleanName(c.creado_por).
+        // Let's assume the value in dropdown is the exact name or ID that matches creado_por.
+        // However, typical setup uses Names in Supabase text fields if simplified.
+        query = query.eq("creado_por", selActivator);
+      }
+      return query;
+    }
   );
 
   // Estructura para el gráfico apilado:
@@ -1304,17 +1381,10 @@ async function renderAllByRange() {
     const rubroTotalMap = new Map();
     console.log("DEBUG: Processing Rubros Chart. Total Clients in Range:", clientesCreadosRango.length);
 
-    let countFlor = 0;
     for (const c of clientesCreadosRango) {
-      // Filter ONLY 'Flor' (User Request)
-      const creator = (c.creado_por || "").toLowerCase();
-      if (!creator.includes("flor")) continue;
-      countFlor++;
-
       const rubro = c.rubro || "Sin Rubro";
       rubroTotalMap.set(rubro, (rubroTotalMap.get(rubro) || 0) + 1);
     }
-    console.log(`DEBUG: Filtered ${countFlor} clients for 'Flor'.`);
 
     // 2. Sort Rubros by Total (High to Low)
     const sortedRubros = [...rubroTotalMap.keys()].sort((a, b) => rubroTotalMap.get(b) - rubroTotalMap.get(a));
@@ -1435,7 +1505,9 @@ async function renderAllByRange() {
       if (!creador) continue;
       const k = normName(creador);
 
-      if (setActivadores.has(k)) {
+      // If a specific activator is selected, we show the data (it's already filtered).
+      // If "All", we only show those in setActivadores.
+      if (selActivator || setActivadores.has(k)) {
         const st = c.estado || "";
         if (st.startsWith(TARGET_STATUS_PREFIX)) {
           const rubro = c.rubro || "Sin Rubro";
@@ -1713,7 +1785,92 @@ async function renderAllByRange() {
       if (!clientesPorResp.has(u)) clientesPorResp.set(u, 0);
     }
 
-    const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", (q) => q.gte("fecha", fromISO).lt("fecha", toISO));
+    const actsRango = await fetchAll(CFG.tables.actividades, "usuario,fecha", (q) => {
+      let query = q.gte("fecha", fromISO).lt("fecha", toISO);
+      if (selActivator) {
+        query = query.eq("usuario", selActivator);
+      }
+      return query;
+    });
+
+    // =======================================================
+    // RENDER VISITS CHARTS (NEW)
+    // =======================================================
+
+    // 1. Chart Visitas Activacion (Bar Chart: Visits per Activator)
+    destroyChart("visitasActivacion");
+    const canvasVisitasAct = $("chartVisitasActivacion");
+    if (canvasVisitasAct) {
+      ensureCanvasHeight("chartVisitasActivacion");
+
+      // Group by User
+      const visitsByUser = new Map();
+      for (const a of actsRango) {
+        const u = cleanName(a.usuario || "Sin usuario");
+        visitsByUser.set(u, (visitsByUser.get(u) || 0) + 1);
+      }
+
+      const sortedVisits = [...visitsByUser.entries()].sort((a, b) => b[1] - a[1]);
+
+      CHARTS.visitasActivacion = new Chart(canvasVisitasAct.getContext("2d"), {
+        type: 'bar',
+        data: {
+          labels: sortedVisits.map(x => x[0]),
+          datasets: [{
+            label: 'Visitas',
+            data: sortedVisits.map(x => x[1]),
+            backgroundColor: THEME.colors.primary,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          ...COMMON_OPTIONS,
+          indexAxis: 'y',
+          plugins: {
+            ...COMMON_OPTIONS.plugins,
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // 2. Chart Visitas Evolucion (Line Chart: Visits per Day)
+    destroyChart("visitasEvolucion");
+    const canvasVisitasEvo = $("chartVisitasEvolucion");
+    if (canvasVisitasEvo) {
+      ensureCanvasHeight("chartVisitasEvolucion");
+
+      const visitsByDay = new Map();
+      for (const bucket of buckets) visitsByDay.set(bucket.key, 0);
+
+      for (const a of actsRango) {
+        const d = parseDate(a.fecha);
+        if (!d) continue;
+        const k = toLocalDayKey(d);
+        if (visitsByDay.has(k)) {
+          visitsByDay.set(k, visitsByDay.get(k) + 1);
+        }
+      }
+
+      const dataVisits = buckets.map(b => visitsByDay.get(b.key) || 0);
+
+      CHARTS.visitasEvolucion = new Chart(canvasVisitasEvo.getContext("2d"), {
+        type: 'line',
+        data: {
+          labels: buckets.map(b => b.label),
+          datasets: [{
+            label: 'Visitas',
+            data: dataVisits,
+            borderColor: THEME.colors.accent,
+            backgroundColor: 'rgba(217, 70, 239, 0.1)', // Fuchsia
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: COMMON_OPTIONS
+      });
+    }
+
 
     const contactosPorUser = new Map();
     for (const a of actsRango) {
@@ -2030,83 +2187,84 @@ function calculateInsights({ cliAltas, actInRange, totalClientesActivos, activos
 }
 
 // =========================================================
-// UI Wiring
-// =========================================================
-function wireUi() {
-  // ensureGlobalRangeSelect(); // Removed, elements are in HTML
-
-  const presetSel = $("statsRangePreset");
-  const dateFrom = $("dateFrom");
-  const dateTo = $("dateTo");
-
-  if (presetSel) {
-    // Init dates
-    syncDatesFromPreset(presetSel.value);
-
-    presetSel.addEventListener("change", () => {
-      syncDatesFromPreset(presetSel.value);
-    });
-  }
-
-  // If user touches dates, switch preset to custom
-  const onDateChange = () => {
-    if (presetSel) presetSel.value = "custom";
-  };
-  if (dateFrom) dateFrom.addEventListener("change", onDateChange);
-  if (dateTo) dateTo.addEventListener("change", onDateChange);
-
-  // Note: we do NOT auto-refresh on change anymore, user must click Update (per request "posibilidad de ver lapsos de tiempo a gusto" usually implies setting range then searching, avoids heavy queries on every date tick)
-  // But original code refreshed on preset change. We can keep that for preset.
-
-  if (presetSel) {
-    presetSel.addEventListener("change", async () => {
-      // If standard preset, auto-refresh. If custom (via dropdown select?), maybe wait.
-      if (presetSel.value !== "custom") {
-        try { await renderAllByRange(); } catch (e) { console.error(e); }
-      }
-    });
-  }
-
-  const btn = $("btnRefrescarStats");
-  if (btn) {
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      try {
-        await renderAllByRange();
-      } catch (e) {
-        console.error(e);
-        alert(`Error al actualizar estadísticas: ${e?.message || e}`);
-      } finally {
-        btn.disabled = false;
-      }
-    });
-  }
-}
-
-// =========================================================
 // INIT
 // =========================================================
-async function initStats() {
-  try {
-    const profile = await requireAuthOrRedirect();
-    if (!profile) return;
+document.addEventListener("DOMContentLoaded", async () => {
+  await requireAuthOrRedirect();
 
-    const userEl = document.getElementById("currentUserName");
-    if (userEl) userEl.textContent = getAuthUserName();
+  const userEl = document.getElementById("currentUserName");
+  if (userEl) userEl.textContent = getAuthUserName();
 
-    if (!window.supabase) throw new Error("Supabase JS no está cargado (window.supabase).");
-    if (!window.Chart) throw new Error("Chart.js no está cargado (window.Chart).");
+  // 1. Populate Activator Selector
+  const activatorSelect = $('filterActivator');
+  if (activatorSelect) {
+    try {
+      const { activeUsers } = await getUserUniverse();
+      activeUsers.forEach(u => {
+        const opt = document.createElement('option');
+        const name = cleanName(u);
+        opt.value = name;
+        opt.textContent = name;
+        activatorSelect.appendChild(opt);
+      });
 
-    wireUi();
-    await renderAllByRange();
-  } catch (e) {
-    console.error(e);
-    alert(`Error al cargar estadísticas: ${e?.message || e}`);
+      activatorSelect.addEventListener('change', () => {
+        renderAllByRange();
+      });
+    } catch (e) { console.error("Error populating activators", e); }
   }
-}
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initStats);
-} else {
-  initStats();
-}
+
+  // 3. Type Switching Logic (Dropdown)
+  const typeSelect = document.getElementById('statsTypeSelect');
+  if (typeSelect) {
+    typeSelect.addEventListener('change', () => {
+      const selectedTab = typeSelect.value;
+
+      // Note: We don't auto-switch if empty state is visible
+      const emptyState = document.getElementById('statsEmptyState');
+      if (emptyState && emptyState.style.display === 'none') {
+        // Data loaded, perform switch
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const content = document.getElementById(selectedTab);
+        if (content) content.classList.add('active');
+      }
+    });
+  }
+
+  // 4. Update Button Logic (Deferred Load)
+  const btnRefresh = $("btnRefrescarStats");
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      btnRefresh.disabled = true;
+
+      // 1. Hide Empty State
+      const emptyState = document.getElementById('statsEmptyState');
+      if (emptyState) emptyState.style.display = 'none';
+
+      // 2. Determine Active Tab to Show
+      if (typeSelect) {
+        const tabId = typeSelect.value;
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const content = document.getElementById(tabId);
+        if (content) content.classList.add('active');
+      }
+
+      // 3. Render
+      renderAllByRange().finally(() => btnRefresh.disabled = false);
+    });
+  }
+
+  // 5. Initial State: Do NOT render automatically.
+  // Just sync preset date inputs UI.
+  const presetSel = $("statsRangePreset");
+  if (presetSel) {
+    presetSel.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val !== "custom") {
+        syncDatesFromPreset(val);
+      }
+    });
+    syncDatesFromPreset("30d");
+  }
+});

@@ -110,6 +110,11 @@
     window.showToast = function (message, type = "info") {
         ensureToastContainer();
 
+        // Haptic Feedback for Toasts
+        if (type === "success") window.utils.vibrate([10]); // Quick tick
+        if (type === "error") window.utils.vibrate([30, 50, 30]); // Double bump
+        if (type === "warning") window.utils.vibrate([30]);
+
         const toast = document.createElement("div");
         toast.className = `toast toast-${type}`;
 
@@ -155,8 +160,16 @@
                 clearTimeout(timer);
                 timer = setTimeout(() => fn(...args), delay);
             }
+        },
+        // Haptic Feedback Helper
+        vibrate: (pattern = [10]) => {
+            if ("vibrate" in navigator) {
+                try { navigator.vibrate(pattern); } catch (e) { }
+            }
         }
     };
+
+    // 5. SHARED CONSTANTS
 
     // 5. SHARED CONSTANTS
     // =========================================================
@@ -566,7 +579,123 @@
         }
     };
 
-    // 11. NOTIFICATIONS MANAGER (LOCAL PUSH)
+    // 13. PULL-TO-REFRESH MODULE
+    // =========================================================
+    window.PullToRefresh = {
+        init: function (containerSelector, onRefresh) {
+            const container = document.querySelector(containerSelector);
+            if (!container) return;
+
+            let startY = 0;
+            let currentY = 0;
+            let isDragging = false;
+            const THRESHOLD = 80;
+
+            // Create Indicator
+            let indicator = document.querySelector('.ptr-indicator');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.className = 'ptr-indicator';
+                indicator.innerHTML = '<div class="ptr-spinner"></div>';
+                container.parentNode.insertBefore(indicator, container);
+            }
+
+            container.addEventListener('touchstart', (e) => {
+                if (container.scrollTop === 0) {
+                    startY = e.touches[0].clientY;
+                    isDragging = true;
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                currentY = e.touches[0].clientY;
+                const diff = currentY - startY;
+
+                if (diff > 0 && container.scrollTop === 0) {
+                    // Pulling down at top
+                    if (diff < THRESHOLD + 40) { // Limit stretch
+                        indicator.style.height = `${diff / 2}px`;
+                    }
+                } else {
+                    isDragging = false; // Scrolled down, cancel
+                    indicator.style.height = '0';
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchend', async () => {
+                if (!isDragging) return;
+                isDragging = false;
+                const diff = currentY - startY;
+
+                if (diff > THRESHOLD) {
+                    // Trigger Refresh
+                    window.utils.vibrate([15]); // Feedback
+                    indicator.style.height = '50px';
+                    await onRefresh();
+                    setTimeout(() => {
+                        indicator.style.height = '0';
+                    }, 300);
+                } else {
+                    // Snap back
+                    indicator.style.height = '0';
+                }
+                startY = 0;
+                currentY = 0;
+            });
+        }
+    };
+
+    // 14. PWA INSTALL PROMPT
+    // =========================================================
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome 67 and earlier from automatically showing the prompt
+        e.preventDefault();
+        deferredPrompt = e;
+
+        // Check if user already dismissed recently? (Optional logic)
+        // Show our own UI
+        showInstallPromotion();
+    });
+
+    function showInstallPromotion() {
+        // Create a nice bottom sheet or toast
+        const div = document.createElement('div');
+        div.className = 'pwa-install-prompt';
+        div.style.cssText = `
+            position: fixed; bottom: 20px; left: 20px; right: 20px;
+            background: var(--bg-elevated); padding: 16px; border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 2000;
+            display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border);
+            animation: slideUp 0.3s ease;
+        `;
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="font-size:15px;">Instalar App PickingUp</strong>
+                <button id="pwaClose" style="background:none; border:none; font-size:18px; color:var(--text-muted);">✕</button>
+            </div>
+            <p style="margin:0; font-size:13px; color:var(--text-muted);">Agrega la app a tu inicio para un acceso más rápido y mejor experiencia.</p>
+            <button id="pwaInstallBtn" style="width:100%; padding: 10px; background: var(--accent); color: white; border:none; border-radius:8px; font-weight:600;">Instalar Ahora</button>
+        `;
+        document.body.appendChild(div);
+
+        document.getElementById('pwaInstallBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                }
+                deferredPrompt = null;
+            }
+            div.remove();
+        });
+
+        document.getElementById('pwaClose').addEventListener('click', () => {
+            div.remove();
+        });
+    }
     // =========================================================
     window.NotificationsManager = {
         init: function () {

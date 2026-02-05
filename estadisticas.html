@@ -86,6 +86,20 @@
               <option value="custom">Personalizado</option>
             </select>
 
+            <!-- TYPE SELECTOR (New Tabs) -->
+            <div class="stats-type-selector" style="width: auto;">
+              <select id="statsTypeSelect" style="border:none; background:transparent; width:100%; font-weight:600;">
+                <option value="tabApps">🚀 Ecosistema Apps</option>
+                <option value="tabActivadores">⚡ Gestión Activadores</option>
+              </select>
+            </div>
+
+            <!-- Activator Selector (New) -->
+            <select id="filterActivator" class="stats-preset-select" style="min-width: 160px;">
+              <option value="">Todo el Equipo</option>
+              <!-- Populated by JS -->
+            </select>
+
             <!-- Date Range Inputs -->
             <div class="stats-date-wrapper">
               <input type="date" id="dateFrom" class="stats-date-input" aria-label="Fecha desde">
@@ -98,321 +112,326 @@
           </div>
         </header>
 
-        <!-- INTELLIGENCE / PROYECCIONES -->
-        <section class="panel"
-          style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); margin-bottom: 25px;">
-          <header class="panel-header" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <h2 style="display:flex; align-items:center; gap:8px;">
-              <span>🔮</span> Proyecciones &amp; Insights
-            </h2>
-            <p>Análisis predictivo y optimización de agenda.</p>
-          </header>
 
-          <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
-            <!-- Proyección Crecimiento -->
-            <article class="kpi-card" style="position:relative; overflow:hidden;">
-              <div class="kpi-label">Proyección (3 Meses)</div>
-              <div class="kpi-value" id="insightProjection">-</div>
-              <div class="kpi-meta" id="insightProjectionMeta">Calculando tendencia...</div>
-              <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">📈</div>
+
+        <!-- EMPTY STATE (Initial View) -->
+        <div id="statsEmptyState" class="stats-empty-state">
+          <div class="stats-empty-icon">👆</div>
+          <h3 class="stats-empty-title">Comienza tu análisis</h3>
+          <p class="stats-empty-desc">
+            Selecciona el <strong>tipo de vista</strong> (Apps o Activadores), configura los <strong>filtros</strong> y
+            presiona <strong>"Actualizar"</strong> para cargar los datos.
+          </p>
+        </div>
+
+        <!-- TAB 1: APPS / ECOSISTEMA -->
+        <div id="tabApps" class="tab-content">
+
+          <!-- INTELLIGENCE / PROYECCIONES -->
+          <section class="panel"
+            style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); margin-bottom: 25px;">
+            <header class="panel-header" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <h2 style="display:flex; align-items:center; gap:8px;">
+                <span>🔮</span> Proyecciones &amp; Insights
+              </h2>
+              <p>Análisis predictivo y optimización de agenda.</p>
+            </header>
+
+            <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+              <!-- Proyección Crecimiento -->
+              <article class="kpi-card" style="position:relative; overflow:hidden;">
+                <div class="kpi-label">Proyección (3 Meses)</div>
+                <div class="kpi-value" id="insightProjection">-</div>
+                <div class="kpi-meta" id="insightProjectionMeta">Calculando tendencia...</div>
+                <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">📈</div>
+              </article>
+
+              <!-- Mejor Momento -->
+              <article class="kpi-card" style="position:relative; overflow:hidden;">
+                <div class="kpi-label">Mejor momento contacto</div>
+                <div class="kpi-value" id="insightBestTime" style="font-size: 1.8rem;">-</div>
+                <div class="kpi-meta">Basado en historial exitoso</div>
+                <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">⏰</div>
+              </article>
+
+              <!-- Health Score -->
+              <article class="kpi-card" style="position:relative; overflow:hidden;">
+                <div class="kpi-label">Salud de Cartera</div>
+                <div class="kpi-value" id="insightHealthScore">-</div>
+                <div class="kpi-meta">Clientes activos recientes</div>
+                <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">❤️</div>
+              </article>
+            </div>
+          </section>
+
+          <!-- CRECIMIENTO (ALTAS DIARIAS) -->
+          <section class="panel" style="margin-bottom: 25px;">
+            <header class="panel-header">
+              <h2>Crecimiento diario (Altas Clientes)</h2>
+              <p>Nuevos clientes por día (últimos 30 días).</p>
+            </header>
+
+            <div class="chart-box"><canvas id="chartAltasDiarias"></canvas></div>
+
+            <div class="list-box">
+              <h3>Últimos 7 días</h3>
+              <ul id="listaAltasDiarias" class="stats-list"></ul>
+            </div>
+          </section>
+
+          <!-- KPIs CLIENTES -->
+          <section class="kpi-grid">
+            <article class="kpi-card">
+              <div class="kpi-label">Clientes activos</div>
+              <div class="kpi-value" id="statTotalClientes">-</div>
+              <div class="kpi-meta">Base activa</div>
             </article>
 
-            <!-- Mejor Momento -->
-            <article class="kpi-card" style="position:relative; overflow:hidden;">
-              <div class="kpi-label">Mejor momento contacto</div>
-              <div class="kpi-value" id="insightBestTime" style="font-size: 1.8rem;">-</div>
-              <div class="kpi-meta">Basado en historial exitoso</div>
-              <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">⏰</div>
+            <article class="kpi-card">
+              <div class="kpi-label">Agenda con fecha</div>
+              <div class="kpi-value" id="statConFecha">-</div>
+              <div class="kpi-meta">Tienen próximo contacto</div>
             </article>
 
-            <!-- Health Score -->
-            <article class="kpi-card" style="position:relative; overflow:hidden;">
-              <div class="kpi-label">Salud de Cartera</div>
-              <div class="kpi-value" id="insightHealthScore">-</div>
-              <div class="kpi-meta">Clientes activos recientes</div>
-              <div style="position:absolute; top:10px; right:10px; font-size:24px; opacity:0.1;">❤️</div>
+            <article class="kpi-card kpi-danger">
+              <div class="kpi-label">Vencidos</div>
+              <div class="kpi-value" id="statVencidos">-</div>
+              <div class="kpi-meta">Fecha anterior a hoy</div>
             </article>
-          </div>
-        </section>
 
-        <!-- ACTIVADORES (MOVIDO AL TOP) -->
-        <section class="panel" style="margin-bottom: 25px;">
-          <header class="panel-header">
-            <h2>Rendimiento de Activadores</h2>
-            <p>Clientes dados de alta por usuarios con rol 'Activador'.</p>
-          </header>
+            <article class="kpi-card">
+              <div class="kpi-label">Sin fecha</div>
+              <div class="kpi-value" id="statSinFecha">-</div>
+              <div class="kpi-meta">Sin próximo contacto</div>
+            </article>
 
-          <div class="panel-grid-2">
-            <div class="chart-box">
-              <h3 style="margin-bottom:10px; font-size: 0.9rem; opacity:0.8; text-align:center;">Altas por Día (Barras
-                Apiladas)</h3>
-              <canvas id="chartActivadoresDia"></canvas>
-            </div>
-            <div class="chart-box">
-              <h3 style="margin-bottom:10px; font-size: 0.9rem; opacity:0.8; text-align:center;">Conversión (Efectividad
-                %)</h3>
-              <canvas id="chartActivadoresConversion"></canvas>
-            </div>
-          </div>
+            <article class="kpi-card">
+              <div class="kpi-label">Actividades 7 días</div>
+              <div class="kpi-value" id="statAct7">-</div>
+              <div class="kpi-meta">Clientes</div>
+            </article>
 
-          <!-- VISITAS PARA ACTIVACIÓN (NUEVO) -->
-          <div style="margin-top: 20px;">
-            <h3 style="font-size: 14px; color: var(--text-dull); margin-bottom: 10px;">Distribución de Visitas para
-              Activación</h3>
-            <div class="chart-box" style="height: 300px;">
-              <canvas id="chartVisitasActivacion"></canvas>
-            </div>
-          </div>
+            <article class="kpi-card">
+              <div class="kpi-label">Actividades 30 días</div>
+              <div class="kpi-value" id="statAct30">-</div>
+              <div class="kpi-meta">Clientes</div>
+            </article>
+          </section>
 
-          <div class="panel-grid-2" style="margin-top: 1rem;">
-            <div class="list-box" style="grid-column: span 2;">
-              <h3>Detalle por Activador y Estado</h3>
+          <!-- Agenda + Salud -->
+          <section class="panel-grid-2">
+            <article class="panel">
+              <header class="panel-header">
+                <h2>Agenda</h2>
+                <p>Distribución de próximos contactos (clientes).</p>
+              </header>
+
+              <div class="agenda-cards">
+                <div class="mini-kpi">
+                  <div class="mini-kpi-label">Hoy</div>
+                  <div class="mini-kpi-value" id="statProxHoy">-</div>
+                </div>
+                <div class="mini-kpi">
+                  <div class="mini-kpi-label">Próx. 7 días</div>
+                  <div class="mini-kpi-value" id="statProx7">-</div>
+                </div>
+                <div class="mini-kpi">
+                  <div class="mini-kpi-label">8+ días</div>
+                  <div class="mini-kpi-value" id="statProxFuturo">-</div>
+                </div>
+              </div>
+
+              <div class="muted-block">
+                Con fecha: <strong id="statConFechaText">-</strong> ·
+                Vencidos: <strong id="statVencidosText">-</strong> ·
+                Sin fecha: <strong id="statSinFechaText">-</strong>
+              </div>
+            </article>
+
+            <article class="panel">
+              <header class="panel-header">
+                <h2>Salud de cartera</h2>
+                <p>Clientes activos vs dormidos (30 días).</p>
+              </header>
+
+              <div class="agenda-cards">
+                <div class="mini-kpi">
+                  <div class="mini-kpi-label">Activos 30d</div>
+                  <div class="mini-kpi-value" id="statClientesActivos30">-</div>
+                </div>
+                <div class="mini-kpi">
+                  <div class="mini-kpi-label">Dormidos 30d</div>
+                  <div class="mini-kpi-value" id="statClientesDormidos30">-</div>
+                </div>
+                <div class="mini-kpi">
+                  <div class="mini-kpi-label">Sin historial</div>
+                  <div class="mini-kpi-value" id="statSinHistorial">-</div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <!-- Estados + Creado Por (Clientes) -->
+          <section class="panel-grid-2">
+            <article class="panel">
+              <header class="panel-header">
+                <h2>Estados (Clientes)</h2>
+                <p>Distribución por estado de gestión.</p>
+              </header>
+              <div class="chart-box"><canvas id="chartEstados"></canvas></div>
+              <div class="list-box">
+                <h3>Detalle</h3>
+                <ul id="listaEstados" class="stats-list"></ul>
+              </div>
+            </article>
+
+            <article class="panel">
+              <header class="panel-header">
+                <h2>Promedio de contactos (Equipo)</h2>
+                <p>Contactos 30d / clientes asignados.</p>
+              </header>
+              <div class="chart-box"><canvas id="chartPromedioResponsable"></canvas></div>
               <div class="table-box">
                 <table class="table-modern">
                   <thead>
                     <tr>
-                      <th>Activador</th>
-                      <th>Total Altas</th>
-                      <th>Estados (Detalle)</th>
+                      <th>Responsable</th>
+                      <th>Clientes</th>
+                      <th>Contactos</th>
+                      <th>Avg</th>
                     </tr>
                   </thead>
-                  <tbody id="tablaActivadoresDetalle"></tbody>
+                  <tbody id="tablaPromedioResponsable"></tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        </section>
+            </article>
+          </section>
 
-        <!-- VISITAS EVOLUCIÓN (NUEVO) -->
-        <section class="panel" style="margin-bottom: 25px;">
-          <header class="panel-header">
-            <h2>Evolución de Visitas</h2>
-            <p>Visitas realizadas por día en el período.</p>
-          </header>
-          <div class="chart-box">
-            <canvas id="chartVisitasEvolucion"></canvas>
-          </div>
-        </section>
-
-        <!-- EVOLUCIÓN CONSUMIDORES (PINK) -->
-        <section class="panel" style="margin-bottom: 25px;">
-          <header class="panel-header">
-            <h2>Evolución de Consumidores</h2>
-            <p>Nuevos consumidores registrados en el período.</p>
-          </header>
-          <div class="chart-box">
-            <canvas id="chartConsumidoresEvolucion"></canvas>
-          </div>
-        </section>
-
-        <!-- CRECIMIENTO (ALTAS DIARIAS) -->
-        <section class="panel" style="margin-bottom: 25px;">
-          <header class="panel-header">
-            <h2>Crecimiento diario (Altas Clientes)</h2>
-            <p>Nuevos clientes por día (últimos 30 días).</p>
-          </header>
-
-          <div class="chart-box"><canvas id="chartAltasDiarias"></canvas></div>
-
-          <div class="list-box">
-            <h3>Últimos 7 días</h3>
-            <ul id="listaAltasDiarias" class="stats-list"></ul>
-          </div>
-        </section>
-
-
-        <!-- KPIs CLIENTES -->
-        <section class="kpi-grid">
-          <article class="kpi-card">
-            <div class="kpi-label">Clientes activos</div>
-            <div class="kpi-value" id="statTotalClientes">-</div>
-            <div class="kpi-meta">Base activa</div>
-          </article>
-
-          <article class="kpi-card">
-            <div class="kpi-label">Agenda con fecha</div>
-            <div class="kpi-value" id="statConFecha">-</div>
-            <div class="kpi-meta">Tienen próximo contacto</div>
-          </article>
-
-          <article class="kpi-card kpi-danger">
-            <div class="kpi-label">Vencidos</div>
-            <div class="kpi-value" id="statVencidos">-</div>
-            <div class="kpi-meta">Fecha anterior a hoy</div>
-          </article>
-
-          <article class="kpi-card">
-            <div class="kpi-label">Sin fecha</div>
-            <div class="kpi-value" id="statSinFecha">-</div>
-            <div class="kpi-meta">Sin próximo contacto</div>
-          </article>
-
-          <article class="kpi-card">
-            <div class="kpi-label">Actividades 7 días</div>
-            <div class="kpi-value" id="statAct7">-</div>
-            <div class="kpi-meta">Clientes</div>
-          </article>
-
-          <article class="kpi-card">
-            <div class="kpi-label">Actividades 30 días</div>
-            <div class="kpi-value" id="statAct30">-</div>
-            <div class="kpi-meta">Clientes</div>
-          </article>
-        </section>
-
-        <!-- Agenda + Salud -->
-        <section class="panel-grid-2">
-          <article class="panel">
+          <section class="panel">
             <header class="panel-header">
-              <h2>Agenda</h2>
-              <p>Distribución de próximos contactos (clientes).</p>
+              <h2>Rubros (Clientes)</h2>
+              <p>Distribución por rubro.</p>
             </header>
-
-            <div class="agenda-cards">
-              <div class="mini-kpi">
-                <div class="mini-kpi-label">Hoy</div>
-                <div class="mini-kpi-value" id="statProxHoy">-</div>
-              </div>
-              <div class="mini-kpi">
-                <div class="mini-kpi-label">Próx. 7 días</div>
-                <div class="mini-kpi-value" id="statProx7">-</div>
-              </div>
-              <div class="mini-kpi">
-                <div class="mini-kpi-label">8+ días</div>
-                <div class="mini-kpi-value" id="statProxFuturo">-</div>
-              </div>
-            </div>
-
-            <div class="muted-block">
-              Con fecha: <strong id="statConFechaText">-</strong> ·
-              Vencidos: <strong id="statVencidosText">-</strong> ·
-              Sin fecha: <strong id="statSinFechaText">-</strong>
-            </div>
-          </article>
-
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Salud de cartera</h2>
-              <p>Clientes activos vs dormidos (30 días).</p>
-            </header>
-
-            <div class="agenda-cards">
-              <div class="mini-kpi">
-                <div class="mini-kpi-label">Activos 30d</div>
-                <div class="mini-kpi-value" id="statClientesActivos30">-</div>
-              </div>
-              <div class="mini-kpi">
-                <div class="mini-kpi-label">Dormidos 30d</div>
-                <div class="mini-kpi-value" id="statClientesDormidos30">-</div>
-              </div>
-              <div class="mini-kpi">
-                <div class="mini-kpi-label">Sin historial</div>
-                <div class="mini-kpi-value" id="statSinHistorial">-</div>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <!-- Estados + Creado Por (Clientes) - Mantenemos ESTADOS y CREADO POR como info secundaria -->
-        <section class="panel-grid-2">
-          <article class="panel">
-            <header class="panel-header">
-              <h2>Estados (Clientes)</h2>
-              <p>Distribución por estado de gestión.</p>
-            </header>
-            <div class="chart-box"><canvas id="chartEstados"></canvas></div>
+            <div class="chart-box"><canvas id="chartRubros"></canvas></div>
             <div class="list-box">
               <h3>Detalle</h3>
-              <ul id="listaEstados" class="stats-list"></ul>
+              <ul id="listaRubros" class="stats-list"></ul>
             </div>
-          </article>
+          </section>
 
-          <article class="panel">
+          <section class="panel">
             <header class="panel-header">
-              <h2>Promedio de contactos (Equipo)</h2>
-              <p>Contactos 30d / clientes asignados.</p>
+              <h2>Actividad por usuario (Clientes)</h2>
+              <p>Ranking de actividad últimos 30 días.</p>
             </header>
-            <div class="chart-box"><canvas id="chartPromedioResponsable"></canvas></div>
-            <div class="table-box">
-              <table class="table-modern">
-                <thead>
-                  <tr>
-                    <th>Responsable</th>
-                    <th>Clientes</th>
-                    <th>Contactos</th>
-                    <th>Avg</th>
-                  </tr>
-                </thead>
-                <tbody id="tablaPromedioResponsable"></tbody>
-              </table>
+            <div class="list-box">
+              <h3>Detalle</h3>
+              <ul id="listaActividadUsuarios" class="stats-list"></ul>
             </div>
-          </article>
-        </section>
+          </section>
 
-        <section class="panel">
-          <header class="panel-header">
-            <h2>Rubros (Clientes)</h2>
-            <p>Distribución por rubro.</p>
-          </header>
-          <div class="chart-box"><canvas id="chartRubros"></canvas></div>
-          <div class="list-box">
-            <h3>Detalle</h3>
-            <ul id="listaRubros" class="stats-list"></ul>
-          </div>
-        </section>
-
-        <section class="panel">
-          <header class="panel-header">
-            <h2>Actividad por usuario (Clientes)</h2>
-            <p>Ranking de actividad últimos 30 días.</p>
-          </header>
-          <div class="list-box">
-            <h3>Detalle</h3>
-            <ul id="listaActividadUsuarios" class="stats-list"></ul>
-          </div>
-        </section>
+          <!-- EVOLUCIÓN CONSUMIDORES (PINK) -->
+          <section class="panel" style="margin-bottom: 25px;">
+            <header class="panel-header">
+              <h2>Evolución de Consumidores</h2>
+              <p>Nuevos consumidores registrados en el período.</p>
+            </header>
+            <div class="chart-box">
+              <canvas id="chartConsumidoresEvolucion"></canvas>
+            </div>
+          </section>
 
 
+        </div><!-- END TAB APPS -->
+
+        <!-- TAB 2: ACTIVADORES -->
+        <div id="tabActivadores" class="tab-content">
+          <!-- ACTIVADORES (MOVIDO AL TOP) -->
+          <section class="panel" style="margin-bottom: 25px;">
+            <header class="panel-header">
+              <h2>Rendimiento de Activadores</h2>
+              <p>Clientes dados de alta por usuarios con rol 'Activador'.</p>
+            </header>
+
+            <div class="panel-grid-2">
+              <div class="chart-box">
+                <h3 style="margin-bottom:10px; font-size: 0.9rem; opacity:0.8; text-align:center;">Altas por Día (Barras
+                  Apiladas)</h3>
+                <canvas id="chartActivadoresDia"></canvas>
+              </div>
+              <div class="chart-box">
+                <h3 style="margin-bottom:10px; font-size: 0.9rem; opacity:0.8; text-align:center;">Conversión
+                  (Efectividad
+                  %)</h3>
+                <canvas id="chartActivadoresConversion"></canvas>
+              </div>
+            </div>
+
+            <!-- VISITAS PARA ACTIVACIÓN (NUEVO) -->
+            <div style="margin-top: 20px;">
+              <h3 style="font-size: 14px; color: var(--text-dull); margin-bottom: 10px;">Distribución de Visitas para
+                Activación</h3>
+              <div class="chart-box" style="height: 300px;">
+                <canvas id="chartVisitasActivacion"></canvas>
+              </div>
+            </div>
+
+            <div class="panel-grid-2" style="margin-top: 1rem;">
+              <div class="list-box" style="grid-column: span 2;">
+                <h3>Detalle por Activador y Estado</h3>
+                <div class="table-box">
+                  <table class="table-modern">
+                    <thead>
+                      <tr>
+                        <th>Activador</th>
+                        <th>Total Altas</th>
+                        <th>Estados (Detalle)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tablaActivadoresDetalle"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- VISITAS EVOLUCIÓN (NUEVO) -->
+          <section class="panel" style="margin-bottom: 25px;">
+            <header class="panel-header">
+              <h2>Evolución de Visitas</h2>
+              <p>Visitas realizadas por día en el período.</p>
+            </header>
+            <div class="chart-box">
+              <canvas id="chartVisitasEvolucion"></canvas>
+            </div>
+          </section>
+
+          <!-- Rubros por activador SOLO ACTIVOS -->
+          <section class="panel" style="margin-top: 20px;">
+            <header class="panel-header">
+              <h2>Rubros (Activadores) - Solo Activos</h2>
+              <p>Detalle de rubros para clientes en estado "5 - Local Visitado Activo".</p>
+            </header>
+            <div class="chart-box" style="height: 350px;">
+              <canvas id="chartRubrosActivadorActivos"></canvas>
+            </div>
+            <div class="table-responsive" id="tableRubrosActivosContainer" style="margin-top: 15px;"></div>
+          </section>
+
+          <!-- Interés Diario -->
+          <section class="panel" style="margin-top: 20px;">
+            <header class="panel-header">
+              <h2>Interés Diario (Clientes)</h2>
+              <p>Evolución diaria por nivel de interés.</p>
+            </header>
+            <div class="chart-box" style="height: 350px;">
+              <canvas id="chartInteresDiario"></canvas>
+            </div>
+            <div class="table-responsive" id="tableInteresContainer" style="margin-top: 15px;"></div>
+          </section>
 
 
-
-
-
-        <!-- Rubros (TOTAL) -->
-        <section class="panel" style="margin-top: 20px;">
-          <header class="panel-header">
-            <h2>Distribución de Rubros (Flor)</h2>
-            <p>Total de clientes creados por <strong>Flor</strong> por rubro en el período.</p>
-          </header>
-          <div class="chart-box" style="height: 450px;">
-            <canvas id="chartRubrosPorActivador"></canvas>
-          </div>
-          <div class="table-responsive" id="tableRubrosTotalContainer" style="margin-top: 15px;"></div>
-        </section>
-
-        <!-- Rubros por activador SOLO ACTIVOS -->
-        <section class="panel" style="margin-top: 20px;">
-          <header class="panel-header">
-            <h2>Rubros (Activadores) - Solo Activos</h2>
-            <p>Detalle de rubros para clientes en estado "5 - Local Visitado Activo".</p>
-          </header>
-          <div class="chart-box" style="height: 350px;">
-            <canvas id="chartRubrosActivadorActivos"></canvas>
-          </div>
-          <div class="table-responsive" id="tableRubrosActivosContainer" style="margin-top: 15px;"></div>
-        </section>
-
-        <!-- Interés Diario -->
-        <section class="panel" style="margin-top: 20px;">
-          <header class="panel-header">
-            <h2>Interés Diario (Clientes)</h2>
-            <p>Evolución diaria por nivel de interés.</p>
-          </header>
-          <div class="chart-box" style="height: 350px;">
-            <canvas id="chartInteresDiario"></canvas>
-          </div>
-          <div class="table-responsive" id="tableInteresContainer" style="margin-top: 15px;"></div>
-        </section>
+        </div>
 
 
 
