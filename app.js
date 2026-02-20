@@ -556,7 +556,7 @@ async function cargarClientes() {
   const listaDiv = document.getElementById("lista");
   if (!listaDiv) return;
 
-  listaDiv.innerHTML = "<p>Cargando...</p>";
+  listaDiv.innerHTML = "<div class=\"skeleton-card\"><div class=\"skeleton-line medium\"></div><div class=\"skeleton-line short\"></div></div>";
 
   const getVal = (id) => {
     const el = document.getElementById(id);
@@ -1398,3 +1398,4 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAgendaCalendario(); // dispara cargarClientes()
   cargarAgendaStats();
 });
+

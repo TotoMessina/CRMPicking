@@ -1,4 +1,4 @@
-const CACHE_NAME = "pickingup-crm-v37";
+const CACHE_NAME = "pickingup-crm-v38";
 // Add files to cache here. Ideally, list all critical assets.
 // For now, we cache the basics to allow app shell to load.
 const ASSETS_TO_CACHE = [
@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
     "./tickets.css",
     "./styles_modal.css",
     "./common.js",
+    "./search.js",
     "./auth.js",
     "./guard.js",
     "./dashboard.js",
@@ -82,23 +83,42 @@ self.addEventListener("activate", (event) => {
 
 // Fetch Event
 self.addEventListener("fetch", (event) => {
-    // Simple Cache-first strategy
-    /*
-    event.respondWith(
-      caches.match(event.request).then((response) => {
-        return response || fetch(event.request);
-      })
-    );
-    */
-
-    // Network-first strategy (better for CRM data consistency)
-    // We only fall back to cache if network fails.
     if (event.request.method !== 'GET') return;
 
-    event.respondWith(
-        fetch(event.request)
-            .catch(() => {
-                return caches.match(event.request);
+    const url = new URL(event.request.url);
+
+    // Evitar cachear llamadas a API externas (ej. Supabase)
+    if (url.origin !== location.origin) {
+        return;
+    }
+
+    // Static Assets (CSS, JS, Images, Fonts) -> Stale-While-Revalidate
+    if (url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|woff2|woff)$/)) {
+        event.respondWith(
+            caches.match(event.request).then((cachedResponse) => {
+                const fetchPromise = fetch(event.request).then((networkResponse) => {
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, networkResponse.clone());
+                    });
+                    return networkResponse;
+                }).catch(() => { });
+                // Devuelve caché si existe, sino espera a red
+                return cachedResponse || fetchPromise;
             })
-    );
+        );
+    } else {
+        // HTML & Datos dinámicos locales -> Network First con Fallback a Caché
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    return caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, networkResponse.clone());
+                        return networkResponse;
+                    });
+                })
+                .catch(() => {
+                    return caches.match(event.request);
+                })
+        );
+    }
 });

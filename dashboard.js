@@ -16,7 +16,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (welcomeEl) welcomeEl.textContent = `Hola, ${user}`;
 
     // Cargar KPIs
-    loadDashboardKPIs();
+    await loadDashboardKPIs();
+
+    // Iniciar Supabase Realtime
+    initRealtimeDashboard();
 });
 
 async function requireAuthOrRedirect() {
@@ -93,4 +96,35 @@ async function fetchAgendaHoy() {
 function setText(id, txt) {
     const el = document.getElementById(id);
     if (el) el.textContent = txt;
+}
+
+/* ============================
+   SUPABASE REALTIME
+   ============================ */
+function initRealtimeDashboard() {
+    if (!supabaseClient) return;
+
+    // Suscribirse a cambios en clientes y actividades
+    const dashboardChannel = supabaseClient.channel('dashboard-kpis')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'clientes' },
+            (payload) => {
+                console.log('Realtime Update (Clientes):', payload);
+                loadDashboardKPIs(); // Recargar KPIs silenciosamente
+            }
+        )
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'actividades' },
+            (payload) => {
+                console.log('Realtime Update (Actividades):', payload);
+                loadDashboardKPIs(); // Recargar KPIs silenciosamente
+            }
+        )
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log('Dashboard Realtime: Escuchando cambios en vivo 🟢');
+            }
+        });
 }

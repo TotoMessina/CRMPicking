@@ -383,7 +383,7 @@ async function eliminarRepartidor(id) {
 async function cargarRepartidores() {
     const listaDiv = document.getElementById("lista");
     if (!listaDiv) return;
-    listaDiv.innerHTML = "<p>Cargando...</p>";
+    listaDiv.innerHTML = "<div class=\"skeleton-card\"><div class=\"skeleton-line medium\"></div><div class=\"skeleton-line short\"></div></div>";
 
     const ps = document.getElementById("pageSize");
     if (ps) pageSize = Number(ps.value) || 25;
@@ -769,3 +769,4 @@ document.addEventListener("DOMContentLoaded", async () => {
         openModalById("modalFormRepartidor");
     }
 });
+
