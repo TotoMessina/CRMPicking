@@ -116,6 +116,7 @@ export default function Estadisticas() {
         estados: null,
         creados: null,
         consumidoresEvolucion: null,
+        situacionLocales: null,
 
         // Activadores
         activadoresDia: null,
@@ -219,7 +220,7 @@ export default function Estadisticas() {
                 consumidores
             ] = await Promise.all([
                 supabase.from('clientes').select('*', { count: 'exact', head: true }).eq('activo', true),
-                fetchAll('clientes', 'id, rubro, estado, responsable, creado_por, activo, created_at, ultima_actividad, status_history, visitas', q => q.eq('activo', true)),
+                fetchAll('clientes', 'id, rubro, estado, situacion, responsable, creado_por, activo, created_at, ultima_actividad, status_history, visitas', q => q.eq('activo', true)),
                 fetchAll('clientes', 'fecha_proximo_contacto, activo', q => q.eq('activo', true)),
                 fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
                     let qq = q.gte('fecha', isoFrom).lt('fecha', isoTo);
@@ -299,6 +300,18 @@ export default function Estadisticas() {
             const estadosArr = groupCount(clientesMeta, "estado", "Sin estado");
             const creadorArr = groupCount(clientesMeta, "creado_por", "Desconocido");
 
+            // Situacion chart: clients in states 4 or 5
+            const SITUACION_LABELS = ['sin comunicacion nueva', 'en proceso', 'en funcionamiento'];
+            const SITUACION_COLORS = ['#94a3b8', '#f59e0b', '#10b981'];
+            const situacionMap = { 'sin comunicacion nueva': 0, 'en proceso': 0, 'en funcionamiento': 0 };
+            clientesMeta.forEach(c => {
+                if (c.estado?.startsWith('4') || c.estado?.startsWith('5')) {
+                    const sit = c.situacion || 'sin comunicacion nueva';
+                    if (sit in situacionMap) situacionMap[sit]++;
+                    else situacionMap['sin comunicacion nueva']++;
+                }
+            });
+
             setListsData(prev => ({
                 ...prev,
                 rubros: rubrosArr, estados: estadosArr, creados: creadorArr
@@ -344,7 +357,17 @@ export default function Estadisticas() {
                 creados: {
                     labels: creadorArr.map(x => x[0]),
                     datasets: [{ data: creadorArr.map(x => x[1]), backgroundColor: DOUGHNUT_COLORS, borderWidth: 0 }]
-                }
+                },
+                situacionLocales: {
+                    labels: ['Sin comunicación nueva', 'En proceso', 'En funcionamiento'],
+                    datasets: [{
+                        label: 'Locales (Est. 4 y 5)',
+                        data: SITUACION_LABELS.map(k => situacionMap[k]),
+                        backgroundColor: SITUACION_COLORS,
+                        borderRadius: 8,
+                        borderWidth: 0,
+                    }]
+                },
             });
 
             // ---------- ACTIVADORES -----------
@@ -562,6 +585,31 @@ export default function Estadisticas() {
                                 {chartsData.creados && <Doughnut data={chartsData.creados} options={{ ...COMMON_OPTIONS, maintainAspectRatio: false }} />}
                             </div>
                             {renderDoughnutList(listsData.creados)}
+                        </div>
+                    </div>
+
+                    {/* SITUACION CHART */}
+                    <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '4px' }}>Situación — Locales en Estado 4 y 5</h3>
+                        <p style={{ margin: '0 0 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Distribución operativa de los locales creados y activos.</p>
+                        <div style={{ height: '240px' }}>
+                            {chartsData.situacionLocales ? (
+                                <Bar
+                                    data={chartsData.situacionLocales}
+                                    options={{
+                                        ...COMMON_OPTIONS,
+                                        plugins: {
+                                            ...COMMON_OPTIONS.plugins,
+                                            legend: { display: false },
+                                            tooltip: { ...COMMON_OPTIONS.plugins.tooltip, callbacks: { label: ctx => ` ${ctx.raw} locales` } }
+                                        },
+                                        scales: {
+                                            x: { grid: { display: false }, ticks: { color: THEME.colors.text, font: { size: 13, weight: '600', family: THEME.fontFamily } } },
+                                            y: { grid: { color: THEME.colors.grid }, ticks: { color: THEME.colors.text, stepSize: 1 }, beginAtZero: true }
+                                        }
+                                    }}
+                                />
+                            ) : <p className="muted" style={{ textAlign: 'center', paddingTop: '80px' }}>Cargando...</p>}
                         </div>
                     </div>
                 </div>
