@@ -28,6 +28,7 @@ export default function Clientes() {
     const [fRubro, setFRubro] = useState('');
     const [fInteres, setFInteres] = useState('');
     const [fEstilo, setFEstilo] = useState('');
+    const [fFecha, setFFecha] = useState('');
 
     // Metadata (Rubros to populate select)
     const [rubrosValidos, setRubrosValidos] = useState([]);
@@ -78,6 +79,7 @@ export default function Clientes() {
         if (fRubro) request = request.eq('rubro', fRubro);
         if (fInteres) request = request.eq('interes', fInteres);
         if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
+        if (fFecha) request = request.eq('fecha_proximo_contacto', fFecha);
 
         const { data, count, error } = await request;
 
@@ -111,7 +113,7 @@ export default function Clientes() {
 
     useEffect(() => {
         fetchClientes();
-    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fResponsable, fRubro, fInteres, fEstilo, isAgendaHoy]);
+    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fResponsable, fRubro, fInteres, fEstilo, fFecha, isAgendaHoy]);
 
     const handleCreate = () => {
         setEditingId(null);
@@ -142,6 +144,22 @@ export default function Clientes() {
 
     const toggleHistory = (id) => {
         setExpandedActivities(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const handleQuickDate = async (clienteId, daysOffset) => {
+        const d = new Date();
+        d.setDate(d.getDate() + daysOffset);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const { error } = await supabase
+            .from('clientes')
+            .update({ fecha_proximo_contacto: dateStr })
+            .eq('id', clienteId);
+        if (error) {
+            toast.error('Error al guardar fecha');
+        } else {
+            toast.success(`Próximo contacto: ${d.toLocaleDateString('es-AR')}`);
+            fetchClientes();
+        }
     };
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -369,6 +387,21 @@ export default function Clientes() {
                             <option value="Cerrado">Cerrado</option>
                         </select>
                     </div>
+
+                    <div style={{ position: 'relative' }}>
+                        <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                        <input
+                            type="date"
+                            className="input"
+                            value={fFecha}
+                            onChange={e => { setFFecha(e.target.value); setPage(1); }}
+                            title="Filtrar por fecha de próximo contacto"
+                            style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}
+                        />
+                        {fFecha && (
+                            <button onClick={() => { setFFecha(''); setPage(1); }} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', lineHeight: 1, padding: '2px' }} title="Limpiar fecha">✕</button>
+                        )}
+                    </div>
                 </div>
             </section>
 
@@ -480,6 +513,23 @@ export default function Clientes() {
 
                                 {/* Footer / Activities */}
                                 <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                                    {/* Quick contact-date buttons */}
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', marginRight: '2px' }}>
+                                            <Calendar size={13} style={{ marginRight: '4px' }} /> Próx. contacto:
+                                        </span>
+                                        {[{ label: '+3d', days: 3 }, { label: '+7d', days: 7 }, { label: '+15d', days: 15 }, { label: '+1mes', days: 30 }].map(({ label, days }) => (
+                                            <button
+                                                key={label}
+                                                onClick={() => handleQuickDate(c.id, days)}
+                                                style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                                            >{label}</button>
+                                        ))}
+                                    </div>
+
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <button onClick={() => toggleHistory(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', transition: 'color 0.2s' }}>
                                             <Clock size={16} style={{ color: isExpanded ? 'var(--accent)' : 'inherit' }} /> Historial ({acts.length})

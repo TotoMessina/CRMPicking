@@ -84,6 +84,20 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         if (clienteId) {
             const { error } = await supabase.from('clientes').update(payload).eq('id', clienteId);
             err = error;
+            if (!error) {
+                // Log the edit in actividades
+                const parts = [];
+                if (payload.estado) parts.push(`Estado: ${payload.estado}`);
+                if (payload.situacion && (payload.estado?.startsWith('4') || payload.estado?.startsWith('5'))) parts.push(`Situación: ${payload.situacion}`);
+                if (payload.notas) parts.push(`Notas: "${payload.notas}"`);
+                const desc = `✏️ Edición de cliente${parts.length ? ': ' + parts.join(' · ') : ''}`;
+                await supabase.from('actividades').insert([{
+                    cliente_id: clienteId,
+                    descripcion: desc,
+                    fecha: new Date().toISOString(),
+                    tipo: 'edicion'
+                }]);
+            }
         } else {
             const { error } = await supabase.from('clientes').insert([payload]);
             err = error;
