@@ -189,7 +189,7 @@ export default function Estadisticas() {
         if (dateFrom && dateTo) {
             refreshStats();
         }
-    }, [dateFrom, dateTo, filterActivator]); // Add dateFrom, dateTo, filterActivator
+    }, [dateFrom, dateTo, filterActivator, currentTab]);
 
 
     const loadActivators = async () => {
@@ -401,114 +401,111 @@ export default function Estadisticas() {
             });
 
             // ---------- ACTIVADORES -----------
-            if (currentTab === 'tabActivadores') {
-                const setActNames = new Set(activators.map(a => a.nombre?.trim().toLowerCase()));
+            const setActNames = new Set(activators.map(a => a.nombre?.trim().toLowerCase()));
 
-                // Filter by selected activator if one is chosen
-                let clientesRango = clientesMeta.filter(c => c.created_at >= isoFrom && c.created_at < isoTo);
-                if (filterActivator) {
-                    clientesRango = clientesRango.filter(c =>
-                        c.creado_por?.trim().toLowerCase() === filterActivator.toLowerCase()
-                    );
-                }
-
-                // Count visitas per person from actividadesRango
-                const visitasPorPersona = new Map();
-                actividadesRango.forEach(a => {
-                    if (a.descripcion === 'Visita realizada' && a.usuario) {
-                        visitasPorPersona.set(a.usuario, (visitasPorPersona.get(a.usuario) || 0) + 1);
-                    }
-                });
-
-                // Efectividad breakdown
-                const breakdown = new Map();
-                clientesRango.forEach(c => {
-                    const nRaw = c.creado_por?.trim() || "Desconocido";
-                    if (!nRaw) return;
-                    const nLow = nRaw.toLowerCase();
-                    if (setActNames.has(nLow)) {
-                        if (!breakdown.has(nRaw)) breakdown.set(nRaw, { total: 0, efectivo: 0, sts: {} });
-                        const obj = breakdown.get(nRaw);
-                        obj.total++;
-                        const st = c.estado || "Sin estado";
-                        obj.sts[st] = (obj.sts[st] || 0) + 1;
-                        if (st.startsWith('4') || st.startsWith('5')) obj.efectivo++;
-                    }
-                });
-
-                const actConv = [...breakdown.entries()].map(([k, v]) => ({
-                    name: k,
-                    rate: v.total > 0 ? (v.efectivo / v.total) * 100 : 0,
-                    total: v.total, efectivo: v.efectivo,
-                    visitas: visitasPorPersona.get(k) || 0
-                })).sort((a, b) => b.rate - a.rate);
-
-                // Stacked Dia
-                const dailyStMap = new Map();
-                buckets.forEach(b => dailyStMap.set(b.key, new Map()));
-                const allSt = new Set();
-
-                clientesRango.forEach(c => {
-                    const nRaw = c.creado_por?.trim() || "";
-                    if (setActNames.has(nRaw.toLowerCase())) {
-                        const st = c.estado || "Sin estado";
-                        allSt.add(st);
-                        const ck = c.created_at.split('T')[0];
-                        if (dailyStMap.has(ck)) {
-                            dailyStMap.get(ck).set(st, (dailyStMap.get(ck).get(st) || 0) + 1);
-                        }
-                    }
-                });
-
-                const STATUS_COLORS = {
-                    "1 - Cliente relevado": THEME.colors.slate,
-                    "2 - Local Visitado No Activo": THEME.colors.danger,
-                    "3 - Primer Ingreso": THEME.colors.accent,
-                    "4 - Local Creado": THEME.colors.secondary,
-                    "5 - Local Visitado Activo": THEME.colors.info,
-                    "6 - Local No Interesado": "#ef4444",
-                    "Sin estado": "#cbd5e1"
-                };
-
-                const datasetsStacked = Array.from(allSt).sort().map(st => ({
-                    label: st,
-                    stack: 'A',
-                    backgroundColor: STATUS_COLORS[st] || "#a78bfa",
-                    data: buckets.map(b => dailyStMap.get(b.key).get(st) || 0)
-                }));
-
-                const bdownClean = [...breakdown.entries()].sort((a, b) => b[1].total - a[1].total).map(([k, v]) => {
-                    return {
-                        name: k,
-                        total: v.total,
-                        statuses: Object.entries(v.sts).sort((a, b) => b[1] - a[1]).map(([s, count]) => ({ st: s.split('-').pop().trim(), count, color: STATUS_COLORS[s] || "#a78bfa" }))
-                    };
-                });
-
-                setListsData(prev => ({
-                    ...prev,
-                    activadoresDetalle: bdownClean,
-                    activadoresStats: actConv   // full stats for KPI cards
-                }));
-
-                setChartsData(prev => ({
-                    ...prev,
-                    activadoresConversion: {
-                        labels: actConv.map(a => `${a.name} (${Math.round(a.rate)}%)`),
-                        datasets: [{
-                            label: 'Efectividad %',
-                            data: actConv.map(a => a.rate),
-                            backgroundColor: THEME.colors.primary,
-                            borderRadius: 4
-                        }]
-                    },
-                    activadoresDia: {
-                        labels: buckets.map(b => b.label),
-                        datasets: datasetsStacked
-                    }
-                }));
-
+            // Filter by selected activator if one is chosen
+            let clientesRango = clientesMeta.filter(c => c.created_at >= isoFrom && c.created_at < isoTo);
+            if (filterActivator) {
+                clientesRango = clientesRango.filter(c =>
+                    c.creado_por?.trim().toLowerCase() === filterActivator.toLowerCase()
+                );
             }
+
+            // Count visitas per person from actividadesRango
+            const visitasPorPersona = new Map();
+            actividadesRango.forEach(a => {
+                if (a.descripcion === 'Visita realizada' && a.usuario) {
+                    visitasPorPersona.set(a.usuario, (visitasPorPersona.get(a.usuario) || 0) + 1);
+                }
+            });
+
+            // Efectividad breakdown
+            const breakdown = new Map();
+            clientesRango.forEach(c => {
+                const nRaw = c.creado_por?.trim() || "Desconocido";
+                if (!nRaw) return;
+                const nLow = nRaw.toLowerCase();
+                if (setActNames.has(nLow)) {
+                    if (!breakdown.has(nRaw)) breakdown.set(nRaw, { total: 0, efectivo: 0, sts: {} });
+                    const obj = breakdown.get(nRaw);
+                    obj.total++;
+                    const st = c.estado || "Sin estado";
+                    obj.sts[st] = (obj.sts[st] || 0) + 1;
+                    if (st.startsWith('4') || st.startsWith('5')) obj.efectivo++;
+                }
+            });
+
+            const actConv = [...breakdown.entries()].map(([k, v]) => ({
+                name: k,
+                rate: v.total > 0 ? (v.efectivo / v.total) * 100 : 0,
+                total: v.total, efectivo: v.efectivo,
+                visitas: visitasPorPersona.get(k) || 0
+            })).sort((a, b) => b.rate - a.rate);
+
+            // Stacked Dia
+            const dailyStMap = new Map();
+            buckets.forEach(b => dailyStMap.set(b.key, new Map()));
+            const allSt = new Set();
+
+            clientesRango.forEach(c => {
+                const nRaw = c.creado_por?.trim() || "";
+                if (setActNames.has(nRaw.toLowerCase())) {
+                    const st = c.estado || "Sin estado";
+                    allSt.add(st);
+                    const ck = c.created_at.split('T')[0];
+                    if (dailyStMap.has(ck)) {
+                        dailyStMap.get(ck).set(st, (dailyStMap.get(ck).get(st) || 0) + 1);
+                    }
+                }
+            });
+
+            const STATUS_COLORS = {
+                "1 - Cliente relevado": THEME.colors.slate,
+                "2 - Local Visitado No Activo": THEME.colors.danger,
+                "3 - Primer Ingreso": THEME.colors.accent,
+                "4 - Local Creado": THEME.colors.secondary,
+                "5 - Local Visitado Activo": THEME.colors.info,
+                "6 - Local No Interesado": "#ef4444",
+                "Sin estado": "#cbd5e1"
+            };
+
+            const datasetsStacked = Array.from(allSt).sort().map(st => ({
+                label: st,
+                stack: 'A',
+                backgroundColor: STATUS_COLORS[st] || "#a78bfa",
+                data: buckets.map(b => dailyStMap.get(b.key).get(st) || 0)
+            }));
+
+            const bdownClean = [...breakdown.entries()].sort((a, b) => b[1].total - a[1].total).map(([k, v]) => {
+                return {
+                    name: k,
+                    total: v.total,
+                    statuses: Object.entries(v.sts).sort((a, b) => b[1] - a[1]).map(([s, count]) => ({ st: s.split('-').pop().trim(), count, color: STATUS_COLORS[s] || "#a78bfa" }))
+                };
+            });
+
+            setListsData(prev => ({
+                ...prev,
+                activadoresDetalle: bdownClean,
+                activadoresStats: actConv   // full stats for KPI cards
+            }));
+
+            setChartsData(prev => ({
+                ...prev,
+                activadoresConversion: {
+                    labels: actConv.map(a => `${a.name} (${Math.round(a.rate)}%)`),
+                    datasets: [{
+                        label: 'Efectividad %',
+                        data: actConv.map(a => a.rate),
+                        backgroundColor: THEME.colors.primary,
+                        borderRadius: 4
+                    }]
+                },
+                activadoresDia: {
+                    labels: buckets.map(b => b.label),
+                    datasets: datasetsStacked
+                }
+            }));
 
         } catch (error) {
             console.error(error);
