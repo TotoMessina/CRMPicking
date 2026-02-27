@@ -98,7 +98,7 @@ export default function Estadisticas() {
     // Filtros
     const [activators, setActivators] = useState([]);
     const [filterActivator, setFilterActivator] = useState('');
-    const [filtroSituacionRubros, setFiltroSituacionRubros] = useState('Todos');
+    const [filtroSituacionRubros, setFiltroSituacionRubros] = useState(new Set());
     const [clientesEstado5Raw, setClientesEstado5Raw] = useState([]);
 
     const [loading, setLoading] = useState(false);
@@ -113,11 +113,11 @@ export default function Estadisticas() {
     });
     const [totalSituacion, setTotalSituacion] = useState(0);
 
-    // Computed chart data for rubros Estado5 + situacion filter
+    // Computed chart data for rubros Estado5 + situacion multi-filter
     const rubrosEstado5Data = useMemo(() => {
-        const filtered = filtroSituacionRubros === 'Todos'
+        const filtered = filtroSituacionRubros.size === 0
             ? clientesEstado5Raw
-            : clientesEstado5Raw.filter(c => (c.situacion || 'sin comunicacion nueva') === filtroSituacionRubros);
+            : clientesEstado5Raw.filter(c => filtroSituacionRubros.has(c.situacion || 'sin comunicacion nueva'));
         const counts = {};
         filtered.forEach(c => {
             const r = c.rubro || 'Sin rubro';
@@ -128,7 +128,7 @@ export default function Estadisticas() {
         return {
             labels: sorted.map(x => x[0]),
             datasets: [{
-                label: filtroSituacionRubros === 'Todos' ? 'Todos los locales' : filtroSituacionRubros,
+                label: filtroSituacionRubros.size === 0 ? 'Todos los locales' : [...filtroSituacionRubros].join(' + '),
                 data: sorted.map(x => x[1]),
                 backgroundColor: sorted.map((_, i) => RUBRO_COLORS[i % RUBRO_COLORS.length]),
                 borderRadius: 6,
@@ -699,33 +699,51 @@ export default function Estadisticas() {
                             <div>
                                 <h3 style={{ margin: '0 0 4px' }}>Rubros — Locales Estado 5</h3>
                                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                    {filtroSituacionRubros === 'Todos'
+                                    {filtroSituacionRubros.size === 0
                                         ? 'Mostrando todos los locales activos'
-                                        : `Filtrando por situación: "${filtroSituacionRubros}"`}
+                                        : `Filtrando por: ${[...filtroSituacionRubros].join(' + ')}`}
                                 </p>
                             </div>
-                            {/* Filter tabs */}
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {/* Multi-select filter tabs */}
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <button
+                                    onClick={() => setFiltroSituacionRubros(new Set())}
+                                    style={{
+                                        fontSize: '0.78rem', fontWeight: 600, padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
+                                        background: filtroSituacionRubros.size === 0 ? '#4f46e5' : 'rgba(79,70,229,0.12)',
+                                        color: filtroSituacionRubros.size === 0 ? '#fff' : '#4f46e5',
+                                        border: '1px solid rgba(79,70,229,0.35)',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >Todos</button>
                                 {[
-                                    { key: 'Todos', label: 'Todos', color: '#4f46e5' },
                                     { key: 'sin comunicacion nueva', label: 'Sin comunicación', color: '#94a3b8' },
                                     { key: 'en proceso', label: 'En proceso', color: '#f59e0b' },
                                     { key: 'en funcionamiento', label: 'En funcionamiento', color: '#10b981' },
-                                ].map(f => (
-                                    <button
-                                        key={f.key}
-                                        onClick={() => setFiltroSituacionRubros(f.key)}
-                                        style={{
-                                            fontSize: '0.78rem', fontWeight: 600, padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
-                                            background: filtroSituacionRubros === f.key ? f.color : `${f.color}15`,
-                                            color: filtroSituacionRubros === f.key ? '#fff' : f.color,
-                                            border: `1px solid ${f.color}40`,
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        {f.label}
-                                    </button>
-                                ))}
+                                ].map(f => {
+                                    const active = filtroSituacionRubros.has(f.key);
+                                    return (
+                                        <button
+                                            key={f.key}
+                                            onClick={() => setFiltroSituacionRubros(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(f.key)) next.delete(f.key);
+                                                else next.add(f.key);
+                                                return next;
+                                            })}
+                                            style={{
+                                                fontSize: '0.78rem', fontWeight: 600, padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
+                                                background: active ? f.color : `${f.color}18`,
+                                                color: active ? '#fff' : f.color,
+                                                border: `1px solid ${f.color}${active ? '' : '50'}`,
+                                                transition: 'all 0.15s ease',
+                                                boxShadow: active ? `0 0 0 2px ${f.color}40` : 'none'
+                                            }}
+                                        >
+                                            {active && '✓ '}{f.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
