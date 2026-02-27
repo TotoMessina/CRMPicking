@@ -150,20 +150,27 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                     <label>Rubro *</label>
                                     <select name="rubro" required value={formData.rubro || ''} onChange={handleChange}>
                                         <option value="">Seleccionar rubro...</option>
-                                        <option value="Kiosco">Kiosco</option>
-                                        <option value="Dietética">Dietética</option>
+                                        <option value="Accesorios de Celular">Accesorios de Celular</option>
                                         <option value="Almacén">Almacén</option>
+                                        <option value="Artículos de Limpieza">Artículos de Limpieza</option>
                                         <option value="Autoservicio">Autoservicio</option>
-                                        <option value="Supermercado">Supermercado</option>
-                                        <option value="Mayorista">Mayorista</option>
+                                        <option value="Carnicería">Carnicería</option>
+                                        <option value="Cotillón">Cotillón</option>
+                                        <option value="Dietética">Dietética</option>
                                         <option value="Farmacia">Farmacia</option>
-                                        <option value="Gimnasio">Gimnasio</option>
-                                        <option value="Club">Club</option>
-                                        <option value="Colegio/Universidad">Colegio/Universidad</option>
-                                        <option value="Cine/Teatro">Cine/Teatro</option>
-                                        <option value="Estación de Servicio">Estación de Servicio</option>
-                                        <option value="Distribuidora">Distribuidora</option>
-                                        <option value="Otro">Otro</option>
+                                        <option value="Ferretería">Ferretería</option>
+                                        <option value="Gastronómico">Gastronómico</option>
+                                        <option value="Granja">Granja</option>
+                                        <option value="Heladería">Heladería</option>
+                                        <option value="Juguetería">Juguetería</option>
+                                        <option value="Kiosco">Kiosco</option>
+                                        <option value="Librería">Librería</option>
+                                        <option value="Mercería">Mercería</option>
+                                        <option value="Panadería">Panadería</option>
+                                        <option value="Papelera">Papelera</option>
+                                        <option value="Pescadería">Pescadería</option>
+                                        <option value="Pet Shop">Pet Shop</option>
+                                        <option value="Sin definir">Sin definir</option>
                                     </select>
                                 </div>
                                 <div className="field">
