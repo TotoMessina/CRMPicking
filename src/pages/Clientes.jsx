@@ -152,9 +152,14 @@ export default function Clientes() {
     };
 
     const handleQuickDate = async (clienteId, daysOffset) => {
-        const d = new Date();
-        d.setDate(d.getDate() + daysOffset);
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        let dateStr = null;
+        let toastMsg = 'Fecha de contacto eliminada';
+        if (daysOffset !== null) {
+            const d = new Date();
+            d.setDate(d.getDate() + daysOffset);
+            dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            toastMsg = `Próximo contacto: ${d.toLocaleDateString('es-AR')}`;
+        }
         const { error } = await supabase
             .from('clientes')
             .update({ fecha_proximo_contacto: dateStr })
@@ -162,7 +167,7 @@ export default function Clientes() {
         if (error) {
             toast.error('Error al guardar fecha');
         } else {
-            toast.success(`Próximo contacto: ${d.toLocaleDateString('es-AR')}`);
+            toast.success(toastMsg);
             fetchClientes();
         }
     };
@@ -538,6 +543,15 @@ export default function Clientes() {
                                                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                                             >{label}</button>
                                         ))}
+                                        {c.fecha_proximo_contacto && (
+                                            <button
+                                                onClick={() => handleQuickDate(c.id, null)}
+                                                style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)', color: 'var(--danger)', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger)'; e.currentTarget.style.color = '#fff'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; e.currentTarget.style.color = 'var(--danger)'; }}
+                                                title="Quitar fecha de próximo contacto"
+                                            >✕ Sin fecha</button>
+                                        )}
                                     </div>
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

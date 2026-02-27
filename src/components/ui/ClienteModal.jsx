@@ -221,7 +221,17 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                             <div className="grid" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 <div className="field">
                                     <label>Próxima Visita</label>
-                                    <input type="date" name="fecha_proximo_contacto" value={formData.fecha_proximo_contacto || ''} onChange={handleChange} />
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <input type="date" name="fecha_proximo_contacto" value={formData.fecha_proximo_contacto || ''} onChange={handleChange} style={{ flex: 1 }} />
+                                        {formData.fecha_proximo_contacto && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData(prev => ({ ...prev, fecha_proximo_contacto: '' }))}
+                                                style={{ padding: '8px 14px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                                title="Quitar fecha"
+                                            >✕ Sin fecha</button>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="field">
                                     <label>Notas</label>
