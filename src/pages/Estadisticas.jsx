@@ -161,7 +161,8 @@ export default function Estadisticas() {
         creados: [],
         promedioResponsable: [],
         actividadUsuarios: [],
-        activadoresDetalle: []
+        activadoresDetalle: [],
+        activadoresStats: []
     });
 
     const calculatePresetDates = (preset) => {
@@ -403,9 +404,23 @@ export default function Estadisticas() {
             if (currentTab === 'tabActivadores') {
                 const setActNames = new Set(activators.map(a => a.nombre?.trim().toLowerCase()));
 
-                const clientesRango = clientesMeta.filter(c => c.created_at >= isoFrom && c.created_at < isoTo);
+                // Filter by selected activator if one is chosen
+                let clientesRango = clientesMeta.filter(c => c.created_at >= isoFrom && c.created_at < isoTo);
+                if (filterActivator) {
+                    clientesRango = clientesRango.filter(c =>
+                        c.creado_por?.trim().toLowerCase() === filterActivator.toLowerCase()
+                    );
+                }
 
-                // Efectividad
+                // Count visitas per person from actividadesRango
+                const visitasPorPersona = new Map();
+                actividadesRango.forEach(a => {
+                    if (a.descripcion === 'Visita realizada' && a.usuario) {
+                        visitasPorPersona.set(a.usuario, (visitasPorPersona.get(a.usuario) || 0) + 1);
+                    }
+                });
+
+                // Efectividad breakdown
                 const breakdown = new Map();
                 clientesRango.forEach(c => {
                     const nRaw = c.creado_por?.trim() || "Desconocido";
@@ -422,8 +437,10 @@ export default function Estadisticas() {
                 });
 
                 const actConv = [...breakdown.entries()].map(([k, v]) => ({
-                    name: k, rate: v.total > 0 ? (v.efectivo / v.total) * 100 : 0,
-                    total: v.total, efectivo: v.efectivo
+                    name: k,
+                    rate: v.total > 0 ? (v.efectivo / v.total) * 100 : 0,
+                    total: v.total, efectivo: v.efectivo,
+                    visitas: visitasPorPersona.get(k) || 0
                 })).sort((a, b) => b.rate - a.rate);
 
                 // Stacked Dia
@@ -468,7 +485,11 @@ export default function Estadisticas() {
                     };
                 });
 
-                setListsData(prev => ({ ...prev, activadoresDetalle: bdownClean }));
+                setListsData(prev => ({
+                    ...prev,
+                    activadoresDetalle: bdownClean,
+                    activadoresStats: actConv   // full stats for KPI cards
+                }));
 
                 setChartsData(prev => ({
                     ...prev,
@@ -488,7 +509,6 @@ export default function Estadisticas() {
                 }));
 
             }
-
 
         } catch (error) {
             console.error(error);
@@ -812,6 +832,64 @@ export default function Estadisticas() {
 
             {currentTab === 'tabActivadores' && (
                 <div className="tab-content active">
+
+                    {/* Per-activator KPI cards grid */}
+                    {listsData.activadoresStats?.length > 0 && (
+                        <div style={{ marginBottom: '28px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
+                                    {filterActivator ? `📊 ${filterActivator}` : '📊 Rendimiento por Activador'}
+                                </h3>
+                                {!filterActivator && (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 10px', borderRadius: '99px' }}>
+                                        {listsData.activadoresStats.length} activadores
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+                                {listsData.activadoresStats.map(a => {
+                                    const effectColor = a.rate >= 50 ? '#10b981' : a.rate >= 25 ? '#f59e0b' : '#ef4444';
+                                    return (
+                                        <div key={a.name} style={{
+                                            background: 'var(--bg-elevated)',
+                                            border: `1px solid var(--border)`,
+                                            borderTop: `3px solid ${effectColor}`,
+                                            borderRadius: '14px',
+                                            padding: '20px 20px 16px',
+                                            display: 'flex', flexDirection: 'column', gap: '14px'
+                                        }}>
+                                            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                {a.name}
+                                                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: effectColor }}>{Math.round(a.rate)}%</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', textAlign: 'center' }}>
+                                                <div style={{ background: 'var(--bg)', borderRadius: '10px', padding: '10px 6px' }}>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{a.total}</div>
+                                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Altas</div>
+                                                </div>
+                                                <div style={{ background: 'var(--bg)', borderRadius: '10px', padding: '10px 6px' }}>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: effectColor, lineHeight: 1 }}>{a.efectivo}</div>
+                                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Efectivas</div>
+                                                </div>
+                                                <div style={{ background: 'var(--bg)', borderRadius: '10px', padding: '10px 6px' }}>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{a.visitas}</div>
+                                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Visitas</div>
+                                                </div>
+                                            </div>
+                                            {/* Efectividad bar */}
+                                            <div>
+                                                <div style={{ height: '6px', background: 'var(--bg)', borderRadius: '99px', overflow: 'hidden' }}>
+                                                    <div style={{ height: '100%', width: `${Math.min(100, a.rate)}%`, background: effectColor, borderRadius: '99px', transition: 'width 0.6s ease' }} />
+                                                </div>
+                                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>Efectividad de conversión</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
                         <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
                             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Altas Diarias (Stacked)</h3>
