@@ -300,12 +300,12 @@ export default function Estadisticas() {
             const estadosArr = groupCount(clientesMeta, "estado", "Sin estado");
             const creadorArr = groupCount(clientesMeta, "creado_por", "Desconocido");
 
-            // Situacion chart: clients in states 4 or 5
+            // Situacion chart: clients in state 5 only
             const SITUACION_LABELS = ['sin comunicacion nueva', 'en proceso', 'en funcionamiento'];
             const SITUACION_COLORS = ['#94a3b8', '#f59e0b', '#10b981'];
             const situacionMap = { 'sin comunicacion nueva': 0, 'en proceso': 0, 'en funcionamiento': 0 };
             clientesMeta.forEach(c => {
-                if (c.estado?.startsWith('4') || c.estado?.startsWith('5')) {
+                if (c.estado?.startsWith('5')) {
                     const sit = c.situacion || 'sin comunicacion nueva';
                     if (sit in situacionMap) situacionMap[sit]++;
                     else situacionMap['sin comunicacion nueva']++;
