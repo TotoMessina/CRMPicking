@@ -98,6 +98,8 @@ export default function Estadisticas() {
     // Filtros
     const [activators, setActivators] = useState([]);
     const [filterActivator, setFilterActivator] = useState('');
+    const [filtroSituacionRubros, setFiltroSituacionRubros] = useState('Todos');
+    const [clientesEstado5Raw, setClientesEstado5Raw] = useState([]);
 
     const [loading, setLoading] = useState(false);
 
@@ -110,6 +112,30 @@ export default function Estadisticas() {
         activos30: 0, dormidos30: 0, sinHistorial: 0
     });
     const [totalSituacion, setTotalSituacion] = useState(0);
+
+    // Computed chart data for rubros Estado5 + situacion filter
+    const rubrosEstado5Data = useMemo(() => {
+        const filtered = filtroSituacionRubros === 'Todos'
+            ? clientesEstado5Raw
+            : clientesEstado5Raw.filter(c => (c.situacion || 'sin comunicacion nueva') === filtroSituacionRubros);
+        const counts = {};
+        filtered.forEach(c => {
+            const r = c.rubro || 'Sin rubro';
+            counts[r] = (counts[r] || 0) + 1;
+        });
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        const RUBRO_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#14b8a6', '#6366f1'];
+        return {
+            labels: sorted.map(x => x[0]),
+            datasets: [{
+                label: filtroSituacionRubros === 'Todos' ? 'Todos los locales' : filtroSituacionRubros,
+                data: sorted.map(x => x[1]),
+                backgroundColor: sorted.map((_, i) => RUBRO_COLORS[i % RUBRO_COLORS.length]),
+                borderRadius: 6,
+                borderWidth: 0,
+            }]
+        };
+    }, [clientesEstado5Raw, filtroSituacionRubros]);
 
     const [chartsData, setChartsData] = useState({
         crecimientoDiario: null,
@@ -313,6 +339,7 @@ export default function Estadisticas() {
                 }
             });
             setTotalSituacion(Object.values(situacionMap).reduce((a, b) => a + b, 0));
+            setClientesEstado5Raw(clientesMeta.filter(c => c.estado?.startsWith('5')));
 
             setListsData(prev => ({
                 ...prev,
@@ -648,6 +675,88 @@ export default function Estadisticas() {
                                     {s.label}: {chartsData.situacionLocales.datasets[0].data[i]}
                                 </span>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* RUBROS POR SITUACION CHART */}
+                    <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                            <div>
+                                <h3 style={{ margin: '0 0 4px' }}>Rubros — Locales Estado 5</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    {filtroSituacionRubros === 'Todos'
+                                        ? 'Mostrando todos los locales activos'
+                                        : `Filtrando por situación: "${filtroSituacionRubros}"`}
+                                </p>
+                            </div>
+                            {/* Filter tabs */}
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {[
+                                    { key: 'Todos', label: 'Todos', color: '#4f46e5' },
+                                    { key: 'sin comunicacion nueva', label: 'Sin comunicación', color: '#94a3b8' },
+                                    { key: 'en proceso', label: 'En proceso', color: '#f59e0b' },
+                                    { key: 'en funcionamiento', label: 'En funcionamiento', color: '#10b981' },
+                                ].map(f => (
+                                    <button
+                                        key={f.key}
+                                        onClick={() => setFiltroSituacionRubros(f.key)}
+                                        style={{
+                                            fontSize: '0.78rem', fontWeight: 600, padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
+                                            background: filtroSituacionRubros === f.key ? f.color : `${f.color}15`,
+                                            color: filtroSituacionRubros === f.key ? '#fff' : f.color,
+                                            border: `1px solid ${f.color}40`,
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ height: '280px' }}>
+                            {rubrosEstado5Data.labels.length > 0 ? (
+                                <Bar
+                                    data={rubrosEstado5Data}
+                                    plugins={[{
+                                        id: 'rubrosLabels',
+                                        afterDatasetDraw(chart) {
+                                            const { ctx } = chart;
+                                            chart.data.datasets.forEach((dataset, i) => {
+                                                const meta = chart.getDatasetMeta(i);
+                                                meta.data.forEach((bar, index) => {
+                                                    const value = dataset.data[index];
+                                                    if (value > 0) {
+                                                        ctx.save();
+                                                        ctx.fillStyle = '#fff';
+                                                        ctx.font = 'bold 14px Inter, sans-serif';
+                                                        ctx.textAlign = 'center';
+                                                        ctx.textBaseline = 'bottom';
+                                                        ctx.fillText(value, bar.x, bar.y - 5);
+                                                        ctx.restore();
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    }]}
+                                    options={{
+                                        ...COMMON_OPTIONS,
+                                        plugins: {
+                                            ...COMMON_OPTIONS.plugins,
+                                            legend: { display: false },
+                                            tooltip: { ...COMMON_OPTIONS.plugins.tooltip, callbacks: { label: ctx => ` ${ctx.raw} local${ctx.raw !== 1 ? 'es' : ''}` } }
+                                        },
+                                        scales: {
+                                            x: { grid: { display: false }, ticks: { color: THEME.colors.text, font: { size: 11, family: THEME.fontFamily }, maxRotation: 30 } },
+                                            y: { grid: { color: THEME.colors.grid }, ticks: { color: THEME.colors.text, stepSize: 1 }, beginAtZero: true }
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                    Sin locales para esta situación
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
