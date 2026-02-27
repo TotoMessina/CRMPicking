@@ -109,6 +109,7 @@ export default function Estadisticas() {
         act7: 0, act30: 0,
         activos30: 0, dormidos30: 0, sinHistorial: 0
     });
+    const [totalSituacion, setTotalSituacion] = useState(0);
 
     const [chartsData, setChartsData] = useState({
         crecimientoDiario: null,
@@ -311,6 +312,7 @@ export default function Estadisticas() {
                     else situacionMap['sin comunicacion nueva']++;
                 }
             });
+            setTotalSituacion(Object.values(situacionMap).reduce((a, b) => a + b, 0));
 
             setListsData(prev => ({
                 ...prev,
@@ -590,12 +592,33 @@ export default function Estadisticas() {
 
                     {/* SITUACION CHART */}
                     <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
-                        <h3 style={{ marginTop: 0, marginBottom: '4px' }}>Situación — Locales en Estado 4 y 5</h3>
-                        <p style={{ margin: '0 0 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Distribución operativa de los locales creados y activos.</p>
+                        <h3 style={{ marginTop: 0, marginBottom: '4px' }}>Situación — Locales en Estado 5</h3>
+                        <p style={{ margin: '0 0 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Distribución operativa de los locales activos (Local Visitado Activo).</p>
                         <div style={{ height: '240px' }}>
                             {chartsData.situacionLocales ? (
                                 <Bar
                                     data={chartsData.situacionLocales}
+                                    plugins={[{
+                                        id: 'situacionLabels',
+                                        afterDatasetDraw(chart) {
+                                            const { ctx } = chart;
+                                            chart.data.datasets.forEach((dataset, i) => {
+                                                const meta = chart.getDatasetMeta(i);
+                                                meta.data.forEach((bar, index) => {
+                                                    const value = dataset.data[index];
+                                                    if (value > 0) {
+                                                        ctx.save();
+                                                        ctx.fillStyle = '#fff';
+                                                        ctx.font = 'bold 16px Inter, sans-serif';
+                                                        ctx.textAlign = 'center';
+                                                        ctx.textBaseline = 'bottom';
+                                                        ctx.fillText(value, bar.x, bar.y - 6);
+                                                        ctx.restore();
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    }]}
                                     options={{
                                         ...COMMON_OPTIONS,
                                         plugins: {
@@ -610,6 +633,21 @@ export default function Estadisticas() {
                                     }}
                                 />
                             ) : <p className="muted" style={{ textAlign: 'center', paddingTop: '80px' }}>Cargando...</p>}
+                        </div>
+
+                        {/* Total row */}
+                        <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 18px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total locales (Estado 5)</span>
+                            <strong style={{ fontSize: '1.5rem', color: 'var(--text)', marginLeft: 'auto' }}>{totalSituacion}</strong>
+                            {chartsData.situacionLocales && [
+                                { label: 'Sin comunicación', color: '#94a3b8' },
+                                { label: 'En proceso', color: '#f59e0b' },
+                                { label: 'En funcionamiento', color: '#10b981' },
+                            ].map((s, i) => (
+                                <span key={s.label} style={{ fontSize: '0.78rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: `${s.color}20`, color: s.color, border: `1px solid ${s.color}40` }}>
+                                    {s.label}: {chartsData.situacionLocales.datasets[0].data[i]}
+                                </span>
+                            ))}
                         </div>
                     </div>
                 </div>
