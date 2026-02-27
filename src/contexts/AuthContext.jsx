@@ -5,45 +5,47 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
+    const [role, setRole] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const fetchRole = async (authUser) => {
+        if (!authUser) { setRole(null); return; }
+        const { data } = await supabase
+            .from('usuarios')
+            .select('role')
+            .eq('email', authUser.email)
+            .maybeSingle();
+        setRole(data?.role?.toLowerCase() || null);
+    };
+
     useEffect(() => {
-        // Check active sessions and sets the user
         supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-            setLoading(false);
+            const u = session?.user ?? null;
+            setUser(u);
+            fetchRole(u).finally(() => setLoading(false));
         });
 
-        // Listen for changes on auth state (in, out, etc.)
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
+            const u = session?.user ?? null;
+            setUser(u);
+            fetchRole(u);
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
-    // Login function
     const signIn = async (email, password) => {
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         return data;
     };
 
-    // Logout function
     const signOut = async () => {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
     };
 
-    const value = {
-        signIn,
-        signOut,
-        user,
-        loading
-    };
+    const value = { signIn, signOut, user, role, loading };
 
     return (
         <AuthContext.Provider value={value}>

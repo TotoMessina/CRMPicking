@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export function AppShell() {
-    const { user, signOut } = useAuth();
+    const { user, role, signOut } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -27,7 +27,12 @@ export function AppShell() {
         navigate('/login');
     };
 
-    const navItems = [
+    const isActivador = role?.includes('activador');
+
+    // Routes visible to activadores
+    const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion']);
+
+    const allNavItems = [
         { to: '/', icon: MapPin, label: 'Inicio' },
         { to: '/clientes', icon: Activity, label: 'Clientes' },
         { to: '/pipeline', icon: Activity, label: 'Pipeline' },
@@ -47,7 +52,11 @@ export function AppShell() {
         { to: '/configuracion', icon: Settings, label: 'Configuración' },
     ];
 
-    if (!user) return null; // Wait for redirect
+    const navItems = isActivador
+        ? allNavItems.filter(item => item.spacer || activadorRoutes.has(item.to))
+        : allNavItems;
+
+    if (!user) return null;
 
     return (
         <div className="app-shell">
