@@ -22,6 +22,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         interes: 'Bajo',
         venta_digital: 'false',
         venta_digital_cual: '',
+        situacion: 'sin comunicacion nueva',
         notas: '',
         fecha_proximo_contacto: '',
         hora_proximo_contacto: '',
@@ -36,7 +37,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             setFormData({
                 nombre_local: '', direccion: '', nombre: '', telefono: '', mail: '', cuit: '', rubro: '',
                 estado: '1 - Cliente relevado', responsable: '', estilo_contacto: 'Sin definir', interes: 'Bajo',
-                venta_digital: 'false', venta_digital_cual: '', notas: '', fecha_proximo_contacto: '', hora_proximo_contacto: '',
+                venta_digital: 'false', venta_digital_cual: '', situacion: 'sin comunicacion nueva', notas: '', fecha_proximo_contacto: '', hora_proximo_contacto: '',
                 lat: initialLocation ? initialLocation.lat : null,
                 lng: initialLocation ? initialLocation.lng : null
             });
@@ -152,6 +153,17 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="Kiosco">Kiosco</option>
                                         <option value="Dietética">Dietética</option>
                                         <option value="Almacén">Almacén</option>
+                                        <option value="Autoservicio">Autoservicio</option>
+                                        <option value="Supermercado">Supermercado</option>
+                                        <option value="Mayorista">Mayorista</option>
+                                        <option value="Farmacia">Farmacia</option>
+                                        <option value="Gimnasio">Gimnasio</option>
+                                        <option value="Club">Club</option>
+                                        <option value="Colegio/Universidad">Colegio/Universidad</option>
+                                        <option value="Cine/Teatro">Cine/Teatro</option>
+                                        <option value="Estación de Servicio">Estación de Servicio</option>
+                                        <option value="Distribuidora">Distribuidora</option>
+                                        <option value="Otro">Otro</option>
                                     </select>
                                 </div>
                                 <div className="field">
@@ -162,9 +174,23 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
                                         <option value="4 - Local Creado">4 - Local Creado</option>
                                         <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
+                                        <option value="6 - Local No Interesado">6 - Local No Interesado</option>
                                     </select>
                                 </div>
                             </div>
+
+                            {(formData.estado.startsWith('4') || formData.estado.startsWith('5')) && (
+                                <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginTop: '16px' }}>
+                                    <div className="field">
+                                        <label>Situación *</label>
+                                        <select name="situacion" value={formData.situacion || 'sin comunicacion nueva'} onChange={handleChange}>
+                                            <option value="sin comunicacion nueva">Sin comunicación nueva</option>
+                                            <option value="en proceso">En proceso</option>
+                                            <option value="en funcionamiento">En funcionamiento</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

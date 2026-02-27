@@ -23,6 +23,7 @@ export default function Clientes() {
     const [fTelefono, setFTelefono] = useState('');
     const [fDireccion, setFDireccion] = useState('');
     const [fEstado, setFEstado] = useState('Todos');
+    const [fSituacion, setFSituacion] = useState('Todos');
     const [fResponsable, setFResponsable] = useState('');
     const [fRubro, setFRubro] = useState('');
     const [fInteres, setFInteres] = useState('');
@@ -69,6 +70,7 @@ export default function Clientes() {
         }
 
         if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
+        if (fSituacion !== 'Todos') request = request.eq('situacion', fSituacion);
         if (fNombre) request = request.or(`nombre.ilike.%${fNombre}%,nombre_local.ilike.%${fNombre}%`);
         if (fTelefono) request = request.ilike('telefono', `%${fTelefono}%`);
         if (fDireccion) request = request.ilike('direccion', `%${fDireccion}%`);
@@ -109,7 +111,7 @@ export default function Clientes() {
 
     useEffect(() => {
         fetchClientes();
-    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fResponsable, fRubro, fInteres, fEstilo, isAgendaHoy]);
+    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fResponsable, fRubro, fInteres, fEstilo, isAgendaHoy]);
 
     const handleCreate = () => {
         setEditingId(null);
@@ -324,6 +326,16 @@ export default function Clientes() {
                     </div>
 
                     <div style={{ position: 'relative' }}>
+                        <ActivityIcon size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                        <select className="input" value={fSituacion} onChange={e => { setFSituacion(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
+                            <option value="Todos">Todas las situaciones</option>
+                            <option value="sin comunicacion nueva">Sin comunicación nueva</option>
+                            <option value="en proceso">En proceso</option>
+                            <option value="en funcionamiento">En funcionamiento</option>
+                        </select>
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
                         <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                         <select className="input" value={fResponsable} onChange={e => { setFResponsable(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
                             <option value="">Cualquier responsable</option>
@@ -388,10 +400,17 @@ export default function Clientes() {
                         const hasEmail = Boolean(c.mail);
                         const hasAddress = Boolean(c.direccion);
 
+                        let accentColor = 'transparent';
+                        if (c.estado?.startsWith('4') || c.estado?.startsWith('5')) {
+                            if (c.situacion === 'en funcionamiento') accentColor = 'var(--success)';
+                            else if (c.situacion === 'en proceso') accentColor = '#f59e0b'; // Amber
+                            else accentColor = 'var(--text-muted)';
+                        }
+
                         return (
                             <div key={c.id} className="bento-card" style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
-                                {/* Accent line for active clients */}
-                                {c.estado === '5 - Local Visitado Activo' && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'var(--success)' }}></div>}
+                                {/* Accent line based on situacion for states 4 & 5 */}
+                                {accentColor !== 'transparent' && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: accentColor }}></div>}
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1, paddingRight: '12px' }}>
@@ -429,6 +448,11 @@ export default function Clientes() {
                                     {c.estado && (
                                         <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
                                             {c.estado}
+                                        </span>
+                                    )}
+                                    {(c.estado?.startsWith('4') || c.estado?.startsWith('5')) && c.situacion && (
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: accentColor !== 'transparent' ? `${accentColor}20` : 'var(--bg-elevated)', color: accentColor !== 'transparent' ? accentColor : 'var(--text)', border: `1px solid ${accentColor !== 'transparent' ? accentColor : 'var(--border)'}` }}>
+                                            {c.situacion.toUpperCase()}
                                         </span>
                                     )}
                                     {c.rubro && (
