@@ -172,6 +172,22 @@ export default function Clientes() {
         }
     };
 
+    const handleRegistrarVisita = async (clienteId, nombre) => {
+        const now = new Date().toISOString();
+        const { error } = await supabase.from('actividades').insert([{
+            cliente_id: clienteId,
+            descripcion: 'Visita realizada',
+            fecha: now
+        }]);
+        if (error) {
+            toast.error('Error al registrar visita');
+        } else {
+            await supabase.from('clientes').update({ ultima_actividad: now }).eq('id', clienteId);
+            toast.success(`Visita registrada para ${nombre || 'cliente'}`);
+            fetchClientes();
+        }
+    };
+
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
     const handleDescargarModelo = () => {
@@ -558,9 +574,20 @@ export default function Clientes() {
                                         <button onClick={() => toggleHistory(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', transition: 'color 0.2s' }}>
                                             <Clock size={16} style={{ color: isExpanded ? 'var(--accent)' : 'inherit' }} /> Historial ({acts.length})
                                         </button>
-                                        <Button variant="secondary" onClick={() => handleOpenActivity(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
-                                            <Plus size={14} style={{ marginRight: '4px' }} /> Actividad
-                                        </Button>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => handleRegistrarVisita(c.id, c.nombre || c.nombre_local)}
+                                                style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', transition: 'all 0.15s' }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.color = '#fff'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)'; e.currentTarget.style.color = '#10b981'; }}
+                                                title="Registrar visita realizada"
+                                            >
+                                                🏪 Visita
+                                            </button>
+                                            <Button variant="secondary" onClick={() => handleOpenActivity(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
+                                                <Plus size={14} style={{ marginRight: '4px' }} /> Actividad
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     {/* Animated Expandable History */}
