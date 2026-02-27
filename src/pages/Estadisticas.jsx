@@ -633,15 +633,30 @@ export default function Estadisticas() {
                                                 const meta = chart.getDatasetMeta(i);
                                                 meta.data.forEach((bar, index) => {
                                                     const value = dataset.data[index];
-                                                    if (value > 0) {
-                                                        ctx.save();
+                                                    if (!value) return;
+                                                    const barHeight = bar.base - bar.y;
+                                                    const midY = bar.y + barHeight / 2;
+                                                    ctx.save();
+                                                    ctx.font = 'bold 18px Inter, sans-serif';
+                                                    ctx.textAlign = 'center';
+                                                    ctx.textBaseline = 'middle';
+                                                    if (barHeight > 28) {
+                                                        // Value inside bar in white
+                                                        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                                                        ctx.fillText(value, bar.x, midY);
+                                                    } else {
+                                                        // Too short: pill above bar
+                                                        ctx.font = 'bold 13px Inter, sans-serif';
+                                                        const tw = ctx.measureText(value).width + 12;
+                                                        ctx.fillStyle = 'rgba(15,23,42,0.85)';
+                                                        const rx = bar.x - tw / 2, ry = bar.y - 24;
+                                                        ctx.beginPath();
+                                                        ctx.roundRect(rx, ry, tw, 20, 10);
+                                                        ctx.fill();
                                                         ctx.fillStyle = '#fff';
-                                                        ctx.font = 'bold 16px Inter, sans-serif';
-                                                        ctx.textAlign = 'center';
-                                                        ctx.textBaseline = 'bottom';
-                                                        ctx.fillText(value, bar.x, bar.y - 6);
-                                                        ctx.restore();
+                                                        ctx.fillText(value, bar.x, ry + 10);
                                                     }
+                                                    ctx.restore();
                                                 });
                                             });
                                         }
@@ -726,15 +741,30 @@ export default function Estadisticas() {
                                                 const meta = chart.getDatasetMeta(i);
                                                 meta.data.forEach((bar, index) => {
                                                     const value = dataset.data[index];
-                                                    if (value > 0) {
-                                                        ctx.save();
+                                                    if (!value) return;
+                                                    const barHeight = bar.base - bar.y;
+                                                    const midY = bar.y + barHeight / 2;
+                                                    ctx.save();
+                                                    ctx.textAlign = 'center';
+                                                    ctx.textBaseline = 'middle';
+                                                    if (barHeight > 28) {
+                                                        // Value inside bar in white
+                                                        ctx.font = 'bold 15px Inter, sans-serif';
+                                                        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                                                        ctx.fillText(value, bar.x, midY);
+                                                    } else {
+                                                        // Too short: dark pill above bar
+                                                        ctx.font = 'bold 12px Inter, sans-serif';
+                                                        const tw = ctx.measureText(value).width + 12;
+                                                        ctx.fillStyle = 'rgba(15,23,42,0.85)';
+                                                        const rx = bar.x - tw / 2, ry = bar.y - 22;
+                                                        ctx.beginPath();
+                                                        ctx.roundRect(rx, ry, tw, 18, 9);
+                                                        ctx.fill();
                                                         ctx.fillStyle = '#fff';
-                                                        ctx.font = 'bold 14px Inter, sans-serif';
-                                                        ctx.textAlign = 'center';
-                                                        ctx.textBaseline = 'bottom';
-                                                        ctx.fillText(value, bar.x, bar.y - 5);
-                                                        ctx.restore();
+                                                        ctx.fillText(value, bar.x, ry + 9);
                                                     }
+                                                    ctx.restore();
                                                 });
                                             });
                                         }
