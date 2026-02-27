@@ -459,6 +459,7 @@ export default function Clientes() {
                     ) : clientes.map(c => {
                         const acts = activities[c.id] || [];
                         const isExpanded = expandedActivities[c.id];
+                        const visitCount = acts.filter(a => a.descripcion === 'Visita realizada').length;
 
                         const hasPhone = Boolean(c.telefono);
                         const hasEmail = Boolean(c.mail);
@@ -577,12 +578,17 @@ export default function Clientes() {
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <button
                                                 onClick={() => handleRegistrarVisita(c.id, c.nombre || c.nombre_local)}
-                                                style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', transition: 'all 0.15s' }}
+                                                style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }}
                                                 onMouseEnter={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.color = '#fff'; }}
                                                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)'; e.currentTarget.style.color = '#10b981'; }}
                                                 title="Registrar visita realizada"
                                             >
                                                 🏪 Visita
+                                                {visitCount > 0 && (
+                                                    <span style={{ background: '#10b981', color: '#fff', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700, padding: '1px 6px', minWidth: '18px', textAlign: 'center', lineHeight: '16px' }}>
+                                                        {visitCount}
+                                                    </span>
+                                                )}
                                             </button>
                                             <Button variant="secondary" onClick={() => handleOpenActivity(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
                                                 <Plus size={14} style={{ marginRight: '4px' }} /> Actividad
