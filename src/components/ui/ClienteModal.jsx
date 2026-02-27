@@ -91,12 +91,12 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 if (payload.situacion && (payload.estado?.startsWith('4') || payload.estado?.startsWith('5'))) parts.push(`Situación: ${payload.situacion}`);
                 if (payload.notas) parts.push(`Notas: "${payload.notas}"`);
                 const desc = `✏️ Edición de cliente${parts.length ? ': ' + parts.join(' · ') : ''}`;
-                await supabase.from('actividades').insert([{
+                const { error: actErr } = await supabase.from('actividades').insert([{
                     cliente_id: clienteId,
                     descripcion: desc,
-                    fecha: new Date().toISOString(),
-                    tipo: 'edicion'
+                    fecha: new Date().toISOString()
                 }]);
+                if (actErr) console.warn('No se pudo guardar historial de edición:', actErr.message);
             }
         } else {
             const { error } = await supabase.from('clientes').insert([payload]);
