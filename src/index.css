@@ -5873,3 +5873,294 @@ fieldset legend:hover {
     opacity: 1;
   }
 }
+
+/* =========================================================
+   MOBILE RESPONSIVE — COMPREHENSIVE (≤768px)
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  /* ── AppShell Layout ── */
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* Sidebar: hidden off-canvas by default */
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px !important;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+
+  /* Overlay behind open sidebar */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 999;
+    backdrop-filter: blur(2px);
+  }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+
+  /* Hamburger button */
+  .mobile-menu-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 998;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Close button inside sidebar */
+  .sidebar-close-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  /* Full-width content, top padding for the hamburger button */
+  .app-content {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding-top: 68px !important;
+  }
+
+  /* ── Global page padding ── */
+  main>* {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .page-content,
+  .page-wrap,
+  .stats-page,
+  .clientes-page,
+  [class*="-page"] {
+    padding: 12px !important;
+    padding-top: 0 !important;
+  }
+
+  /* ── Typography ── */
+  h1 {
+    font-size: 1.35rem !important;
+  }
+
+  h2 {
+    font-size: 1.1rem !important;
+  }
+
+  h3 {
+    font-size: 1rem !important;
+  }
+
+  /* ── Filter grids: force 1-column on very small, 2-col on medium mobile ── */
+  .filters-grid,
+  [style*="gridTemplateColumns"][style*="repeat(auto-fill"] {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  @media (max-width: 480px) {
+
+    .filters-grid,
+    [style*="gridTemplateColumns"][style*="repeat(auto-fill"] {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  /* ── Client cards: always 1 column ── */
+  .bento-grid,
+  [style*="minmax(340px"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .bento-card {
+    padding: 16px 14px !important;
+  }
+
+  /* Card top row: keep name+buttons from overflowing */
+  .bento-card>div:first-child,
+  .bento-card [style*="justify-content: space-between"]:first-child {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Quick-date buttons row: allow wrapping */
+  .bento-card [style*="Próx. contacto"] {
+    flex-wrap: wrap;
+  }
+
+  /* ── Stats page 2-col charts → 1 col ── */
+  [style*="gridTemplateColumns: '1fr 1fr'"],
+  [style*='gridTemplateColumns: "1fr 1fr"'],
+  [style*="gridTemplateColumns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Activadores KPI cards: 1 per row ── */
+  [style*="minmax(220px, 1fr)"] {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  @media (max-width: 440px) {
+    [style*="minmax(220px, 1fr)"] {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  /* ── Estadísticas topbar: stack vertically ── */
+  .stats-topbar-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .stats-topbar-actions select,
+  .stats-topbar-actions input,
+  .stats-topbar-actions button {
+    width: 100% !important;
+  }
+
+  /* Date range row stays inline */
+  .stats-topbar-actions>div {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* ── Tab pills: allow scrolling if too many ── */
+  [style*="display: 'flex'"][style*="gap: '16px'"],
+  [style*='display: "flex"'][style*='gap: "16px"'] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  /* ── Header rows in pages: avoid icon/text overlap ── */
+  section>header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  section>header h2 {
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  /* ── Modal form grid: 1 column ── */
+  .modal-content .grid,
+  .modal-content form .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Stepper navigation buttons in modal ── */
+  .modal-content [style*="justify-content: space-between"]:last-child {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ── Pipeline / table views ── */
+  .pipeline-board {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  .pipeline-col {
+    min-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* ── Pagination row ── */
+  [style*="justify-content: 'center'"],
+  [style*='justify-content: "center"'] {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Reduce button touch targets to sensible size */
+  button {
+    min-height: 36px;
+  }
+
+  /* Prevent runaway horizontal overflow */
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  * {
+    max-width: 100%;
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* ── Very small devices ≤ 400px ── */
+@media (max-width: 400px) {
+  .bento-card {
+    padding: 12px 10px !important;
+    font-size: 0.88rem;
+  }
+
+  h1 {
+    font-size: 1.2rem !important;
+  }
+}
+
+/* ── Desktop: hide mobile-only controls ── */
+@media (min-width: 769px) {
+  .mobile-menu-btn {
+    display: none !important;
+  }
+
+  .sidebar-close-btn {
+    display: none !important;
+  }
+
+  .sidebar-overlay {
+    display: none !important;
+  }
+}
