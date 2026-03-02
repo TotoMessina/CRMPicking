@@ -20,6 +20,7 @@ import Calificaciones from './pages/Calificaciones';
 import Usuarios from './pages/Usuarios';
 import Configuracion from './pages/Configuracion';
 import Chat from './pages/Chat';
+import TableroTareas from './pages/TableroTareas';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/tablero" element={<TableroTareas />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/consumidores" element={<Consumidores />} />
