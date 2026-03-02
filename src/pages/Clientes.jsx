@@ -30,6 +30,8 @@ export default function Clientes() {
     const [fEstilo, setFEstilo] = useState('');
     const [fProximos7, setFProximos7] = useState(false);
 
+    const [sortBy, setSortBy] = useState('recent'); // 'recent', 'oldest', 'az', 'za', 'activity_desc', 'activity_asc'
+
     // Metadata (Rubros to populate select)
     const [rubrosValidos, setRubrosValidos] = useState([]);
 
@@ -62,9 +64,23 @@ export default function Clientes() {
             .from('clientes')
             .select('*', { count: 'exact' })
             .eq('activo', true)
-            .order('created_at', { ascending: false })
-            .order('ultima_actividad', { ascending: false, nullsFirst: false })
-            .range((page - 1) * pageSize, page * pageSize - 1);
+
+        // Apply dynamic sorting
+        if (sortBy === 'recent') {
+            request = request.order('created_at', { ascending: false }).order('ultima_actividad', { ascending: false, nullsFirst: false });
+        } else if (sortBy === 'oldest') {
+            request = request.order('created_at', { ascending: true }).order('ultima_actividad', { ascending: true, nullsFirst: false });
+        } else if (sortBy === 'az') {
+            request = request.order('nombre_local', { ascending: true });
+        } else if (sortBy === 'za') {
+            request = request.order('nombre_local', { ascending: false });
+        } else if (sortBy === 'activity_desc') {
+            request = request.order('ultima_actividad', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+        } else if (sortBy === 'activity_asc') {
+            request = request.order('ultima_actividad', { ascending: true, nullsFirst: true }).order('created_at', { ascending: true });
+        }
+
+        request = request.range((page - 1) * pageSize, page * pageSize - 1);
 
         if (isAgendaHoy) {
             request = request.eq('fecha_proximo_contacto', new Date().toISOString().split('T')[0]);
@@ -441,6 +457,23 @@ export default function Clientes() {
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: 'var(--text)' }}>
                         Listado <span className="muted" style={{ fontWeight: 500, fontSize: '1.2rem' }}>({total})</span>
                     </h2>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ordenar por</span>
+                        <select
+                            className="input"
+                            value={sortBy}
+                            onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
+                            style={{ padding: '8px 12px', borderRadius: '10px', minWidth: '180px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text)' }}
+                        >
+                            <option value="recent">Más recientes</option>
+                            <option value="oldest">Más antiguos</option>
+                            <option value="activity_desc">Última actividad (Recientes primero)</option>
+                            <option value="activity_asc">Última actividad (Antiguos primero)</option>
+                            <option value="az">Nombre (A - Z)</option>
+                            <option value="za">Nombre (Z - A)</option>
+                        </select>
+                    </div>
                 </header>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
