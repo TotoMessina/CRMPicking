@@ -6121,18 +6121,19 @@ fieldset legend:hover {
     min-height: 36px;
   }
 
-  /* Prevent runaway horizontal overflow */
+  /* Prevent runaway horizontal overflow — exclude Leaflet from both rules */
   html,
   body {
     overflow-x: hidden;
   }
 
-  * {
+  /* Scope max-width guard to avoid breaking Leaflet SVG markers */
+  *:not(.leaflet-container):not(.leaflet-container *):not(.leaflet-pane):not(.leaflet-pane *) {
     max-width: 100%;
   }
 
-  img,
-  svg {
+  /* Only apply to content images, NOT inline SVG icons or Leaflet */
+  img:not(.leaflet-container img) {
     max-width: 100%;
     height: auto;
   }

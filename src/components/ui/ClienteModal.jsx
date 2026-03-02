@@ -71,8 +71,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         e.preventDefault();
         setLoading(true);
 
-        // Build payload from known DB columns only — prevents 400 from extra formData fields
-        const payload = {
+        // Build payload — strip undefined/empty so Supabase never lists them in ?columns=
+        const rawPayload = {
             nombre_local: formData.nombre_local || null,
             direccion: formData.direccion || null,
             nombre: formData.nombre || null,
@@ -88,12 +88,17 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             venta_digital_cual: formData.venta_digital_cual || null,
             situacion: formData.situacion || null,
             notas: formData.notas || null,
-            // Use undefined for date/time fields so Supabase omits them when empty
-            fecha_proximo_contacto: formData.fecha_proximo_contacto?.trim() || undefined,
-            hora_proximo_contacto: formData.hora_proximo_contacto?.trim() || undefined,
+            fecha_proximo_contacto: formData.fecha_proximo_contacto?.trim() || null,
+            hora_proximo_contacto: formData.hora_proximo_contacto?.trim() || null,
             lat: formData.lat != null && formData.lat !== '' ? parseFloat(formData.lat) : null,
             lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng) : null,
         };
+
+        // Strip keys where value is null AND the column is a date/time type to avoid Postgres type errors
+        const dateFields = new Set(['fecha_proximo_contacto', 'hora_proximo_contacto']);
+        const payload = Object.fromEntries(
+            Object.entries(rawPayload).filter(([k, v]) => !(dateFields.has(k) && (v === null || v === '')))
+        );
 
 
         // Override with map coordinates when creating from the map
