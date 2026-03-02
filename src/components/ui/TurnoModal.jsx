@@ -71,8 +71,8 @@ export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, 
         const payload = {
             usuario_email: formData.usuario_email,
             tipo: formData.tipo,
-            start_time: formData.inicio, // store original timezone string if needed, or ISO? original used input.value
-            end_time: formData.fin,
+            start_time: startIso,
+            end_time: endIso,
             notas: formData.notas
         };
 
