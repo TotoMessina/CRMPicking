@@ -71,15 +71,34 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         e.preventDefault();
         setLoading(true);
 
+        // Build payload from known DB columns only — prevents 400 from extra formData fields
         const payload = {
-            ...formData,
-            venta_digital: formData.venta_digital === 'true'
+            nombre_local: formData.nombre_local || null,
+            direccion: formData.direccion || null,
+            nombre: formData.nombre || null,
+            telefono: formData.telefono || null,
+            mail: formData.mail || null,
+            cuit: formData.cuit || null,
+            horarios_atencion: formData.horarios_atencion || null,
+            rubro: formData.rubro || null,
+            estado: formData.estado || null,
+            responsable: formData.responsable || null,
+            estilo_contacto: formData.estilo_contacto || null,
+            interes: formData.interes || null,
+            venta_digital: formData.venta_digital === 'true',
+            venta_digital_cual: formData.venta_digital_cual || null,
+            situacion: formData.situacion || null,
+            notas: formData.notas || null,
+            fecha_proximo_contacto: formData.fecha_proximo_contacto || null,
+            hora_proximo_contacto: formData.hora_proximo_contacto || null,
+            lat: formData.lat != null ? parseFloat(formData.lat) : null,
+            lng: formData.lng != null ? parseFloat(formData.lng) : null,
         };
 
-        // If location is provided, ensure it's saved
+        // Override with map coordinates when creating from the map
         if (initialLocation && !clienteId) {
-            payload.lat = initialLocation.lat;
-            payload.lng = initialLocation.lng;
+            payload.lat = parseFloat(initialLocation.lat);
+            payload.lng = parseFloat(initialLocation.lng);
         }
 
         let err;
