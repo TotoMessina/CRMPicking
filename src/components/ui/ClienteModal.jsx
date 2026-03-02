@@ -15,6 +15,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         telefono: '',
         mail: '',
         cuit: '',
+        horarios_atencion: '',
         rubro: '',
         estado: '1 - Cliente relevado',
         responsable: '',
@@ -35,7 +36,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             loadCliente(clienteId);
         } else if (isOpen && !clienteId) {
             setFormData({
-                nombre_local: '', direccion: '', nombre: '', telefono: '', mail: '', cuit: '', rubro: '',
+                nombre_local: '', direccion: '', nombre: '', telefono: '', mail: '', cuit: '',
+                horarios_atencion: '', rubro: '',
                 estado: '1 - Cliente relevado', responsable: '', estilo_contacto: 'Sin definir', interes: 'Bajo',
                 venta_digital: 'false', venta_digital_cual: '', situacion: 'sin comunicacion nueva', notas: '', fecha_proximo_contacto: '', hora_proximo_contacto: '',
                 lat: initialLocation ? initialLocation.lat : null,
@@ -152,6 +154,27 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                     <label>Teléfono *</label>
                                     <input type="text" name="telefono" required value={formData.telefono || ''} onChange={handleChange} />
                                 </div>
+                                <div className="field">
+                                    <label>Mail</label>
+                                    <input type="email" name="mail" value={formData.mail || ''} onChange={handleChange} />
+                                </div>
+                                <div className="field">
+                                    <label>CUIT</label>
+                                    <input type="text" name="cuit" placeholder="XX-XXXXXXXX-X" value={formData.cuit || ''} onChange={handleChange} />
+                                </div>
+                                <div className="field">
+                                    <label>Horarios de Atención</label>
+                                    <input type="text" name="horarios_atencion" placeholder="Ej: Lun-Vie 9-18" value={formData.horarios_atencion || ''} onChange={handleChange} />
+                                </div>
+                                <div className="field">
+                                    <label>Estilo de Contacto</label>
+                                    <select name="estilo_contacto" value={formData.estilo_contacto || 'Sin definir'} onChange={handleChange}>
+                                        <option value="Sin definir">Sin definir</option>
+                                        <option value="Dueño">Dueño</option>
+                                        <option value="Empleado">Empleado</option>
+                                        <option value="Cerrado">Cerrado</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -197,6 +220,37 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
                                         <option value="6 - Local No Interesado">6 - Local No Interesado</option>
                                     </select>
+                                </div>
+                                <div className="field">
+                                    <label>Interés</label>
+                                    <select name="interes" value={formData.interes || 'Bajo'} onChange={handleChange}>
+                                        <option value="Bajo">Bajo</option>
+                                        <option value="Medio">Medio</option>
+                                        <option value="Alto">Alto</option>
+                                    </select>
+                                </div>
+                                <div className="field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <label>¿Venta Digital?</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', cursor: 'pointer', fontWeight: 500 }}>
+                                        <input
+                                            type="checkbox"
+                                            name="venta_digital"
+                                            checked={formData.venta_digital === 'true'}
+                                            onChange={handleChange}
+                                            style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                                        />
+                                        {formData.venta_digital === 'true' ? 'Sí, tiene venta digital' : 'No tiene venta digital'}
+                                    </label>
+                                    {formData.venta_digital === 'true' && (
+                                        <input
+                                            type="text"
+                                            name="venta_digital_cual"
+                                            placeholder="¿Cuál? Ej: Pedidos Ya, Rappi..."
+                                            value={formData.venta_digital_cual || ''}
+                                            onChange={handleChange}
+                                            style={{ marginTop: '4px' }}
+                                        />
+                                    )}
                                 </div>
                             </div>
 
