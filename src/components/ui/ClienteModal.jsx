@@ -1,48 +1,70 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import toast from 'react-hot-toast';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
+
+// Helper: inline error message under a field
+function FieldError({ msg }) {
+    if (!msg) return null;
+    return (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--danger, #ef4444)', fontSize: '0.78rem', marginTop: '4px' }}>
+            <AlertCircle size={13} /> {msg}
+        </span>
+    );
+}
+
+// Fields that live on each step (used to auto-navigate to first error)
+const STEP_FIELDS = {
+    1: ['nombre_local', 'direccion', 'nombre', 'telefono'],
+    2: ['rubro'],
+    3: [],
+};
+
+const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
 
 export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSaved }) {
+    const { user } = useAuth();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        nombre_local: '',
-        direccion: '',
-        nombre: '',
-        telefono: '',
-        mail: '',
-        cuit: '',
-        horarios_atencion: '',
-        rubro: '',
-        estado: '1 - Cliente relevado',
-        responsable: '',
-        estilo_contacto: 'Sin definir',
-        interes: 'Bajo',
-        venta_digital: 'false',
-        venta_digital_cual: '',
-        situacion: 'sin comunicacion nueva',
-        notas: '',
-        fecha_proximo_contacto: '',
-        hora_proximo_contacto: '',
-        lat: null,
-        lng: null
+    const [errors, setErrors] = useState({});
+
+    const emptyForm = (overrides = {}) => ({
+        nombre_local: '', direccion: '', nombre: '', telefono: '',
+        mail: '', cuit: '', horarios_atencion: '', rubro: '',
+        estado: '1 - Cliente relevado', responsable: '',
+        estilo_contacto: 'Sin definir', interes: 'Bajo',
+        venta_digital: 'false', venta_digital_cual: '',
+        situacion: 'sin comunicacion nueva', notas: '',
+        fecha_proximo_contacto: '', hora_proximo_contacto: '',
+        lat: null, lng: null,
+        ...overrides,
     });
+
+    const [formData, setFormData] = useState(emptyForm());
+
+    // Auto-fill responsable with the current user's name when creating a new client
+    useEffect(() => {
+        if (!isOpen || clienteId || !user) return;
+        supabase.from('usuarios').select('nombre').eq('email', user.email).maybeSingle()
+            .then(({ data }) => {
+                if (data?.nombre) {
+                    setFormData(prev => ({ ...prev, responsable: data.nombre }));
+                }
+            });
+    }, [isOpen, clienteId, user]);
 
     useEffect(() => {
         if (isOpen && clienteId) {
             loadCliente(clienteId);
         } else if (isOpen && !clienteId) {
-            setFormData({
-                nombre_local: '', direccion: '', nombre: '', telefono: '', mail: '', cuit: '',
-                horarios_atencion: '', rubro: '',
-                estado: '1 - Cliente relevado', responsable: '', estilo_contacto: 'Sin definir', interes: 'Bajo',
-                venta_digital: 'false', venta_digital_cual: '', situacion: 'sin comunicacion nueva', notas: '', fecha_proximo_contacto: '', hora_proximo_contacto: '',
-                lat: initialLocation ? initialLocation.lat : null,
-                lng: initialLocation ? initialLocation.lng : null
-            });
+            setFormData(emptyForm({
+                lat: initialLocation?.lat ?? null,
+                lng: initialLocation?.lng ?? null,
+            }));
+            setErrors({});
             setStep(1);
         }
     }, [isOpen, clienteId]);
@@ -54,24 +76,46 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             toast.error('Error cargando cliente');
             onClose();
         } else if (data) {
-            setFormData({ ...data, venta_digital: data.venta_digital ? 'true' : 'false' });
+            setFormData({ ...emptyForm(), ...data, venta_digital: data.venta_digital ? 'true' : 'false' });
+            setErrors({});
         }
         setLoading(false);
     };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? (checked ? 'true' : 'false') : value
-        }));
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? (checked ? 'true' : 'false') : value }));
+        // Clear error on change
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    // Validate all fields and return errors object
+    const validate = () => {
+        const errs = {};
+        if (!formData.nombre_local?.trim()) errs.nombre_local = 'El nombre del local es requerido';
+        if (!formData.direccion?.trim()) errs.direccion = 'La dirección es requerida';
+        if (!formData.nombre?.trim()) errs.nombre = 'El nombre del contacto es requerido';
+        if (!formData.telefono?.trim()) errs.telefono = 'El teléfono es requerido';
+        if (!formData.rubro?.trim()) errs.rubro = 'El rubro es requerido';
+        return errs;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Inline validation
+        const errs = validate();
+        if (Object.keys(errs).length > 0) {
+            setErrors(errs);
+            // Navigate to first step that has an error
+            for (const [s, fields] of Object.entries(STEP_FIELDS)) {
+                if (fields.some(f => errs[f])) { setStep(Number(s)); break; }
+            }
+            return;
+        }
+
         setLoading(true);
 
-        // Build payload — strip undefined/empty so Supabase never lists them in ?columns=
         const rawPayload = {
             nombre_local: formData.nombre_local || null,
             direccion: formData.direccion || null,
@@ -94,12 +138,11 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng) : null,
         };
 
-        // Strip keys where value is null AND the column is a date/time type to avoid Postgres type errors
+        // Strip null date fields so they never appear in ?columns= (prevents Postgres type error)
         const dateFields = new Set(['fecha_proximo_contacto', 'hora_proximo_contacto']);
         const payload = Object.fromEntries(
             Object.entries(rawPayload).filter(([k, v]) => !(dateFields.has(k) && (v === null || v === '')))
         );
-
 
         // Override with map coordinates when creating from the map
         if (initialLocation && !clienteId) {
@@ -112,7 +155,6 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             const { error } = await supabase.from('clientes').update(payload).eq('id', clienteId);
             err = error;
             if (!error) {
-                // Log the edit in actividades
                 const parts = [];
                 if (payload.estado) parts.push(`Estado: ${payload.estado}`);
                 if (payload.situacion && (payload.estado?.startsWith('4') || payload.estado?.startsWith('5'))) parts.push(`Situación: ${payload.situacion}`);
@@ -142,6 +184,14 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
     if (!isOpen) return null;
 
+    const inp = (name, extra = {}) => ({
+        name,
+        value: formData[name] || '',
+        onChange: handleChange,
+        style: errors[name] ? ERR_STYLE : {},
+        ...extra,
+    });
+
     return createPortal(
         <div className="modal active" onClick={(e) => e.target.classList.contains('modal') && onClose()}>
             <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
@@ -152,44 +202,58 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                     </Button>
                 </div>
 
+                {/* Step indicators */}
                 <div className="wizard-steps" style={{ marginBottom: '24px' }}>
-                    <div className={`step-indicator ${step === 1 ? 'active' : ''}`} onClick={() => setStep(1)} style={{ cursor: 'pointer' }}></div>
-                    <div className={`step-indicator ${step === 2 ? 'active' : ''}`} onClick={() => setStep(2)} style={{ cursor: 'pointer' }}></div>
-                    <div className={`step-indicator ${step === 3 ? 'active' : ''}`} onClick={() => setStep(3)} style={{ cursor: 'pointer' }}></div>
+                    {[1, 2, 3].map(s => (
+                        <div
+                            key={s}
+                            className={`step-indicator ${step === s ? 'active' : ''} ${Object.keys(STEP_FIELDS[s] || []).some(f => errors[STEP_FIELDS[s][f]]) ? 'error' : ''}`}
+                            onClick={() => setStep(s)}
+                            style={{
+                                cursor: 'pointer',
+                                ...(STEP_FIELDS[s]?.some(f => errors[f]) ? { background: '#ef4444', opacity: 1 } : {})
+                            }}
+                        />
+                    ))}
                 </div>
 
                 <form onSubmit={handleSubmit}>
+                    {/* ── STEP 1 ── */}
                     {step === 1 && (
                         <div>
                             <h3 style={{ marginBottom: '16px' }}>1. Datos del Local y Contacto</h3>
                             <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div className="field">
                                     <label>Nombre del Local *</label>
-                                    <input type="text" name="nombre_local" required value={formData.nombre_local || ''} onChange={handleChange} />
+                                    <input type="text" {...inp('nombre_local')} />
+                                    <FieldError msg={errors.nombre_local} />
                                 </div>
                                 <div className="field">
                                     <label>Dirección *</label>
-                                    <input type="text" name="direccion" required value={formData.direccion || ''} onChange={handleChange} />
+                                    <input type="text" {...inp('direccion')} />
+                                    <FieldError msg={errors.direccion} />
                                 </div>
                                 <div className="field">
                                     <label>Nombre del Contacto *</label>
-                                    <input type="text" name="nombre" required value={formData.nombre || ''} onChange={handleChange} />
+                                    <input type="text" {...inp('nombre')} />
+                                    <FieldError msg={errors.nombre} />
                                 </div>
                                 <div className="field">
                                     <label>Teléfono *</label>
-                                    <input type="text" name="telefono" required value={formData.telefono || ''} onChange={handleChange} />
+                                    <input type="text" {...inp('telefono')} />
+                                    <FieldError msg={errors.telefono} />
                                 </div>
                                 <div className="field">
                                     <label>Mail</label>
-                                    <input type="email" name="mail" value={formData.mail || ''} onChange={handleChange} />
+                                    <input type="email" {...inp('mail')} />
                                 </div>
                                 <div className="field">
                                     <label>CUIT</label>
-                                    <input type="text" name="cuit" placeholder="XX-XXXXXXXX-X" value={formData.cuit || ''} onChange={handleChange} />
+                                    <input type="text" {...inp('cuit', { placeholder: 'XX-XXXXXXXX-X' })} />
                                 </div>
                                 <div className="field">
                                     <label>Horarios de Atención</label>
-                                    <input type="text" name="horarios_atencion" placeholder="Ej: Lun-Vie 9-18" value={formData.horarios_atencion || ''} onChange={handleChange} />
+                                    <input type="text" {...inp('horarios_atencion', { placeholder: 'Ej: Lun-Vie 9-18' })} />
                                 </div>
                                 <div className="field">
                                     <label>Estilo de Contacto</label>
@@ -200,17 +264,29 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="Cerrado">Cerrado</option>
                                     </select>
                                 </div>
+                                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                                    <label>Responsable</label>
+                                    <input
+                                        type="text"
+                                        name="responsable"
+                                        value={formData.responsable || ''}
+                                        onChange={handleChange}
+                                        placeholder="Nombre del responsable"
+                                        style={{ background: 'var(--bg-elevated)', fontWeight: 500 }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
 
+                    {/* ── STEP 2 ── */}
                     {step === 2 && (
                         <div>
                             <h3 style={{ marginBottom: '16px' }}>2. Clasificación del Cliente</h3>
                             <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div className="field">
                                     <label>Rubro *</label>
-                                    <select name="rubro" required value={formData.rubro || ''} onChange={handleChange}>
+                                    <select {...inp('rubro')}>
                                         <option value="">Seleccionar rubro...</option>
                                         <option value="Accesorios de Celular">Accesorios de Celular</option>
                                         <option value="Almacén">Almacén</option>
@@ -234,6 +310,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="Pet Shop">Pet Shop</option>
                                         <option value="Sin definir">Sin definir</option>
                                     </select>
+                                    <FieldError msg={errors.rubro} />
                                 </div>
                                 <div className="field">
                                     <label>Estado</label>
@@ -246,6 +323,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="6 - Local No Interesado">6 - Local No Interesado</option>
                                     </select>
                                 </div>
+
+                                {/* Interés bar */}
                                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                                     <label>Interés</label>
                                     {(() => {
@@ -258,37 +337,16 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         const activeColor = levels[activeIdx]?.color || '#94a3b8';
                                         return (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                                {/* Bar segments */}
                                                 <div style={{ display: 'flex', gap: '4px', height: '10px' }}>
                                                     {levels.map((l, i) => (
-                                                        <div
-                                                            key={l.value}
-                                                            onClick={() => setFormData(prev => ({ ...prev, interes: l.value }))}
-                                                            style={{
-                                                                flex: 1, borderRadius: '99px', cursor: 'pointer',
-                                                                background: i <= activeIdx ? activeColor : 'var(--border)',
-                                                                transition: 'background 0.25s ease',
-                                                                opacity: i <= activeIdx ? 1 : 0.4,
-                                                            }}
-                                                        />
+                                                        <div key={l.value} onClick={() => setFormData(prev => ({ ...prev, interes: l.value }))}
+                                                            style={{ flex: 1, borderRadius: '99px', cursor: 'pointer', background: i <= activeIdx ? activeColor : 'var(--border)', transition: 'background 0.25s ease', opacity: i <= activeIdx ? 1 : 0.4 }} />
                                                     ))}
                                                 </div>
-                                                {/* Labels */}
                                                 <div style={{ display: 'flex', gap: '4px' }}>
                                                     {levels.map((l, i) => (
-                                                        <button
-                                                            key={l.value}
-                                                            type="button"
-                                                            onClick={() => setFormData(prev => ({ ...prev, interes: l.value }))}
-                                                            style={{
-                                                                flex: 1, padding: '6px 4px', fontSize: '0.78rem', fontWeight: 600,
-                                                                borderRadius: '8px', cursor: 'pointer', border: '1px solid',
-                                                                background: i <= activeIdx ? `${activeColor}18` : 'var(--bg)',
-                                                                color: i <= activeIdx ? activeColor : 'var(--text-muted)',
-                                                                borderColor: i <= activeIdx ? `${activeColor}60` : 'var(--border)',
-                                                                transition: 'all 0.2s ease',
-                                                            }}
-                                                        >
+                                                        <button key={l.value} type="button" onClick={() => setFormData(prev => ({ ...prev, interes: l.value }))}
+                                                            style={{ flex: 1, padding: '6px 4px', fontSize: '0.78rem', fontWeight: 600, borderRadius: '8px', cursor: 'pointer', border: '1px solid', background: i <= activeIdx ? `${activeColor}18` : 'var(--bg)', color: i <= activeIdx ? activeColor : 'var(--text-muted)', borderColor: i <= activeIdx ? `${activeColor}60` : 'var(--border)', transition: 'all 0.2s ease' }}>
                                                             {l.label}
                                                         </button>
                                                     ))}
@@ -297,27 +355,17 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         );
                                     })()}
                                 </div>
+
+                                {/* Venta digital */}
                                 <div className="field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     <label>¿Venta Digital?</label>
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', cursor: 'pointer', fontWeight: 500 }}>
-                                        <input
-                                            type="checkbox"
-                                            name="venta_digital"
-                                            checked={formData.venta_digital === 'true'}
-                                            onChange={handleChange}
-                                            style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }}
-                                        />
+                                        <input type="checkbox" name="venta_digital" checked={formData.venta_digital === 'true'} onChange={handleChange}
+                                            style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }} />
                                         {formData.venta_digital === 'true' ? 'Sí, tiene venta digital' : 'No tiene venta digital'}
                                     </label>
                                     {formData.venta_digital === 'true' && (
-                                        <input
-                                            type="text"
-                                            name="venta_digital_cual"
-                                            placeholder="¿Cuál? Ej: Pedidos Ya, Rappi..."
-                                            value={formData.venta_digital_cual || ''}
-                                            onChange={handleChange}
-                                            style={{ marginTop: '4px' }}
-                                        />
+                                        <input type="text" name="venta_digital_cual" placeholder="¿Cuál? Ej: Pedidos Ya, Rappi..." value={formData.venta_digital_cual || ''} onChange={handleChange} style={{ marginTop: '4px' }} />
                                     )}
                                 </div>
                             </div>
@@ -337,6 +385,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                         </div>
                     )}
 
+                    {/* ── STEP 3 ── */}
                     {step === 3 && (
                         <div>
                             <h3 style={{ marginBottom: '16px' }}>3. Agenda y Notas</h3>
@@ -346,11 +395,9 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                         <input type="date" name="fecha_proximo_contacto" value={formData.fecha_proximo_contacto || ''} onChange={handleChange} style={{ flex: 1 }} />
                                         {formData.fecha_proximo_contacto && (
-                                            <button
-                                                type="button"
+                                            <button type="button"
                                                 onClick={() => setFormData(prev => ({ ...prev, fecha_proximo_contacto: '' }))}
                                                 style={{ padding: '8px 14px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                                                title="Quitar fecha"
                                             >✕ Sin fecha</button>
                                         )}
                                     </div>
