@@ -38,6 +38,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         estilo_contacto: 'Sin definir', interes: 'Bajo',
         venta_digital: 'false', venta_digital_cual: '',
         situacion: 'sin comunicacion nueva', notas: '',
+        tipo_contacto: 'Visita Presencial',
         fecha_proximo_contacto: '', hora_proximo_contacto: '',
         lat: null, lng: null,
         ...overrides,
@@ -131,6 +132,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             venta_digital: formData.venta_digital === 'true',
             venta_digital_cual: formData.venta_digital_cual || null,
             situacion: formData.situacion || null,
+            tipo_contacto: formData.tipo_contacto || null,
             notas: formData.notas || null,
             fecha_proximo_contacto: formData.fecha_proximo_contacto?.trim() || null,
             hora_proximo_contacto: formData.hora_proximo_contacto?.trim() || null,
@@ -262,6 +264,13 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="Dueño">Dueño</option>
                                         <option value="Empleado">Empleado</option>
                                         <option value="Cerrado">Cerrado</option>
+                                    </select>
+                                </div>
+                                <div className="field">
+                                    <label>Tipo de Contacto</label>
+                                    <select name="tipo_contacto" value={formData.tipo_contacto || 'Visita Presencial'} onChange={handleChange}>
+                                        <option value="Visita Presencial">Visita Presencial</option>
+                                        <option value="Llamada">Llamada</option>
                                     </select>
                                 </div>
                                 <div className="field" style={{ gridColumn: '1 / -1' }}>

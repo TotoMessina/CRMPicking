@@ -28,6 +28,7 @@ export default function Clientes() {
     const [fRubro, setFRubro] = useState('');
     const [fInteres, setFInteres] = useState('');
     const [fEstilo, setFEstilo] = useState('');
+    const [fTipoContacto, setFTipoContacto] = useState('Todos');
     const [fProximos7, setFProximos7] = useState(false);
 
     const [sortBy, setSortBy] = useState('recent'); // 'recent', 'oldest', 'az', 'za', 'activity_desc', 'activity_asc'
@@ -88,6 +89,7 @@ export default function Clientes() {
 
         if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
         if (fSituacion !== 'Todos') request = request.eq('situacion', fSituacion);
+        if (fTipoContacto !== 'Todos') request = request.eq('tipo_contacto', fTipoContacto);
         if (fNombre) request = request.or(`nombre.ilike.%${fNombre}%,nombre_local.ilike.%${fNombre}%`);
         if (fTelefono) request = request.ilike('telefono', `%${fTelefono}%`);
         if (fDireccion) request = request.ilike('direccion', `%${fDireccion}%`);
@@ -134,7 +136,7 @@ export default function Clientes() {
 
     useEffect(() => {
         fetchClientes();
-    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fResponsable, fRubro, fInteres, fEstilo, fProximos7, isAgendaHoy, sortBy]);
+    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fTipoContacto, fResponsable, fRubro, fInteres, fEstilo, fProximos7, isAgendaHoy, sortBy]);
 
     const handleCreate = () => {
         setEditingId(null);
@@ -209,10 +211,10 @@ export default function Clientes() {
     const handleDescargarModelo = () => {
         try {
             const wb = window.XLSX.utils.book_new();
-            const headers = ["nombre", "telefono", "direccion", "rubro", "estado", "responsable", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"];
+            const headers = ["nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"];
             const data = [
                 headers,
-                ["Ejemplo SRL", "11-2345-6789", "Av. Rivadavia 1234", "Almacén", "1 - Cliente relevado", "Toto", "2025-01-15", "09:00", "Ejemplo de nota"]
+                ["Ejemplo SRL", "11-2345-6789", "Av. Rivadavia 1234", "Almacén", "1 - Cliente relevado", "Toto", "Visita Presencial", "2025-01-15", "09:00", "Ejemplo de nota"]
             ];
             const ws = window.XLSX.utils.aoa_to_sheet(data);
             window.XLSX.utils.book_append_sheet(wb, ws, "Modelo");
@@ -239,7 +241,7 @@ export default function Clientes() {
         try {
             const { data: allClientes, error: errCli } = await supabase
                 .from("clientes")
-                .select("id, nombre, telefono, direccion, rubro, estado, responsable, fecha_proximo_contacto, hora_proximo_contacto, notas")
+                .select("id, nombre, telefono, direccion, rubro, estado, responsable, tipo_contacto, fecha_proximo_contacto, hora_proximo_contacto, notas")
                 .eq("activo", true);
 
             if (errCli) throw errCli;
@@ -255,11 +257,11 @@ export default function Clientes() {
             const wb = window.XLSX.utils.book_new();
 
             // Sheet 1: Clientes
-            const dataClientes = [["id", "nombre", "telefono", "direccion", "rubro", "estado", "responsable", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"]];
+            const dataClientes = [["id", "nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"]];
             allClientes.forEach(c => {
                 dataClientes.push([
                     c.id, c.nombre || "", c.telefono || "", c.direccion || "", c.rubro || "",
-                    c.estado || "", c.responsable || "", c.fecha_proximo_contacto || "",
+                    c.estado || "", c.responsable || "", c.tipo_contacto || "", c.fecha_proximo_contacto || "",
                     c.hora_proximo_contacto || "", c.notas || ""
                 ]);
             });
@@ -396,6 +398,15 @@ export default function Clientes() {
                     </div>
 
                     <div style={{ position: 'relative' }}>
+                        <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                        <select className="input" value={fTipoContacto} onChange={e => { setFTipoContacto(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
+                            <option value="Todos">Todos los tipos de contacto</option>
+                            <option value="Visita Presencial">Visita Presencial</option>
+                            <option value="Llamada">Llamada</option>
+                        </select>
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
                         <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                         <select className="input" value={fResponsable} onChange={e => { setFResponsable(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
                             <option value="">Cualquier responsable</option>
@@ -517,6 +528,12 @@ export default function Clientes() {
                                         </h3>
 
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                                            {c.tipo_contacto && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text)', fontWeight: 600 }}>
+                                                    {c.tipo_contacto === 'Llamada' ? <Phone size={15} color="var(--accent)" /> : <MapPin size={15} color="var(--accent)" />}
+                                                    {c.tipo_contacto}
+                                                </div>
+                                            )}
                                             {hasAddress && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={15} /> {c.direccion}</div>}
                                             {hasPhone && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={15} /> {c.telefono}</div>}
                                             {hasEmail && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={15} /> {c.mail}</div>}
