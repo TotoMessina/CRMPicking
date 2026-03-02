@@ -22,9 +22,9 @@ export default function Chat() {
             setLoadingUsers(true);
             const { data, error } = await supabase
                 .from('usuarios')
-                .select('email, nombre, rol')
+                .select('email, nombre, role')
                 .neq('email', user.email)
-                .order('nombre', { ascending: true });
+                .order('nombre', { ascending: true, nullsFirst: false });
 
             if (error) {
                 console.error('Error fetching users:', error);
