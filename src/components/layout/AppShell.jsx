@@ -5,7 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { CommandPalette } from '../ui/CommandPalette';
 import {
     LogOut, Moon, Sun, Bell, MapPin, Users, Activity,
-    Map, UserPlus, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star
+    Map, UserSupport, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle
 } from 'lucide-react';
 
 export function AppShell() {
@@ -30,10 +30,11 @@ export function AppShell() {
     const isActivador = role?.includes('activador');
 
     // Routes visible to activadores
-    const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion']);
+    const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat']);
 
     const allNavItems = [
         { to: '/', icon: MapPin, label: 'Inicio' },
+        { to: '/chat', icon: MessageCircle, label: 'Chat Interno' },
         { to: '/clientes', icon: Activity, label: 'Clientes' },
         { to: '/pipeline', icon: Activity, label: 'Pipeline' },
         { to: '/consumidores', icon: Users, label: 'Consumidores' },
@@ -48,7 +49,7 @@ export function AppShell() {
         { to: '/tickets', icon: Ticket, label: 'Tickets' },
         { to: '/calificaciones', icon: Star, label: 'Calificaciones' },
         { spacer: true },
-        { to: '/usuarios', icon: UserPlus, label: 'Usuarios' },
+        { to: '/usuarios', icon: Users, label: 'Usuarios' },
         { to: '/configuracion', icon: Settings, label: 'Configuración' },
     ];
 

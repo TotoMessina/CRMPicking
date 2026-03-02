@@ -19,6 +19,7 @@ import Tickets from './pages/Tickets';
 import Calificaciones from './pages/Calificaciones';
 import Usuarios from './pages/Usuarios';
 import Configuracion from './pages/Configuracion';
+import Chat from './pages/Chat';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
 
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/consumidores" element={<Consumidores />} />
