@@ -79,7 +79,6 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             telefono: formData.telefono || null,
             mail: formData.mail || null,
             cuit: formData.cuit || null,
-            horarios_atencion: formData.horarios_atencion || null,
             rubro: formData.rubro || null,
             estado: formData.estado || null,
             responsable: formData.responsable || null,
@@ -89,11 +88,13 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             venta_digital_cual: formData.venta_digital_cual || null,
             situacion: formData.situacion || null,
             notas: formData.notas || null,
-            fecha_proximo_contacto: formData.fecha_proximo_contacto || null,
-            hora_proximo_contacto: formData.hora_proximo_contacto || null,
-            lat: formData.lat != null ? parseFloat(formData.lat) : null,
-            lng: formData.lng != null ? parseFloat(formData.lng) : null,
+            // Use undefined for date/time fields so Supabase omits them when empty
+            fecha_proximo_contacto: formData.fecha_proximo_contacto?.trim() || undefined,
+            hora_proximo_contacto: formData.hora_proximo_contacto?.trim() || undefined,
+            lat: formData.lat != null && formData.lat !== '' ? parseFloat(formData.lat) : null,
+            lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng) : null,
         };
+
 
         // Override with map coordinates when creating from the map
         if (initialLocation && !clienteId) {
