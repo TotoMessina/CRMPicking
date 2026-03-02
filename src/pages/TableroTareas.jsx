@@ -128,16 +128,28 @@ export default function TableroTareas() {
 
         const payload = { ...form };
 
+        // Fix for Postgres type validation (empty strings to null)
+        if (!payload.fecha_vencimiento) payload.fecha_vencimiento = null;
+        if (!payload.asignado_a) payload.asignado_a = null;
+
         if (editingTask) {
             const { error } = await supabase.from('tareas_tablero').update(payload).eq('id', editingTask.id);
-            if (error) toast.error('Error actualizando la tarea');
-            else toast.success('Tarea guardada');
+            if (error) {
+                console.error('Error actualizando la tarea:', error);
+                toast.error('Error actualizando la tarea');
+            } else {
+                toast.success('Tarea guardada');
+            }
         } else {
             // New task goes to the end of Pendiente by default
-            payload.orden = tasks['Pendiente'].length;
+            payload.orden = tasks['Pendiente'] ? tasks['Pendiente'].length : 0;
             const { error } = await supabase.from('tareas_tablero').insert([payload]);
-            if (error) toast.error('Error creando tarea');
-            else toast.success('Tarea creada');
+            if (error) {
+                console.error('Error creando tarea:', error);
+                toast.error('Error creando tarea');
+            } else {
+                toast.success('Tarea creada');
+            }
         }
 
         setSaving(false);
@@ -189,16 +201,16 @@ export default function TableroTareas() {
     };
 
     return (
-        <div style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', maxWidth: '1600px', margin: '0 auto', overflow: 'hidden' }}>
-            <header style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <CheckSquare size={28} color="var(--accent)" />
+        <div style={{ padding: 'max(16px, 2vw)', height: '100%', display: 'flex', flexDirection: 'column', maxWidth: '1600px', margin: '0 auto', overflow: 'hidden' }}>
+            <header style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ flex: '1 1 min-content' }}>
+                    <h1 style={{ margin: 0, fontSize: 'clamp(1.4rem, 4vw, 1.8rem)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <CheckSquare size={24} color="var(--accent)" />
                         Tablero de Tareas
                     </h1>
-                    <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '1rem' }}>Gestión ágil de actividades del equipo</p>
+                    <p className="muted" style={{ margin: '4px 0 0 0', fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>Gestión ágil de actividades del equipo</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <Button variant="secondary" onClick={fetchTasks} style={{ borderRadius: '12px' }}>
                         🔄 Refrescar
                     </Button>
@@ -219,10 +231,12 @@ export default function TableroTareas() {
                         gap: '24px',
                         flex: 1,
                         overflowX: 'auto',
+                        overflowY: 'hidden',
                         paddingBottom: '24px',
                         // Optional scrollbar styling for a cleaner look
                         scrollbarWidth: 'thin',
-                        scrollbarColor: 'var(--border) transparent'
+                        scrollbarColor: 'var(--border) transparent',
+                        // Mobile response: Ensure columns have space, but we still scroll horizontally like a true Kanban unless forced tightly
                     }}>
                         {COLUMNS.map(col => (
                             <Droppable droppableId={col.id} key={col.id}>
@@ -233,8 +247,8 @@ export default function TableroTareas() {
                                         style={{
                                             background: snapshot.isDraggingOver ? 'var(--bg-active)' : 'var(--bg-glass)',
                                             borderRadius: '20px',
-                                            padding: '20px',
-                                            minWidth: '340px', // Fixed min-width for columns
+                                            padding: '16px',
+                                            minWidth: 'min(90vw, 320px)', // Fixed min-width for columns, responsive to very small phones
                                             maxWidth: '380px', // Max width to prevent them from stretching too much on extra wide screens
                                             flex: 1,
                                             border: '1px solid var(--border)',
