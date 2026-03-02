@@ -20,18 +20,50 @@ export default function Chat() {
         const fetchUsers = async () => {
             if (!user) return;
             setLoadingUsers(true);
-            const { data, error } = await supabase
+
+            // Traer todos los usuarios menos yo
+            const { data: usersData, error: usersError } = await supabase
                 .from('usuarios')
                 .select('email, nombre, role')
-                .neq('email', user.email)
-                .order('nombre', { ascending: true, nullsFirst: false });
+                .neq('email', user.email);
 
-            if (error) {
-                console.error('Error fetching users:', error);
+            if (usersError) {
+                console.error('Error fetching users:', usersError);
                 toast.error('Error al cargar contactos');
-            } else {
-                setUsuarios(data || []);
+                setLoadingUsers(false);
+                return;
             }
+
+            // Traer mensajes no leídos para mí, agrupados por remitente
+            const { data: unreadData, error: unreadError } = await supabase
+                .from('mensajes_chat')
+                .select('de_usuario, leido')
+                .eq('para_usuario', user.email)
+                .eq('leido', false);
+
+            let unreadCounts = {};
+            if (!unreadError && unreadData) {
+                unreadData.forEach(msg => {
+                    unreadCounts[msg.de_usuario] = (unreadCounts[msg.de_usuario] || 0) + 1;
+                });
+            }
+
+            // Combinar datos y ordenar
+            let combinedUsers = (usersData || []).map(u => ({
+                ...u,
+                unreadCount: unreadCounts[u.email] || 0
+            }));
+
+            // Ordenar: primero los que tienen sin leer, luego alfabéticamente
+            combinedUsers.sort((a, b) => {
+                if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+                if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+                const nameA = (a.nombre || a.email).toLowerCase();
+                const nameB = (b.nombre || b.email).toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+
+            setUsuarios(combinedUsers);
             setLoadingUsers(false);
         };
         fetchUsers();
@@ -49,21 +81,48 @@ export default function Chat() {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'mensajes_chat',
-                    // Escuchar mensajes donde soy el remitente (para multi-tab) o el destinatario
                     filter: `para_usuario=eq.${user.email}`
                 },
                 (payload) => {
                     const msg = payload.new;
-                    // Si el mensaje entrante es del usuario seleccionado, o soy yo enviando de otra pestaña, lo agrego a la vista actual
+
+                    // 1. Agregar el mensaje a la vista actual si es del chat que tengo abierto (o si me lo mandé yo mismo desde otro dispositivo)
                     setMensajes(prev => {
-                        // Evitar duplicados (por si mi propio INSERT ya lo metió en el array localmente)
                         if (prev.find(m => m.id === msg.id)) return prev;
                         return [...prev, msg];
                     });
 
-                    // Si me mandaron un mensaje pero no tengo a esa persona seleccionada, podría mostrar un toast
-                    if (msg.de_usuario !== user.email && selectedUser?.email !== msg.de_usuario) {
-                        toast(`Nuevo mensaje de ${msg.de_usuario}`, { icon: '💬' });
+                    // 2. Actualizar conteo de no leídos si el mensaje viene de otro usuario que no tengo seleccionado
+                    if (msg.de_usuario !== user.email) {
+                        setUsuarios(prev => {
+                            const updated = prev.map(u => {
+                                if (u.email === msg.de_usuario) {
+                                    // Si no lo estoy viendo ahora mismo, sumo 1 al badge
+                                    if (selectedUser?.email !== u.email) {
+                                        return { ...u, unreadCount: (u.unreadCount || 0) + 1 };
+                                    }
+                                }
+                                return u;
+                            });
+
+                            // Reordenar para que los que tienen mensajes sin leer suban
+                            updated.sort((a, b) => {
+                                if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+                                if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+                                const nameA = (a.nombre || a.email).toLowerCase();
+                                const nameB = (b.nombre || b.email).toLowerCase();
+                                return nameA.localeCompare(nameB);
+                            });
+
+                            return updated;
+                        });
+
+                        if (selectedUser?.email !== msg.de_usuario) {
+                            toast(`Nuevo mensaje de ${msg.de_usuario}`, { icon: '💬' });
+                        } else {
+                            // Si lo tengo seleccionado, lo marco como leído automáticamente en la DB
+                            marcarComoLeidos(msg.de_usuario);
+                        }
                     }
                 }
             )
@@ -91,7 +150,7 @@ export default function Chat() {
                 toast.error('Error al cargar chat');
             } else {
                 setMensajes(data || []);
-                // Marcar como leídos los que me mandó esta persona
+                // Marcar como leídos en BD y actualizar badge local
                 marcarComoLeidos(selectedUser.email);
             }
             setLoadingMessages(false);
@@ -112,6 +171,15 @@ export default function Chat() {
 
     const marcarComoLeidos = async (remitenteEmail) => {
         if (!user) return;
+
+        // Reset local badge
+        setUsuarios(prev => prev.map(u => {
+            if (u.email === remitenteEmail) {
+                return { ...u, unreadCount: 0 };
+            }
+            return u;
+        }));
+
         await supabase
             .from('mensajes_chat')
             .update({ leido: true })
@@ -192,15 +260,27 @@ export default function Chat() {
                                         transition: 'all 0.2s', borderLeft: selectedUser?.email === u.email ? '3px solid var(--accent)' : '3px solid transparent'
                                     }}
                                 >
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                        <UserCircle size={24} />
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                                            <UserCircle size={24} />
+                                        </div>
+                                        {u.unreadCount > 0 && (
+                                            <div style={{
+                                                position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff',
+                                                fontSize: '0.7rem', fontWeight: 'bold', width: '20px', height: '20px',
+                                                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                border: '2px solid var(--bg-elevated)', boxShadow: 'var(--shadow-sm)'
+                                            }}>
+                                                {u.unreadCount > 99 ? '99+' : u.unreadCount}
+                                            </div>
+                                        )}
                                     </div>
                                     <div style={{ flex: 1, overflow: 'hidden' }}>
-                                        <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                        <div style={{ fontWeight: u.unreadCount > 0 ? 700 : 600, color: 'var(--text)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                                             {u.nombre || u.email.split('@')[0]}
                                         </div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                            {u.rol}
+                                        <div style={{ fontSize: '0.8rem', color: u.unreadCount > 0 ? 'var(--accent)' : 'var(--text-muted)', fontWeight: u.unreadCount > 0 ? 600 : 'normal' }}>
+                                            {u.unreadCount > 0 ? 'Nuevos mensajes' : u.role}
                                         </div>
                                     </div>
                                 </button>
