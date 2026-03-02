@@ -6,29 +6,31 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null);
+    const [userName, setUserName] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchRole = async (authUser) => {
-        if (!authUser) { setRole(null); return; }
+    const fetchRoleAndName = async (authUser) => {
+        if (!authUser) { setRole(null); setUserName(null); return; }
         const { data } = await supabase
             .from('usuarios')
-            .select('role')
+            .select('role, nombre')
             .eq('email', authUser.email)
             .maybeSingle();
         setRole(data?.role?.toLowerCase() || null);
+        setUserName(data?.nombre || null);
     };
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             const u = session?.user ?? null;
             setUser(u);
-            fetchRole(u).finally(() => setLoading(false));
+            fetchRoleAndName(u).finally(() => setLoading(false));
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             const u = session?.user ?? null;
             setUser(u);
-            fetchRole(u);
+            fetchRoleAndName(u);
         });
 
         return () => subscription.unsubscribe();
@@ -45,7 +47,7 @@ export function AuthProvider({ children }) {
         if (error) throw error;
     };
 
-    const value = { signIn, signOut, user, role, loading };
+    const value = { signIn, signOut, user, role, userName, loading };
 
     return (
         <AuthContext.Provider value={value}>

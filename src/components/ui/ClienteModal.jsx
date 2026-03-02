@@ -26,7 +26,7 @@ const STEP_FIELDS = {
 const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
 
 export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSaved }) {
-    const { user } = useAuth();
+    const { user, userName } = useAuth();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -201,8 +201,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 if (actErr) console.warn('No se pudo guardar historial de edición:', actErr.message);
             }
         } else {
-            // Include creator email for analytics when creating a new client
-            payload.creado_por = user?.email || null;
+            // Include creator name for analytics when creating a new client
+            payload.creado_por = userName || user?.email || null;
             const { error } = await supabase.from('clientes').insert([payload]);
             err = error;
         }

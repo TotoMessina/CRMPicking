@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export function AppShell() {
-    const { user, role, signOut } = useAuth();
+    const { user, role, userName, signOut } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -93,7 +93,7 @@ export function AppShell() {
                 <div className="sidebar-user" style={{ marginTop: 0, background: 'transparent', border: 'none', padding: '0 16px 16px 16px' }}>
                     <div className="user-info">
                         <span className="muted">Usuario:</span>
-                        <strong>{user?.email || 'Cargando...'}</strong>
+                        <strong>{userName || user?.email || 'Cargando...'}</strong>
                     </div>
                 </div>
 
