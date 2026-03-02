@@ -134,7 +134,7 @@ export default function Clientes() {
 
     useEffect(() => {
         fetchClientes();
-    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fResponsable, fRubro, fInteres, fEstilo, fProximos7, isAgendaHoy]);
+    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fResponsable, fRubro, fInteres, fEstilo, fProximos7, isAgendaHoy, sortBy]);
 
     const handleCreate = () => {
         setEditingId(null);
