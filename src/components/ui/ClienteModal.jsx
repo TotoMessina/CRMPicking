@@ -104,7 +104,22 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Inline validation
+        // If not on the last step, intercept the submit (ex. pressing Enter in a text field)
+        // and just move to the next step if validation passes.
+        if (step < 3) {
+            const errs = validate();
+            if (Object.keys(errs).length > 0) {
+                setErrors(errs);
+                for (const [s, fields] of Object.entries(STEP_FIELDS)) {
+                    if (fields.some(f => errs[f])) { setStep(Number(s)); break; }
+                }
+            } else {
+                setStep(step + 1);
+            }
+            return;
+        }
+
+        // Inline validation for the final step
         const errs = validate();
         if (Object.keys(errs).length > 0) {
             setErrors(errs);
