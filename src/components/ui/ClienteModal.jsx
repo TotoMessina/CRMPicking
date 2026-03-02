@@ -201,6 +201,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 if (actErr) console.warn('No se pudo guardar historial de edición:', actErr.message);
             }
         } else {
+            // Include creator email for analytics when creating a new client
+            payload.creado_por = user?.email || null;
             const { error } = await supabase.from('clientes').insert([payload]);
             err = error;
         }

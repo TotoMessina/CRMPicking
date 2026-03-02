@@ -5,7 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { CommandPalette } from '../ui/CommandPalette';
 import {
     LogOut, Moon, Sun, Bell, MapPin, Users, Activity,
-    Map, UserSupport, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard
+    Map, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard
 } from 'lucide-react';
 
 export function AppShell() {

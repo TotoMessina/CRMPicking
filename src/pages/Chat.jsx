@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Send, UserCircle, Check, CheckCheck, MessageCircle } from 'lucide-react';
+import { Send, UserCircle, Check, CheckCheck, MessageCircle, ClipboardList, X, Calendar, ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 export default function Chat() {
@@ -12,6 +13,11 @@ export default function Chat() {
     const [newMessage, setNewMessage] = useState('');
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingMessages, setLoadingMessages] = useState(false);
+
+    // Modal de Tarea Rápida
+    const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+    const [taskForm, setTaskForm] = useState({ titulo: '', descripcion: '', fecha_vencimiento: '', asignado_a: [] });
+    const [sendingTask, setSendingTask] = useState(false);
 
     const messagesEndRef = useRef(null);
 
@@ -272,6 +278,88 @@ export default function Chat() {
         }
     };
 
+    // Al abrir el modal, pre-seleccionar a la persona con la que hablo
+    const openTaskModal = () => {
+        setTaskForm({
+            titulo: '',
+            descripcion: '',
+            fecha_vencimiento: '',
+            asignado_a: selectedUser ? [selectedUser.email] : []
+        });
+        setIsTaskModalOpen(true);
+    };
+
+    const handleSendTask = async (e) => {
+        e.preventDefault();
+        if (!taskForm.titulo.trim() || !user || taskForm.asignado_a.length === 0) return;
+        setSendingTask(true);
+
+        const textMessage = `[TAREA_ASIGNADA]|${taskForm.titulo.trim()}|${taskForm.descripcion.trim()}|${taskForm.fecha_vencimiento || ''}`;
+        const asignadosString = taskForm.asignado_a.join(',');
+
+        try {
+            // 1. Crear Tarea Real
+            // Obtenemos cuántas hay en Pendiente para darle el orden al final
+            const { count } = await supabase.from('tareas_tablero')
+                .select('*', { count: 'exact', head: true })
+                .eq('estado', 'Pendiente');
+
+            const { error: taskError } = await supabase.from('tareas_tablero').insert([{
+                titulo: taskForm.titulo.trim(),
+                descripcion: taskForm.descripcion.trim() || null,
+                estado: 'Pendiente',
+                asignado_a: asignadosString,
+                fecha_vencimiento: taskForm.fecha_vencimiento || null,
+                orden: count || 0,
+                checklist: []
+            }]);
+
+            if (taskError) throw taskError;
+
+            // 2. Crear un mensaje especial para cada integrante asignado
+            const messagesToInsert = [];
+            const timestamp = new Date().toISOString();
+
+            taskForm.asignado_a.forEach(asignadoEmail => {
+                // Agregar localmente solo si le enviamos a la persona que estamos viendo
+                if (selectedUser && asignadoEmail === selectedUser.email) {
+                    const tempMsg = {
+                        id: 'temp-' + Date.now() + Math.random(),
+                        created_at: timestamp,
+                        de_usuario: user.email,
+                        para_usuario: asignadoEmail,
+                        mensaje: textMessage,
+                        leido: false,
+                        isOptimistic: true
+                    };
+                    setMensajes(prev => [...prev, tempMsg]);
+                }
+
+                messagesToInsert.push({
+                    de_usuario: user.email,
+                    para_usuario: asignadoEmail,
+                    mensaje: textMessage
+                });
+            });
+
+            // Insertar todo el batch de mensajes juntos en Supabase
+            const { error: msgError } = await supabase
+                .from('mensajes_chat')
+                .insert(messagesToInsert);
+
+            if (msgError) throw msgError;
+
+            toast.success(`Tarea asignada a ${taskForm.asignado_a.length} persona(s)`);
+            setIsTaskModalOpen(false);
+            setTaskForm({ titulo: '', descripcion: '', fecha_vencimiento: '', asignado_a: [] });
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al enviar la tarea');
+        } finally {
+            setSendingTask(false);
+        }
+    };
+
     const formatTime = (isoString) => {
         if (!isoString) return '';
         const d = new Date(isoString);
@@ -368,33 +456,91 @@ export default function Chat() {
                                     const isMe = msg.de_usuario === user.email;
                                     const showTail = i === mensajes.length - 1 || mensajes[i + 1].de_usuario !== msg.de_usuario;
 
+                                    const isTaskMessage = msg.mensaje?.startsWith('[TAREA_ASIGNADA]|');
+                                    let taskTitle, taskDesc, taskDate;
+                                    if (isTaskMessage) {
+                                        const parts = msg.mensaje.split('|');
+                                        taskTitle = parts[1] || '';
+                                        taskDesc = parts[2] || '';
+                                        taskDate = parts[3] || '';
+                                    }
+
                                     return (
                                         <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '8px' : '2px' }}>
                                             <div style={{
                                                 maxWidth: '70%',
-                                                padding: '10px 14px',
+                                                padding: isTaskMessage ? '0' : '10px 14px',
                                                 borderRadius: '16px',
                                                 borderBottomRightRadius: isMe && showTail ? '4px' : '16px',
                                                 borderBottomLeftRadius: !isMe && showTail ? '4px' : '16px',
-                                                background: isMe ? 'var(--accent)' : 'var(--bg-elevated)',
-                                                color: isMe ? '#fff' : 'var(--text)',
-                                                border: isMe ? 'none' : '1px solid var(--border)',
-                                                boxShadow: 'var(--shadow-sm)',
+                                                background: isTaskMessage ? 'transparent' : (isMe ? 'var(--accent)' : 'var(--bg-elevated)'),
+                                                color: isMe && !isTaskMessage ? '#fff' : 'var(--text)',
+                                                border: (isMe && !isTaskMessage) || isTaskMessage ? 'none' : '1px solid var(--border)',
+                                                boxShadow: isTaskMessage ? 'none' : 'var(--shadow-sm)',
                                                 position: 'relative',
                                                 opacity: msg.isOptimistic ? 0.7 : 1
                                             }}>
-                                                <div style={{ fontSize: '0.95rem', lineHeight: '1.4', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                                                    {msg.mensaje}
-                                                </div>
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end',
-                                                    marginTop: '4px', fontSize: '0.7rem', color: isMe ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'
-                                                }}>
-                                                    {formatTime(msg.created_at)}
-                                                    {isMe && !msg.isOptimistic && (
-                                                        msg.leido ? <CheckCheck size={14} color="#60a5fa" /> : <Check size={14} />
-                                                    )}
-                                                </div>
+                                                {isTaskMessage ? (
+                                                    <div style={{
+                                                        background: 'var(--bg-elevated)', border: `1px solid ${isMe ? 'var(--accent)' : 'var(--border)'}`,
+                                                        borderRadius: '16px', padding: '16px', width: '280px', display: 'flex', flexDirection: 'column', gap: '10px',
+                                                        boxShadow: 'var(--shadow-md)'
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isMe ? 'var(--accent)' : 'var(--text-muted)' }}>
+                                                            <ClipboardList size={18} />
+                                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                {isMe ? 'Tarea Enviada' : 'Nueva Tarea Asignada'}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text)' }}>
+                                                            {taskTitle}
+                                                        </div>
+                                                        {taskDesc && (
+                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                                {taskDesc}
+                                                            </div>
+                                                        )}
+                                                        {taskDate && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--bg)', padding: '6px 10px', borderRadius: '8px', width: 'fit-content' }}>
+                                                                <Calendar size={14} />
+                                                                Vence: {new Date(taskDate).toLocaleDateString()}
+                                                            </div>
+                                                        )}
+                                                        <Link to="/tablero" style={{
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                                            marginTop: '8px', padding: '8px', background: 'var(--bg)', borderRadius: '10px',
+                                                            color: 'var(--accent)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600, transition: 'all 0.2s'
+                                                        }} onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-alpha)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--bg)'}>
+                                                            Ver en Tablero <ArrowUpRight size={16} />
+                                                        </Link>
+
+                                                        {/* Status Bar for Task Message */}
+                                                        <div style={{
+                                                            display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end',
+                                                            marginTop: '4px', fontSize: '0.7rem', color: 'var(--text-muted)'
+                                                        }}>
+                                                            {formatTime(msg.created_at)}
+                                                            {isMe && !msg.isOptimistic && (
+                                                                msg.leido ? <CheckCheck size={14} color="#60a5fa" /> : <Check size={14} />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div style={{ fontSize: '0.95rem', lineHeight: '1.4', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                                                            {msg.mensaje}
+                                                        </div>
+                                                        <div style={{
+                                                            display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end',
+                                                            marginTop: '4px', fontSize: '0.7rem', color: isMe ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'
+                                                        }}>
+                                                            {formatTime(msg.created_at)}
+                                                            {isMe && !msg.isOptimistic && (
+                                                                msg.leido ? <CheckCheck size={14} color="#60a5fa" /> : <Check size={14} />
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     )
@@ -405,6 +551,20 @@ export default function Chat() {
 
                         {/* Input Area */}
                         <form onSubmit={handleSend} style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', display: 'flex', gap: '12px' }}>
+                            <button
+                                type="button"
+                                onClick={openTaskModal}
+                                style={{
+                                    width: '48px', height: '48px', borderRadius: '50%', background: 'var(--bg-elevated)', color: 'var(--text-muted)',
+                                    border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                    transition: 'all 0.2s', padding: 0
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                                title="Asignar una Tarea"
+                            >
+                                <ClipboardList size={20} />
+                            </button>
                             <input
                                 type="text"
                                 value={newMessage}
@@ -430,6 +590,86 @@ export default function Chat() {
                     </>
                 )}
             </div>
+
+            {/* Modal Nueva Tarea Rápida */}
+            {isTaskModalOpen && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)',
+                    zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+                }}>
+                    <div style={{
+                        background: 'var(--bg-elevated)', width: '100%', maxWidth: '500px', borderRadius: '20px',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '1px solid var(--border)',
+                        display: 'flex', flexDirection: 'column'
+                    }}>
+                        <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass)', borderRadius: '20px 20px 0 0' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <ClipboardList size={22} color="var(--accent)" />
+                                Asignar Tarea a {selectedUser?.nombre || selectedUser?.email.split('@')[0]}
+                            </h2>
+                            <button onClick={() => setIsTaskModalOpen(false)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <div style={{ padding: '24px' }}>
+                            <form id="quick-task-form" onSubmit={handleSendTask}>
+                                <div className="field" style={{ marginBottom: '16px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text)' }}>Título *</label>
+                                    <input required type="text" style={{ width: '100%', padding: '12px', fontSize: '1rem', borderRadius: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                                        value={taskForm.titulo} onChange={e => setTaskForm({ ...taskForm, titulo: e.target.value })} autoFocus />
+                                </div>
+                                <div className="field" style={{ marginBottom: '16px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text)' }}>Descripción</label>
+                                    <textarea rows="3" style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', resize: 'vertical' }}
+                                        value={taskForm.descripcion} onChange={e => setTaskForm({ ...taskForm, descripcion: e.target.value })} />
+                                </div>
+                                <div className="field">
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text)' }}>Vencimiento</label>
+                                    <input type="date" style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                                        value={taskForm.fecha_vencimiento} onChange={e => setTaskForm({ ...taskForm, fecha_vencimiento: e.target.value })} />
+                                </div>
+                                <div className="field">
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text)' }}>Involucrar a más personas?</label>
+                                    <div style={{
+                                        background: 'var(--bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)',
+                                        maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px'
+                                    }}>
+                                        {usuarios.map(u => (
+                                            <label key={u.email} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text)' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={taskForm.asignado_a.includes(u.email)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setTaskForm({ ...taskForm, asignado_a: [...taskForm.asignado_a, u.email] });
+                                                        } else {
+                                                            setTaskForm({ ...taskForm, asignado_a: taskForm.asignado_a.filter(email => email !== u.email) });
+                                                        }
+                                                    }}
+                                                    style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }}
+                                                />
+                                                {u.nombre || u.email.split('@')[0]}
+                                                {selectedUser?.email === u.email && " (Este chat)"}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', borderRadius: '0 0 20px 20px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                            <button type="button" onClick={() => setIsTaskModalOpen(false)} disabled={sendingTask} style={{ padding: '10px 20px', borderRadius: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', fontWeight: 600 }}>
+                                Cancelar
+                            </button>
+                            <button type="submit" form="quick-task-form" disabled={sendingTask || !taskForm.titulo.trim() || taskForm.asignado_a.length === 0} style={{ padding: '10px 20px', borderRadius: '12px', background: 'var(--accent)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 600, opacity: (!taskForm.titulo.trim() || sendingTask || taskForm.asignado_a.length === 0) ? 0.6 : 1 }}>
+                                {sendingTask ? 'Enviando...' : `Asignar a ${taskForm.asignado_a.length} persona(s)`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -28,7 +28,7 @@ export default function TableroTareas() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
     const [form, setForm] = useState({
-        titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: '', fecha_vencimiento: '', checklist: []
+        titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: [], fecha_vencimiento: '', checklist: []
     });
     const [newChecklistText, setNewChecklistText] = useState('');
     const [saving, setSaving] = useState(false);
@@ -110,13 +110,13 @@ export default function TableroTareas() {
                 titulo: task.titulo,
                 descripcion: task.descripcion || '',
                 estado: task.estado,
-                asignado_a: task.asignado_a || '',
+                asignado_a: task.asignado_a ? task.asignado_a.split(',') : [],
                 fecha_vencimiento: task.fecha_vencimiento || '',
                 checklist: task.checklist || [] // [{ text, completed }]
             });
         } else {
             setEditingTask(null);
-            setForm({ titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: '', fecha_vencimiento: '', checklist: [] });
+            setForm({ titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: [], fecha_vencimiento: '', checklist: [] });
         }
         setNewChecklistText('');
         setIsModalOpen(true);
@@ -130,7 +130,7 @@ export default function TableroTareas() {
 
         // Fix for Postgres type validation (empty strings to null)
         if (!payload.fecha_vencimiento) payload.fecha_vencimiento = null;
-        if (!payload.asignado_a) payload.asignado_a = null;
+        payload.asignado_a = payload.asignado_a && payload.asignado_a.length > 0 ? payload.asignado_a.join(',') : null;
 
         if (editingTask) {
             const { error } = await supabase.from('tareas_tablero').update(payload).eq('id', editingTask.id);
@@ -324,15 +324,18 @@ export default function TableroTareas() {
                                                             )}
 
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                                                                {task.asignado_a ? (
-                                                                    <div title={getUserName(task.asignado_a)} style={{
-                                                                        width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent)', color: '#fff',
-                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold',
-                                                                        boxShadow: 'var(--shadow-sm)', border: '2px solid var(--bg-elevated)'
-                                                                    }}>
-                                                                        {getUserName(task.asignado_a).substring(0, 2).toUpperCase()}
-                                                                    </div>
-                                                                ) : <div />}
+                                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                                    {task.asignado_a ? task.asignado_a.split(',').map((email, idx) => (
+                                                                        <div key={email} title={getUserName(email)} style={{
+                                                                            width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent)', color: '#fff',
+                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold',
+                                                                            boxShadow: 'var(--shadow-sm)', border: '2px solid var(--bg-elevated)',
+                                                                            marginLeft: idx > 0 ? '-8px' : '0px', zIndex: 10 - idx
+                                                                        }}>
+                                                                            {getUserName(email).substring(0, 2).toUpperCase()}
+                                                                        </div>
+                                                                    )) : <div />}
+                                                                </div>
 
                                                                 {task.fecha_vencimiento && (
                                                                     <div style={{
@@ -410,11 +413,29 @@ export default function TableroTareas() {
                                         </select>
                                     </div>
                                     <div className="field">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.9rem' }}><User size={16} /> Asignado a</label>
-                                        <select className="input" style={{ width: '100%', padding: '10px', borderRadius: '10px' }} value={form.asignado_a} onChange={e => setForm({ ...form, asignado_a: e.target.value })}>
-                                            <option value="">Sin asignar</option>
-                                            {usuarios.map(u => <option key={u.email} value={u.email}>{u.nombre || u.email}</option>)}
-                                        </select>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.9rem' }}><User size={16} /> Asignados ({form.asignado_a.length})</label>
+                                        <div style={{
+                                            background: 'var(--bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)',
+                                            maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px'
+                                        }}>
+                                            {usuarios.map(u => (
+                                                <label key={u.email} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text)' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={form.asignado_a.includes(u.email)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setForm({ ...form, asignado_a: [...form.asignado_a, u.email] });
+                                                            } else {
+                                                                setForm({ ...form, asignado_a: form.asignado_a.filter(email => email !== u.email) });
+                                                            }
+                                                        }}
+                                                        style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }}
+                                                    />
+                                                    {u.nombre || u.email.split('@')[0]}
+                                                </label>
+                                            ))}
+                                        </div>
                                     </div>
                                     <div className="field">
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.9rem' }}><Clock size={16} /> Vencimiento</label>
@@ -488,7 +509,7 @@ export default function TableroTareas() {
                         {/* Modal Footer */}
                         <div style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', borderRadius: '0 0 20px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                                {editingTask && (isAdmin || editingTask.asignado_a === user?.email || role.includes('activador')) && (
+                                {editingTask && (
                                     <button type="button" onClick={() => deleteTask(editingTask.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600, padding: '10px 16px', borderRadius: '12px', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}>
                                         <Trash2 size={18} /> Eliminar Tarea
                                     </button>
