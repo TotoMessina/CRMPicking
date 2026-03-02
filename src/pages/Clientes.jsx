@@ -62,8 +62,8 @@ export default function Clientes() {
             .from('clientes')
             .select('*', { count: 'exact' })
             .eq('activo', true)
+            .order('created_at', { ascending: false })
             .order('ultima_actividad', { ascending: false, nullsFirst: false })
-            .order('id', { ascending: true })
             .range((page - 1) * pageSize, page * pageSize - 1);
 
         if (isAgendaHoy) {
