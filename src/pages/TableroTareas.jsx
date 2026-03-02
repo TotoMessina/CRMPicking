@@ -189,28 +189,40 @@ export default function TableroTareas() {
     };
 
     return (
-        <div style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', maxWidth: '1600px', margin: '0 auto' }}>
+        <div style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', maxWidth: '1600px', margin: '0 auto', overflow: 'hidden' }}>
             <header style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 style={{ margin: 0 }}>Tablero de Tareas</h1>
-                    <p className="muted" style={{ margin: '4px 0 0 0' }}>Gestión de actividades del equipo</p>
+                    <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <CheckSquare size={28} color="var(--accent)" />
+                        Tablero de Tareas
+                    </h1>
+                    <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '1rem' }}>Gestión ágil de actividades del equipo</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                    <Button variant="secondary" onClick={fetchTasks}>🔄 Refrescar</Button>
-                    <Button onClick={() => openModal()}><Plus size={18} style={{ marginRight: '6px' }} /> Nueva Tarea</Button>
+                    <Button variant="secondary" onClick={fetchTasks} style={{ borderRadius: '12px' }}>
+                        🔄 Refrescar
+                    </Button>
+                    <Button onClick={() => openModal()} style={{ borderRadius: '12px', boxShadow: 'var(--shadow-md)' }}>
+                        <Plus size={18} style={{ marginRight: '6px' }} /> Nueva Tarea
+                    </Button>
                 </div>
             </header>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando tablero...</div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                    <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                </div>
             ) : (
                 <DragDropContext onDragEnd={onDragEnd}>
                     <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                        display: 'flex',
                         gap: '24px',
                         flex: 1,
-                        alignItems: 'start'
+                        overflowX: 'auto',
+                        paddingBottom: '24px',
+                        // Optional scrollbar styling for a cleaner look
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'var(--border) transparent'
                     }}>
                         {COLUMNS.map(col => (
                             <Droppable droppableId={col.id} key={col.id}>
@@ -219,81 +231,112 @@ export default function TableroTareas() {
                                         ref={provided.innerRef}
                                         {...provided.droppableProps}
                                         style={{
-                                            background: snapshot.isDraggingOver ? 'var(--bg-active)' : 'var(--bg-elevated)',
-                                            borderRadius: '16px',
-                                            padding: '16px',
-                                            minHeight: '600px',
+                                            background: snapshot.isDraggingOver ? 'var(--bg-active)' : 'var(--bg-glass)',
+                                            borderRadius: '20px',
+                                            padding: '20px',
+                                            minWidth: '340px', // Fixed min-width for columns
+                                            maxWidth: '380px', // Max width to prevent them from stretching too much on extra wide screens
+                                            flex: 1,
                                             border: '1px solid var(--border)',
-                                            display: 'flex', flexDirection: 'column', gap: '12px',
-                                            transition: 'background 0.2s'
+                                            display: 'flex', flexDirection: 'column', gap: '16px',
+                                            transition: 'all 0.3s ease',
+                                            boxShadow: snapshot.isDraggingOver ? 'inset 0 0 0 2px var(--accent)' : 'var(--shadow-sm)'
                                         }}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 8px' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: col.color, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '2px dashed var(--border)' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: col.color, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
+                                                {col.id === 'Pendiente' && <Clock size={18} />}
+                                                {col.id === 'En Proceso' && <Activity size={18} />}
+                                                {col.id === 'Finalizado' && <CheckSquare size={18} />}
                                                 {col.title}
-                                                <span style={{ fontSize: '0.8rem', background: 'var(--bg)', color: 'var(--text)', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
-                                                    {tasks[col.id].length}
-                                                </span>
                                             </h3>
+                                            <span style={{
+                                                fontSize: '0.85rem', background: 'var(--bg-elevated)', color: 'var(--text)',
+                                                padding: '4px 12px', borderRadius: '16px', fontWeight: 'bold', border: '1px solid var(--border)',
+                                                boxShadow: 'var(--shadow-sm)'
+                                            }}>
+                                                {tasks[col.id].length}
+                                            </span>
                                         </div>
 
-                                        {tasks[col.id].map((task, index) => (
-                                            <Draggable key={task.id} draggableId={task.id} index={index}>
-                                                {(provided, snapshot) => (
-                                                    <div
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                        onClick={() => openModal(task)}
-                                                        style={{
-                                                            ...provided.draggableProps.style,
-                                                            background: 'var(--bg)',
-                                                            padding: '16px',
-                                                            borderRadius: '12px',
-                                                            boxShadow: snapshot.isDragging ? '0 10px 20px rgba(0,0,0,0.15)' : 'var(--shadow-sm)',
-                                                            border: '1px solid var(--border)',
-                                                            cursor: 'pointer',
-                                                            transform: snapshot.isDragging ? provided.draggableProps.style.transform + ' scale(1.02) rotate(2deg)' : provided.draggableProps.style.transform,
-                                                            transition: snapshot.isDragging ? 'none' : 'all 0.2s'
-                                                        }}
-                                                    >
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                                            <strong style={{ fontSize: '1rem', lineHeight: '1.3' }}>{task.titulo}</strong>
-                                                        </div>
-
-                                                        {task.descripcion && (
-                                                            <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                                                {task.descripcion}
-                                                            </p>
-                                                        )}
-
-                                                        {task.checklist?.length > 0 && (
-                                                            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', outline: '1px solid var(--border)', padding: '4px 8px', borderRadius: '6px', width: 'fit-content' }}>
-                                                                <CheckSquare size={14} color={getProgress(task.checklist) === 100 ? '#10b981' : 'var(--text-muted)'} />
-                                                                <span style={{ color: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--text-muted)' }}>
-                                                                    {task.checklist.filter(i => i.completed).length} / {task.checklist.length} ({getProgress(task.checklist)}%)
-                                                                </span>
+                                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
+                                            {tasks[col.id].map((task, index) => (
+                                                <Draggable key={task.id} draggableId={task.id} index={index}>
+                                                    {(provided, snapshot) => (
+                                                        <div
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            {...provided.dragHandleProps}
+                                                            onClick={() => openModal(task)}
+                                                            className="bento-card" // Using existing styles for hover effects
+                                                            style={{
+                                                                ...provided.draggableProps.style,
+                                                                background: 'var(--bg-elevated)',
+                                                                padding: '16px',
+                                                                borderRadius: '16px',
+                                                                border: '1px solid var(--border)',
+                                                                borderLeft: `4px solid ${col.color}`, // Colored left border indicator
+                                                                cursor: 'grab',
+                                                                display: 'flex', flexDirection: 'column',
+                                                                gap: '12px',
+                                                                boxShadow: snapshot.isDragging ? '0 15px 30px rgba(0,0,0,0.2)' : 'var(--shadow-sm)',
+                                                                transform: snapshot.isDragging ? provided.draggableProps.style.transform + ' scale(1.05) rotate(3deg)' : provided.draggableProps.style.transform,
+                                                                transition: snapshot.isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                                                                zIndex: snapshot.isDragging ? 99 : 1
+                                                            }}
+                                                        >
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                                <strong style={{ fontSize: '1.05rem', lineHeight: '1.4', color: 'var(--text)' }}>{task.titulo}</strong>
                                                             </div>
-                                                        )}
 
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
-                                                            {task.asignado_a ? (
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', background: 'var(--accent-alpha)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '16px', fontWeight: 500 }}>
-                                                                    <User size={12} /> {getUserName(task.asignado_a)}
-                                                                </div>
-                                                            ) : <div />}
+                                                            {task.descripcion && (
+                                                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                                    {task.descripcion}
+                                                                </p>
+                                                            )}
 
-                                                            {task.fecha_vencimiento && (
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: new Date(task.fecha_vencimiento) < new Date() && task.estado !== 'Finalizado' ? '#ef4444' : 'var(--text-muted)' }}>
-                                                                    <Clock size={12} /> {new Date(task.fecha_vencimiento).toLocaleDateString()}
+                                                            {task.checklist?.length > 0 && (
+                                                                <div style={{
+                                                                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem',
+                                                                    background: getProgress(task.checklist) === 100 ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg)',
+                                                                    border: '1px solid', borderColor: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--border)',
+                                                                    padding: '6px 10px', borderRadius: '8px', width: 'fit-content', fontWeight: 500
+                                                                }}>
+                                                                    <CheckSquare size={14} color={getProgress(task.checklist) === 100 ? '#10b981' : 'var(--text-muted)'} />
+                                                                    <span style={{ color: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--text-muted)' }}>
+                                                                        {task.checklist.filter(i => i.completed).length}/{task.checklist.length}
+                                                                    </span>
                                                                 </div>
                                                             )}
+
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                                                                {task.asignado_a ? (
+                                                                    <div title={getUserName(task.asignado_a)} style={{
+                                                                        width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent)', color: '#fff',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold',
+                                                                        boxShadow: 'var(--shadow-sm)', border: '2px solid var(--bg-elevated)'
+                                                                    }}>
+                                                                        {getUserName(task.asignado_a).substring(0, 2).toUpperCase()}
+                                                                    </div>
+                                                                ) : <div />}
+
+                                                                {task.fecha_vencimiento && (
+                                                                    <div style={{
+                                                                        display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600,
+                                                                        color: new Date(task.fecha_vencimiento) < new Date() && task.estado !== 'Finalizado' ? '#ef4444' : 'var(--text-muted)',
+                                                                        background: new Date(task.fecha_vencimiento) < new Date() && task.estado !== 'Finalizado' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg)',
+                                                                        padding: '4px 8px', borderRadius: '12px'
+                                                                    }}>
+                                                                        <Clock size={12} /> {new Date(task.fecha_vencimiento).toLocaleDateString()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
+                                                    )}
+                                                </Draggable>
+                                            ))}
+                                            {provided.placeholder}
+                                        </div>
                                     </div>
                                 )}
                             </Droppable>
@@ -302,98 +345,146 @@ export default function TableroTareas() {
                 </DragDropContext>
             )}
 
-            {/* Modal Tarea */}
+            {/* Modal Tarea - FIXED POSITIONING */}
             {isModalOpen && (
-                <div className="modal active">
-                    <div className="modal-content" style={{ maxWidth: '600px', width: '100%', padding: 0 }}>
-                        <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass)' }}>
-                            <h2 style={{ margin: 0 }}>{editingTask ? 'Editar Tarea' : 'Nueva Tarea'}</h2>
-                            <button className="modal-close" onClick={() => setIsModalOpen(false)} style={{ position: 'static' }}><X size={24} /></button>
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(4px)',
+                    zIndex: 9999, // Ensure it's on top of everything
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px'
+                }}>
+                    <div style={{
+                        background: 'var(--bg-elevated)',
+                        width: '100%',
+                        maxWidth: '650px',
+                        borderRadius: '20px',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                        border: '1px solid var(--border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        maxHeight: '90vh' // Prevent modal from being taller than screen
+                    }}>
+                        <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass)', borderRadius: '20px 20px 0 0' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {editingTask ? <Edit2 size={24} color="var(--accent)" /> : <Plus size={24} color="var(--accent)" />}
+                                {editingTask ? 'Editar Tarea' : 'Crear Nueva Tarea'}
+                            </h2>
+                            <button onClick={() => setIsModalOpen(false)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--border)' }} onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'var(--bg)' }}>
+                                <X size={20} />
+                            </button>
                         </div>
 
-                        <form onSubmit={saveTask} style={{ padding: '24px' }}>
-                            <div className="field" style={{ marginBottom: '16px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Título de la tarea *</label>
-                                <input required type="text" className="input" style={{ width: '100%' }} value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Ej: Realizar inventario mensual" />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                                <div className="field" style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Estado</label>
-                                    <select className="input" style={{ width: '100%' }} value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })}>
-                                        <option value="Pendiente">Pendiente</option>
-                                        <option value="En Proceso">En Proceso</option>
-                                        <option value="Finalizado">Finalizado</option>
-                                    </select>
+                        <div style={{ overflowY: 'auto', padding: '24px' }}>
+                            <form id="task-form" onSubmit={saveTask}>
+                                <div className="field" style={{ marginBottom: '20px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text)' }}>Título de la tarea *</label>
+                                    <input required type="text" className="input" style={{ width: '100%', padding: '12px', fontSize: '1rem', borderRadius: '12px' }} value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Ej: Realizar inventario del mes" />
                                 </div>
-                                <div className="field" style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Asignado a</label>
-                                    <select className="input" style={{ width: '100%' }} value={form.asignado_a} onChange={e => setForm({ ...form, asignado_a: e.target.value })}>
-                                        <option value="">Sin asignar</option>
-                                        {usuarios.map(u => <option key={u.email} value={u.email}>{u.nombre || u.email}</option>)}
-                                    </select>
-                                </div>
-                                <div className="field" style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Vencimiento</label>
-                                    <input type="date" className="input" style={{ width: '100%' }} value={form.fecha_vencimiento} onChange={e => setForm({ ...form, fecha_vencimiento: e.target.value })} />
-                                </div>
-                            </div>
 
-                            <div className="field" style={{ marginBottom: '24px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Descripción / Notas</label>
-                                <textarea className="input" style={{ width: '100%', minHeight: '100px', resize: 'vertical' }} value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} placeholder="Detalles de la tarea..." />
-                            </div>
-
-                            <div className="field" style={{ marginBottom: '24px', background: 'var(--bg-body)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontWeight: 500 }}>
-                                    <CheckSquare size={16} /> Subtareas (Checklist)
-                                    {form.checklist.length > 0 && <span className="muted" style={{ fontWeight: 'normal' }}> - {getProgress(form.checklist)}%</span>}
-                                </label>
-
-                                {form.checklist.length > 0 && (
-                                    <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        {form.checklist.map(item => (
-                                            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                                                <input type="checkbox" checked={item.completed} onChange={() => toggleCheckitem(item.id)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
-                                                <span style={{ flex: 1, textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? 'var(--text-muted)' : 'var(--text)' }}>
-                                                    {item.text}
-                                                </span>
-                                                <button type="button" onClick={() => removeChecklist(item.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        ))}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                                    <div className="field">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.9rem' }}><Activity size={16} /> Estado</label>
+                                        <select className="input" style={{ width: '100%', padding: '10px', borderRadius: '10px' }} value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })}>
+                                            <option value="Pendiente">Pendiente</option>
+                                            <option value="En Proceso">En Proceso</option>
+                                            <option value="Finalizado">Finalizado</option>
+                                        </select>
                                     </div>
-                                )}
-
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input
-                                        type="text"
-                                        className="input"
-                                        style={{ flex: 1 }}
-                                        placeholder="Agregar un ítem a la lista..."
-                                        value={newChecklistText}
-                                        onChange={e => setNewChecklistText(e.target.value)}
-                                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChecklistItem(); } }}
-                                    />
-                                    <Button type="button" variant="secondary" onClick={addChecklistItem}>Agregar</Button>
+                                    <div className="field">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.9rem' }}><User size={16} /> Asignado a</label>
+                                        <select className="input" style={{ width: '100%', padding: '10px', borderRadius: '10px' }} value={form.asignado_a} onChange={e => setForm({ ...form, asignado_a: e.target.value })}>
+                                            <option value="">Sin asignar</option>
+                                            {usuarios.map(u => <option key={u.email} value={u.email}>{u.nombre || u.email}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="field">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.9rem' }}><Clock size={16} /> Vencimiento</label>
+                                        <input type="date" className="input" style={{ width: '100%', padding: '10px', borderRadius: '10px' }} value={form.fecha_vencimiento} onChange={e => setForm({ ...form, fecha_vencimiento: e.target.value })} />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '32px' }}>
-                                <div>
-                                    {editingTask && (isAdmin || editingTask.asignado_a === user?.email || role.includes('activador')) && (
-                                        <button type="button" onClick={() => deleteTask(editingTask.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 500, padding: '8px' }}>
-                                            <Trash2 size={18} /> Eliminar Tarea
-                                        </button>
+                                <div className="field" style={{ marginBottom: '24px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text)' }}>Descripción</label>
+                                    <textarea className="input" style={{ width: '100%', minHeight: '120px', resize: 'vertical', padding: '12px', borderRadius: '12px', lineHeight: '1.5' }} value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} placeholder="Agrega notas, links o detalles extra sobre la tarea..." />
+                                </div>
+
+                                <div className="field" style={{ background: 'var(--bg)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', fontWeight: 600, color: 'var(--text)' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <CheckSquare size={18} color="var(--accent)" /> Subtareas (Checklist)
+                                        </span>
+                                        {form.checklist.length > 0 && (
+                                            <span style={{ fontSize: '0.85rem', background: getProgress(form.checklist) === 100 ? '#10b981' : 'var(--bg-elevated)', color: getProgress(form.checklist) === 100 ? '#fff' : 'var(--text)', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
+                                                {getProgress(form.checklist)}% completado
+                                            </span>
+                                        )}
+                                    </label>
+
+                                    {form.checklist.length > 0 && (
+                                        <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            {form.checklist.map(item => (
+                                                <div key={item.id} style={{
+                                                    display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-elevated)',
+                                                    padding: '10px 16px', borderRadius: '12px', border: '1px solid var(--border)',
+                                                    opacity: item.completed ? 0.7 : 1, transition: 'all 0.2s'
+                                                }}>
+                                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                        <input type="checkbox" checked={item.completed} onChange={() => toggleCheckitem(item.id)} style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: 'var(--accent)' }} />
+                                                    </div>
+                                                    <span style={{ flex: 1, textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? 'var(--text-muted)' : 'var(--text)', fontSize: '0.95rem' }}>
+                                                        {item.text}
+                                                    </span>
+                                                    <button type="button" onClick={() => removeChecklist(item.id)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'} onMouseLeave={e => e.currentTarget.style.background = 'var(--bg)'}>
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
+
+                                    {/* FIXED CHECKLIST INPUT VISIBILITY */}
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <input
+                                            type="text"
+                                            className="input"
+                                            style={{
+                                                flex: 1,
+                                                background: 'var(--bg-elevated)', // Ensure contrasting background inside modal
+                                                color: 'var(--text)',
+                                                padding: '12px',
+                                                borderRadius: '10px',
+                                                border: '1px solid var(--border)'
+                                            }}
+                                            placeholder="Agregar un ítem a la checklist..."
+                                            value={newChecklistText}
+                                            onChange={e => setNewChecklistText(e.target.value)}
+                                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChecklistItem(); } }}
+                                        />
+                                        <Button type="button" variant="secondary" onClick={addChecklistItem} style={{ borderRadius: '10px' }}>Agregar</Button>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '12px' }}>
-                                    <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancelar</Button>
-                                    <Button type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar Tarea'}</Button>
-                                </div>
+                            </form>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', borderRadius: '0 0 20px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                {editingTask && (isAdmin || editingTask.asignado_a === user?.email || role.includes('activador')) && (
+                                    <button type="button" onClick={() => deleteTask(editingTask.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600, padding: '10px 16px', borderRadius: '12px', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}>
+                                        <Trash2 size={18} /> Eliminar Tarea
+                                    </button>
+                                )}
                             </div>
-                        </form>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} disabled={saving} style={{ borderRadius: '12px' }}>Cancelar</Button>
+                                <Button type="submit" form="task-form" disabled={saving} style={{ borderRadius: '12px', padding: '0 24px' }}>{saving ? 'Guardando...' : 'Guardar Tarea'}</Button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
