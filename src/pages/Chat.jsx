@@ -34,30 +34,43 @@ export default function Chat() {
                 return;
             }
 
-            // Traer mensajes no leídos para mí, agrupados por remitente
-            const { data: unreadData, error: unreadError } = await supabase
+            // Traer mensajes recibidos para calcular no leídos y última fecha
+            const { data: receivedData, error: receivedError } = await supabase
                 .from('mensajes_chat')
-                .select('de_usuario, leido')
+                .select('de_usuario, leido, created_at')
                 .eq('para_usuario', user.email)
-                .eq('leido', false);
+                .order('created_at', { ascending: false });
 
-            let unreadCounts = {};
-            if (!unreadError && unreadData) {
-                unreadData.forEach(msg => {
-                    unreadCounts[msg.de_usuario] = (unreadCounts[msg.de_usuario] || 0) + 1;
+            let userStats = {};
+            if (!receivedError && receivedData) {
+                receivedData.forEach(msg => {
+                    if (!userStats[msg.de_usuario]) {
+                        userStats[msg.de_usuario] = { unreadCount: 0, lastMessageAt: msg.created_at };
+                    }
+                    if (!msg.leido) {
+                        userStats[msg.de_usuario].unreadCount += 1;
+                    }
                 });
             }
 
             // Combinar datos y ordenar
             let combinedUsers = (usersData || []).map(u => ({
                 ...u,
-                unreadCount: unreadCounts[u.email] || 0
+                unreadCount: userStats[u.email]?.unreadCount || 0,
+                lastMessageAt: userStats[u.email]?.lastMessageAt || null
             }));
 
-            // Ordenar: primero los que tienen sin leer, luego alfabéticamente
+            // Ordenar: primero los que tienen sin leer, luego por fecha del último mensaje, luego alfabéticamente
             combinedUsers.sort((a, b) => {
                 if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
                 if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+
+                if (a.lastMessageAt && b.lastMessageAt) {
+                    return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+                }
+                if (a.lastMessageAt && !b.lastMessageAt) return -1;
+                if (b.lastMessageAt && !a.lastMessageAt) return 1;
+
                 const nameA = (a.nombre || a.email).toLowerCase();
                 const nameB = (b.nombre || b.email).toLowerCase();
                 return nameA.localeCompare(nameB);
@@ -99,7 +112,9 @@ export default function Chat() {
                                 if (u.email === msg.de_usuario) {
                                     // Si no lo estoy viendo ahora mismo, sumo 1 al badge
                                     if (selectedUser?.email !== u.email) {
-                                        return { ...u, unreadCount: (u.unreadCount || 0) + 1 };
+                                        return { ...u, unreadCount: (u.unreadCount || 0) + 1, lastMessageAt: msg.created_at };
+                                    } else {
+                                        return { ...u, lastMessageAt: msg.created_at };
                                     }
                                 }
                                 return u;
@@ -109,6 +124,13 @@ export default function Chat() {
                             updated.sort((a, b) => {
                                 if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
                                 if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+
+                                if (a.lastMessageAt && b.lastMessageAt) {
+                                    return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+                                }
+                                if (a.lastMessageAt && !b.lastMessageAt) return -1;
+                                if (b.lastMessageAt && !a.lastMessageAt) return 1;
+
                                 const nameA = (a.nombre || a.email).toLowerCase();
                                 const nameB = (b.nombre || b.email).toLowerCase();
                                 return nameA.localeCompare(nameB);
@@ -206,6 +228,29 @@ export default function Chat() {
             isOptimistic: true
         };
         setMensajes(prev => [...prev, tempMsg]);
+
+        // Actualizar último mensaje localmente para el orden
+        setUsuarios(prev => {
+            const updated = prev.map(u => {
+                if (u.email === selectedUser.email) {
+                    return { ...u, lastMessageAt: tempMsg.created_at };
+                }
+                return u;
+            });
+            updated.sort((a, b) => {
+                if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+                if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+                if (a.lastMessageAt && b.lastMessageAt) {
+                    return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+                }
+                if (a.lastMessageAt && !b.lastMessageAt) return -1;
+                if (b.lastMessageAt && !a.lastMessageAt) return 1;
+                const nameA = (a.nombre || a.email).toLowerCase();
+                const nameB = (b.nombre || b.email).toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+            return updated;
+        });
 
         const { data, error } = await supabase
             .from('mensajes_chat')
