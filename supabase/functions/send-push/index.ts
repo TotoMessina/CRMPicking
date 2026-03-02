@@ -1,0 +1,81 @@
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as webpush from 'https://esm.sh/web-push@10.1.1'
+
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+    }
+
+    try {
+        const { targetEmails, payload } = await req.json()
+
+        if (!targetEmails || !Array.isArray(targetEmails) || targetEmails.length === 0) {
+            throw new Error('targetEmails is required and must be an array')
+        }
+
+        // Initialize Supabase Client to query subscriptions
+        const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        )
+
+        // Fetch subscriptions for all targeted emails
+        const { data: subs, error: subsError } = await supabaseClient
+            .from('push_subscriptions')
+            .select('*')
+            .in('user_email', targetEmails)
+
+        if (subsError) throw subsError
+        if (!subs || subs.length === 0) {
+            return new Response(JSON.stringify({ success: true, message: 'No subscriptions found for targeting users' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            })
+        }
+
+        // Configure Web Push with our Secrets
+        webpush.setVapidDetails(
+            'mailto:soporte@pickingup.com',
+            Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
+            Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
+        )
+
+        const notificationPayload = JSON.stringify({
+            title: payload.title || 'Nueva Notificación',
+            body: payload.body || 'Tienes un nuevo mensaje en el CRM',
+            url: payload.url || '/',
+        })
+
+        const promises = subs.map(async (row) => {
+            try {
+                await webpush.sendNotification(row.subscription, notificationPayload)
+            } catch (err) {
+                console.error(`Error sending push to ${row.user_email}:`, err)
+                // If subscription expired/unsubscribed, we could delete it from DB here
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                    await supabaseClient.from('push_subscriptions').delete().eq('id', row.id)
+                }
+            }
+        })
+
+        await Promise.allSettled(promises)
+
+        return new Response(
+            JSON.stringify({ success: true, pushedTo: subs.length }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+        })
+    }
+})

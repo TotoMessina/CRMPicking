@@ -7,6 +7,24 @@ import {
     LogOut, Moon, Sun, Bell, MapPin, Users, Activity,
     Map, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
+
+// Utility to convert Base64 VAPID to Uint8Array
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
 
 export function AppShell() {
     const { user, role, userName, signOut } = useAuth();
@@ -14,6 +32,17 @@ export function AppShell() {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState(false);
+
+    useEffect(() => {
+        if ('Notification' in window && navigator.serviceWorker) {
+            navigator.serviceWorker.ready.then(reg => {
+                reg.pushManager.getSubscription().then(sub => {
+                    if (sub) setPushEnabled(true);
+                });
+            });
+        }
+    }, []);
 
     useEffect(() => {
         if (!user) {
@@ -25,6 +54,50 @@ export function AppShell() {
         e.preventDefault();
         await signOut();
         navigate('/login');
+    };
+
+    const handleSubscribePush = async () => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            toast.error('Las notificaciones push no están soportadas en este navegador.');
+            return;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+                // Must provide your VAPID Public Key here. It should be safe to expose on frontend.
+                const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || "BOgAhv4pIXj5g9FXfR7BYaEVnnWSwsgKsgymp0BqOYSaBUnSqtglbkl85wCBP39UTMYGUX_xCQevEcdOKN3OcQY";
+                const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedVapidKey
+                });
+            }
+
+            // Save the subscription logic to Supabase
+            if (user?.email) {
+                const { error } = await supabase.from('push_subscriptions').upsert(
+                    { user_email: user.email, subscription: JSON.parse(JSON.stringify(subscription)) },
+                    { onConflict: 'user_email,subscription' }
+                );
+
+                if (error) throw error;
+            }
+
+            setPushEnabled(true);
+            toast.success('¡Notificaciones activadas exitosamente!', { icon: '🔔' });
+
+        } catch (error) {
+            console.error('Error suscribiendo al push:', error);
+            if (Notification.permission === 'denied') {
+                toast.error('Permiso denegado. Habilita las notificaciones en tu navegador.');
+            } else {
+                toast.error('Ocurrió un error al activar notificaciones.');
+            }
+        }
     };
 
     const isActivador = role?.includes('activador');
@@ -100,8 +173,8 @@ export function AppShell() {
                 <button type="button" onClick={toggleTheme} className="btn-secundario theme-toggle">
                     {theme === 'dark' ? <><Sun size={16} className="mr-2" /> Modo día</> : <><Moon size={16} className="mr-2" /> Modo noche</>}
                 </button>
-                <button type="button" className="btn-secundario theme-toggle" style={{ marginTop: '8px' }}>
-                    <Bell size={16} className="mr-2" /> Activar Notificaciones
+                <button type="button" onClick={handleSubscribePush} disabled={pushEnabled} className="btn-secundario theme-toggle" style={{ marginTop: '8px', opacity: pushEnabled ? 0.6 : 1, cursor: pushEnabled ? 'default' : 'pointer' }}>
+                    <Bell size={16} className="mr-2" /> {pushEnabled ? 'Notificaciones On' : 'Activar Notificaciones'}
                 </button>
 
                 <nav className="sidebar-nav" aria-label="Navegación principal">

@@ -349,6 +349,19 @@ export default function Chat() {
 
             if (msgError) throw msgError;
 
+            // Disparar Web Push Notification a través de la Edge Function
+            // (Lo hacemos sin await para no bloquear la interfaz gráfica del remitente)
+            supabase.functions.invoke('send-push', {
+                body: {
+                    targetEmails: taskForm.asignado_a,
+                    payload: {
+                        title: 'Nuevas Tareas Asignadas',
+                        body: `Se te ha asignado una nueva tarea: ${taskForm.titulo.trim()}`,
+                        url: '/tablero'
+                    }
+                }
+            }).catch(err => console.error('Error invoking edge function for push:', err));
+
             toast.success(`Tarea asignada a ${taskForm.asignado_a.length} persona(s)`);
             setIsTaskModalOpen(false);
             setTaskForm({ titulo: '', descripcion: '', fecha_vencimiento: '', asignado_a: [] });

@@ -7,6 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'custom-sw.js',
       includeAssets: ['icon-512.png', 'icon-192.png'],
       manifest: {
         name: 'PickingUp CRM',
@@ -33,19 +36,9 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          }
-        ]
+        // The injection takes care of precaching logic inside custom-sw.js
       }
     })
   ],
