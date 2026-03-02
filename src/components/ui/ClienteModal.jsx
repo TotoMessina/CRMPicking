@@ -221,13 +221,56 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="6 - Local No Interesado">6 - Local No Interesado</option>
                                     </select>
                                 </div>
-                                <div className="field">
+                                <div className="field" style={{ gridColumn: '1 / -1' }}>
                                     <label>Interés</label>
-                                    <select name="interes" value={formData.interes || 'Bajo'} onChange={handleChange}>
-                                        <option value="Bajo">Bajo</option>
-                                        <option value="Medio">Medio</option>
-                                        <option value="Alto">Alto</option>
-                                    </select>
+                                    {(() => {
+                                        const levels = [
+                                            { value: 'Bajo', color: '#94a3b8', label: 'Bajo' },
+                                            { value: 'Medio', color: '#f59e0b', label: 'Medio' },
+                                            { value: 'Alto', color: '#10b981', label: 'Alto' },
+                                        ];
+                                        const activeIdx = levels.findIndex(l => l.value === (formData.interes || 'Bajo'));
+                                        const activeColor = levels[activeIdx]?.color || '#94a3b8';
+                                        return (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                {/* Bar segments */}
+                                                <div style={{ display: 'flex', gap: '4px', height: '10px' }}>
+                                                    {levels.map((l, i) => (
+                                                        <div
+                                                            key={l.value}
+                                                            onClick={() => setFormData(prev => ({ ...prev, interes: l.value }))}
+                                                            style={{
+                                                                flex: 1, borderRadius: '99px', cursor: 'pointer',
+                                                                background: i <= activeIdx ? activeColor : 'var(--border)',
+                                                                transition: 'background 0.25s ease',
+                                                                opacity: i <= activeIdx ? 1 : 0.4,
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                {/* Labels */}
+                                                <div style={{ display: 'flex', gap: '4px' }}>
+                                                    {levels.map((l, i) => (
+                                                        <button
+                                                            key={l.value}
+                                                            type="button"
+                                                            onClick={() => setFormData(prev => ({ ...prev, interes: l.value }))}
+                                                            style={{
+                                                                flex: 1, padding: '6px 4px', fontSize: '0.78rem', fontWeight: 600,
+                                                                borderRadius: '8px', cursor: 'pointer', border: '1px solid',
+                                                                background: i <= activeIdx ? `${activeColor}18` : 'var(--bg)',
+                                                                color: i <= activeIdx ? activeColor : 'var(--text-muted)',
+                                                                borderColor: i <= activeIdx ? `${activeColor}60` : 'var(--border)',
+                                                                transition: 'all 0.2s ease',
+                                                            }}
+                                                        >
+                                                            {l.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                                 <div className="field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     <label>¿Venta Digital?</label>
