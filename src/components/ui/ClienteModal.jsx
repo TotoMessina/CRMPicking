@@ -45,6 +45,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
     });
 
     const [formData, setFormData] = useState(emptyForm());
+    const [stepEnteredAt, setStepEnteredAt] = useState(Date.now());
 
     // Auto-fill responsable with the current user's name when creating a new client
     useEffect(() => {
@@ -66,9 +67,14 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 lng: initialLocation?.lng ?? null,
             }));
             setErrors({});
-            setStep(1);
+            handleStepChange(1);
         }
     }, [isOpen, clienteId]);
+
+    const handleStepChange = (newStep) => {
+        setStep(newStep);
+        setStepEnteredAt(Date.now());
+    };
 
     const loadCliente = async (id) => {
         setLoading(true);
@@ -101,31 +107,41 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         return errs;
     };
 
+    const handleNextPhase = (e) => {
+        if (e) e.preventDefault();
+        const errs = validate();
+        if (Object.keys(errs).length > 0) {
+            setErrors(errs);
+            for (const [s, fields] of Object.entries(STEP_FIELDS)) {
+                if (fields.some(f => errs[f])) { handleStepChange(Number(s)); break; }
+            }
+        } else {
+            handleStepChange(step + 1);
+        }
+    };
+
+    const handleFormKeyDown = (e) => {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            if (step < 3) handleNextPhase();
+            else handleSubmit(e);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // If not on the last step, intercept the submit (ex. pressing Enter in a text field)
-        // and just move to the next step if validation passes.
-        if (step < 3) {
-            const errs = validate();
-            if (Object.keys(errs).length > 0) {
-                setErrors(errs);
-                for (const [s, fields] of Object.entries(STEP_FIELDS)) {
-                    if (fields.some(f => errs[f])) { setStep(Number(s)); break; }
-                }
-            } else {
-                setStep(step + 1);
-            }
+        // Prevent double click on "Siguiente" triggering "Guardar"
+        if (step === 3 && Date.now() - stepEnteredAt < 500) {
             return;
         }
 
-        // Inline validation for the final step
         const errs = validate();
         if (Object.keys(errs).length > 0) {
             setErrors(errs);
             // Navigate to first step that has an error
             for (const [s, fields] of Object.entries(STEP_FIELDS)) {
-                if (fields.some(f => errs[f])) { setStep(Number(s)); break; }
+                if (fields.some(f => errs[f])) { handleStepChange(Number(s)); break; }
             }
             return;
         }
@@ -225,7 +241,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                         <div
                             key={s}
                             className={`step-indicator ${step === s ? 'active' : ''} ${Object.keys(STEP_FIELDS[s] || []).some(f => errors[STEP_FIELDS[s][f]]) ? 'error' : ''}`}
-                            onClick={() => setStep(s)}
+                            onClick={() => handleStepChange(s)}
                             style={{
                                 cursor: 'pointer',
                                 ...(STEP_FIELDS[s]?.some(f => errors[f]) ? { background: '#ef4444', opacity: 1 } : {})
@@ -234,7 +250,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                     ))}
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
                     {/* ── STEP 1 ── */}
                     {step === 1 && (
                         <div>
@@ -435,15 +451,15 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                     )}
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
-                        <Button variant="secondary" type="button" onClick={() => setStep(step > 1 ? step - 1 : 1)} style={{ visibility: step === 1 ? 'hidden' : 'visible' }}>
+                        <Button variant="secondary" type="button" onClick={() => handleStepChange(step > 1 ? step - 1 : 1)} style={{ visibility: step === 1 ? 'hidden' : 'visible' }}>
                             Anterior
                         </Button>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
                             {step < 3 ? (
-                                <Button variant="primary" type="button" onClick={() => setStep(step + 1)}>Siguiente</Button>
+                                <Button key="siguiente" variant="primary" type="button" onClick={handleNextPhase}>Siguiente</Button>
                             ) : (
-                                <Button variant="primary" type="submit" disabled={loading}>
+                                <Button key="guardar" variant="primary" type="submit" disabled={loading}>
                                     {loading ? 'Guardando...' : 'Guardar Cliente'}
                                 </Button>
                             )}
