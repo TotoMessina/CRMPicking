@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { ApplicationServer } from 'jsr:@negrel/webpush'
@@ -42,12 +41,14 @@ serve(async (req) => {
             })
         }
 
-        // Configure Web Push with our Secrets
-        webpush.setVapidDetails(
-            'mailto:soporte@pickingup.com',
-            Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
-            Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
-        )
+        // Initialize pure Deno Web Push Server
+        const appServer = new ApplicationServer({
+            contact: 'mailto:soporte@pickingup.com',
+            vapidKeys: {
+                publicKey: Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
+                privateKey: Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
+            }
+        })
 
         const notificationPayload = JSON.stringify({
             title: payload.title || 'Nueva Notificación',
@@ -57,11 +58,11 @@ serve(async (req) => {
 
         const promises = subs.map(async (row) => {
             try {
-                await webpush.sendNotification(row.subscription, notificationPayload)
+                await appServer.sendPushMessage(notificationPayload, row.subscription)
             } catch (err) {
                 console.error(`Error sending push to ${row.user_email}:`, err)
-                // If subscription expired/unsubscribed, we could delete it from DB here
-                if (err.statusCode === 410 || err.statusCode === 404) {
+                // If subscription expired/unsubscribed/failed, delete it
+                if (err.statusCode === 410 || err.statusCode === 404 || err.status === 410 || err.status === 404) {
                     await supabaseClient.from('push_subscriptions').delete().eq('id', row.id)
                 }
             }
