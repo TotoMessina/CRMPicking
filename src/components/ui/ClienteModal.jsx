@@ -220,6 +220,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             // Split fields: universal fields go to clientes, company-specific go to empresa_cliente
             const universalFields = {
                 nombre_local: payload.nombre_local,
+                nombre: payload.nombre,
                 direccion: payload.direccion,
                 lat: payload.lat,
                 lng: payload.lng,
