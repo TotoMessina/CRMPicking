@@ -145,6 +145,7 @@ export function AppShell() {
     };
 
     const isActivador = role?.includes('activador');
+    const isAdmin = role === 'admin' || role === 'super-admin';
 
     // Routes visible to activadores
     const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero']);
@@ -168,13 +169,13 @@ export function AppShell() {
         { to: '/calificaciones', icon: Star, label: 'Calificaciones' },
         { spacer: true },
         { to: '/usuarios', icon: Users, label: 'Usuarios' },
-        { to: '/empresas', icon: Building2, label: 'Empresas' },
+        { to: '/empresas', icon: Building2, label: 'Empresas', adminOnly: true },
         { to: '/configuracion', icon: Settings, label: 'Configuración' },
     ];
 
     const navItems = isActivador
         ? allNavItems.filter(item => item.spacer || activadorRoutes.has(item.to))
-        : allNavItems;
+        : allNavItems.filter(item => !item.adminOnly || isAdmin);
 
     if (!user) return null;
 
