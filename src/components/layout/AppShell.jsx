@@ -33,6 +33,7 @@ export function AppShell() {
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [pushEnabled, setPushEnabled] = useState(false);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
 
     useEffect(() => {
         if ('Notification' in window && navigator.serviceWorker) {
@@ -49,6 +50,41 @@ export function AppShell() {
             navigate('/login');
         }
     }, [user, navigate]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchUnread = async () => {
+            const { count, error } = await supabase
+                .from('mensajes_chat')
+                .select('*', { count: 'exact', head: true })
+                .eq('para_usuario', user.email)
+                .eq('leido', false);
+            
+            if (!error && count !== null) {
+                setUnreadChatCount(count);
+            }
+        };
+
+        fetchUnread();
+
+        // Subscribe to changes globally so the badge updates
+        const channel = supabase
+            .channel('global_chat_updates')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes_chat', filter: `para_usuario=eq.${user.email}` }, (payload) => {
+                if (!payload.new.leido) {
+                    setUnreadChatCount(prev => prev + 1);
+                }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mensajes_chat', filter: `para_usuario=eq.${user.email}` }, (payload) => {
+                // If a message is marked as read, re-fetch or decrement
+                // Easiest is to just re-fetch the exact count to be safe
+                fetchUnread();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [user]);
 
     const handleLogout = async (e) => {
         e.preventDefault();
@@ -189,9 +225,18 @@ export function AppShell() {
                                     <NavLink
                                         to={item.to}
                                         className={({ isActive }) => (isActive ? 'active' : '')}
+                                        style={{ display: 'flex', alignItems: 'center' }}
                                     >
                                         <Icon size={18} style={{ marginRight: '8px' }} />
-                                        {item.label}
+                                        <span style={{flex: 1}}>{item.label}</span>
+                                        {item.to === '/chat' && unreadChatCount > 0 && (
+                                            <span style={{
+                                                background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold',
+                                                padding: '2px 8px', borderRadius: '12px', marginLeft: 'auto'
+                                            }}>
+                                                {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                                            </span>
+                                        )}
                                     </NavLink>
                                 </li>
                             );
