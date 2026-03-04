@@ -218,8 +218,21 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 creadoPor = uData?.nombre || user.email;
             }
             payload.creado_por = creadoPor;
-            const { error } = await supabase.from('clientes').insert([payload]);
+            const { data: newCliente, error } = await supabase
+                .from('clientes')
+                .insert([payload])
+                .select('id')
+                .single();
             err = error;
+            if (!error && newCliente?.id) {
+                // Automatically count as 1 visit for the creator
+                await supabase.from('actividades').insert([{
+                    cliente_id: newCliente.id,
+                    descripcion: 'Visita realizada',
+                    usuario: creadoPor,
+                    fecha: new Date().toISOString()
+                }]);
+            }
         }
 
         if (err) {
