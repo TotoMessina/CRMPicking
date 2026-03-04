@@ -67,10 +67,8 @@ export default function Clientes() {
         setLoading(true);
 
         let request = supabase
-            .from('empresa_cliente')
-            .select('*, clientes(*)', { count: 'exact' })
-            .eq('empresa_id', empresaActiva.id)
-            .eq('activo', true);
+            .from('clientes')
+            .select('*', { count: 'exact' });
 
         // Apply sorting
         if (sortBy === 'recent') {
@@ -115,30 +113,13 @@ export default function Clientes() {
             toast.error('Error al cargar clientes');
             console.error(error);
         } else {
-            let mapped = (data || []).map(row => ({
-                ...row.clientes,
+            const mapped = (data || []).map(row => ({
                 ...row,
-                id: row.clientes?.id
+                id: row.id
             }));
 
-            // EMERGENCY FALLBACK: If no clients in bridge table, try fetching directly from 'clientes'
-            if (mapped.length === 0 && !fNombre && !fTelefono && !fDireccion && page === 1) {
-                const { data: rawData, count: rawCount, error: rawError } = await supabase
-                    .from('clientes')
-                    .select('*', { count: 'exact' })
-                    .limit(pageSize);
-
-                if (!rawError && rawData?.length > 0) {
-                    mapped = rawData;
-                    setTotal(rawCount || 0);
-                    // Mark them as fallback so user knows these might be missing company data
-                    console.log("Using emergency fallback: direct clients fetch");
-                }
-            }
-
             setClientes(mapped);
-            if (mapped.length > 0 && total === 0) setTotal(count || mapped.length);
-            else setTotal(count || 0);
+            setTotal(count || 0);
 
             if (mapped.length > 0) {
                 const ids = mapped.map(c => c.id);
@@ -146,7 +127,6 @@ export default function Clientes() {
                     .from('actividades')
                     .select('*')
                     .in('cliente_id', ids)
-                    .eq('empresa_id', empresaActiva.id)
                     .order('fecha', { ascending: false });
 
                 if (!actError && acts) {
