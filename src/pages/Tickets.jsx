@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import { Search, Filter, Trash2, X } from 'lucide-react';
@@ -7,6 +8,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function Tickets() {
+    const { empresaActiva } = useAuth();
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');

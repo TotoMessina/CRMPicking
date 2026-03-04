@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import FullCalendar from '@fullcalendar/react';
@@ -20,6 +21,7 @@ const TYPE_COLORS = {
 };
 
 export default function Horarios() {
+    const { empresaActiva } = useAuth();
     const calendarRef = useRef(null);
     const [usersCache, setUsersCache] = useState([]);
     const [filtroEmpleado, setFiltroEmpleado] = useState("");

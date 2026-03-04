@@ -21,6 +21,7 @@ import Usuarios from './pages/Usuarios';
 import Configuracion from './pages/Configuracion';
 import Chat from './pages/Chat';
 import TableroTareas from './pages/TableroTareas';
+import Empresas from './pages/Empresas';
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
             <Route path="/tickets" element={<Tickets />} />
             <Route path="/calificaciones" element={<Calificaciones />} />
             <Route path="/usuarios" element={<Usuarios />} />
+            <Route path="/empresas" element={<Empresas />} />
             <Route path="/configuracion" element={<Configuracion />} />
           </Route>
         </Routes>

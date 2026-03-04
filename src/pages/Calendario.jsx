@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import FullCalendar from '@fullcalendar/react';
@@ -18,6 +19,7 @@ const THEME_COLORS = {
 };
 
 export default function Calendario() {
+    const { empresaActiva } = useAuth();
     const calendarRef = useRef(null);
     const [usuarios, setUsuarios] = useState([]);
 
@@ -120,7 +122,7 @@ export default function Calendario() {
                             startEditable: true,
                             extendedProps: {
                                 kind: "contacto",
-                                clienteId: c.id
+                                clienteId: c.clientes?.id || c.id
                             }
                         });
                     });

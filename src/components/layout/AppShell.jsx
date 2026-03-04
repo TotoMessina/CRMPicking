@@ -168,6 +168,7 @@ export function AppShell() {
         { to: '/calificaciones', icon: Star, label: 'Calificaciones' },
         { spacer: true },
         { to: '/usuarios', icon: Users, label: 'Usuarios' },
+        { to: '/empresas', icon: Building2, label: 'Empresas' },
         { to: '/configuracion', icon: Settings, label: 'Configuración' },
     ];
 

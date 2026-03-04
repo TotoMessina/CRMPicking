@@ -13,7 +13,7 @@ const COLUMNS = [
 ];
 
 export default function TableroTareas() {
-    const { user, role } = useAuth();
+    const { user, role , empresaActiva } = useAuth();
     const isAdmin = role === 'Administrador';
 
     const [tasks, setTasks] = useState({
@@ -48,6 +48,7 @@ export default function TableroTareas() {
         const { data, error } = await supabase
             .from('tareas_tablero')
             .select('*')
+            .eq('empresa_id', empresaActiva?.id)
             .order('orden', { ascending: true })
             .order('created_at', { ascending: false });
 
