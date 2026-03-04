@@ -87,6 +87,7 @@ const DOUGHNUT_COLORS = [
 ];
 
 export default function Estadisticas() {
+    const { empresaActiva } = useAuth();
     const { user } = useAuth();
 
     const [currentTab, setCurrentTab] = useState('tabApps');

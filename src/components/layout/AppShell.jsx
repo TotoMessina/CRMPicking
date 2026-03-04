@@ -3,9 +3,10 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { CommandPalette } from '../ui/CommandPalette';
+import { EmpresaSelector } from '../ui/EmpresaSelector';
 import {
     LogOut, Moon, Sun, Bell, MapPin, Users, Activity,
-    Map, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard
+    Map, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -27,13 +28,14 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export function AppShell() {
-    const { user, role, userName, signOut } = useAuth();
+    const { user, role, userName, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [pushEnabled, setPushEnabled] = useState(false);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
+    const [showEmpresaSelector, setShowEmpresaSelector] = useState(false);
 
     useEffect(() => {
         if ('Notification' in window && navigator.serviceWorker) {
@@ -60,7 +62,7 @@ export function AppShell() {
                 .select('*', { count: 'exact', head: true })
                 .eq('para_usuario', user.email)
                 .eq('leido', false);
-            
+
             if (!error && count !== null) {
                 setUnreadChatCount(count);
             }
@@ -82,14 +84,12 @@ export function AppShell() {
                 }
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mensajes_chat', filter: `para_usuario=eq.${user.email}` }, (payload) => {
-                // If a message is marked as read, re-fetch or decrement
-                // Easiest is to just re-fetch the exact count to be safe
                 fetchUnread();
             })
             .subscribe();
 
-        return () => { 
-            supabase.removeChannel(channel); 
+        return () => {
+            supabase.removeChannel(channel);
             window.removeEventListener('chat-messages-read', handleMessagesRead);
         };
     }, [user]);
@@ -177,8 +177,33 @@ export function AppShell() {
 
     if (!user) return null;
 
+    // Show selector if user has multiple empresas and hasn't selected one
+    if (!empresaActiva && empresasDisponibles.length > 1) {
+        return (
+            <EmpresaSelector
+                empresas={empresasDisponibles}
+                onSelect={(emp) => {
+                    setEmpresaActiva(emp);
+                    setShowEmpresaSelector(false);
+                }}
+            />
+        );
+    }
+
     return (
         <div className="app-shell">
+            {/* Full-screen empresa picker when switching companies */}
+            {showEmpresaSelector && empresasDisponibles.length > 1 && (
+                <EmpresaSelector
+                    empresas={empresasDisponibles}
+                    onSelect={(emp) => {
+                        setEmpresaActiva(emp);
+                        setShowEmpresaSelector(false);
+                        navigate('/');
+                    }}
+                />
+            )}
+
             <button
                 className="mobile-menu-btn"
                 onClick={() => setIsMobileMenuOpen(true)}
@@ -207,12 +232,36 @@ export function AppShell() {
                     </button>
                 </div>
 
-                <div className="sidebar-user" style={{ marginTop: 0, background: 'transparent', border: 'none', padding: '0 16px 16px 16px' }}>
+                <div className="sidebar-user" style={{ marginTop: 0, background: 'transparent', border: 'none', padding: '0 16px 8px 16px' }}>
                     <div className="user-info">
                         <span className="muted">Usuario:</span>
                         <strong>{userName || user?.email || 'Cargando...'}</strong>
                     </div>
                 </div>
+
+                {/* Empresa activa */}
+                {empresaActiva && (
+                    <div style={{ padding: '0 16px 16px 16px' }}>
+                        <button
+                            onClick={() => empresasDisponibles.length > 1 && setShowEmpresaSelector(true)}
+                            disabled={empresasDisponibles.length <= 1}
+                            style={{
+                                width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                                background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+                                borderRadius: '10px', padding: '8px 12px', cursor: empresasDisponibles.length > 1 ? 'pointer' : 'default',
+                                color: 'var(--text)'
+                            }}
+                        >
+                            <Building2 size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.82rem', fontWeight: 600, flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {empresaActiva.nombre}
+                            </span>
+                            {empresasDisponibles.length > 1 && (
+                                <ChevronDown size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                            )}
+                        </button>
+                    </div>
+                )}
 
                 <button type="button" onClick={toggleTheme} className="btn-secundario theme-toggle">
                     {theme === 'dark' ? <><Sun size={16} className="mr-2" /> Modo día</> : <><Moon size={16} className="mr-2" /> Modo noche</>}
@@ -236,7 +285,7 @@ export function AppShell() {
                                         style={{ display: 'flex', alignItems: 'center' }}
                                     >
                                         <Icon size={18} style={{ marginRight: '8px' }} />
-                                        <span style={{flex: 1}}>{item.label}</span>
+                                        <span style={{ flex: 1 }}>{item.label}</span>
                                         {item.to === '/chat' && unreadChatCount > 0 && (
                                             <span style={{
                                                 background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold',

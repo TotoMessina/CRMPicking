@@ -7,6 +7,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Users, Truck, Calendar, Sparkles, Lightbulb } from 'lucide-react';
 
 export default function Dashboard() {
+    const { empresaActiva } = useAuth();
     const { user } = useAuth();
 
     const [stats, setStats] = useState({

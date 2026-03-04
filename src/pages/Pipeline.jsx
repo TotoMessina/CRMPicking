@@ -15,7 +15,7 @@ const COLUMNS = [
 ];
 
 export default function Pipeline() {
-    const { user, userName } = useAuth();
+    const { user, userName, empresaActiva } = useAuth();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');

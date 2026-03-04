@@ -3,21 +3,76 @@ import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
 
+const EMPRESA_KEY = 'pu_empresa_activa';
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null);
     const [userName, setUserName] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Multi-empresa
+    const [empresasDisponibles, setEmpresasDisponibles] = useState([]);
+    const [empresaActiva, setEmpresaActivaState] = useState(null);
+
+    const setEmpresaActiva = (empresa) => {
+        setEmpresaActivaState(empresa);
+        if (empresa) {
+            localStorage.setItem(EMPRESA_KEY, JSON.stringify(empresa));
+        } else {
+            localStorage.removeItem(EMPRESA_KEY);
+        }
+    };
+
     const fetchRoleAndName = async (authUser) => {
-        if (!authUser) { setRole(null); setUserName(null); return; }
+        if (!authUser) {
+            setRole(null);
+            setUserName(null);
+            setEmpresasDisponibles([]);
+            setEmpresaActivaState(null);
+            return;
+        }
+
         const { data } = await supabase
             .from('usuarios')
             .select('role, nombre')
             .eq('email', authUser.email)
             .maybeSingle();
+
         setRole(data?.role?.toLowerCase() || null);
         setUserName(data?.nombre || null);
+
+        // Load empresas this user belongs to
+        const { data: empData } = await supabase
+            .from('empresa_usuario')
+            .select('role_en_empresa:role, empresas(id, nombre, logo_url)')
+            .eq('usuario_email', authUser.email);
+
+        const empresas = (empData || []).map(e => ({
+            ...e.empresas,
+            role_en_empresa: e.role_en_empresa
+        }));
+
+        setEmpresasDisponibles(empresas);
+
+        // Auto-select: restore from localStorage or pick the first one
+        const stored = localStorage.getItem(EMPRESA_KEY);
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                const stillValid = empresas.find(e => e.id === parsed.id);
+                setEmpresaActivaState(stillValid || empresas[0] || null);
+            } catch {
+                setEmpresaActivaState(empresas[0] || null);
+            }
+        } else if (empresas.length === 1) {
+            // Only one empresa — pick it automatically
+            setEmpresaActivaState(empresas[0]);
+            localStorage.setItem(EMPRESA_KEY, JSON.stringify(empresas[0]));
+        } else if (empresas.length > 1) {
+            // Multiple empresas — leave null so selector appears
+            setEmpresaActivaState(null);
+        }
     };
 
     useEffect(() => {
@@ -43,11 +98,15 @@ export function AuthProvider({ children }) {
     };
 
     const signOut = async () => {
+        localStorage.removeItem(EMPRESA_KEY);
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
     };
 
-    const value = { signIn, signOut, user, role, userName, loading };
+    const value = {
+        signIn, signOut, user, role, userName, loading,
+        empresasDisponibles, empresaActiva, setEmpresaActiva
+    };
 
     return (
         <AuthContext.Provider value={value}>

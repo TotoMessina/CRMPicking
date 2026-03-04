@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { MapPin, RefreshCw, Route as RouteIcon, Navigation, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -67,6 +68,7 @@ function getColorForCreator(user) {
 }
 
 export default function MapaClientes() {
+    const { empresaActiva } = useAuth();
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
     const markersLayerRef = useRef(null);

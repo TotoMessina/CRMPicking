@@ -26,7 +26,7 @@ const STEP_FIELDS = {
 const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
 
 export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSaved }) {
-    const { user, userName } = useAuth();
+    const { user, userName, empresaActiva } = useAuth();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -217,19 +217,56 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                     .maybeSingle();
                 creadoPor = uData?.nombre || user.email;
             }
-            payload.creado_por = creadoPor;
-            const { data: newCliente, error } = await supabase
+            // Split fields: universal fields go to clientes, company-specific go to empresa_cliente
+            const universalFields = {
+                nombre_local: payload.nombre_local,
+                direccion: payload.direccion,
+                lat: payload.lat,
+                lng: payload.lng,
+                telefono: payload.telefono,
+                mail: payload.mail,
+                cuit: payload.cuit,
+            };
+            const companyFields = {
+                estado: payload.estado,
+                rubro: payload.rubro,
+                responsable: payload.responsable,
+                estilo_contacto: payload.estilo_contacto,
+                interes: payload.interes,
+                tipo_contacto: payload.tipo_contacto,
+                venta_digital: payload.venta_digital,
+                venta_digital_cual: payload.venta_digital_cual,
+                situacion: payload.situacion,
+                notas: payload.notas,
+                fecha_proximo_contacto: payload.fecha_proximo_contacto,
+                hora_proximo_contacto: payload.hora_proximo_contacto,
+                activador_cierre: payload.activador_cierre,
+                creado_por: creadoPor,
+                activo: true,
+            };
+
+            // 1. Insert universal client record
+            const { data: newCliente, error: clienteErr } = await supabase
                 .from('clientes')
-                .insert([payload])
+                .insert([universalFields])
                 .select('id')
                 .single();
-            err = error;
-            if (!error && newCliente?.id) {
-                // Automatically count as 1 visit for the creator
+            err = clienteErr;
+
+            if (!clienteErr && newCliente?.id) {
+                // 2. Insert company-specific record
+                await supabase.from('empresa_cliente').insert([{
+                    ...companyFields,
+                    empresa_id: empresaActiva?.id,
+                    cliente_id: newCliente.id,
+                }]);
+
+                // 3. Automatically count as 1 visit for the creator
                 await supabase.from('actividades').insert([{
                     cliente_id: newCliente.id,
-                    descripcion: 'Visita realizada',
+                    describcion: 'Visita realizada',
                     usuario: creadoPor,
+                    empresa_id: empresaActiva?.id,
                     fecha: new Date().toISOString()
                 }]);
             }

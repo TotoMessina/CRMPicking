@@ -4,10 +4,12 @@ import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Plus, ChevronLeft, ChevronRight, Download, Upload, Search, MapPin, Phone, Mail, Calendar, Clock, Store, Tag, User, Hash, Filter, Activity as ActivityIcon, Edit2, Trash2, Building } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
 
 export default function Clientes() {
+    const { empresaActiva } = useAuth();
     const [searchParams] = useSearchParams();
     const isAgendaHoy = searchParams.get('agenda') === 'hoy';
 
@@ -50,7 +52,8 @@ export default function Clientes() {
 
     useEffect(() => {
         const fetchRubros = async () => {
-            const { data } = await supabase.from('clientes').select('rubro').eq('activo', true);
+            if (!empresaActiva?.id) return;
+            const { data } = await supabase.from('empresa_cliente').select('rubro').eq('empresa_id', empresaActiva.id).eq('activo', true);
             if (data) {
                 const uniqueRubros = [...new Set(data.map(c => c.rubro).filter(r => r && r.trim() !== ''))].sort();
                 setRubrosValidos(uniqueRubros);
@@ -136,7 +139,7 @@ export default function Clientes() {
 
     useEffect(() => {
         fetchClientes();
-    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fTipoContacto, fResponsable, fRubro, fInteres, fEstilo, fProximos7, isAgendaHoy, sortBy]);
+    }, [page, pageSize, fNombre, fTelefono, fDireccion, fEstado, fSituacion, fTipoContacto, fResponsable, fRubro, fInteres, fEstilo, fProximos7, isAgendaHoy, sortBy, empresaActiva]);
 
     const handleCreate = () => {
         setEditingId(null);
@@ -150,7 +153,7 @@ export default function Clientes() {
 
     const handleDelete = async (id) => {
         if (!window.confirm("¿Seguro que querés marcar como inactivo este cliente?")) return;
-        const { error } = await supabase.from("clientes").update({ activo: false }).eq("id", id);
+        const { error } = await supabase.from("empresa_cliente").update({ activo: false }).eq("cliente_id", id).eq("empresa_id", empresaActiva?.id);
         if (error) {
             toast.error("No se pudo eliminar.");
         } else {
