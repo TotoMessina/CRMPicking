@@ -99,46 +99,23 @@ export default function MapaClientes() {
     const routingControlRef = useRef(null);
 
     const fetchClientes = async () => {
-        if (!empresaActiva?.id) return;
         setLoading(true);
         const { data, error } = await supabase
-            .from("empresa_cliente")
-            .select("*, clientes(*)")
-            .eq("empresa_id", empresaActiva.id)
-            .eq("activo", true)
+            .from("clientes")
+            .select("*")
             .not("lat", "is", null)
-            .not("lng", "is", null);
+            .not("lng", "is", null)
+            .limit(2000);
 
         if (error) {
             toast.error("Error al cargar clientes");
         } else {
-            let mapped = (data || []).map(r => ({
-                ...r.clientes,
+            const mapped = (data || []).map(r => ({
                 ...r,
-                lat: Number(r.lat || r.clientes?.lat),
-                lng: Number(r.lng || r.clientes?.lng),
-                id: r.clientes?.id
+                lat: Number(r.lat),
+                lng: Number(r.lng),
+                id: r.id
             })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
-
-            // EMERGENCY FALLBACK: If no clients in bridge table, try fetching directly from 'clientes'
-            if (mapped.length === 0) {
-                const { data: rawData, error: rawError } = await supabase
-                    .from("clientes")
-                    .select("*")
-                    .not("lat", "is", null)
-                    .not("lng", "is", null)
-                    .limit(1000);
-
-                if (!rawError && rawData?.length > 0) {
-                    mapped = rawData.map(c => ({
-                        ...c,
-                        lat: Number(c.lat),
-                        lng: Number(c.lng),
-                        id: c.id
-                    })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
-                }
-            }
-
             setClientes(mapped);
         }
         setLoading(false);
