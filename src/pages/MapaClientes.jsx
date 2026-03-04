@@ -112,13 +112,33 @@ export default function MapaClientes() {
         if (error) {
             toast.error("Error al cargar clientes");
         } else {
-            const mapped = (data || []).map(r => ({
+            let mapped = (data || []).map(r => ({
                 ...r.clientes,
                 ...r,
                 lat: Number(r.lat || r.clientes?.lat),
                 lng: Number(r.lng || r.clientes?.lng),
                 id: r.clientes?.id
             })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+
+            // EMERGENCY FALLBACK: If no clients in bridge table, try fetching directly from 'clientes'
+            if (mapped.length === 0) {
+                const { data: rawData, error: rawError } = await supabase
+                    .from("clientes")
+                    .select("*")
+                    .not("lat", "is", null)
+                    .not("lng", "is", null)
+                    .limit(1000);
+
+                if (!rawError && rawData?.length > 0) {
+                    mapped = rawData.map(c => ({
+                        ...c,
+                        lat: Number(c.lat),
+                        lng: Number(c.lng),
+                        id: c.id
+                    })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+                }
+            }
+
             setClientes(mapped);
         }
         setLoading(false);
