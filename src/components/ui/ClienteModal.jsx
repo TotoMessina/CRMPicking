@@ -207,7 +207,17 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             }
         } else {
             // Include creator name for analytics when creating a new client
-            payload.creado_por = userName || user?.email || null;
+            // If userName is not yet available in context, make a direct lookup as safety net
+            let creadoPor = userName || null;
+            if (!creadoPor && user?.email) {
+                const { data: uData } = await supabase
+                    .from('usuarios')
+                    .select('nombre')
+                    .eq('email', user.email)
+                    .maybeSingle();
+                creadoPor = uData?.nombre || user.email;
+            }
+            payload.creado_por = creadoPor;
             const { error } = await supabase.from('clientes').insert([payload]);
             err = error;
         }
