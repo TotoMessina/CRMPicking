@@ -68,6 +68,11 @@ export function AppShell() {
 
         fetchUnread();
 
+        const handleMessagesRead = () => {
+            fetchUnread();
+        };
+        window.addEventListener('chat-messages-read', handleMessagesRead);
+
         // Subscribe to changes globally so the badge updates
         const channel = supabase
             .channel('global_chat_updates')
@@ -83,7 +88,10 @@ export function AppShell() {
             })
             .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
+        return () => { 
+            supabase.removeChannel(channel); 
+            window.removeEventListener('chat-messages-read', handleMessagesRead);
+        };
     }, [user]);
 
     const handleLogout = async (e) => {

@@ -224,6 +224,7 @@ export default function Chat() {
             .eq('de_usuario', remitenteEmail)
             .eq('para_usuario', user.email)
             .eq('leido', false);
+        window.dispatchEvent(new CustomEvent('chat-messages-read'));
     };
 
     const handleSend = async (e) => {
