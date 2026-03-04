@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Search, User, Calendar, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 const COLUMNS = [
     { id: '1 - Cliente relevado', label: 'Relevado', color: '#64748b' },
@@ -14,6 +15,7 @@ const COLUMNS = [
 ];
 
 export default function Pipeline() {
+    const { user, userName } = useAuth();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -59,7 +61,10 @@ export default function Pipeline() {
         // API Call
         const { error } = await supabase
             .from('clientes')
-            .update({ estado: newStatus })
+            .update({ 
+                estado: newStatus,
+                ...( (newStatus.startsWith('4') || newStatus.startsWith('5')) ? { activador_cierre: userName || user?.email || null } : {} )
+            })
             .eq('id', clientId);
 
         if (error) {

@@ -171,6 +171,11 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng) : null,
         };
 
+        // If the state implies activation/closure, mark the current user as the closer
+        if (formData.estado?.startsWith('4') || formData.estado?.startsWith('5')) {
+            rawPayload.activador_cierre = userName || user?.email || null;
+        }
+
         // Strip null date fields so they never appear in ?columns= (prevents Postgres type error)
         const dateFields = new Set(['fecha_proximo_contacto', 'hora_proximo_contacto']);
         const payload = Object.fromEntries(

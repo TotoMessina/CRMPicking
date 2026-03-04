@@ -248,7 +248,7 @@ export default function Estadisticas() {
                 consumidores
             ] = await Promise.all([
                 supabase.from('clientes').select('*', { count: 'exact', head: true }).eq('activo', true),
-                fetchAll('clientes', 'id, rubro, estado, situacion, responsable, creado_por, activo, created_at, ultima_actividad, status_history, visitas', q => q.eq('activo', true)),
+                fetchAll('clientes', 'id, rubro, estado, situacion, responsable, creado_por, activador_cierre, activo, created_at, ultima_actividad, status_history, visitas', q => q.eq('activo', true)),
                 fetchAll('clientes', 'fecha_proximo_contacto, activo', q => q.eq('activo', true)),
                 fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
                     let qq = q.gte('fecha', isoFrom).lt('fecha', isoTo);
@@ -422,16 +422,33 @@ export default function Estadisticas() {
             // Efectividad breakdown
             const breakdown = new Map();
             clientesRango.forEach(c => {
-                const nRaw = c.creado_por?.trim() || "Desconocido";
-                if (!nRaw) return;
-                const nLow = nRaw.toLowerCase();
-                if (setActNames.has(nLow)) {
-                    if (!breakdown.has(nRaw)) breakdown.set(nRaw, { total: 0, efectivo: 0, sts: {} });
-                    const obj = breakdown.get(nRaw);
-                    obj.total++;
-                    const st = c.estado || "Sin estado";
-                    obj.sts[st] = (obj.sts[st] || 0) + 1;
-                    if (st.startsWith('4') || st.startsWith('5')) obj.efectivo++;
+                const creadoRaw = c.creado_por?.trim() || "Desconocido";
+                const activoRaw = c.activador_cierre?.trim() || creadoRaw;
+                const st = c.estado || "Sin estado";
+
+                // Count for Creator (Relevado)
+                if (setActNames.has(creadoRaw.toLowerCase())) {
+                    if (!breakdown.has(creadoRaw)) breakdown.set(creadoRaw, { total: 0, efectivo: 0, sts: {} });
+                    const objA = breakdown.get(creadoRaw);
+                    objA.total++;
+                    
+                    if (activoRaw !== creadoRaw && (st.startsWith('4') || st.startsWith('5'))) {
+                        objA.sts["1 - Cliente relevado"] = (objA.sts["1 - Cliente relevado"] || 0) + 1;
+                    } else {
+                        objA.sts[st] = (objA.sts[st] || 0) + 1;
+                        if (st.startsWith('4') || st.startsWith('5')) objA.efectivo++;
+                    }
+                }
+
+                // Count for Closer (Activo)
+                if (activoRaw !== creadoRaw && (st.startsWith('4') || st.startsWith('5'))) {
+                    if (setActNames.has(activoRaw.toLowerCase())) {
+                        if (!breakdown.has(activoRaw)) breakdown.set(activoRaw, { total: 0, efectivo: 0, sts: {} });
+                        const objB = breakdown.get(activoRaw);
+                        objB.total++;
+                        objB.efectivo++;
+                        objB.sts[st] = (objB.sts[st] || 0) + 1;
+                    }
                 }
             });
 
