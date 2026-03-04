@@ -879,11 +879,11 @@ export default function Estadisticas() {
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', textAlign: 'center' }}>
                                                 <div style={{ background: 'var(--bg)', borderRadius: '10px', padding: '10px 6px' }}>
                                                     <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{a.total}</div>
-                                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Altas</div>
+                                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Relevos</div>
                                                 </div>
                                                 <div style={{ background: 'var(--bg)', borderRadius: '10px', padding: '10px 6px' }}>
                                                     <div style={{ fontSize: '1.5rem', fontWeight: 800, color: effectColor, lineHeight: 1 }}>{a.efectivo}</div>
-                                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Efectivas</div>
+                                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Activado</div>
                                                 </div>
                                                 <div style={{ background: 'var(--bg)', borderRadius: '10px', padding: '10px 6px' }}>
                                                     <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{a.visitas}</div>
@@ -906,7 +906,7 @@ export default function Estadisticas() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
                         <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
-                            <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Altas Diarias (Stacked)</h3>
+                            <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Relevos y Activaciones Diarias</h3>
                             <div style={{ height: '350px' }}>
                                 {chartsData.activadoresDia && <Bar data={chartsData.activadoresDia} options={{ ...COMMON_OPTIONS, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, grid: { color: THEME.colors.grid } } } }} />}
                             </div>
@@ -933,8 +933,8 @@ export default function Estadisticas() {
                                 <thead>
                                     <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
                                         <th style={{ padding: '12px' }}>Activador</th>
-                                        <th style={{ padding: '12px' }}>Altas (Rango)</th>
-                                        <th style={{ padding: '12px' }}>Breakdown de Estados</th>
+                                        <th style={{ padding: '12px' }}>Aportes Directos</th>
+                                        <th style={{ padding: '12px' }}>Breakdown de Estados Asignados</th>
                                     </tr>
                                 </thead>
                                 <tbody>
