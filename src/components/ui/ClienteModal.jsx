@@ -339,6 +339,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="Dietética">Dietética</option>
                                         <option value="Farmacia">Farmacia</option>
                                         <option value="Ferretería">Ferretería</option>
+                                        <option value="Fiambrería">Fiambrería</option>
                                         <option value="Gastronómico">Gastronómico</option>
                                         <option value="Granja">Granja</option>
                                         <option value="Heladería">Heladería</option>
@@ -351,6 +352,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                         <option value="Pescadería">Pescadería</option>
                                         <option value="Pet Shop">Pet Shop</option>
                                         <option value="Sin definir">Sin definir</option>
+                                        <option value="Verdulería">Verdulería</option>
+                                        <option value="Vinoteca">Vinoteca</option>
                                     </select>
                                     <FieldError msg={errors.rubro} />
                                 </div>
