@@ -13,7 +13,7 @@ const COLUMNS = [
 ];
 
 export default function TableroTareas() {
-    const { user, role , empresaActiva } = useAuth();
+    const { user, role, empresaActiva } = useAuth();
     const isAdmin = role === 'Administrador';
 
     const [tasks, setTasks] = useState({
@@ -120,14 +120,13 @@ export default function TableroTareas() {
             setForm({ titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: [], fecha_vencimiento: '', checklist: [] });
         }
         setNewChecklistText('');
-        setIsModalOpen(true);
     };
 
     const saveTask = async (e) => {
         e.preventDefault();
         setSaving(true);
 
-        const payload = { ...form };
+        const payload = { ...form, empresa_id: empresaActiva?.id };
 
         // Fix for Postgres type validation (empty strings to null)
         if (!payload.fecha_vencimiento) payload.fecha_vencimiento = null;

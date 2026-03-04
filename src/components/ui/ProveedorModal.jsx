@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function ProveedorModal({ isOpen, onClose, proveedorId, onSaved }) {
+    const { empresaActiva } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '',
@@ -64,7 +66,8 @@ export function ProveedorModal({ isOpen, onClose, proveedorId, onSaved }) {
             contacto: formData.contacto.trim() || null,
             telefono: formData.telefono.trim() || null,
             rubro: formData.rubro.trim() || null,
-            notas: formData.notas.trim() || null
+            notas: formData.notas.trim() || null,
+            empresa_id: empresaActiva?.id
         };
 
         if (proveedorId) {

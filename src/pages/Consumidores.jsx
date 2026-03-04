@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+
 import { Button } from '../components/ui/Button';
 import { Plus, ChevronLeft, ChevronRight, Download, Upload, Search, MapPin, Phone, Mail, Calendar, Clock, Store, Tag, User, Hash, Filter, Activity as ActivityIcon, Edit2, Trash2, Building, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -7,6 +9,7 @@ import { ConsumidorModal } from '../components/ui/ConsumidorModal';
 import { ActividadConsumidorModal } from '../components/ui/ActividadConsumidorModal';
 
 export default function Consumidores() {
+    const { empresaActiva } = useAuth();
     const [consumidores, setConsumidores] = useState([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
@@ -33,10 +36,12 @@ export default function Consumidores() {
     const [expandedActivities, setExpandedActivities] = useState({});
 
     const fetchConsumidores = async () => {
+        if (!empresaActiva?.id) return;
         setLoading(true);
         let request = supabase
             .from('consumidores')
             .select('*', { count: 'exact' })
+            .eq('empresa_id', empresaActiva.id)
             .eq('activo', true)
             .order('ultima_actividad', { ascending: false, nullsFirst: false })
             .order('id', { ascending: true })
@@ -63,6 +68,7 @@ export default function Consumidores() {
                 const { data: acts, error: actError } = await supabase
                     .from('actividades_consumidores')
                     .select('*')
+                    .eq('empresa_id', empresaActiva.id)
                     .in('consumidor_id', ids)
                     .order('fecha', { ascending: false });
 
@@ -81,7 +87,7 @@ export default function Consumidores() {
 
     useEffect(() => {
         fetchConsumidores();
-    }, [page, pageSize, fNombre, fTelefono, fLocalidad, fEstado, fResponsable]);
+    }, [page, pageSize, fNombre, fTelefono, fLocalidad, fEstado, fResponsable, empresaActiva]);
 
     const handleCreate = () => {
         setEditingId(null);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -17,6 +18,7 @@ const EVENT_COLORS = {
 };
 
 export function EventoCalendarioModal({ isOpen, onClose, eventoId, clienteId, initialData, isContacto, onSaved }) {
+    const { empresaActiva } = useAuth();
     const [loading, setLoading] = useState(false);
     const [usuariosList, setUsuariosList] = useState([]);
     const [historialContacto, setHistorialContacto] = useState("");
@@ -78,9 +80,12 @@ export function EventoCalendarioModal({ isOpen, onClose, eventoId, clienteId, in
                 if (label) set.add(label);
             });
 
-            const { data: cls } = await supabase.from('clientes').select('responsable').not('responsable', 'is', null);
+            const { data: cls } = await supabase.from('empresa_cliente')
+                .select('clientes(responsable)')
+                .eq('empresa_id', empresaActiva?.id)
+                .not('clientes.responsable', 'is', null);
             if (cls) cls.forEach(c => {
-                const v = (c.responsable || "").toString().trim();
+                const v = (c.clientes?.responsable || "").toString().trim();
                 if (v) set.add(v);
             });
 
@@ -98,7 +103,12 @@ export function EventoCalendarioModal({ isOpen, onClose, eventoId, clienteId, in
 
     const fetchHistorialContacto = async (cId) => {
         setHistorialContacto("Cargando historial...");
-        const { data, error } = await supabase.from("actividades").select("fecha, descripcion, usuario").eq("cliente_id", cId).order("fecha", { ascending: false }).limit(30);
+        const { data, error } = await supabase.from("actividades")
+            .select("fecha, descripcion, usuario")
+            .eq("cliente_id", cId)
+            .eq("empresa_id", empresaActiva?.id)
+            .order("fecha", { ascending: false })
+            .limit(30);
 
         if (error) {
             setHistorialContacto("No se pudo cargar el historial.");
@@ -171,10 +181,10 @@ export function EventoCalendarioModal({ isOpen, onClose, eventoId, clienteId, in
                 const dateOnly = inicioIso.split("T")[0];
                 const timeOnly = `${String(new Date(formData.inicio).getHours()).padStart(2, "0")}:${String(new Date(formData.inicio).getMinutes()).padStart(2, "0")}:00`;
 
-                const { error } = await supabase.from("clientes").update({
+                const { error } = await supabase.from("empresa_cliente").update({
                     fecha_proximo_contacto: dateOnly,
                     hora_proximo_contacto: timeOnly
-                }).eq('id', clienteId);
+                }).eq('cliente_id', clienteId).eq('empresa_id', empresaActiva?.id);
 
                 if (error) throw error;
                 toast.success('Contacto actualizado');
@@ -191,7 +201,8 @@ export function EventoCalendarioModal({ isOpen, onClose, eventoId, clienteId, in
                     all_day: formData.allDay,
                     fecha_inicio: inicioIso,
                     fecha_fin: finIso,
-                    color: formData.color.trim() || null
+                    color: formData.color.trim() || null,
+                    empresa_id: empresaActiva?.id
                 };
 
                 let savedEventId = eventoId;

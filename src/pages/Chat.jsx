@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 export default function Chat() {
-    const { user } = useAuth();
+    const { user, empresaActiva } = useAuth();
     const [usuarios, setUsuarios] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [mensajes, setMensajes] = useState([]);
@@ -41,10 +41,13 @@ export default function Chat() {
             if (!user) return;
             setLoadingUsers(true);
 
-            const { data: usersData, error: usersError } = await supabase
-                .from('usuarios')
-                .select('email, nombre, role')
-                .neq('email', user.email);
+            const { data: empUsers, error: usersError } = await supabase
+                .from('empresa_usuario')
+                .select('usuario:usuarios(email, nombre, role)')
+                .eq('empresa_id', empresaActiva?.id)
+                .neq('usuario_email', user.email);
+
+            const usersData = (empUsers || []).map(eu => eu.usuario).filter(Boolean);
 
             if (usersError) {
                 console.error('Error fetching users:', usersError);
@@ -57,6 +60,7 @@ export default function Chat() {
                 .from('mensajes_chat')
                 .select('de_usuario, leido, created_at')
                 .eq('para_usuario', user.email)
+                .eq('empresa_id', empresaActiva?.id)
                 .order('created_at', { ascending: false });
 
             let userStats = {};
@@ -90,7 +94,7 @@ export default function Chat() {
             setLoadingUsers(false);
         };
         fetchUsers();
-    }, [user]);
+    }, [user, empresaActiva]);
 
     // 2. Suscribirse a nuevos mensajes en tiempo real
     useEffect(() => {
@@ -138,7 +142,7 @@ export default function Chat() {
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [user, selectedUser]);
+    }, [user, selectedUser, empresaActiva]);
 
     // 3. Cargar historial cuando selecciono un usuario
     useEffect(() => {
@@ -152,6 +156,7 @@ export default function Chat() {
             const { data, error } = await supabase
                 .from('mensajes_chat')
                 .select('*')
+                .eq('empresa_id', empresaActiva?.id)
                 .or(`and(de_usuario.eq.${user.email},para_usuario.eq.${selectedUser.email}),and(de_usuario.eq.${selectedUser.email},para_usuario.eq.${user.email})`)
                 .order('created_at', { ascending: false })
                 .limit(25);
@@ -170,7 +175,7 @@ export default function Chat() {
         };
 
         fetchInitialMessages();
-    }, [selectedUser, user]);
+    }, [selectedUser, user, empresaActiva]);
 
     // Cargar mensajes anteriores al scrollear arriba
     const loadMoreMessages = async () => {
@@ -183,6 +188,7 @@ export default function Chat() {
         const { data, error } = await supabase
             .from('mensajes_chat')
             .select('*')
+            .eq('empresa_id', empresaActiva?.id)
             .or(`and(de_usuario.eq.${user.email},para_usuario.eq.${selectedUser.email}),and(de_usuario.eq.${selectedUser.email},para_usuario.eq.${user.email})`)
             .order('created_at', { ascending: false })
             .limit(newLimit);
@@ -223,6 +229,7 @@ export default function Chat() {
             .update({ leido: true })
             .eq('de_usuario', remitenteEmail)
             .eq('para_usuario', user.email)
+            .eq('empresa_id', empresaActiva?.id)
             .eq('leido', false);
         window.dispatchEvent(new CustomEvent('chat-messages-read'));
     };
@@ -261,7 +268,12 @@ export default function Chat() {
 
         const { data, error } = await supabase
             .from('mensajes_chat')
-            .insert([{ de_usuario: user.email, para_usuario: selectedUser.email, mensaje: text }])
+            .insert([{
+                de_usuario: user.email,
+                para_usuario: selectedUser.email,
+                mensaje: text,
+                empresa_id: empresaActiva?.id
+            }])
             .select()
             .single();
 
@@ -295,6 +307,7 @@ export default function Chat() {
         try {
             const { count } = await supabase.from('tareas_tablero')
                 .select('*', { count: 'exact', head: true })
+                .eq('empresa_id', empresaActiva?.id)
                 .eq('estado', 'Pendiente');
 
             const { error: taskError } = await supabase.from('tareas_tablero').insert([{
@@ -304,6 +317,7 @@ export default function Chat() {
                 asignado_a: asignadosString,
                 fecha_vencimiento: taskForm.fecha_vencimiento || null,
                 orden: count || 0,
+                empresa_id: empresaActiva?.id,
                 checklist: []
             }]);
 

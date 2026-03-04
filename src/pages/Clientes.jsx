@@ -60,24 +60,25 @@ export default function Clientes() {
             }
         };
         fetchRubros();
-    }, []);
+    }, [empresaActiva]);
 
     const fetchClientes = async () => {
+        if (!empresaActiva?.id) return;
         setLoading(true);
-        let request = supabase
-            .from('clientes')
-            .select('*', { count: 'exact' })
-            .eq('activo', true)
 
-        // Apply dynamic sorting
+        let request = supabase
+            .from('empresa_cliente')
+            .select('*, clientes(*)', { count: 'exact' })
+            .eq('empresa_id', empresaActiva.id)
+            .eq('activo', true);
+
+        // Apply sorting
         if (sortBy === 'recent') {
             request = request.order('created_at', { ascending: false }).order('ultima_actividad', { ascending: false, nullsFirst: false });
         } else if (sortBy === 'oldest') {
             request = request.order('created_at', { ascending: true }).order('ultima_actividad', { ascending: true, nullsFirst: false });
         } else if (sortBy === 'az') {
-            request = request.order('nombre_local', { ascending: true });
-        } else if (sortBy === 'za') {
-            request = request.order('nombre_local', { ascending: false });
+            request = request.order('updated_at', { ascending: false });
         } else if (sortBy === 'activity_desc') {
             request = request.order('ultima_actividad', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
         } else if (sortBy === 'activity_asc') {
@@ -100,6 +101,7 @@ export default function Clientes() {
         if (fRubro) request = request.eq('rubro', fRubro);
         if (fInteres) request = request.eq('interes', fInteres);
         if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
+
         if (fProximos7) {
             const hoy = new Date();
             const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
@@ -113,15 +115,22 @@ export default function Clientes() {
             toast.error('Error al cargar clientes');
             console.error(error);
         } else {
-            setClientes(data || []);
+            const mapped = (data || []).map(row => ({
+                ...row.clientes,
+                ...row,
+                id: row.clientes?.id
+            }));
+
+            setClientes(mapped);
             setTotal(count || 0);
 
-            if (data?.length > 0) {
-                const ids = data.map(c => c.id);
+            if (mapped.length > 0) {
+                const ids = mapped.map(c => c.id);
                 const { data: acts, error: actError } = await supabase
                     .from('actividades')
                     .select('*')
                     .in('cliente_id', ids)
+                    .eq('empresa_id', empresaActiva.id)
                     .order('fecha', { ascending: false });
 
                 if (!actError && acts) {
@@ -181,10 +190,14 @@ export default function Clientes() {
             dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             toastMsg = `Próximo contacto: ${d.toLocaleDateString('es-AR')}`;
         }
+
+        // Update empresa_cliente for company-specific date
         const { error } = await supabase
-            .from('clientes')
+            .from('empresa_cliente')
             .update({ fecha_proximo_contacto: dateStr })
-            .eq('id', clienteId);
+            .eq('cliente_id', clienteId)
+            .eq('empresa_id', empresaActiva?.id);
+
         if (error) {
             toast.error('Error al guardar fecha');
         } else {
@@ -198,12 +211,13 @@ export default function Clientes() {
         const { error } = await supabase.from('actividades').insert([{
             cliente_id: clienteId,
             descripcion: 'Visita realizada',
-            fecha: now
+            fecha: now,
+            empresa_id: empresaActiva?.id
         }]);
         if (error) {
             toast.error('Error al registrar visita');
         } else {
-            await supabase.from('clientes').update({ ultima_actividad: now }).eq('id', clienteId);
+            await supabase.from('empresa_cliente').update({ ultima_actividad: now }).eq('cliente_id', clienteId).eq('empresa_id', empresaActiva?.id);
             toast.success(`Visita registrada para ${nombre || 'cliente'}`);
             fetchClientes();
         }
@@ -242,18 +256,20 @@ export default function Clientes() {
         setExportLoading(true);
         const toastId = toast.loading('Calculando exportación...');
         try {
-            const { data: allClientes, error: errCli } = await supabase
-                .from("clientes")
-                .select("id, nombre, telefono, direccion, rubro, estado, responsable, tipo_contacto, fecha_proximo_contacto, hora_proximo_contacto, notas")
+            const { data: allRows, error: errCli } = await supabase
+                .from("empresa_cliente")
+                .select("*, clientes(*)")
+                .eq("empresa_id", empresaActiva?.id)
                 .eq("activo", true);
 
             if (errCli) throw errCli;
 
-            const ids = (allClientes || []).map(c => c.id);
+            const ids = (allRows || []).map(r => r.clientes?.id);
             const { data: allActividades, error: errAct } = await supabase
                 .from("actividades")
                 .select("cliente_id, fecha, usuario, descripcion")
-                .in("cliente_id", ids);
+                .in("cliente_id", ids)
+                .eq("empresa_id", empresaActiva?.id);
 
             if (errAct) throw errAct;
 
@@ -261,23 +277,25 @@ export default function Clientes() {
 
             // Sheet 1: Clientes
             const dataClientes = [["id", "nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"]];
-            allClientes.forEach(c => {
+            allRows.forEach(r => {
+                const c = r.clientes || {};
                 dataClientes.push([
-                    c.id, c.nombre || "", c.telefono || "", c.direccion || "", c.rubro || "",
-                    c.estado || "", c.responsable || "", c.tipo_contacto || "", c.fecha_proximo_contacto || "",
-                    c.hora_proximo_contacto || "", c.notas || ""
+                    c.id, c.nombre || r.nombre_local || "", c.telefono || "", c.direccion || r.direccion || "", r.rubro || "",
+                    r.estado || "", r.responsable || "", r.tipo_contacto || "", r.fecha_proximo_contacto || "",
+                    r.hora_proximo_contacto || "", r.notas || ""
                 ]);
             });
             const wsClientes = window.XLSX.utils.aoa_to_sheet(dataClientes);
             window.XLSX.utils.book_append_sheet(wb, wsClientes, "Clientes");
 
             // Sheet 2: Historial
-            const clientePorId = {};
-            allClientes.forEach(c => (clientePorId[c.id] = c));
+            const rowByClientId = {};
+            allRows.forEach(r => (rowByClientId[r.clientes?.id] = r));
             const dataHist = [["cliente_id", "nombre_cliente", "telefono_cliente", "fecha", "usuario", "descripcion"]];
             (allActividades || []).forEach(a => {
-                const cli = clientePorId[a.cliente_id] || {};
-                dataHist.push([a.cliente_id, cli.nombre || "", cli.telefono || "", a.fecha || "", a.usuario || "", a.descripcion || ""]);
+                const r = rowByClientId[a.cliente_id] || {};
+                const c = r.clientes || {};
+                dataHist.push([a.cliente_id, c.nombre || r.nombre_local || "", c.telefono || "", a.fecha || "", a.usuario || "", a.descripcion || ""]);
             });
             const wsHist = window.XLSX.utils.aoa_to_sheet(dataHist);
             window.XLSX.utils.book_append_sheet(wb, wsHist, "Historial");
@@ -287,7 +305,7 @@ export default function Clientes() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "crm_clientes_historial.xlsx";
+            a.download = `crm_${empresaActiva?.nombre}_clientes.xlsx`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -348,7 +366,6 @@ export default function Clientes() {
                 position: 'relative',
                 overflow: 'hidden'
             }}>
-                {/* Subtle light effect top edge */}
                 <div style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)', opacity: 0.5 }}></div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)', fontWeight: 700, fontSize: '1.1rem' }}>
@@ -521,7 +538,6 @@ export default function Clientes() {
 
                         return (
                             <div key={c.id} className="bento-card" style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
-                                {/* Accent line based on situacion for states 4 & 5 */}
                                 {accentColor !== 'transparent' && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: accentColor }}></div>}
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -550,7 +566,6 @@ export default function Clientes() {
                                         </div>
                                     </div>
 
-                                    {/* Quick actions top right */}
                                     <div style={{ display: 'flex', gap: '6px' }}>
                                         <button onClick={() => handleEdit(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title="Editar">
                                             <Edit2 size={16} />
@@ -561,7 +576,6 @@ export default function Clientes() {
                                     </div>
                                 </div>
 
-                                {/* Badges row */}
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                     {c.estado && (
                                         <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
@@ -596,10 +610,7 @@ export default function Clientes() {
                                     </div>
                                 )}
 
-                                {/* Footer / Activities */}
                                 <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-                                    {/* Quick contact-date buttons */}
                                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', marginRight: '2px' }}>
                                             <Calendar size={13} style={{ marginRight: '4px' }} /> Próx. contacto:
@@ -608,70 +619,43 @@ export default function Clientes() {
                                             <button
                                                 key={label}
                                                 onClick={() => handleQuickDate(c.id, days)}
-                                                style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s ease' }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                                                className="quick-date-btn"
+                                                style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-muted)', cursor: 'pointer' }}
                                             >{label}</button>
                                         ))}
                                         {c.fecha_proximo_contacto && (
-                                            <button
-                                                onClick={() => handleQuickDate(c.id, null)}
-                                                style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)', color: 'var(--danger)', cursor: 'pointer', transition: 'all 0.15s ease' }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger)'; e.currentTarget.style.color = '#fff'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; e.currentTarget.style.color = 'var(--danger)'; }}
-                                                title="Quitar fecha de próximo contacto"
-                                            >✕ Sin fecha</button>
+                                            <button onClick={() => handleQuickDate(c.id, null)} style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)', color: 'var(--danger)', cursor: 'pointer' }}>✕</button>
                                         )}
                                     </div>
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <button onClick={() => toggleHistory(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', transition: 'color 0.2s' }}>
-                                            <Clock size={16} style={{ color: isExpanded ? 'var(--accent)' : 'inherit' }} /> Historial ({acts.length})
+                                        <button onClick={() => toggleHistory(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Clock size={16} /> Historial ({acts.length})
                                         </button>
                                         <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button
-                                                onClick={() => handleRegistrarVisita(c.id, c.nombre || c.nombre_local)}
-                                                style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.color = '#fff'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)'; e.currentTarget.style.color = '#10b981'; }}
-                                                title="Registrar visita realizada"
-                                            >
-                                                🏪 Visita
-                                                {visitCount > 0 && (
-                                                    <span style={{ background: '#10b981', color: '#fff', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700, padding: '1px 6px', minWidth: '18px', textAlign: 'center', lineHeight: '16px' }}>
-                                                        {visitCount}
-                                                    </span>
-                                                )}
+                                            <button onClick={() => handleRegistrarVisita(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>
+                                                🏪 Visita {visitCount > 0 && <span>({visitCount})</span>}
                                             </button>
                                             <Button variant="secondary" onClick={() => handleOpenActivity(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
-                                                <Plus size={14} style={{ marginRight: '4px' }} /> Actividad
+                                                + Actividad
                                             </Button>
                                         </div>
                                     </div>
 
-                                    {/* Animated Expandable History */}
-                                    <div style={{
-                                        maxHeight: isExpanded ? '300px' : '0',
-                                        opacity: isExpanded ? 1 : 0,
-                                        overflowY: 'auto',
-                                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                                        paddingRight: '4px'
-                                    }} className={isExpanded ? "table-wrap-soft" : ""}>
-                                        {isExpanded && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-                                                {acts.length > 0 ? acts.map(a => (
-                                                    <div key={a.id} style={{ borderLeft: '3px solid rgba(59, 130, 246, 0.4)', paddingLeft: '12px' }}>
-                                                        <div style={{ fontSize: '0.95rem', color: 'var(--text)', marginBottom: '4px' }}>{a.descripcion}</div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                            {new Date(a.fecha).toLocaleString('es-AR')} {a.usuario && <span>· <strong>{a.usuario}</strong></span>}
-                                                        </div>
+                                    {isExpanded && (
+                                        <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px', paddingRight: '4px' }}>
+                                            {acts.length > 0 ? acts.map(a => (
+                                                <div key={a.id} style={{ borderLeft: '3px solid rgba(59, 130, 246, 0.4)', paddingLeft: '12px' }}>
+                                                    <div style={{ fontSize: '0.95rem', color: 'var(--text)', marginBottom: '4px' }}>{a.descripcion}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                        {new Date(a.fecha).toLocaleString('es-AR')} {a.usuario && <span>· <strong>{a.usuario}</strong></span>}
                                                     </div>
-                                                )) : (
-                                                    <div className="muted" style={{ fontSize: '0.9rem', textAlign: 'center', padding: '12px 0' }}>No hay actividades registradas.</div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                                </div>
+                                            )) : (
+                                                <div className="muted" style={{ fontSize: '0.9rem', textAlign: 'center' }}>No hay actividades registradas.</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -684,15 +668,6 @@ export default function Clientes() {
                     <Button variant="secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft size={16} /></Button>
                     <span className="muted">Página {page} de {totalPages}</span>
                     <Button variant="secondary" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight size={16} /></Button>
-                    <select
-                        className="input"
-                        value={pageSize}
-                        onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                        style={{ width: '80px' }}
-                    >
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                    </select>
                 </div>
             )}
 

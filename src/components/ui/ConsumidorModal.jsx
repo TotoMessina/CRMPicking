@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -73,7 +74,8 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved }) {
             genero: formData.genero || null,
             responsable: formData.responsable || null,
             fecha_proximo_contacto: formData.fecha_proximo_contacto || null,
-            notas: formData.notas || null
+            notas: formData.notas || null,
+            empresa_id: empresaActiva?.id
         };
 
         if (consumidorId) {
@@ -84,6 +86,7 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved }) {
                 // Activity sync
                 await supabase.from('actividades').insert([{
                     consumidor_id: consumidorId,
+                    empresa_id: empresaActiva?.id,
                     descripcion: 'Consumidor actualizado',
                     usuario: nombreAuth,
                     user_id: user?.id
@@ -97,6 +100,7 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved }) {
                 toast.success('Consumidor creado');
                 await supabase.from('actividades').insert([{
                     consumidor_id: data.id,
+                    empresa_id: empresaActiva?.id,
                     descripcion: 'Consumidor creado',
                     usuario: nombreAuth,
                     user_id: user?.id

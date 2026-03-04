@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Plus, Search, Calendar as CalendarIcon, Package, Phone, User, Store } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -20,6 +21,7 @@ const TYPE_COLORS = {
 };
 
 export default function Proveedores() {
+    const { empresaActiva } = useAuth();
     const [proveedores, setProveedores] = useState([]);
     const [filteredProveedores, setFilteredProveedores] = useState([]);
     const [events, setEvents] = useState([]);
@@ -36,11 +38,13 @@ export default function Proveedores() {
     const calendarRef = useRef(null);
 
     const fetchData = async () => {
+        if (!empresaActiva?.id) return;
         setLoading(true);
         // Load suppliers
         const { data: provData, error: provErr } = await supabase
             .from('proveedores')
             .select('*')
+            .eq('empresa_id', empresaActiva.id)
             .eq('activo', true)
             .order('nombre');
 
@@ -56,7 +60,8 @@ export default function Proveedores() {
         // Load events
         const { data: eventData, error: eventErr } = await supabase
             .from('eventos_proveedores')
-            .select(`*, proveedores(nombre)`);
+            .select(`*, proveedores(nombre)`)
+            .eq('empresa_id', empresaActiva.id);
 
         if (eventErr) {
             toast.error("Error cargando eventos");
@@ -69,7 +74,7 @@ export default function Proveedores() {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [empresaActiva]);
 
     const applySearch = (term, list) => {
         const lower = term.toLowerCase();

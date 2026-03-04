@@ -7,8 +7,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Users, Truck, Calendar, Sparkles, Lightbulb } from 'lucide-react';
 
 export default function Dashboard() {
-    const { empresaActiva } = useAuth();
-    const { user } = useAuth();
+    const { empresaActiva, user } = useAuth();
 
     const [stats, setStats] = useState({
         clientes: 0,
@@ -21,6 +20,8 @@ export default function Dashboard() {
 
     // Reusable function to fetch KPIs
     const loadKPIs = async () => {
+        if (!empresaActiva?.id) return;
+
         try {
             const today = new Date().toISOString().split('T')[0];
 
@@ -31,11 +32,11 @@ export default function Dashboard() {
                 { data: agendaHoyData },
                 { count: visitasHoyCount }
             ] = await Promise.all([
-                supabase.from('clientes').select('*', { count: 'exact', head: true }).eq('activo', true),
-                supabase.from('consumidores').select('*', { count: 'exact', head: true }).eq('activo', true),
-                supabase.from('repartidores').select('*', { count: 'exact', head: true }),
-                supabase.from('clientes').select('id').eq('fecha_proximo_contacto', today).eq('activo', true),
-                supabase.from('actividades').select('*', { count: 'exact', head: true }).eq('descripcion', 'Visita realizada').gte('fecha', today)
+                supabase.from('empresa_cliente').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('activo', true),
+                supabase.from('consumidores').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('activo', true),
+                supabase.from('repartidores').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id),
+                supabase.from('empresa_cliente').select('id').eq('empresa_id', empresaActiva.id).eq('fecha_proximo_contacto', today).eq('activo', true),
+                supabase.from('actividades').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('descripcion', 'Visita realizada').gte('fecha', today)
             ]);
 
             setStats({
@@ -54,22 +55,30 @@ export default function Dashboard() {
     };
 
     useEffect(() => {
-        loadKPIs();
+        if (empresaActiva?.id) {
+            loadKPIs();
 
-        // Supabase Realtime
-        const channel = supabase.channel('dashboard-kpis')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => {
-                loadKPIs();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'actividades' }, () => {
-                loadKPIs();
-            })
-            .subscribe();
+            // Supabase Realtime
+            const channel = supabase.channel(`dashboard-kpis-${empresaActiva.id}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'empresa_cliente',
+                    filter: `empresa_id=eq.${empresaActiva.id}`
+                }, () => loadKPIs())
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'actividades',
+                    filter: `empresa_id=eq.${empresaActiva.id}`
+                }, () => loadKPIs())
+                .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        }
+    }, [empresaActiva]);
 
     const getInsight = () => {
         const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -83,7 +92,7 @@ export default function Dashboard() {
         <div style={{ paddingBottom: '40px' }}>
             <header className="dashboard-header" style={{ marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>Dashboard</h1>
-                <p className="muted" style={{ fontSize: '1.1rem' }}>Resumen operativo del día</p>
+                <p className="muted" style={{ fontSize: '1.1rem' }}>Resumen operativo del día {empresaActiva ? `(${empresaActiva.nombre})` : ''}</p>
             </header>
 
             <div className="bento-grid">

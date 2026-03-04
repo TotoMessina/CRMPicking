@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Plus, ChevronLeft, ChevronRight, Download, Upload, Search, MapPin, Phone, Mail, Calendar, Clock, Store, Tag, User, Hash, Filter, Activity as ActivityIcon, Edit2, Trash2, Building, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -7,6 +8,7 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
 import { ActividadRepartidorModal } from '../components/ui/ActividadRepartidorModal';
 
 export default function Repartidores() {
+    const { empresaActiva } = useAuth();
     const [repartidores, setRepartidores] = useState([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
@@ -33,10 +35,12 @@ export default function Repartidores() {
     const [expandedActivities, setExpandedActivities] = useState({});
 
     const fetchRepartidores = async () => {
+        if (!empresaActiva?.id) return;
         setLoading(true);
         let request = supabase
             .from('repartidores')
             .select('*', { count: 'exact' })
+            .eq('empresa_id', empresaActiva.id)
             .order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1);
 
@@ -60,6 +64,7 @@ export default function Repartidores() {
                 const { data: acts, error: actError } = await supabase
                     .from('actividades_repartidores')
                     .select('*')
+                    .eq('empresa_id', empresaActiva.id)
                     .in('repartidor_id', ids)
                     .order('fecha_accion', { ascending: false });
 
@@ -78,7 +83,7 @@ export default function Repartidores() {
 
     useEffect(() => {
         fetchRepartidores();
-    }, [page, pageSize, fNombre, fTelefono, fLocalidad, fEstado, fResponsable]);
+    }, [page, pageSize, fNombre, fTelefono, fLocalidad, fEstado, fResponsable, empresaActiva]);
 
     const handleCreate = () => {
         setEditingId(null);

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation, onSaved }) {
+    const { empresaActiva } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '', telefono: '', email: '', localidad: '', direccion: '',
@@ -77,7 +79,8 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
             direccion: formData.direccion || null,
             estado: formData.estado || 'Documentación sin gestionar',
             responsable: formData.responsable || null,
-            notas: formData.notas || null
+            notas: formData.notas || null,
+            empresa_id: empresaActiva?.id
         };
 
         if (createdAtVal) {
@@ -96,6 +99,7 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
                 toast.success('Repartidor actualizado');
                 await supabase.from('actividades_repartidores').insert([{
                     repartidor_id: repartidorId,
+                    empresa_id: empresaActiva?.id,
                     detalle: 'Repartidor actualizado',
                     usuario: nombreAuth,
                     fecha_accion: new Date().toISOString()
@@ -109,6 +113,7 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
                 toast.success('Repartidor creado');
                 await supabase.from('actividades_repartidores').insert([{
                     repartidor_id: data.id,
+                    empresa_id: empresaActiva?.id,
                     detalle: 'Repartidor creado',
                     usuario: nombreAuth,
                     fecha_accion: new Date().toISOString()

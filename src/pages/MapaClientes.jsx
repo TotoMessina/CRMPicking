@@ -99,10 +99,12 @@ export default function MapaClientes() {
     const routingControlRef = useRef(null);
 
     const fetchClientes = async () => {
+        if (!empresaActiva?.id) return;
         setLoading(true);
         const { data, error } = await supabase
-            .from("clientes")
-            .select("id,nombre,nombre_local,estado,lat,lng,creado_por,rubro,direccion,telefono,interes,estilo_contacto")
+            .from("empresa_cliente")
+            .select("*, clientes(*)")
+            .eq("empresa_id", empresaActiva.id)
             .eq("activo", true)
             .not("lat", "is", null)
             .not("lng", "is", null);
@@ -110,7 +112,13 @@ export default function MapaClientes() {
         if (error) {
             toast.error("Error al cargar clientes");
         } else {
-            const mapped = (data || []).map(r => ({ ...r, lat: Number(r.lat), lng: Number(r.lng) })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+            const mapped = (data || []).map(r => ({
+                ...r.clientes,
+                ...r,
+                lat: Number(r.lat || r.clientes?.lat),
+                lng: Number(r.lng || r.clientes?.lng),
+                id: r.clientes?.id
+            })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
             setClientes(mapped);
         }
         setLoading(false);
@@ -135,7 +143,7 @@ export default function MapaClientes() {
         drawnZonesRef.current.clearLayers();
         if (!showZones) return;
 
-        const { data, error } = await supabase.from('zones').select('*');
+        const { data, error } = await supabase.from('zones').select('*').eq('empresa_id', empresaActiva?.id);
         if (error) {
             console.error("Error cargando zonas:", error);
             return;
@@ -158,7 +166,7 @@ export default function MapaClientes() {
     // Global popup handlers
     useEffect(() => {
         window.updateZoneColor = async (id, newColor) => {
-            const { error } = await supabase.from('zones').update({ color: newColor }).eq('id', id);
+            const { error } = await supabase.from('zones').update({ color: newColor }).eq('id', id).eq('empresa_id', empresaActiva?.id);
             if (error) {
                 toast.error("Error al actualizar color");
             } else {
@@ -176,7 +184,7 @@ export default function MapaClientes() {
 
         window.deleteZoneById = async (id) => {
             if (!window.confirm("¿Eliminar esta zona?")) return;
-            const { error } = await supabase.from('zones').delete().eq('id', id);
+            const { error } = await supabase.from('zones').delete().eq('id', id).eq('empresa_id', empresaActiva?.id);
             if (error) {
                 toast.error("Error al eliminar zona");
             } else {
@@ -195,11 +203,11 @@ export default function MapaClientes() {
             delete window.updateZoneColor;
             delete window.deleteZoneById;
         };
-    }, []);
+    }, [empresaActiva]);
 
     useEffect(() => {
         fetchClientes();
-    }, []);
+    }, [empresaActiva]);
 
     // Initialize Map
     useEffect(() => {
@@ -270,7 +278,8 @@ export default function MapaClientes() {
                 const { data, error } = await supabase.from('zones').insert([{
                     coordinates: coords,
                     color: color,
-                    scope: 'kiosco_map'
+                    scope: 'kiosco_map',
+                    empresa_id: empresaActiva?.id
                 }]).select();
 
                 if (error) {
@@ -288,7 +297,7 @@ export default function MapaClientes() {
                 const layers = e.layers;
                 layers.eachLayer(async function (layer) {
                     if (layer.zoneId) {
-                        const { error } = await supabase.from('zones').delete().eq('id', layer.zoneId);
+                        const { error } = await supabase.from('zones').delete().eq('id', layer.zoneId).eq('empresa_id', empresaActiva?.id);
                         if (error) toast.error("Error eliminando zona");
                     }
                 });
@@ -296,8 +305,10 @@ export default function MapaClientes() {
 
             // Fix for blank map issue on initial load
             setTimeout(() => {
-                m.invalidateSize();
-                loadZonas();
+                if (mapRef.current) {
+                    mapRef.current.invalidateSize();
+                    loadZonas();
+                }
             }, 250);
 
             mapRef.current = m;
@@ -310,12 +321,12 @@ export default function MapaClientes() {
                 mapRef.current = null;
             }
         };
-    }, []);
+    }, [empresaActiva]);
 
     // Reload zones when toggle changes
     useEffect(() => {
         loadZonas();
-    }, [showZones]);
+    }, [showZones, empresaActiva]);
 
     // Render Markers whenever data or filters change
     useEffect(() => {

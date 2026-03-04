@@ -53,18 +53,25 @@ export default function Calendario() {
 
         loadUsuarios();
         return () => observer.disconnect();
-    }, []);
+    }, [empresaActiva]);
 
     const loadUsuarios = async () => {
+        if (!empresaActiva?.id) return;
         try {
             const set = new Set();
             const { data: usrs } = await supabase.from('usuarios').select('nombre, email');
             if (usrs) usrs.forEach(u => u.nombre && set.add(u.nombre));
 
-            const { data: cls } = await supabase.from('clientes').select('responsable').not('responsable', 'is', null);
-            if (cls) cls.forEach(c => c.responsable && set.add(c.responsable));
+            const { data: cls } = await supabase.from('empresa_cliente')
+                .select('clientes(responsable)')
+                .eq('empresa_id', empresaActiva.id)
+                .not('clientes.responsable', 'is', null);
+            if (cls) cls.forEach(c => c.clientes?.responsable && set.add(c.clientes.responsable));
 
-            const { data: acts } = await supabase.from('actividades').select('usuario').not('usuario', 'is', null);
+            const { data: acts } = await supabase.from('actividades')
+                .select('usuario')
+                .eq('empresa_id', empresaActiva.id)
+                .not('usuario', 'is', null);
             if (acts) acts.forEach(a => a.usuario && set.add(a.usuario));
 
             const mysession = await supabase.auth.getSession();
@@ -80,7 +87,7 @@ export default function Calendario() {
     };
 
     useEffect(() => {
-        if (!dateRange.start || !dateRange.end) return;
+        if (!dateRange.start || !dateRange.end || !empresaActiva?.id) return;
 
         const loadEvents = async () => {
             try {
@@ -90,19 +97,25 @@ export default function Calendario() {
 
                 // 1. Contactos (Clientes)
                 if (filtroTipo === "todos" || filtroTipo === "contactos") {
-                    let q = supabase.from("clientes")
-                        .select("id, nombre, responsable, fecha_proximo_contacto, hora_proximo_contacto")
+                    let q = supabase.from("empresa_cliente")
+                        .select("*, clientes(*)")
+                        .eq("empresa_id", empresaActiva.id)
                         .eq("activo", true)
                         .gte("fecha_proximo_contacto", startISO.split("T")[0])
                         .lt("fecha_proximo_contacto", endISO.split("T")[0]);
 
-                    if (filtroUsuario) q = q.eq("responsable", filtroUsuario);
+                    if (filtroUsuario) {
+                        // filtering by responsable is tricky in the join if it's on clietes, 
+                        // but empresa_cliente might have its own override or just use the joined table
+                        // For now we trust the client responsible field or filter post-fetch if needed
+                    }
 
                     const { data: clientes, error } = await q;
                     if (error) throw error;
 
                     (clientes || []).forEach(c => {
                         if (!c.fecha_proximo_contacto) return;
+                        if (filtroUsuario && c.clientes?.responsable !== filtroUsuario) return;
 
                         const time = c.hora_proximo_contacto ? c.hora_proximo_contacto.slice(0, 5) : "09:00";
                         const startDate = new Date(`${c.fecha_proximo_contacto}T${time}:00`);
@@ -110,8 +123,8 @@ export default function Calendario() {
                         const color = isDarkMode ? THEME_COLORS.contactoDark : THEME_COLORS.contactoLight;
 
                         events.push({
-                            id: `contacto-${c.id}`,
-                            title: c.nombre || "(Sin nombre)",
+                            id: `contacto-${c.clientes?.id || c.id}`,
+                            title: c.clientes?.nombre || "(Sin nombre)",
                             start: startDate.toISOString(),
                             end: endDate.toISOString(),
                             backgroundColor: color,
@@ -122,7 +135,7 @@ export default function Calendario() {
                             startEditable: true,
                             extendedProps: {
                                 kind: "contacto",
-                                clienteId: c.clientes?.id || c.id
+                                clienteId: c.clientes?.id
                             }
                         });
                     });
@@ -132,6 +145,7 @@ export default function Calendario() {
                 if (filtroTipo === "todos" || filtroTipo === "internos") {
                     const { data: evs, error } = await supabase.from("eventos")
                         .select("id, titulo, descripcion, tipo, fecha_inicio, fecha_fin, all_day, color")
+                        .eq("empresa_id", empresaActiva.id)
                         .gte("fecha_inicio", startISO)
                         .lt("fecha_inicio", endISO);
 
@@ -189,7 +203,7 @@ export default function Calendario() {
         };
 
         loadEvents();
-    }, [dateRange, filtroUsuario, filtroTipo, isDarkMode, refreshCounter]);
+    }, [dateRange, filtroUsuario, filtroTipo, isDarkMode, refreshCounter, empresaActiva]);
 
     const toLocalInputValue = (date) => {
         if (!date) return "";
@@ -254,16 +268,16 @@ export default function Calendario() {
                 }
                 const clienteId = ev.extendedProps.clienteId;
                 const start = ev.start;
-                if (!clienteId || !start) return;
+                if (!clienteId || !start || !empresaActiva?.id) return;
 
                 const pad = (n) => String(n).padStart(2, "0");
                 const dateOnly = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
                 const timeOnly = `${pad(start.getHours())}:${pad(start.getMinutes())}:00`;
 
-                const { error } = await supabase.from("clientes").update({
+                const { error } = await supabase.from("empresa_cliente").update({
                     fecha_proximo_contacto: dateOnly,
                     hora_proximo_contacto: timeOnly
-                }).eq("id", clienteId);
+                }).eq("cliente_id", clienteId).eq("empresa_id", empresaActiva.id);
 
                 if (error) throw error;
                 toast.success("Fecha de contacto actualizada");
@@ -274,7 +288,7 @@ export default function Calendario() {
                     fecha_fin: ev.end ? ev.end.toISOString() : null,
                     all_day: !!ev.allDay
                 };
-                const { error } = await supabase.from("eventos").update(payload).eq("id", dbId);
+                const { error } = await supabase.from("eventos").update(payload).eq("id", dbId).eq("empresa_id", empresaActiva?.id);
                 if (error) throw error;
                 toast.success("Evento actualizado");
             }
@@ -290,80 +304,75 @@ export default function Calendario() {
     };
 
     return (
-        <div className="container calendar-page" style={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <header className="calendar-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div className="calendar-title">
-                    <h1 style={{ margin: 0 }}>Calendario</h1>
-                    <p className="muted" style={{ margin: 0 }}>Eventos multi-usuario + contactos editables. Arrastrá para mover.</p>
+        <div className="container" style={{ padding: 'max(16px, 2vw)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <header style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 style={{ margin: 0 }}>Agenda y Calendario</h1>
+                    <p className="muted" style={{ margin: 0 }}>Planificación de visitas y eventos internos.</p>
                 </div>
-                <div className="calendar-actions">
-                    <Button variant="secondary" onClick={() => openCreateModal()}>+ Evento</Button>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    <div className="field" style={{ margin: 0, minWidth: '150px' }}>
+                        <select className="input" value={filtroUsuario} onChange={(e) => setFiltroUsuario(e.target.value)}>
+                            <option value="">Cualquier Usuario</option>
+                            {usuarios.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                    </div>
+                    <div className="field" style={{ margin: 0, minWidth: '150px' }}>
+                        <select className="input" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
+                            <option value="todos">Todos los Eventos</option>
+                            <option value="contactos">Solo Contactos</option>
+                            <option value="internos">Solo Internos/Reuniones</option>
+                        </select>
+                    </div>
+                    <Button onClick={() => openCreateModal()}>Nuevo Evento</Button>
                 </div>
             </header>
 
-            <section className="calendar-toolbar" style={{ display: 'flex', gap: '16px', marginBottom: '16px', background: 'var(--bg-elevated)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <label className="field" style={{ margin: 0, minWidth: '150px' }}>
-                    <span className="field-label">Usuario</span>
-                    <select className="input" value={filtroUsuario} onChange={e => setFiltroUsuario(e.target.value)}>
-                        <option value="">Todos</option>
-                        {usuarios.map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                </label>
-
-                <label className="field" style={{ margin: 0, minWidth: '200px' }}>
-                    <span className="field-label">Mostrar</span>
-                    <select className="input" value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
-                        <option value="todos">Contactos + Eventos</option>
-                        <option value="contactos">Solo contactos</option>
-                        <option value="internos">Solo eventos</option>
-                    </select>
-                </label>
-
-                <Button variant="secondary" onClick={() => loadUsuarios()}>Actualizar Usuarios</Button>
-            </section>
-
-            <section className="panel calendar-shell" style={{ flex: 1, minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ flex: 1, backgroundColor: 'var(--bg)', borderRadius: '12px', padding: '16px', border: '1px solid var(--border)' }}>
-                    <FullCalendar
-                        ref={calendarRef}
-                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-                        initialView="timeGridWeek"
-                        locale={esLocale}
-                        nowIndicator={true}
-                        height="auto"
-                        headerToolbar={{
-                            left: "prev,next today",
-                            center: "title",
-                            right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
-                        }}
-                        slotMinTime="07:00:00"
-                        slotMaxTime="22:00:00"
-                        selectable={true}
-                        selectMirror={true}
-                        editable={true}
-                        eventStartEditable={true}
-                        eventDurationEditable={true}
-                        eventResizableFromStart={true}
-                        events={calendarEvents}
-                        datesSet={handleDatesSet}
-                        select={(sel) => openCreateModal(sel.start, sel.end)}
-                        eventClick={handleEventClick}
-                        eventDrop={handleEventDropOrResize}
-                        eventResize={handleEventDropOrResize}
-                        eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false, meridiem: false }}
-                    />
-                </div>
-            </section>
+            <div style={{ flex: 1, background: 'var(--bg-glass)', borderRadius: '16px', border: '1px solid var(--border)', padding: '16px', overflow: 'hidden' }}>
+                <FullCalendar
+                    ref={calendarRef}
+                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+                    initialView="dayGridMonth"
+                    headerToolbar={{
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+                    }}
+                    locale={esLocale}
+                    events={calendarEvents}
+                    datesSet={handleDatesSet}
+                    eventClick={handleEventClick}
+                    dateClick={(arg) => openCreateModal(arg.date, null)}
+                    selectable={true}
+                    select={(arg) => openCreateModal(arg.start, arg.end)}
+                    editable={true}
+                    eventDrop={handleEventDropOrResize}
+                    eventResize={handleEventDropOrResize}
+                    height="100%"
+                    dayMaxEvents={true}
+                    themeSystem="standard"
+                    nowIndicator={true}
+                />
+            </div>
 
             <EventoCalendarioModal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
                 eventoId={editingId}
                 clienteId={editingClienteId}
-                initialData={initialData}
                 isContacto={isContacto}
+                initialData={initialData}
                 onSaved={refetchEvents}
             />
+
+            <style>{`
+                .fc { --fc-border-color: var(--border); --fc-button-bg-color: var(--bg-elevated); --fc-button-border-color: var(--border); --fc-button-text-color: var(--text); --fc-button-hover-bg-color: var(--bg-active); --fc-button-active-bg-color: var(--accent); --fc-button-active-border-color: var(--accent); --fc-today-bg-color: var(--bg-active); }
+                .fc-event { cursor: pointer; border-radius: 4px; padding: 1px 4px; border: none; font-size: 0.85em; }
+                .fc-v-event { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                .fc-col-header-cell { background: var(--bg-card); padding: 8px 0; }
+                .fc-list-event-title b { color: var(--accent); }
+            `}</style>
         </div>
     );
 }

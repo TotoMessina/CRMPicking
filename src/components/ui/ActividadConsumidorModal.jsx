@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function ActividadConsumidorModal({ isOpen, onClose, consumidorId, consumidorNombre, onSaved }) {
+    const { empresaActiva } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         descripcion: '',
@@ -43,6 +45,7 @@ export function ActividadConsumidorModal({ isOpen, onClose, consumidorId, consum
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.descripcion.trim()) return toast.error("La descripción es obligatoria");
+        if (!empresaActiva?.id) return toast.error("No hay empresa activa seleccionada");
 
         setLoading(true);
 
@@ -53,6 +56,7 @@ export function ActividadConsumidorModal({ isOpen, onClose, consumidorId, consum
             descripcion: formData.descripcion.trim(),
             fecha: fechaISO,
             usuario: formData.usuario.trim() || null,
+            empresa_id: empresaActiva.id
         };
 
         const { error } = await supabase.from("actividades_consumidores").insert([payload]);

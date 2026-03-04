@@ -21,10 +21,12 @@ export default function Pipeline() {
     const [search, setSearch] = useState('');
 
     const fetchPipeline = async () => {
+        if (!empresaActiva?.id) return;
         setLoading(true);
         const { data, error } = await supabase
-            .from('clientes')
-            .select('*')
+            .from('empresa_cliente')
+            .select('*, clientes(*)')
+            .eq('empresa_id', empresaActiva.id)
             .eq('activo', true)
             .order('updated_at', { ascending: false });
 
@@ -32,14 +34,20 @@ export default function Pipeline() {
             toast.error('Error cargando pipeline');
             console.error(error);
         } else {
-            setClients(data || []);
+            // Flatten the results for easier rendering
+            const mapped = (data || []).map(row => ({
+                ...row.clientes,
+                ...row,
+                id: row.clientes?.id // We use the real client id for dragging/activities mapping
+            }));
+            setClients(mapped);
         }
         setLoading(false);
     };
 
     useEffect(() => {
         fetchPipeline();
-    }, []);
+    }, [empresaActiva]);
 
     const onDragEnd = async (result) => {
         const { destination, source, draggableId } = result;
@@ -47,6 +55,7 @@ export default function Pipeline() {
         // Dropped outside or no movement
         if (!destination) return;
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+        if (!empresaActiva?.id) return;
 
         const newStatus = destination.droppableId;
         const clientId = Number(draggableId);
@@ -58,14 +67,15 @@ export default function Pipeline() {
         );
         setClients(updatedClients);
 
-        // API Call
+        // API Call to empresa_cliente instead of clientes
         const { error } = await supabase
-            .from('clientes')
-            .update({ 
+            .from('empresa_cliente')
+            .update({
                 estado: newStatus,
-                ...( (newStatus.startsWith('4') || newStatus.startsWith('5')) ? { activador_cierre: userName || user?.email || null } : {} )
+                ...((newStatus.startsWith('4') || newStatus.startsWith('5')) ? { activador_cierre: userName || user?.email || null } : {})
             })
-            .eq('id', clientId);
+            .eq('cliente_id', clientId)
+            .eq('empresa_id', empresaActiva.id);
 
         if (error) {
             toast.error('Error al mover el cliente');
@@ -77,9 +87,9 @@ export default function Pipeline() {
     const filteredClients = clients.filter(c => {
         if (!search) return true;
         const term = search.toLowerCase();
-        return (c.nombre_fantasia?.toLowerCase().includes(term) ||
+        return (c.nombre_local?.toLowerCase().includes(term) ||
             c.nombre?.toLowerCase().includes(term) ||
-            c.razon_social?.toLowerCase().includes(term) ||
+            c.direccion?.toLowerCase().includes(term) ||
             c.responsable?.toLowerCase().includes(term));
     });
 
@@ -98,144 +108,119 @@ export default function Pipeline() {
                         Pipeline de Ventas
                     </h1>
                     <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>
-                        Gestiona el flujo de tus prospectos arrastrando las tarjetas.
+                        Visualiza el estado de tus locales en {empresaActiva?.nombre || 'la empresa'}
                     </p>
                 </div>
 
-                {/* Glassmorphic Controls */}
-                <div style={{
-                    display: 'flex', gap: '12px', background: 'var(--bg-elevated)', padding: '8px 16px',
-                    borderRadius: '16px', border: '1px solid var(--border)',
-                    boxShadow: '0 4px 20px -10px rgba(0,0,0,0.1)', backdropFilter: 'blur(20px)'
-                }}>
-                    <div style={{ position: 'relative' }}>
-                        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div className="input-with-icon" style={{ width: '300px' }}>
+                        <Search size={18} className="icon" />
                         <input
                             type="text"
-                            placeholder="Buscar cliente..."
+                            className="input"
+                            placeholder="Buscar local, responsable o dirección..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            style={{
-                                padding: '10px 16px 10px 36px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--border)',
-                                background: 'var(--bg)',
-                                color: 'var(--text)',
-                                width: '250px',
-                                outline: 'none',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
                         />
                     </div>
-                    <button className="btn-secundario" onClick={fetchPipeline} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <RefreshCcw size={16} />
-                        Actualizar
+                    <button onClick={fetchPipeline} className="icon-button" style={{ padding: '10px' }} title="Recargar">
+                        <RefreshCcw size={20} className={loading ? 'spin' : ''} />
                     </button>
                 </div>
             </header>
 
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: '64px', color: 'var(--text-muted)' }}>Cargando pipeline...</div>
-            ) : (
+            <div style={{ flex: 1, overflowX: 'auto', paddingBottom: '20px', minHeight: '600px' }}>
                 <DragDropContext onDragEnd={onDragEnd}>
-                    <div className="kanban-board" style={{ display: 'flex', gap: '16px', overflowX: 'auto', flex: 1, paddingBottom: '16px' }}>
-                        {COLUMNS.map(col => {
-                            const allColumnClients = getColumnClients(col.id);
-                            const columnClients = allColumnClients.slice(0, 10);
-                            const totalCount = allColumnClients.length;
+                    <div style={{ display: 'flex', gap: '20px', height: '100%', minWidth: 'max-content' }}>
+                        {COLUMNS.map(column => (
+                            <div key={column.id} style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px' }}>
+                                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: column.color }}></span>
+                                        {column.label}
+                                    </h3>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                                        {getColumnClients(column.id).length}
+                                    </span>
+                                </div>
 
-                            return (
-                                <Droppable key={col.id} droppableId={col.id}>
+                                <Droppable droppableId={column.id}>
                                     {(provided, snapshot) => (
                                         <div
-                                            className={`kanban-column ${snapshot.isDraggingOver ? 'kanban-drop-zone' : ''}`}
-                                            ref={provided.innerRef}
                                             {...provided.droppableProps}
+                                            ref={provided.innerRef}
                                             style={{
-                                                flex: '0 0 300px',
+                                                flex: 1,
+                                                background: snapshot.isDraggingOver ? 'var(--bg-card)' : 'rgba(255,255,255,0.02)',
+                                                borderRadius: '16px',
+                                                padding: '12px',
+                                                border: '1px solid var(--border)',
+                                                transition: 'all 0.2s ease',
+                                                minHeight: '200px',
                                                 display: 'flex',
                                                 flexDirection: 'column',
-                                                background: 'var(--bg-elevated)',
-                                                borderRadius: '12px',
-                                                padding: '16px',
-                                                border: snapshot.isDraggingOver ? `2px dashed ${col.color}` : '2px solid transparent',
-                                                transition: 'background-color 0.2s ease, border 0.2s ease'
+                                                gap: '12px'
                                             }}
                                         >
-                                            <div style={{ borderBottom: `2px solid ${col.color}`, paddingBottom: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <h2 style={{ fontSize: '1rem', fontWeigth: 600, color: 'var(--text)', margin: 0 }}>{col.label}</h2>
-                                                <span className="kanban-count" style={{
-                                                    background: `${col.color}20`,
-                                                    color: col.color,
-                                                    padding: '2px 10px',
-                                                    borderRadius: '100px',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: 600,
-                                                    border: `1px solid ${col.color}40`
-                                                }}>
-                                                    {totalCount > 10 ? `10 / ${totalCount}` : totalCount}
-                                                </span>
-                                            </div>
-
-                                            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
-                                                {columnClients.map((client, index) => (
-                                                    <Draggable key={String(client.id)} draggableId={String(client.id)} index={index}>
-                                                        {(provided, snapshot) => (
-                                                            <div
-                                                                ref={provided.innerRef}
-                                                                {...provided.draggableProps}
-                                                                {...provided.dragHandleProps}
-                                                                className="kanban-card bento-card"
-                                                                style={{
-                                                                    padding: '16px',
-                                                                    cursor: 'grab',
-                                                                    position: 'relative',
-                                                                    display: 'flex',
-                                                                    flexDirection: 'column',
-                                                                    gap: '12px',
-                                                                    background: 'var(--card)',
-                                                                    borderRadius: '12px',
-                                                                    border: '1px solid var(--border)',
-                                                                    boxShadow: snapshot.isDragging ? '0 12px 32px rgba(0,0,0,0.15)' : '0 2px 8px rgba(0,0,0,0.04)',
-                                                                    transform: snapshot.isDragging ? 'rotate(3deg) scale(1.04)' : 'none',
-                                                                    transition: 'transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.15s ease',
-                                                                    ...provided.draggableProps.style
-                                                                }}
-                                                            >
-                                                                {/* Accent border top based on column color */}
-                                                                <div style={{
-                                                                    position: 'absolute', top: 0, left: 0, right: 0, height: '4px',
-                                                                    background: col.color, opacity: 0.8, borderRadius: '12px 12px 0 0'
-                                                                }} />
-
-                                                                <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text)', paddingTop: '4px' }}>
-                                                                    {client.nombre_fantasia || client.nombre || client.razon_social || 'Sin Nombre'}
-                                                                </div>
-
-                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                        <User size={14} /> {client.responsable || 'Sin Asignar'}
-                                                                    </span>
-                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                        <Calendar size={14} /> {client.updated_at ? new Date(client.updated_at).toLocaleDateString('es-AR') : '-'}
-                                                                    </span>
-                                                                </div>
+                                            {getColumnClients(column.id).map((client, index) => (
+                                                <Draggable key={client.id} draggableId={String(client.id)} index={index}>
+                                                    {(provided, snapshot) => (
+                                                        <div
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            {...provided.dragHandleProps}
+                                                            style={{
+                                                                ...provided.draggableProps.style,
+                                                                background: snapshot.isDragging ? 'var(--bg-elevated)' : 'var(--bg-card)',
+                                                                border: '1px solid var(--border)',
+                                                                borderRadius: '14px',
+                                                                padding: '16px',
+                                                                boxShadow: snapshot.isDragging ? '0 10px 25px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.1)',
+                                                                cursor: 'grab',
+                                                                transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+                                                                opacity: snapshot.isDragging ? 0.9 : 1
+                                                            }}
+                                                        >
+                                                            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)', marginBottom: '8px' }}>
+                                                                {client.nombre_local || client.nombre || 'Local sin nombre'}
                                                             </div>
-                                                        )}
-                                                    </Draggable>
-                                                ))}
-                                                {provided.placeholder}
-                                            </div>
+
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                {client.responsable && (
+                                                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                        <User size={14} /> {client.responsable}
+                                                                    </div>
+                                                                )}
+                                                                {client.fecha_proximo_contacto && (
+                                                                    <div style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                        <Calendar size={14} /> {new Date(client.fecha_proximo_contacto).toLocaleDateString()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {(client.interes === 'Alto' || client.venta_digital) && (
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
+                                                                    {client.interes === 'Alto' && (
+                                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', textTransform: 'uppercase' }}>🔥 Caliente</span>
+                                                                    )}
+                                                                    {client.venta_digital && (
+                                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', textTransform: 'uppercase' }}>🌐 Digital</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </Draggable>
+                                            ))}
+                                            {provided.placeholder}
                                         </div>
                                     )}
                                 </Droppable>
-                            );
-                        })}
+                            </div>
+                        ))}
                     </div>
                 </DragDropContext>
-            )}
+            </div>
         </div>
     );
 }

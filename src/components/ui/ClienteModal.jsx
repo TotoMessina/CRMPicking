@@ -264,7 +264,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 // 3. Automatically count as 1 visit for the creator
                 await supabase.from('actividades').insert([{
                     cliente_id: newCliente.id,
-                    describcion: 'Visita realizada',
+                    descripcion: 'Visita realizada',
                     usuario: creadoPor,
                     empresa_id: empresaActiva?.id,
                     fecha: new Date().toISOString()

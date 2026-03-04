@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false, onSaved, proveedores = [], secciones = [] }) {
+    const { empresaActiva } = useAuth();
     const [loading, setLoading] = useState(false);
     const [historialLoading, setHistorialLoading] = useState(false);
     const [historyInput, setHistoryInput] = useState('');
@@ -72,8 +74,14 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
     };
 
     const loadHistory = async (id) => {
+        if (!empresaActiva?.id) return;
         setHistorialLoading(true);
-        const { data } = await supabase.from('eventos_historial').select('*').eq('evento_id', id).order('created_at', { ascending: false });
+        const { data } = await supabase
+            .from('eventos_historial')
+            .select('*')
+            .eq('evento_id', id)
+            .eq('empresa_id', empresaActiva.id)
+            .order('created_at', { ascending: false });
         setHistory(data || []);
         setHistorialLoading(false);
     };
@@ -111,7 +119,8 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
             fecha_fin: toISO(formData.fecha_fin),
             fecha_real_cierre: toISO(formData.fecha_real_cierre),
             estado: formData.estado,
-            descripcion: formData.descripcion.trim() || null
+            descripcion: formData.descripcion.trim() || null,
+            empresa_id: empresaActiva?.id
         };
 
         if (eventId) {
@@ -145,7 +154,7 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
     };
 
     const handleAddHistory = async () => {
-        if (!historyInput.trim() || !eventId) return;
+        if (!historyInput.trim() || !eventId || !empresaActiva?.id) return;
 
         const user = (await supabase.auth.getSession()).data.session?.user;
         const userEmail = user?.email || null;
@@ -153,7 +162,8 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
         const { error } = await supabase.from('eventos_historial').insert([{
             evento_id: eventId,
             comentario: historyInput.trim(),
-            usuario_email: userEmail
+            usuario_email: userEmail,
+            empresa_id: empresaActiva.id
         }]);
 
         if (error) {
