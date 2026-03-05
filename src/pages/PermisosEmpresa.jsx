@@ -27,7 +27,7 @@ const ALL_PAGES = [
     { to: '/permisos-empresa', label: 'Permisos de Empresa' },
 ];
 
-const ALL_ROLES = ['admin', 'supervisor', 'activador'];
+const ALL_ROLES = ['admin', 'supervisor', 'activador', 'empleado'];
 
 export default function PermisosEmpresa() {
     const { role } = useAuth();
