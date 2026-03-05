@@ -67,8 +67,10 @@ export default function Clientes() {
         setLoading(true);
 
         let request = supabase
-            .from('clientes')
-            .select('*', { count: 'exact' });
+            .from('empresa_cliente')
+            .select('*, clientes(*)', { count: 'exact' })
+            .eq('empresa_id', empresaActiva.id)
+            .eq('activo', true);
 
         // Apply sorting
         if (sortBy === 'recent') {
@@ -114,19 +116,21 @@ export default function Clientes() {
             console.error(error);
         } else {
             const mapped = (data || []).map(row => ({
+                ...row.clientes,
                 ...row,
-                id: row.id
+                id: row.clientes?.id
             }));
 
             setClientes(mapped);
             setTotal(count || 0);
 
             if (mapped.length > 0) {
-                const ids = mapped.map(c => c.id);
+                const ids = mapped.map(c => c.id).filter(Boolean);
                 const { data: acts, error: actError } = await supabase
                     .from('actividades')
                     .select('*')
                     .in('cliente_id', ids)
+                    .eq('empresa_id', empresaActiva.id)
                     .order('fecha', { ascending: false });
 
                 if (!actError && acts) {

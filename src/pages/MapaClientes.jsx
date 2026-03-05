@@ -99,22 +99,25 @@ export default function MapaClientes() {
     const routingControlRef = useRef(null);
 
     const fetchClientes = async () => {
+        if (!empresaActiva?.id) return;
         setLoading(true);
         const { data, error } = await supabase
-            .from("clientes")
-            .select("*")
-            .not("lat", "is", null)
-            .not("lng", "is", null)
-            .limit(2000);
+            .from("empresa_cliente")
+            .select("*, clientes(*)")
+            .eq("empresa_id", empresaActiva.id)
+            .eq("activo", true)
+            .not("clientes.lat", "is", null)
+            .not("clientes.lng", "is", null);
 
         if (error) {
             toast.error("Error al cargar clientes");
         } else {
             const mapped = (data || []).map(r => ({
+                ...r.clientes,
                 ...r,
-                lat: Number(r.lat),
-                lng: Number(r.lng),
-                id: r.id
+                lat: Number(r.clientes?.lat || r.lat),
+                lng: Number(r.clientes?.lng || r.lng),
+                id: r.clientes?.id
             })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
             setClientes(mapped);
         }
