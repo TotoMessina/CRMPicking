@@ -99,36 +99,66 @@ export default function Clientes() {
         if (fInteres) request = request.eq('interes', fInteres);
         if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
 
-        // Text filters on clientes columns: pre-filter to get matching IDs first
-        // (PostgREST doesn't support filtering embedded table columns directly)
-        const clienteFilters = [];
-        if (fNombre) clienteFilters.push(supabase.from('clientes').select('id').or(`nombre.ilike.%${fNombre}%,nombre_local.ilike.%${fNombre}%`));
-        if (fTelefono) clienteFilters.push(supabase.from('clientes').select('id').ilike('telefono', `%${fTelefono}%`));
-        if (fDireccion) clienteFilters.push(supabase.from('clientes').select('id').ilike('direccion', `%${fDireccion}%`));
-
-        if (clienteFilters.length > 0) {
-            const results = await Promise.all(clienteFilters);
-            // Intersect all sets of matching IDs
-            let matchingIds = null;
-            for (const { data: rows } of results) {
-                const ids = new Set((rows || []).map(r => r.id));
-                matchingIds = matchingIds === null ? ids : new Set([...matchingIds].filter(id => ids.has(id)));
-            }
-            const idArray = matchingIds ? [...matchingIds] : [];
-            if (idArray.length === 0) {
-                setClientes([]);
-                setTotal(0);
-                setLoading(false);
-                return;
-            }
-            request = request.in('cliente_id', idArray);
-        }
-
         if (fProximos7) {
             const hoy = new Date();
             const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
             const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             request = request.gte('fecha_proximo_contacto', fmt(hoy)).lte('fecha_proximo_contacto', fmt(en7));
+        }
+
+        // If text filters are active (nombre, teléfono, dirección) use RPC to search across
+        // empresa_cliente JOIN clientes server-side — PostgREST can't filter embedded columns
+        const hasTextFilter = fNombre || fTelefono || fDireccion;
+
+        if (hasTextFilter) {
+            const { data: rpcData, error: rpcError } = await supabase.rpc('buscar_clientes_empresa', {
+                p_empresa_id: empresaActiva.id,
+                p_nombre: fNombre || null,
+                p_telefono: fTelefono || null,
+                p_direccion: fDireccion || null,
+                p_estado: fEstado !== 'Todos' ? fEstado : null,
+                p_situacion: fSituacion !== 'Todos' ? fSituacion : null,
+                p_tipo_contacto: fTipoContacto !== 'Todos' ? fTipoContacto : null,
+                p_responsable: fResponsable || null,
+                p_rubro: fRubro || null,
+                p_interes: fInteres || null,
+                p_estilo: fEstilo || null,
+                p_offset: (page - 1) * pageSize,
+                p_limit: pageSize,
+            });
+
+            if (rpcError) {
+                toast.error('Error al buscar clientes');
+                console.error(rpcError);
+            } else {
+                const mapped = (rpcData || []).map(row => ({
+                    ...row,
+                    id: row.cliente_id,
+                    clientes: {
+                        nombre: row.nombre, nombre_local: row.nombre_local,
+                        telefono: row.telefono, direccion: row.direccion,
+                        mail: row.mail, cuit: row.cuit, lat: row.lat, lng: row.lng,
+                        created_at: row.c_created_at,
+                    }
+                }));
+                setClientes(mapped);
+                setTotal(rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0));
+
+                if (mapped.length > 0) {
+                    const ids = mapped.map(c => c.id).filter(Boolean);
+                    const { data: acts } = await supabase
+                        .from('actividades').select('*')
+                        .in('cliente_id', ids).eq('empresa_id', empresaActiva.id)
+                        .order('fecha', { ascending: false });
+                    if (acts) {
+                        const actsObj = {};
+                        acts.forEach(a => { if (!actsObj[a.cliente_id]) actsObj[a.cliente_id] = []; actsObj[a.cliente_id].push(a); });
+                        setActivities(actsObj);
+                    }
+                }
+            }
+            setLoading(false);
+            return;
         }
 
         const { data, count, error } = await request;
