@@ -206,6 +206,20 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             payload.lng = parseFloat(initialLocation.lng);
         }
 
+        console.log('DEBUG: Iniciando proceso de guardado...', {
+            clienteId,
+            empresaId: empresaActiva?.id,
+            nombre_local: payload.nombre_local,
+            isMapCreation: !!initialLocation
+        });
+
+        if (!empresaActiva?.id) {
+            console.error('ERROR: No hay empresa activa cargada en el contexto.');
+            toast.error('Error: No se detectó una empresa activa. Por favor, seleccioná una empresa antes de crear un cliente.');
+            setLoading(false);
+            return;
+        }
+
         let err;
         if (clienteId) {
             // Split fields for update as well
@@ -243,7 +257,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 .from('empresa_cliente')
                 .update(companyFields)
                 .eq('cliente_id', clienteId)
-                .eq('empresa_id', empresaActiva?.id);
+                .eq('empresa_id', empresaActiva.id);
 
             err = uErr || cErr;
 
@@ -271,7 +285,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                     cliente_id: clienteId,
                     descripcion: desc,
                     usuario: userName || user?.email || 'Sistema',
-                    empresa_id: empresaActiva?.id,
+                    empresa_id: empresaActiva.id,
                     fecha: new Date().toISOString()
                 }]);
                 if (actErr) console.warn('No se pudo guardar historial de edición:', actErr.message);
@@ -318,31 +332,37 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             };
 
             // 1. Insert universal client record
+            console.log('DEBUG: Insertando en tabla clientes...', universalFields);
             const { data: newCliente, error: clienteErr } = await supabase
                 .from('clientes')
                 .insert([universalFields])
                 .select('id')
                 .single();
-            err = clienteErr;
 
-            if (!clienteErr && newCliente?.id) {
+            if (clienteErr) {
+                console.error('ERROR: Falla al insertar en tabla clientes:', clienteErr);
+                err = clienteErr;
+            } else if (newCliente?.id) {
+                console.log('DEBUG: Exito tabla clientes. ID:', newCliente.id);
                 // 2. Insert company-specific record
+                console.log('DEBUG: Insertando en empresa_cliente...', { ...companyFields, empresa_id: empresaActiva.id });
                 const { error: ecErr } = await supabase.from('empresa_cliente').insert([{
                     ...companyFields,
-                    empresa_id: empresaActiva?.id,
+                    empresa_id: empresaActiva.id,
                     cliente_id: newCliente.id,
                 }]);
 
                 if (ecErr) {
+                    console.error('ERROR: Falla al insertar en empresa_cliente:', ecErr);
                     err = ecErr;
-                    // Optional: could Delete the orphan client record here if desired
                 } else {
+                    console.log('DEBUG: Exito tabla empresa_cliente.');
                     // 3. Automatically count as 1 visit for the creator
                     const { error: actErr } = await supabase.from('actividades').insert([{
                         cliente_id: newCliente.id,
                         descripcion: 'Visita realizada',
                         usuario: creadoPor,
-                        empresa_id: empresaActiva?.id,
+                        empresa_id: empresaActiva.id,
                         fecha: new Date().toISOString()
                     }]);
                     if (actErr) console.warn('No se pudo guardar actividad inicial:', actErr.message);
@@ -351,8 +371,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         }
 
         if (err) {
-            console.error('Error guardando cliente:', err);
-            toast.error('Ocurrió un error al guardar el cliente');
+            console.error('Error final guardando cliente:', err);
+            toast.error(`Error al guardar: ${err.message || 'Ocurrió un error inesperado'}`);
         } else {
             console.log('DEBUG: Cliente guardado con éxito. Datos enviados:', payload);
             toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
