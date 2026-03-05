@@ -37,6 +37,7 @@ export default function Consumidores() {
 
     const fetchConsumidores = async () => {
         if (!empresaActiva?.id) return;
+        console.log("Consumidores: Fetching for company:", empresaActiva.id);
         setLoading(true);
         let request = supabase
             .from('consumidores')

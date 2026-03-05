@@ -4,13 +4,16 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-async function checkSubs() {
-    const { data, error } = await supabase.from('push_subscriptions').select('*');
+const table = process.argv[2] || 'push_subscriptions';
+
+async function run() {
+    console.log(`Checking table: ${table}`);
+    const { data, error } = await supabase.from(table).select('*').limit(10);
     if (error) {
         console.error("Error reading database:", error);
     } else {
-        console.log("Subscriptions Found:", data.length);
+        console.log(`Rows Found in ${table}:`, data.length);
         console.log(data);
     }
 }
-checkSubs();
+run();
