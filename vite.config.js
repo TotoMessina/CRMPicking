@@ -38,7 +38,7 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // The injection takes care of precaching logic inside custom-sw.js
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
       }
     })
   ],
