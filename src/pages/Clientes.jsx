@@ -94,13 +94,35 @@ export default function Clientes() {
         if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
         if (fSituacion !== 'Todos') request = request.eq('situacion', fSituacion);
         if (fTipoContacto !== 'Todos') request = request.eq('tipo_contacto', fTipoContacto);
-        if (fNombre) request = request.or(`nombre.ilike.%${fNombre}%,nombre_local.ilike.%${fNombre}%`, { foreignTable: 'clientes' });
-        if (fTelefono) request = request.ilike('clientes.telefono', `%${fTelefono}%`);
-        if (fDireccion) request = request.ilike('clientes.direccion', `%${fDireccion}%`);
         if (fResponsable) request = request.eq('responsable', fResponsable);
         if (fRubro) request = request.eq('rubro', fRubro);
         if (fInteres) request = request.eq('interes', fInteres);
         if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
+
+        // Text filters on clientes columns: pre-filter to get matching IDs first
+        // (PostgREST doesn't support filtering embedded table columns directly)
+        const clienteFilters = [];
+        if (fNombre) clienteFilters.push(supabase.from('clientes').select('id').or(`nombre.ilike.%${fNombre}%,nombre_local.ilike.%${fNombre}%`));
+        if (fTelefono) clienteFilters.push(supabase.from('clientes').select('id').ilike('telefono', `%${fTelefono}%`));
+        if (fDireccion) clienteFilters.push(supabase.from('clientes').select('id').ilike('direccion', `%${fDireccion}%`));
+
+        if (clienteFilters.length > 0) {
+            const results = await Promise.all(clienteFilters);
+            // Intersect all sets of matching IDs
+            let matchingIds = null;
+            for (const { data: rows } of results) {
+                const ids = new Set((rows || []).map(r => r.id));
+                matchingIds = matchingIds === null ? ids : new Set([...matchingIds].filter(id => ids.has(id)));
+            }
+            const idArray = matchingIds ? [...matchingIds] : [];
+            if (idArray.length === 0) {
+                setClientes([]);
+                setTotal(0);
+                setLoading(false);
+                return;
+            }
+            request = request.in('cliente_id', idArray);
+        }
 
         if (fProximos7) {
             const hoy = new Date();
