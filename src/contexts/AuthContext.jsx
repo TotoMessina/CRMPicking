@@ -14,6 +14,7 @@ export function AuthProvider({ children }) {
     // Multi-empresa
     const [empresasDisponibles, setEmpresasDisponibles] = useState([]);
     const [empresaActiva, setEmpresaActivaState] = useState(null);
+    const [paginasPermitidas, setPaginasPermitidas] = useState(null); // null = no loaded yet
 
     const setEmpresaActiva = (empresa) => {
         setEmpresaActivaState(empresa);
@@ -75,6 +76,29 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const fetchPermisosPaginas = async (empresaId, userRole) => {
+        // super-admin always sees everything — no restriction
+        if (userRole === 'super-admin') {
+            setPaginasPermitidas(null);
+            return;
+        }
+        if (!empresaId) {
+            setPaginasPermitidas({});
+            return;
+        }
+        const { data } = await supabase
+            .from('empresa_permisos_pagina')
+            .select('pagina, habilitada, roles_permitidos')
+            .eq('empresa_id', empresaId)
+            .eq('habilitada', true);
+
+        const map = {};
+        (data || []).forEach(row => {
+            map[row.pagina] = row.roles_permitidos || [];
+        });
+        setPaginasPermitidas(map);
+    };
+
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             const u = session?.user ?? null;
@@ -103,9 +127,15 @@ export function AuthProvider({ children }) {
         if (error) throw error;
     };
 
+    // Reload page permissions when empresaActiva changes
+    useEffect(() => {
+        fetchPermisosPaginas(empresaActiva?.id, role);
+    }, [empresaActiva, role]);
+
     const value = {
         signIn, signOut, user, role, userName, loading,
-        empresasDisponibles, empresaActiva, setEmpresaActiva
+        empresasDisponibles, empresaActiva, setEmpresaActiva,
+        paginasPermitidas
     };
 
     return (

@@ -22,6 +22,7 @@ import Configuracion from './pages/Configuracion';
 import Chat from './pages/Chat';
 import TableroTareas from './pages/TableroTareas';
 import Empresas from './pages/Empresas';
+import PermisosEmpresa from './pages/PermisosEmpresa';
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
             <Route path="/calificaciones" element={<Calificaciones />} />
             <Route path="/usuarios" element={<Usuarios />} />
             <Route path="/empresas" element={<Empresas />} />
+            <Route path="/permisos-empresa" element={<PermisosEmpresa />} />
             <Route path="/configuracion" element={<Configuracion />} />
           </Route>
         </Routes>

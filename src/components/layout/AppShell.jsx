@@ -6,7 +6,7 @@ import { CommandPalette } from '../ui/CommandPalette';
 import { EmpresaSelector } from '../ui/EmpresaSelector';
 import {
     LogOut, Moon, Sun, Bell, MapPin, Users, Activity,
-    Map, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, ChevronDown
+    Map, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, ChevronDown, Shield
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -28,7 +28,7 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export function AppShell() {
-    const { user, role, userName, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva } = useAuth();
+    const { user, role, userName, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva, paginasPermitidas } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -144,6 +144,7 @@ export function AppShell() {
         }
     };
 
+    const isSuperAdmin = role === 'super-admin';
     const isActivador = role?.includes('activador');
     const isAdmin = role === 'admin' || role === 'super-admin';
 
@@ -170,12 +171,29 @@ export function AppShell() {
         { spacer: true },
         { to: '/usuarios', icon: Users, label: 'Usuarios' },
         { to: '/empresas', icon: Building2, label: 'Empresas', adminOnly: true },
+        { to: '/permisos-empresa', icon: Shield, label: 'Permisos', superAdminOnly: true },
         { to: '/configuracion', icon: Settings, label: 'Configuración' },
     ];
 
-    const navItems = isActivador
-        ? allNavItems.filter(item => item.spacer || activadorRoutes.has(item.to))
-        : allNavItems.filter(item => !item.adminOnly || isAdmin);
+    // Build visible nav items
+    let navItems;
+    if (isSuperAdmin) {
+        // Super-admin always sees everything
+        navItems = allNavItems;
+    } else if (paginasPermitidas) {
+        // Filter by empresa_permisos_pagina
+        navItems = allNavItems.filter(item => {
+            if (item.spacer) return true;
+            if (item.superAdminOnly) return false;
+            const perm = paginasPermitidas[item.to];
+            if (!perm) return false; // page not enabled for this empresa
+            return perm.includes(role); // role must be in roles_permitidos
+        });
+    } else if (isActivador) {
+        navItems = allNavItems.filter(item => item.spacer || activadorRoutes.has(item.to));
+    } else {
+        navItems = allNavItems.filter(item => !item.adminOnly && !item.superAdminOnly || isAdmin);
+    }
 
     if (!user) return null;
 
