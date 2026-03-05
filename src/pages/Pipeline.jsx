@@ -85,6 +85,18 @@ export default function Pipeline() {
         if (error) {
             toast.error('Error al mover el cliente');
             setClients(previousClients); // rollback
+        } else {
+            // Log the transition in activities
+            const oldStatus = source.droppableId;
+            const transitionDesc = `🔄 Cambio de estado (Pipeline): ${oldStatus} ➔ ${newStatus}`;
+
+            await supabase.from('actividades').insert([{
+                cliente_id: clientId,
+                descripcion: transitionDesc,
+                usuario: userName || user?.email || 'Sistema',
+                empresa_id: empresaActiva.id,
+                fecha: new Date().toISOString()
+            }]);
         }
     };
 

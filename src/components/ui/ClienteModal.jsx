@@ -30,6 +30,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const [originalData, setOriginalData] = useState(null);
 
     const emptyForm = (overrides = {}) => ({
         nombre_local: '', direccion: '', nombre: '', telefono: '',
@@ -104,6 +105,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 venta_digital: ecData.venta_digital ? 'true' : 'false'
             };
             setFormData(merged);
+            setOriginalData(merged);
             setErrors({});
         }
         setLoading(false);
@@ -247,13 +249,28 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
             if (!err) {
                 const parts = [];
-                if (payload.estado) parts.push(`Estado: ${payload.estado}`);
-                if (payload.situacion && (payload.estado?.startsWith('4') || payload.estado?.startsWith('5'))) parts.push(`Situación: ${payload.situacion}`);
-                if (payload.notas) parts.push(`Notas: "${payload.notas}"`);
+                // Compare state change
+                if (originalData?.estado && payload.estado && originalData.estado !== payload.estado) {
+                    parts.push(`Cambio de Estado: ${originalData.estado} ➔ ${payload.estado}`);
+                } else if (payload.estado) {
+                    parts.push(`Estado: ${payload.estado}`);
+                }
+
+                if (payload.situacion && (payload.estado?.startsWith('4') || payload.estado?.startsWith('5'))) {
+                    if (originalData?.situacion !== payload.situacion) {
+                        parts.push(`Nueva Situación: ${payload.situacion}`);
+                    }
+                }
+
+                if (payload.notas && originalData?.notas !== payload.notas) {
+                    parts.push(`Nota actualizada: "${payload.notas}"`);
+                }
+
                 const desc = `✏️ Edición de cliente${parts.length ? ': ' + parts.join(' · ') : ''}`;
                 const { error: actErr } = await supabase.from('actividades').insert([{
                     cliente_id: clienteId,
                     descripcion: desc,
+                    usuario: userName || user?.email || 'Sistema',
                     empresa_id: empresaActiva?.id,
                     fecha: new Date().toISOString()
                 }]);

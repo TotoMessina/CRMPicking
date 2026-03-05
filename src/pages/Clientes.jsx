@@ -9,7 +9,7 @@ import { ClienteModal } from '../components/ui/ClienteModal';
 import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
 
 export default function Clientes() {
-    const { empresaActiva } = useAuth();
+    const { user, userName, empresaActiva } = useAuth();
     const [searchParams] = useSearchParams();
     const isAgendaHoy = searchParams.get('agenda') === 'hoy';
 
@@ -299,6 +299,17 @@ export default function Clientes() {
         if (error) {
             toast.error('Error al guardar fecha');
         } else {
+            // Log the date change in activities
+            const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${new Date(dateStr).toLocaleDateString('es-AR')}` : '🗑️ Fecha de próximo contacto eliminada';
+
+            await supabase.from('actividades').insert([{
+                cliente_id: clienteId,
+                descripcion: desc,
+                usuario: userName || user?.email || 'Sistema',
+                empresa_id: empresaActiva?.id,
+                fecha: new Date().toISOString()
+            }]);
+
             toast.success(toastMsg);
             fetchClientes();
         }
@@ -310,6 +321,7 @@ export default function Clientes() {
             cliente_id: clienteId,
             descripcion: 'Visita realizada',
             fecha: now,
+            usuario: userName || user?.email || 'Sistema',
             empresa_id: empresaActiva?.id
         }]);
         if (error) {
