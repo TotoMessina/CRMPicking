@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Search } from 'lucide-react';
 
 export function CommandPalette() {
+    const { empresaActiva } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
@@ -58,10 +60,11 @@ export function CommandPalette() {
                     { data: consumidores },
                     { data: repartidores }
                 ] = await Promise.all([
-                    supabase.from('clientes')
-                        .select('id, nombre, nombre_local, direccion')
-                        .or(`nombre.ilike.%${searchTerm}%,nombre_local.ilike.%${searchTerm}%`)
-                        .limit(4),
+                    supabase.rpc('buscar_clientes_empresa', {
+                        p_empresa_id: empresaActiva?.id,
+                        p_nombre: searchTerm,
+                        p_limit: 4
+                    }),
                     supabase.from('consumidores')
                         .select('id, nombre, telefono')
                         .or(`nombre.ilike.%${searchTerm}%,telefono.ilike.%${searchTerm}%`)
