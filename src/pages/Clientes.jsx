@@ -94,9 +94,9 @@ export default function Clientes() {
         if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
         if (fSituacion !== 'Todos') request = request.eq('situacion', fSituacion);
         if (fTipoContacto !== 'Todos') request = request.eq('tipo_contacto', fTipoContacto);
-        if (fNombre) request = request.or(`nombre.ilike.%${fNombre}%,nombre_local.ilike.%${fNombre}%`);
-        if (fTelefono) request = request.ilike('telefono', `%${fTelefono}%`);
-        if (fDireccion) request = request.ilike('direccion', `%${fDireccion}%`);
+        if (fNombre) request = request.or(`nombre.ilike.%${fNombre}%,nombre_local.ilike.%${fNombre}%`, { foreignTable: 'clientes' });
+        if (fTelefono) request = request.ilike('clientes.telefono', `%${fTelefono}%`);
+        if (fDireccion) request = request.ilike('clientes.direccion', `%${fDireccion}%`);
         if (fResponsable) request = request.eq('responsable', fResponsable);
         if (fRubro) request = request.eq('rubro', fRubro);
         if (fInteres) request = request.eq('interes', fInteres);
