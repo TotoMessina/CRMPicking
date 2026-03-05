@@ -4,6 +4,8 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Search, User, Calendar, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { ClienteModal } from '../components/ui/ClienteModal';
+import { Edit2 } from 'lucide-react';
 
 const COLUMNS = [
     { id: '1 - Cliente relevado', label: 'Relevado', color: '#64748b' },
@@ -19,6 +21,8 @@ export default function Pipeline() {
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [modalOpen, setModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     const fetchPipeline = async () => {
         if (!empresaActiva?.id) return;
@@ -40,6 +44,7 @@ export default function Pipeline() {
                 ...row,
                 id: row.clientes?.id // We use the real client id for dragging/activities mapping
             }));
+            console.log(`Pipeline: Clientes cargados: ${mapped.length}`, new Date().toISOString());
             setClients(mapped);
         }
         setLoading(false);
@@ -181,8 +186,22 @@ export default function Pipeline() {
                                                                 opacity: snapshot.isDragging ? 0.9 : 1
                                                             }}
                                                         >
-                                                            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)', marginBottom: '8px' }}>
-                                                                {client.nombre_local || client.nombre || 'Local sin nombre'}
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '8px' }}>
+                                                                <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)', lineHeight: 1.2 }}>
+                                                                    {client.nombre_local || client.nombre || 'Local sin nombre'}
+                                                                </div>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setEditingId(client.id);
+                                                                        setModalOpen(true);
+                                                                    }}
+                                                                    style={{ padding: '4px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '4px' }}
+                                                                    className="hover-bg"
+                                                                    title="Editar"
+                                                                >
+                                                                    <Edit2 size={16} />
+                                                                </button>
                                                             </div>
 
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -198,13 +217,20 @@ export default function Pipeline() {
                                                                 )}
                                                             </div>
 
-                                                            {(client.interes === 'Alto' || client.venta_digital) && (
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
-                                                                    {client.interes === 'Alto' && (
-                                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', textTransform: 'uppercase' }}>🔥 Caliente</span>
-                                                                    )}
-                                                                    {client.venta_digital && (
-                                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', textTransform: 'uppercase' }}>🌐 Digital</span>
+                                                            {(client.interes === 'Alto' || client.venta_digital || client.notas) && (
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                                        {client.interes === 'Alto' && (
+                                                                            <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', textTransform: 'uppercase' }}>🔥 Caliente</span>
+                                                                        )}
+                                                                        {client.venta_digital && (
+                                                                            <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', textTransform: 'uppercase' }}>🌐 Digital</span>
+                                                                        )}
+                                                                    </div>
+                                                                    {client.notas && (
+                                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(0,0,0,0.02)', padding: '6px', borderRadius: '6px', borderLeft: '2px solid var(--border)' }}>
+                                                                            "{client.notas.length > 60 ? client.notas.substring(0, 57) + '...' : client.notas}"
+                                                                        </div>
                                                                     )}
                                                                 </div>
                                                             )}
@@ -221,6 +247,16 @@ export default function Pipeline() {
                     </div>
                 </DragDropContext>
             </div>
+
+            <ClienteModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                clienteId={editingId}
+                onSaved={() => {
+                    setModalOpen(false);
+                    setTimeout(() => fetchPipeline(), 300);
+                }}
+            />
         </div>
     );
 }

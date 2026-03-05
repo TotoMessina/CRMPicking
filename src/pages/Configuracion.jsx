@@ -132,45 +132,37 @@ export default function Configuracion() {
                     </div>
                 </section>
 
-                {/* Seguridad */}
+                {/* Mantenimiento / Sync */}
                 <section style={{ background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Seguridad</h2>
-                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>Actualizar tu contraseña de acceso.</p>
+                        <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Mantenimiento</h2>
+                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>Solucionar problemas de sincronización o visualización.</p>
                     </div>
 
                     <div style={{ padding: '24px' }}>
-                        <form onSubmit={handleUpdatePassword} style={{ display: 'grid', gap: '20px' }}>
-                            <div className="field">
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Nueva Contraseña</label>
-                                <input
-                                    type="password"
-                                    className="input"
-                                    placeholder="Mínimo 6 caracteres"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    style={{ width: '100%', maxWidth: '400px' }}
-                                />
-                            </div>
-
-                            <div className="field">
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Confirmar Contraseña</label>
-                                <input
-                                    type="password"
-                                    className="input"
-                                    placeholder="Repítela para confirmar"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    style={{ width: '100%', maxWidth: '400px' }}
-                                />
-                            </div>
-
-                            <div style={{ marginTop: '8px' }}>
-                                <Button type="submit" variant="secondary" disabled={savingPassword}>
-                                    {savingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}
-                                </Button>
-                            </div>
-                        </form>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border)' }}>
+                            <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>
+                                Si no ves los últimos cambios o notas que el sistema no se actualiza, podés forzar una limpieza de caché.
+                            </p>
+                            <Button
+                                variant="danger"
+                                onClick={async () => {
+                                    if (window.confirm('Esto limpiará la caché del navegador y reiniciará la aplicación. ¿Continuar?')) {
+                                        if ('serviceWorker' in navigator) {
+                                            const regs = await navigator.serviceWorker.getRegistrations();
+                                            for (let r of regs) await r.unregister();
+                                        }
+                                        localStorage.clear();
+                                        window.location.reload(true);
+                                    }
+                                }}
+                            >
+                                Limpiar Caché y Reiniciar App
+                            </Button>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            Versión de software detectada: <strong>v1.2.5-DEBUG-REFRESH</strong>
+                        </div>
                     </div>
                 </section>
 

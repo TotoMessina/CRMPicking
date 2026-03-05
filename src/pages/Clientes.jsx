@@ -132,15 +132,34 @@ export default function Clientes() {
                 console.error(rpcError);
             } else {
                 const mapped = (rpcData || []).map(row => ({
-                    ...row,
+                    // Universal data (from flattened RPC columns)
                     id: row.cliente_id,
-                    clientes: {
-                        nombre: row.nombre, nombre_local: row.nombre_local,
-                        telefono: row.telefono, direccion: row.direccion,
-                        mail: row.mail, cuit: row.cuit, lat: row.lat, lng: row.lng,
-                        created_at: row.c_created_at,
-                    }
+                    nombre: row.nombre,
+                    nombre_local: row.nombre_local,
+                    direccion: row.direccion,
+                    telefono: row.telefono,
+                    mail: row.mail,
+                    cuit: row.cuit,
+                    lat: row.lat,
+                    lng: row.lng,
+                    clientes: { created_at: row.c_created_at },
+                    // Company data
+                    estado: row.estado,
+                    rubro: row.rubro,
+                    responsable: row.responsable,
+                    situacion: row.situacion,
+                    notas: row.notas,
+                    estilo_contacto: row.estilo_contacto,
+                    interes: row.interes,
+                    tipo_contacto: row.tipo_contacto,
+                    venta_digital: row.venta_digital,
+                    venta_digital_cual: row.venta_digital_cual,
+                    fecha_proximo_contacto: row.fecha_proximo_contacto,
+                    hora_proximo_contacto: row.hora_proximo_contacto,
+                    activador_cierre: row.activador_cierre,
+                    created_at: row.ec_created_at,
                 }));
+                console.log('Clientes cargados (RPC):', mapped.length, new Date().toISOString());
                 setClientes(mapped);
                 setTotal(rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0));
 
@@ -167,12 +186,39 @@ export default function Clientes() {
             toast.error('Error al cargar clientes');
             console.error(error);
         } else {
-            const mapped = (data || []).map(row => ({
-                ...row.clientes,
-                ...row,
-                id: row.clientes?.id
-            }));
+            const mapped = (data || []).map(row => {
+                const c = row.clientes || {};
+                return {
+                    // Universal data
+                    id: c.id,
+                    nombre: c.nombre,
+                    nombre_local: c.nombre_local,
+                    direccion: c.direccion,
+                    telefono: c.telefono,
+                    mail: c.mail,
+                    cuit: c.cuit,
+                    lat: c.lat,
+                    lng: c.lng,
+                    clientes: { created_at: c.created_at }, // For the "Created" field
+                    // Company data
+                    estado: row.estado,
+                    rubro: row.rubro,
+                    responsable: row.responsable,
+                    situacion: row.situacion,
+                    notas: row.notas,
+                    estilo_contacto: row.estilo_contacto,
+                    interes: row.interes,
+                    tipo_contacto: row.tipo_contacto,
+                    venta_digital: row.venta_digital,
+                    venta_digital_cual: row.venta_digital_cual,
+                    fecha_proximo_contacto: row.fecha_proximo_contacto,
+                    hora_proximo_contacto: row.hora_proximo_contacto,
+                    activador_cierre: row.activador_cierre,
+                    created_at: row.created_at, // ec.created_at
+                };
+            });
 
+            console.log('Clientes cargados (direct):', mapped.length);
             setClientes(mapped);
             setTotal(count || 0);
 
@@ -573,6 +619,7 @@ export default function Clientes() {
                             <p className="muted" style={{ fontSize: '1.1rem' }}>No se encontraron clientes con esos filtros.</p>
                         </div>
                     ) : clientes.map(c => {
+                        console.log(`DEBUG CARD: Rendering ${c.id}, notas: "${c.notas}", fecha: ${c.fecha_proximo_contacto}`);
                         const acts = activities[c.id] || [];
                         const isExpanded = expandedActivities[c.id];
                         const visitCount = acts.filter(a => a.descripcion === 'Visita realizada').length;
@@ -730,7 +777,11 @@ export default function Clientes() {
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
                 clienteId={editingId}
-                onSaved={() => { setModalOpen(false); fetchClientes(); }}
+                onSaved={() => {
+                    setModalOpen(false);
+                    // Small delay to ensure DB reflects changes before re-querying
+                    setTimeout(() => fetchClientes(), 300);
+                }}
             />
 
             <ActividadClienteModal

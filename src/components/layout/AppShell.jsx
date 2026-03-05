@@ -61,7 +61,8 @@ export function AppShell() {
                 .from('mensajes_chat')
                 .select('*', { count: 'exact', head: true })
                 .eq('para_usuario', user.email)
-                .eq('leido', false);
+                .eq('leido', false)
+                .eq('empresa_id', empresaActiva?.id);
 
             if (!error && count !== null) {
                 setUnreadChatCount(count);
@@ -92,7 +93,7 @@ export function AppShell() {
             supabase.removeChannel(channel);
             window.removeEventListener('chat-messages-read', handleMessagesRead);
         };
-    }, [user]);
+    }, [user, empresaActiva]);
 
     const handleLogout = async (e) => {
         e.preventDefault();
@@ -325,6 +326,26 @@ export function AppShell() {
                             </a>
                         </li>
                     </ul>
+                    <div style={{ marginTop: 'auto', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', textAlign: 'center' }}>
+                            v1.2.5-DEBUG-REFRESH
+                        </div>
+                        <button
+                            onClick={async () => {
+                                if (window.confirm('¿Limpiar cache y forzar actualización?')) {
+                                    if ('serviceWorker' in navigator) {
+                                        const regs = await navigator.serviceWorker.getRegistrations();
+                                        for (let r of regs) await r.unregister();
+                                    }
+                                    localStorage.clear();
+                                    window.location.reload(true);
+                                }
+                            }}
+                            style={{ width: '100%', padding: '6px', fontSize: '0.7rem', background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                        >
+                            ACTUALIZAR SOFTWARE
+                        </button>
+                    </div>
                 </nav>
             </aside>
 

@@ -112,13 +112,19 @@ export default function MapaClientes() {
         if (error) {
             toast.error("Error al cargar clientes");
         } else {
-            const mapped = (data || []).map(r => ({
-                ...r.clientes,
-                ...r,
-                lat: Number(r.clientes?.lat || r.lat),
-                lng: Number(r.clientes?.lng || r.lng),
-                id: r.clientes?.id
-            })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+            const mapped = (data || []).map(r => {
+                const c = r.clientes || {};
+                return {
+                    ...c,
+                    ...r,
+                    id: c.id,
+                    lat: Number(c.lat || r.lat),
+                    lng: Number(c.lng || r.lng),
+                    clientes: { created_at: c.created_at } // For consistency if needed
+                };
+            }).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+
+            console.log(`MapaClientes: Clientes cargados: ${mapped.length}`, new Date().toISOString());
             setClientes(mapped);
         }
         setLoading(false);
@@ -381,15 +387,27 @@ export default function MapaClientes() {
                 });
             } else {
                 marker.bindPopup(`
-                    <div style="min-width:200px">
-                        <b>${rec.nombre_local || rec.nombre}</b><br/>
-                        <span style="font-size: 0.85em; color: #666">${rec.rubro || 'Sin rubro'}</span><br/>
-                        <div style="margin-top: 8px; font-size: 0.9em;">
-                            ${rec.direccion ? `📍 ${rec.direccion}<br/>` : ''}
-                            ${rec.telefono ? `📞 ${rec.telefono}<br/>` : ''}
-                            👤 ${rec.creado_por || 'Desconocido'}<br/>
+                    <div style="min-width:220px; padding: 5px 0;">
+                        <b style="font-size: 1.1em; display: block; margin-bottom: 2px;">${rec.nombre_local || rec.nombre}</b>
+                        <span style="font-size: 0.85em; color: #666; display: block; margin-bottom: 8px;">${rec.rubro || 'Sin rubro'}</span>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.9em; color: #444; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05);">
+                            ${rec.direccion ? `<span>📍 ${rec.direccion}</span>` : ''}
+                            ${rec.telefono ? `<span>📞 ${rec.telefono}</span>` : ''}
+                            ${rec.fecha_proximo_contacto ? `<span style="color: var(--accent); font-weight: 700;">📅 Próx: ${new Date(rec.fecha_proximo_contacto).toLocaleDateString()}</span>` : ''}
                         </div>
-                        <button class="btn-popup-edit" style="margin-top: 10px; width: 100%; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Editar Cliente</button>
+
+                        ${rec.notas ? `
+                            <div style="margin-top: 10px; padding: 8px; background: #fffbeb; border: 1px dashed #f59e0b; border-radius: 8px; font-size: 0.9em; font-style: italic; color: #92400e;">
+                                "${rec.notas}"
+                            </div>
+                        ` : ''}
+
+                        <div style="margin-top: 12px; font-size: 0.75em; color: #888;">👤 ${rec.creado_por || 'Desconocido'}</div>
+                        
+                        <button class="btn-popup-edit" style="margin-top: 10px; width: 100%; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem;">
+                            ✏️ Editar Cliente
+                        </button>
                     </div>
                 `);
 
@@ -604,7 +622,11 @@ export default function MapaClientes() {
                 onClose={() => { setModalOpen(false); setSelectedLatLng(null); }}
                 clienteId={editingId}
                 initialLocation={selectedLatLng}
-                onSaved={() => { setModalOpen(false); fetchClientes(); setSelectedLatLng(null); }}
+                onSaved={() => {
+                    setModalOpen(false);
+                    setTimeout(() => fetchClientes(), 300);
+                    setSelectedLatLng(null);
+                }}
             />
         </div>
     );

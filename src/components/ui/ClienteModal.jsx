@@ -78,12 +78,32 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
     const loadCliente = async (id) => {
         setLoading(true);
-        const { data, error } = await supabase.from('clientes').select('*').eq('id', id).single();
-        if (error) {
-            toast.error('Error cargando cliente');
-            onClose();
-        } else if (data) {
-            setFormData({ ...emptyForm(), ...data, venta_digital: data.venta_digital ? 'true' : 'false' });
+        const { data: ecData, error: ecError } = await supabase
+            .from('empresa_cliente')
+            .select('*, clientes(*)')
+            .eq('cliente_id', id)
+            .eq('empresa_id', empresaActiva?.id)
+            .single();
+
+        if (ecError) {
+            // Fallback to just universal if not found in company (shouldn't happen if editing from directory)
+            const { data, error } = await supabase.from('clientes').select('*').eq('id', id).single();
+            if (error) {
+                toast.error('Error cargando cliente');
+                onClose();
+            } else {
+                setFormData({ ...emptyForm(), ...data, venta_digital: data.venta_digital ? 'true' : 'false' });
+                setErrors({});
+            }
+        } else if (ecData) {
+            // Merge both
+            const merged = {
+                ...emptyForm(),
+                ...ecData.clientes,
+                ...ecData,
+                venta_digital: ecData.venta_digital ? 'true' : 'false'
+            };
+            setFormData(merged);
             setErrors({});
         }
         setLoading(false);
@@ -176,11 +196,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             rawPayload.activador_cierre = userName || user?.email || null;
         }
 
-        // Strip null date fields so they never appear in ?columns= (prevents Postgres type error)
-        const dateFields = new Set(['fecha_proximo_contacto', 'hora_proximo_contacto']);
-        const payload = Object.fromEntries(
-            Object.entries(rawPayload).filter(([k, v]) => !(dateFields.has(k) && (v === null || v === '')))
-        );
+        const payload = { ...rawPayload };
 
         // Override with map coordinates when creating from the map
         if (initialLocation && !clienteId) {
@@ -190,9 +206,46 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
         let err;
         if (clienteId) {
-            const { error } = await supabase.from('clientes').update(payload).eq('id', clienteId);
-            err = error;
-            if (!error) {
+            // Split fields for update as well
+            const universalFields = {
+                nombre_local: payload.nombre_local,
+                nombre: payload.nombre,
+                direccion: payload.direccion,
+                lat: payload.lat,
+                lng: payload.lng,
+                telefono: payload.telefono,
+                mail: payload.mail,
+                cuit: payload.cuit,
+            };
+            const companyFields = {
+                estado: payload.estado,
+                rubro: payload.rubro,
+                responsable: payload.responsable,
+                estilo_contacto: payload.estilo_contacto,
+                interes: payload.interes,
+                tipo_contacto: payload.tipo_contacto,
+                venta_digital: payload.venta_digital,
+                venta_digital_cual: payload.venta_digital_cual,
+                situacion: payload.situacion,
+                notas: payload.notas,
+                fecha_proximo_contacto: payload.fecha_proximo_contacto,
+                hora_proximo_contacto: payload.hora_proximo_contacto,
+                activador_cierre: payload.activador_cierre,
+            };
+
+            // 1. Update universal client record
+            const { error: uErr } = await supabase.from('clientes').update(universalFields).eq('id', clienteId);
+
+            // 2. Update company-specific record
+            const { error: cErr } = await supabase
+                .from('empresa_cliente')
+                .update(companyFields)
+                .eq('cliente_id', clienteId)
+                .eq('empresa_id', empresaActiva?.id);
+
+            err = uErr || cErr;
+
+            if (!err) {
                 const parts = [];
                 if (payload.estado) parts.push(`Estado: ${payload.estado}`);
                 if (payload.situacion && (payload.estado?.startsWith('4') || payload.estado?.startsWith('5'))) parts.push(`Situación: ${payload.situacion}`);
@@ -201,6 +254,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 const { error: actErr } = await supabase.from('actividades').insert([{
                     cliente_id: clienteId,
                     descripcion: desc,
+                    empresa_id: empresaActiva?.id,
                     fecha: new Date().toISOString()
                 }]);
                 if (actErr) console.warn('No se pudo guardar historial de edición:', actErr.message);
@@ -277,6 +331,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             console.error('Error guardando cliente:', err);
             toast.error('Ocurrió un error al guardar el cliente');
         } else {
+            console.log('DEBUG: Cliente guardado con éxito. Datos enviados:', payload);
             toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
             onSaved();
         }
