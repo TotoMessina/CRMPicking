@@ -69,9 +69,10 @@ export function CommandPalette() {
                         .select('id, nombre, telefono')
                         .or(`nombre.ilike.%${searchTerm}%,telefono.ilike.%${searchTerm}%`)
                         .limit(3),
-                    supabase.from('repartidores')
-                        .select('id, nombre, apellido')
-                        .or(`nombre.ilike.%${searchTerm}%,apellido.ilike.%${searchTerm}%`)
+                    supabase.from('usuarios')
+                        .select('id, email, nombre')
+                        .or(`nombre.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+                        .in('role', ['repartidor'])
                         .limit(3)
                 ]);
 
