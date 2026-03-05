@@ -327,20 +327,26 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
             if (!clienteErr && newCliente?.id) {
                 // 2. Insert company-specific record
-                await supabase.from('empresa_cliente').insert([{
+                const { error: ecErr } = await supabase.from('empresa_cliente').insert([{
                     ...companyFields,
                     empresa_id: empresaActiva?.id,
                     cliente_id: newCliente.id,
                 }]);
 
-                // 3. Automatically count as 1 visit for the creator
-                await supabase.from('actividades').insert([{
-                    cliente_id: newCliente.id,
-                    descripcion: 'Visita realizada',
-                    usuario: creadoPor,
-                    empresa_id: empresaActiva?.id,
-                    fecha: new Date().toISOString()
-                }]);
+                if (ecErr) {
+                    err = ecErr;
+                    // Optional: could Delete the orphan client record here if desired
+                } else {
+                    // 3. Automatically count as 1 visit for the creator
+                    const { error: actErr } = await supabase.from('actividades').insert([{
+                        cliente_id: newCliente.id,
+                        descripcion: 'Visita realizada',
+                        usuario: creadoPor,
+                        empresa_id: empresaActiva?.id,
+                        fecha: new Date().toISOString()
+                    }]);
+                    if (actErr) console.warn('No se pudo guardar actividad inicial:', actErr.message);
+                }
             }
         }
 

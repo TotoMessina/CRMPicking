@@ -90,6 +90,60 @@ export default function Consumidores() {
         fetchConsumidores();
     }, [page, pageSize, fNombre, fTelefono, fLocalidad, fEstado, fResponsable, empresaActiva]);
 
+    const handleImportExcel = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const toastId = toast.loading('Procesando archivo...');
+        try {
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const bstr = evt.target.result;
+                    const wb = window.XLSX.read(bstr, { type: 'binary' });
+                    const wsname = wb.SheetNames[0];
+                    const ws = wb.Sheets[wsname];
+                    const data = window.XLSX.utils.sheet_to_json(ws);
+
+                    if (data.length === 0) {
+                        toast.error('El archivo está vacío', { id: toastId });
+                        return;
+                    }
+
+                    let successCount = 0;
+                    for (const row of data) {
+                        try {
+                            const { error } = await supabase.from('consumidores').insert([{
+                                nombre: row.nombre || 'Nuevo Consumidor',
+                                telefono: String(row.telefono || ''),
+                                direccion: row.direccion || '',
+                                localidad: row.localidad || '',
+                                notas: row.notas || '',
+                                empresa_id: empresaActiva.id
+                            }]);
+
+                            if (error) throw error;
+                            successCount++;
+                        } catch (err) {
+                            console.error('Error importando consumidor:', row, err);
+                        }
+                    }
+
+                    toast.success(`Importación finalizada: ${successCount} consumidores cargados`, { id: toastId });
+                    fetchConsumidores();
+                } catch (err) {
+                    console.error(err);
+                    toast.error('Error al procesar el Excel', { id: toastId });
+                }
+            };
+            reader.readAsBinaryString(file);
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al leer el archivo', { id: toastId });
+        }
+        e.target.value = '';
+    };
+
     const handleCreate = () => {
         setEditingId(null);
         setModalOpen(true);
@@ -146,7 +200,7 @@ export default function Consumidores() {
                         </Button>
                         <label className="" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '99px', border: 'none', background: 'transparent', padding: '8px 16px', color: 'var(--text-muted)' }} title="Importar desde Excel">
                             <Upload size={18} />
-                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} />
+                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} />
                         </label>
                     </div>
 

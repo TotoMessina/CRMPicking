@@ -64,6 +64,7 @@ export default function Clientes() {
 
     const fetchClientes = async () => {
         if (!empresaActiva?.id) return;
+        console.log("Clientes: Fetching for company:", empresaActiva.id, " - Time:", new Date().toLocaleTimeString());
         setLoading(true);
 
         let request = supabase
@@ -362,6 +363,80 @@ export default function Clientes() {
         }
     };
 
+    const handleImportExcel = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const toastId = toast.loading('Procesando archivo...');
+        try {
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const bstr = evt.target.result;
+                    const wb = window.XLSX.read(bstr, { type: 'binary' });
+                    const wsname = wb.SheetNames[0];
+                    const ws = wb.Sheets[wsname];
+                    const data = window.XLSX.utils.sheet_to_json(ws);
+
+                    if (data.length === 0) {
+                        toast.error('El archivo está vacío', { id: toastId });
+                        return;
+                    }
+
+                    let successCount = 0;
+                    for (const row of data) {
+                        try {
+                            // 1. Create universal client
+                            const { data: newC, error: cErr } = await supabase.from('clientes').insert([{
+                                nombre: row.nombre || row.nombre_local || 'Nuevo Cliente',
+                                nombre_local: row.nombre_local || row.nombre || '',
+                                direccion: row.direccion || '',
+                                telefono: String(row.telefono || ''),
+                                mail: row.mail || '',
+                                cuit: String(row.cuit || '')
+                            }]).select('id').single();
+
+                            if (cErr) throw cErr;
+
+                            // 2. Link to company
+                            const { error: ecErr } = await supabase.from('empresa_cliente').insert([{
+                                cliente_id: newC.id,
+                                empresa_id: empresaActiva.id,
+                                estado: row.estado || '1 - Cliente relevado',
+                                rubro: row.rubro || '',
+                                responsable: row.responsable || '',
+                                situacion: row.situacion || '',
+                                notas: row.notas || '',
+                                tipo_contacto: row.tipo_contacto || '',
+                                fecha_proximo_contacto: row.fecha_proximo_contacto || null,
+                                hora_proximo_contacto: row.hora_proximo_contacto || null,
+                                creado_por: userName || user?.email || 'Importación',
+                                activo: true
+                            }]);
+
+                            if (ecErr) throw ecErr;
+                            successCount++;
+                        } catch (err) {
+                            console.error('Error importando fila:', row, err);
+                        }
+                    }
+
+                    toast.success(`Importación finalizada: ${successCount} clientes cargados`, { id: toastId });
+                    fetchClientes();
+                } catch (err) {
+                    console.error(err);
+                    toast.error('Error al procesar el Excel', { id: toastId });
+                }
+            };
+            reader.readAsBinaryString(file);
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al leer el archivo', { id: toastId });
+        }
+        // Reset input
+        e.target.value = '';
+    };
+
     const handleDescargarExcel = async () => {
         setExportLoading(true);
         const toastId = toast.loading('Calculando exportación...');
@@ -452,7 +527,7 @@ export default function Clientes() {
                         </Button>
                         <label className="" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '99px', border: 'none', background: 'transparent', padding: '8px 16px', color: 'var(--text-muted)' }} title="Importar desde Excel">
                             <Upload size={18} />
-                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} />
+                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} />
                         </label>
                     </div>
 
