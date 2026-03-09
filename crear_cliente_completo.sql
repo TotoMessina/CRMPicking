@@ -1,28 +1,29 @@
 -- =============================================
--- FUNCIÓN: crear_cliente_v4_json
--- Usamos un nombre totalmente nuevo para evitar
--- conflictos con versiones anteriores mal mapeadas.
+-- FUNCIÓN: crear_cliente_v5_final
+-- Sincronizada con los tipos reales de la tabla:
+-- id/cliente_id son BIGINT (integer)
+-- empresa_id es UUID
 -- =============================================
 
-DROP FUNCTION IF EXISTS crear_cliente_v4_json(jsonb);
+DROP FUNCTION IF EXISTS crear_cliente_v5_final(p_payload jsonb);
 
-CREATE OR REPLACE FUNCTION crear_cliente_v4_json(p_payload JSONB) 
-RETURNS UUID AS $$
+CREATE OR REPLACE FUNCTION crear_cliente_v5_final(p_payload JSONB) 
+RETURNS BIGINT AS $$
 DECLARE
-    new_id UUID;
+    new_id BIGINT;
     v_emp_id UUID;
     v_creador TEXT;
 BEGIN
-    -- 1. Extraer y validar ID de empresa
+    -- 1. Validar y convertir ID de empresa
     BEGIN
         v_emp_id := (p_payload->>'p_empresa_id')::UUID;
     EXCEPTION WHEN OTHERS THEN
-        RAISE EXCEPTION 'ID de empresa inválido: %. JSON recibido: %', p_payload->>'p_empresa_id', p_payload;
+        RAISE EXCEPTION 'ID de empresa inválido: %. JSON: %', p_payload->>'p_empresa_id', p_payload;
     END;
 
     v_creador := p_payload->>'p_creado_por';
 
-    -- 2. Insertar en tabla maestra 'clientes'
+    -- 2. Insertar en tabla maestra 'clientes' (id es BIGINT)
     INSERT INTO clientes (
         nombre_local, nombre, direccion, telefono, 
         mail, cuit, lat, lng, creado_por
@@ -40,7 +41,7 @@ BEGIN
     )
     RETURNING id INTO new_id;
 
-    -- 3. Insertar en tabla de negocio 'empresa_cliente'
+    -- 3. Insertar en tabla de negocio 'empresa_cliente' (cliente_id es BIGINT)
     INSERT INTO empresa_cliente (
         empresa_id, cliente_id, estado, rubro, responsable, 
         situacion, notas, tipo_contacto, creado_por, activo
@@ -65,5 +66,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Forzar recarga de PostgREST
 NOTIFY pgrst, 'reload schema';
 
--- Verificación
-SELECT routine_name FROM information_schema.routines WHERE routine_name = 'crear_cliente_v4_json';
+-- Verificación final
+SELECT routine_name, data_type 
+FROM information_schema.routines 
+WHERE routine_name = 'crear_cliente_v5_final';
