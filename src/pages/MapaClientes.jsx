@@ -13,6 +13,7 @@ import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
 
 import { ClienteModal } from '../components/ui/ClienteModal';
+import { useClientesMapa } from '../hooks/useClientesMapa';
 
 const ZONE_COLORS = {
     today: "#3b82f6",
@@ -74,8 +75,7 @@ export default function MapaClientes() {
     const markersLayerRef = useRef(null);
     const drawnZonesRef = useRef(null);
 
-    const [clientes, setClientes] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { data: clientes = [], isLoading: loading } = useClientesMapa(empresaActiva?.id);
     const [showZones, setShowZones] = useState(true);
     const [zoneType, setZoneType] = useState('today');
 
@@ -97,55 +97,6 @@ export default function MapaClientes() {
     const [isRoutingMode, setIsRoutingMode] = useState(false);
     const [routeStops, setRouteStops] = useState([]);
     const routingControlRef = useRef(null);
-
-    const fetchClientes = async () => {
-        if (!empresaActiva?.id) return;
-        setLoading(true);
-
-        const { data, error } = await supabase.rpc('buscar_clientes_empresa', {
-            p_empresa_id: empresaActiva.id,
-            p_limit: 5000
-        });
-
-        if (error) {
-            toast.error("Error al cargar clientes");
-            console.error("fetchClientes error:", error);
-        } else {
-            const mapped = (data || []).map(row => ({
-                id: row.cliente_id,
-                // universal
-                nombre: row.nombre,
-                nombre_local: row.nombre_local,
-                direccion: row.direccion,
-                telefono: row.telefono,
-                mail: row.mail,
-                cuit: row.cuit,
-                lat: Number(row.lat),
-                lng: Number(row.lng),
-                clientes: { created_at: row.c_created_at },
-                // company specific
-                estado: row.estado,
-                rubro: row.rubro,
-                responsable: row.responsable,
-                situacion: row.situacion,
-                notas: row.notas,
-                estilo_contacto: row.estilo_contacto,
-                interes: row.interes,
-                tipo_contacto: row.tipo_contacto,
-                venta_digital: row.venta_digital,
-                venta_digital_cual: row.venta_digital_cual,
-                fecha_proximo_contacto: row.fecha_proximo_contacto,
-                hora_proximo_contacto: row.hora_proximo_contacto,
-                activador_cierre: row.activador_cierre,
-                creado_por: row.creado_por,
-                created_at: row.ec_created_at,
-            })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
-
-            console.log(`MapaClientes: Clientes cargados (RPC): ${mapped.length}`, new Date().toISOString());
-            setClientes(mapped);
-        }
-        setLoading(false);
-    };
 
     const bindZonePopup = (layer, zoneId) => {
         const popupContent = `
@@ -226,10 +177,6 @@ export default function MapaClientes() {
             delete window.updateZoneColor;
             delete window.deleteZoneById;
         };
-    }, [empresaActiva]);
-
-    useEffect(() => {
-        fetchClientes();
     }, [empresaActiva]);
 
     // Initialize Map
