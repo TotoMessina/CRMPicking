@@ -291,82 +291,40 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 if (actErr) console.warn('No se pudo guardar historial de edición:', actErr.message);
             }
         } else {
-            // Include creator name for analytics when creating a new client
-            // If userName is not yet available in context, make a direct lookup as safety net
-            let creadoPor = userName || null;
-            if (!creadoPor && user?.email) {
-                const { data: uData } = await supabase
-                    .from('usuarios')
-                    .select('nombre')
-                    .eq('email', user.email)
-                    .maybeSingle();
-                creadoPor = uData?.nombre || user.email;
-            }
-            // Split fields: universal fields go to clientes, company-specific go to empresa_cliente
-            const universalFields = {
-                nombre_local: payload.nombre_local,
-                nombre: payload.nombre,
-                direccion: payload.direccion,
-                lat: payload.lat,
-                lng: payload.lng,
-                telefono: payload.telefono,
-                mail: payload.mail,
-                cuit: payload.cuit,
-            };
-            const companyFields = {
-                estado: payload.estado,
-                rubro: payload.rubro,
-                responsable: payload.responsable,
-                estilo_contacto: payload.estilo_contacto,
-                interes: payload.interes,
-                tipo_contacto: payload.tipo_contacto,
-                venta_digital: payload.venta_digital,
-                venta_digital_cual: payload.venta_digital_cual,
-                situacion: payload.situacion,
-                notas: payload.notas,
-                fecha_proximo_contacto: payload.fecha_proximo_contacto,
-                hora_proximo_contacto: payload.hora_proximo_contacto,
-                activador_cierre: payload.activador_cierre,
-                creado_por: creadoPor,
-                activo: true,
-            };
+            // Use RPC for atomic creation to avoid RLS visibility gaps
+            const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_completo', {
+                p_nombre_local: payload.nombre_local,
+                p_nombre: payload.nombre,
+                p_direccion: payload.direccion,
+                p_telefono: payload.telefono,
+                p_mail: payload.mail,
+                p_cuit: payload.cuit,
+                p_lat: payload.lat,
+                p_lng: payload.lng,
+                p_empresa_id: empresaActiva.id,
+                p_rubro: payload.rubro,
+                p_estado: payload.estado,
+                p_responsable: payload.responsable,
+                p_situacion: payload.situacion,
+                p_notas: payload.notas,
+                p_tipo_contacto: payload.tipo_contacto,
+                p_creado_por: creadoPor
+            });
 
-            // 1. Insert universal client record
-            console.log('DEBUG: Insertando en tabla clientes...', universalFields);
-            const { data: newCliente, error: clienteErr } = await supabase
-                .from('clientes')
-                .insert([universalFields])
-                .select('id')
-                .single();
-
-            if (clienteErr) {
-                console.error('ERROR: Falla al insertar en tabla clientes:', clienteErr);
-                err = clienteErr;
-            } else if (newCliente?.id) {
-                console.log('DEBUG: Exito tabla clientes. ID:', newCliente.id);
-                // 2. Insert company-specific record
-                console.log('DEBUG: Insertando en empresa_cliente...', { ...companyFields, empresa_id: empresaActiva.id });
-                const { error: ecErr } = await supabase.from('empresa_cliente').insert([{
-                    ...companyFields,
+            if (rpcErr) {
+                console.error('ERROR: Falla en RPC crear_cliente_completo:', rpcErr);
+                err = rpcErr;
+            } else if (result) {
+                console.log('DEBUG: Cliente creado exitosamente via RPC. ID:', result);
+                // Automatically count as 1 visit for the creator
+                const { error: actErr } = await supabase.from('actividades').insert([{
+                    cliente_id: result,
+                    descripcion: 'Visita realizada',
+                    usuario: creadoPor,
                     empresa_id: empresaActiva.id,
-                    cliente_id: newCliente.id,
+                    fecha: new Date().toISOString()
                 }]);
-
-                if (ecErr) {
-                    console.error('ERROR: Falla al insertar en empresa_cliente:', ecErr);
-                    err = ecErr;
-                } else {
-                    console.log('DEBUG: Exito tabla empresa_cliente.');
-                    // 3. Automatically count as 1 visit for the creator
-                    const { error: actErr } = await supabase.from('actividades').insert([{
-                        cliente_id: newCliente.id,
-                        descripcion: 'Visita realizada',
-                        usuario: creadoPor,
-                        empresa_id: empresaActiva.id,
-                        fecha: new Date().toISOString()
-                    }]);
-                    if (actErr) console.warn('No se pudo guardar actividad inicial:', actErr.message);
-                }
+                if (actErr) console.warn('No se pudo guardar actividad inicial:', actErr.message);
             }
         }
 

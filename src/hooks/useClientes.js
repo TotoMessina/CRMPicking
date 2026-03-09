@@ -6,7 +6,7 @@ export function useClientes(params) {
     const {
         empresaId, page, pageSize, isAgendaHoy,
         fEstado, fSituacion, fTipoContacto, fResponsable,
-        fRubro, fInteres, fEstilo, fProximos7,
+        fRubro, fInteres, fEstilo, fProximos7, fVencidos,
         fNombre, fTelefono, fDireccion, sortBy
     } = params;
 
@@ -18,7 +18,7 @@ export function useClientes(params) {
             {
                 empresaId, page, pageSize, isAgendaHoy,
                 fEstado, fSituacion, fTipoContacto, fResponsable,
-                fRubro, fInteres, fEstilo, fProximos7,
+                fRubro, fInteres, fEstilo, fProximos7, fVencidos,
                 fNombre, fTelefono, fDireccion, sortBy
             }
         ],
@@ -63,6 +63,11 @@ export function useClientes(params) {
                 const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
                 const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 request = request.gte('fecha_proximo_contacto', fmt(hoy)).lte('fecha_proximo_contacto', fmt(en7));
+            }
+
+            if (fVencidos) {
+                const hoy = new Date().toISOString().split('T')[0];
+                request = request.lt('fecha_proximo_contacto', hoy).not('fecha_proximo_contacto', 'is', null);
             }
 
             const hasTextFilter = fNombre || fTelefono || fDireccion;

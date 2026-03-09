@@ -30,6 +30,7 @@ export default function Clientes() {
     const [fEstilo, setFEstilo] = useState('');
     const [fTipoContacto, setFTipoContacto] = useState('Todos');
     const [fProximos7, setFProximos7] = useState(false);
+    const [fVencidos, setFVencidos] = useState(false);
 
     const [sortBy, setSortBy] = useState('recent'); // 'recent', 'oldest', 'az', 'za', 'activity_desc', 'activity_asc'
 
@@ -50,7 +51,7 @@ export default function Clientes() {
         empresaId: empresaActiva?.id,
         page, pageSize, isAgendaHoy,
         fEstado, fSituacion, fTipoContacto, fResponsable,
-        fRubro, fInteres, fEstilo, fProximos7,
+        fRubro, fInteres, fEstilo, fProximos7, fVencidos,
         fNombre, fTelefono, fDireccion, sortBy
     });
     const { clientes = [], total = 0, activities = {} } = data || {};
@@ -465,14 +466,31 @@ export default function Clientes() {
                         </select>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button
-                            onClick={() => { setFProximos7(p => !p); setPage(1); }}
+                            onClick={() => { setFVencidos(p => !p); if (!fVencidos) setFProximos7(false); setPage(1); }}
                             style={{
-                                width: '100%',
-                                display: 'flex', alignItems: 'center', gap: '10px',
-                                padding: '10px 16px', borderRadius: '12px', cursor: 'pointer',
-                                fontWeight: 600, fontSize: '0.9rem',
+                                flex: 1,
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                padding: '10px 14px', borderRadius: '12px', cursor: 'pointer',
+                                fontWeight: 600, fontSize: '0.85rem',
+                                background: fVencidos ? '#ef4444' : 'var(--bg-elevated)',
+                                color: fVencidos ? '#fff' : 'var(--text-muted)',
+                                border: fVencidos ? '1px solid #ef4444' : '1px solid var(--border)',
+                                boxShadow: fVencidos ? '0 4px 14px -4px rgba(239,68,68,0.5)' : 'none',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <Clock size={16} />
+                            Vencidos{fVencidos ? ' ✓' : ''}
+                        </button>
+                        <button
+                            onClick={() => { setFProximos7(p => !p); if (!fProximos7) setFVencidos(false); setPage(1); }}
+                            style={{
+                                flex: 1,
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                padding: '10px 14px', borderRadius: '12px', cursor: 'pointer',
+                                fontWeight: 600, fontSize: '0.85rem',
                                 background: fProximos7 ? 'var(--accent)' : 'var(--bg-elevated)',
                                 color: fProximos7 ? '#fff' : 'var(--text-muted)',
                                 border: fProximos7 ? '1px solid var(--accent)' : '1px solid var(--border)',
@@ -480,8 +498,8 @@ export default function Clientes() {
                                 transition: 'all 0.2s ease'
                             }}
                         >
-                            <Calendar size={16} style={{ flexShrink: 0 }} />
-                            📅 Próximos 7 días{fProximos7 ? ' ✓' : ''}
+                            <Calendar size={16} />
+                            Próximos 7 días{fProximos7 ? ' ✓' : ''}
                         </button>
                     </div>
                 </div>
