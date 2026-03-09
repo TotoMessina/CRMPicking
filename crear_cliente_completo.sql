@@ -1,52 +1,57 @@
--- ===================================================================
--- NUCLEAR DROP: Eliminar TODAS las versiones previas de la función
--- para evitar conflictos de sobrecarga (overloading)
--- ===================================================================
+-- 1. LIMPIEZA NUCLEAR: Borramos ABSOLUTAMENTE TODAS las funciones con estos nombres
+-- Esto elimina cualquier conflicto de "overloading" de parámetros.
 DO $$ 
 DECLARE 
     r RECORD;
 BEGIN
-    FOR r IN (SELECT oid::regprocedure as proc_name FROM pg_proc WHERE proname = 'crear_cliente_completo') LOOP
+    FOR r IN (
+        SELECT oid::regprocedure as proc_name 
+        FROM pg_proc 
+        WHERE proname IN ('crear_cliente_completo', 'crear_cliente_v3', 'crear_cliente_final')
+    ) LOOP
         EXECUTE 'DROP FUNCTION ' || r.proc_name;
     END LOOP;
 END $$;
 
--- También borramos la v3 por si acaso
-DROP FUNCTION IF EXISTS crear_cliente_v3(jsonb);
-
--- ===================================================================
--- FUNCIÓN: crear_cliente_v3 (Versión Definitiva JSONB)
--- ===================================================================
-CREATE OR REPLACE FUNCTION crear_cliente_v3(p_data JSONB) 
+-- 2. CREACIÓN: Función definitiva con un nombre único y UN solo parámetro JSONB
+-- Usamos 'datos' para que sea genérico y no choque con nombres de columnas.
+CREATE OR REPLACE FUNCTION crear_cliente_final(datos JSONB) 
 RETURNS UUID AS $$
 DECLARE
     new_id UUID;
     v_emp_id UUID;
-    v_creador TEXT;
 BEGIN
-    -- 1. Validaciones y extracción segura de IDs
-    v_emp_id := (p_data->>'p_empresa_id')::UUID;
-    v_creador := p_data->>'p_creado_por';
+    -- Verificación de seguridad: ¿Viene el ID de empresa?
+    IF datos->>'p_empresa_id' IS NULL THEN
+        RAISE EXCEPTION 'ID de empresa faltante (p_empresa_id). JSON recibido: %', datos;
+    END IF;
 
-    -- 2. Insertar en tabla maestra 'clientes'
+    -- Intentar convertir el ID de empresa, si falla daremos un error claro
+    BEGIN
+        v_emp_id := (datos->>'p_empresa_id')::UUID;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE EXCEPTION 'El ID de empresa no es un UUID válido: "%". JSON: %', datos->>'p_empresa_id', datos;
+    END;
+
+    -- A. Insertar en tabla clientes
     INSERT INTO clientes (
         nombre_local, nombre, direccion, telefono, 
         mail, cuit, lat, lng, creado_por
     )
     VALUES (
-        p_data->>'p_nombre_local', 
-        p_data->>'p_nombre', 
-        p_data->>'p_direccion', 
-        p_data->>'p_telefono', 
-        p_data->>'p_mail', 
-        p_data->>'p_cuit', 
-        (p_data->>'p_lat')::FLOAT8, 
-        (p_data->>'p_lng')::FLOAT8, 
-        v_creador
+        datos->>'p_nombre_local', 
+        datos->>'p_nombre', 
+        datos->>'p_direccion', 
+        datos->>'p_telefono', 
+        datos->>'p_mail', 
+        datos->>'p_cuit', 
+        (datos->>'p_lat')::FLOAT8, 
+        (datos->>'p_lng')::FLOAT8, 
+        datos->>'p_creado_por'
     )
     RETURNING id INTO new_id;
 
-    -- 3. Insertar en tabla de negocio 'empresa_cliente'
+    -- B. Insertar en empresa_cliente
     INSERT INTO empresa_cliente (
         empresa_id, cliente_id, estado, rubro, responsable, 
         situacion, notas, tipo_contacto, creado_por, activo
@@ -54,18 +59,24 @@ BEGIN
     VALUES (
         v_emp_id, 
         new_id, 
-        p_data->>'p_estado', 
-        p_data->>'p_rubro', 
-        p_data->>'p_responsable', 
-        p_data->>'p_situacion', 
-        p_data->>'p_notas', 
-        p_data->>'p_tipo_contacto', 
-        v_creador, 
+        datos->>'p_estado', 
+        datos->>'p_rubro', 
+        datos->>'p_responsable', 
+        datos->>'p_situacion', 
+        datos->>'p_notas', 
+        datos->>'p_tipo_contacto', 
+        datos->>'p_creado_por', 
         true
     );
 
     RETURN new_id;
-EXCEPTION WHEN OTHERS THEN
-    RAISE EXCEPTION 'Error en crear_cliente_v3: %. Detalles: %', SQLERRM, SQLSTATE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. FORZAR RECARGA DE CACHÉ DE SCHEMAS
+NOTIFY pgrst, 'reload schema';
+
+-- 4. VERIFICACIÓN FINAL: Debería salir una sola fila con 'crear_cliente_final'
+SELECT routine_name, data_type 
+FROM information_schema.routines 
+WHERE routine_name = 'crear_cliente_final';

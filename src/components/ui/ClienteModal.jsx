@@ -303,9 +303,9 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             }
 
             // Use RPC for atomic creation to avoid RLS visibility gaps
-            // We use a single JSONB parameter p_data to avoid positional/naming mapping errors
-            const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_v3', {
-                p_data: {
+            // We use a single JSONB parameter 'datos' to avoid positional/naming mapping errors
+            const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_final', {
+                datos: {
                     p_nombre_local: payload.nombre_local,
                     p_nombre: payload.nombre,
                     p_direccion: payload.direccion,
@@ -326,7 +326,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             });
 
             if (rpcErr) {
-                console.error('ERROR: Falla en RPC crear_cliente_completo:', rpcErr);
+                console.error('ERROR: Falla en RPC crear_cliente_final:', rpcErr);
                 err = rpcErr;
             } else if (result) {
                 console.log('DEBUG: Cliente creado exitosamente via RPC. ID:', result);
