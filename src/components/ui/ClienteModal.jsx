@@ -304,7 +304,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
             // Use RPC for atomic creation to avoid RLS visibility gaps
             // We use a single JSONB parameter p_data to avoid positional/naming mapping errors
-            const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_completo', {
+            const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_v3', {
                 p_data: {
                     p_nombre_local: payload.nombre_local,
                     p_nombre: payload.nombre,
