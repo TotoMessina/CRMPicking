@@ -32,16 +32,18 @@ export function useClientes(params) {
                 .eq('activo', true);
 
             // Apply sorting
-            if (sortBy === 'recent') {
-                request = request.order('created_at', { ascending: false }).order('ultima_actividad', { ascending: false, nullsFirst: false });
+            if (sortBy === 'updated' || sortBy === 'recent') {
+                request = request.order('updated_at', { ascending: false }).order('created_at', { ascending: false });
             } else if (sortBy === 'oldest') {
-                request = request.order('created_at', { ascending: true }).order('ultima_actividad', { ascending: true, nullsFirst: false });
+                request = request.order('created_at', { ascending: true });
             } else if (sortBy === 'az') {
-                request = request.order('updated_at', { ascending: false });
+                request = request.order('clientes(nombre)', { ascending: true });
+            } else if (sortBy === 'za') {
+                request = request.order('clientes(nombre)', { ascending: false });
             } else if (sortBy === 'activity_desc') {
-                request = request.order('ultima_actividad', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+                request = request.order('ultima_actividad', { ascending: false, nullsFirst: false }).order('updated_at', { ascending: false });
             } else if (sortBy === 'activity_asc') {
-                request = request.order('ultima_actividad', { ascending: true, nullsFirst: true }).order('created_at', { ascending: true });
+                request = request.order('ultima_actividad', { ascending: true, nullsFirst: true }).order('updated_at', { ascending: true });
             }
 
             request = request.range((page - 1) * pageSize, page * pageSize - 1);
@@ -90,6 +92,7 @@ export function useClientes(params) {
                     p_estilo: fEstilo || null,
                     p_offset: (page - 1) * pageSize,
                     p_limit: pageSize,
+                    p_sort_by: sortBy || 'recent'
                 });
 
                 if (rpcError) {
@@ -124,6 +127,7 @@ export function useClientes(params) {
                     activador_cierre: row.activador_cierre,
                     creado_por: row.creado_por,
                     created_at: row.ec_created_at,
+                    updated_at: row.ec_updated_at,
                 }));
                 // Si la cantidad de items devueltos es menor a pageSize, sabemos que es la última página
                 total = rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0);
@@ -162,9 +166,9 @@ export function useClientes(params) {
                         fecha_proximo_contacto: row.fecha_proximo_contacto,
                         hora_proximo_contacto: row.hora_proximo_contacto,
                         ultima_actividad: row.ultima_actividad,
-                        activador_cierre: row.activador_cierre,
                         creado_por: row.creado_por,
                         created_at: row.created_at,
+                        updated_at: row.updated_at,
                     };
                 });
                 total = count || 0;

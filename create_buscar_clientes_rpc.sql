@@ -1,11 +1,11 @@
 -- ============================================================
--- RPC: buscar_clientes_empresa
--- Busca clientes de una empresa filtrando por texto en clientes y
--- filtros propios de empresa_cliente. Bypasses el problema de
--- PostgREST con filtros en tablas embebidas.
+-- RPC: buscar_clientes_empresa (v2 con Ordenamiento Dinámico)
+-- Busca clientes de una empresa filtrando por texto y otros campos.
+-- Permite especificar el criterio de ordenamiento.
 -- ============================================================
 
 DROP FUNCTION IF EXISTS buscar_clientes_empresa(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INT, INT);
+DROP FUNCTION IF EXISTS buscar_clientes_empresa(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INT, INT, TEXT);
 
 CREATE OR REPLACE FUNCTION buscar_clientes_empresa(
     p_empresa_id UUID,
@@ -20,7 +20,8 @@ CREATE OR REPLACE FUNCTION buscar_clientes_empresa(
     p_interes TEXT DEFAULT NULL,
     p_estilo TEXT DEFAULT NULL,
     p_offset INT DEFAULT 0,
-    p_limit INT DEFAULT 25
+    p_limit INT DEFAULT 25,
+    p_sort_by TEXT DEFAULT 'recent'
 )
 RETURNS TABLE (
     ec_id UUID,
@@ -45,7 +46,6 @@ RETURNS TABLE (
     activo BOOLEAN,
     ec_created_at TIMESTAMPTZ,
     ec_updated_at TIMESTAMPTZ,
-    -- campos de clientes
     nombre TEXT,
     nombre_local TEXT,
     telefono TEXT,
@@ -107,7 +107,16 @@ BEGIN
       AND (p_rubro IS NULL OR ec.rubro = p_rubro)
       AND (p_interes IS NULL OR ec.interes = p_interes)
       AND (p_estilo IS NULL OR ec.estilo_contacto = p_estilo)
-    ORDER BY ec.created_at DESC, ec.ultima_actividad DESC NULLS LAST
+    ORDER BY 
+        CASE WHEN p_sort_by = 'updated' THEN ec.updated_at END DESC,
+        CASE WHEN p_sort_by = 'recent' THEN ec.created_at END DESC,
+        CASE WHEN p_sort_by = 'oldest' THEN ec.created_at END ASC,
+        CASE WHEN p_sort_by = 'az' THEN c.nombre END ASC,
+        CASE WHEN p_sort_by = 'za' THEN c.nombre END DESC,
+        CASE WHEN p_sort_by = 'activity_desc' THEN ec.ultima_actividad END DESC NULLS LAST,
+        CASE WHEN p_sort_by = 'activity_asc' THEN ec.ultima_actividad END ASC NULLS FIRST,
+        -- Fallback: siempre creacion desc si no coincide nada
+        ec.created_at DESC
     LIMIT p_limit OFFSET p_offset;
 END;
 $$;

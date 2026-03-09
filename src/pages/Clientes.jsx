@@ -32,7 +32,7 @@ export default function Clientes() {
     const [fProximos7, setFProximos7] = useState(false);
     const [fVencidos, setFVencidos] = useState(false);
 
-    const [sortBy, setSortBy] = useState('recent'); // 'recent', 'oldest', 'az', 'za', 'activity_desc', 'activity_asc'
+    const [sortBy, setSortBy] = useState('updated'); // 'updated', 'recent', 'oldest', 'az', 'za', 'activity_desc', 'activity_asc'
 
     // Metadata (Rubros to populate select)
     const [rubrosValidos, setRubrosValidos] = useState([]);
@@ -519,8 +519,9 @@ export default function Clientes() {
                             onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
                             style={{ padding: '8px 12px', borderRadius: '10px', minWidth: '180px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text)' }}
                         >
-                            <option value="recent">Más recientes</option>
-                            <option value="oldest">Más antiguos</option>
+                            <option value="updated">Últimos editados</option>
+                            <option value="recent">Más recientes (creación)</option>
+                            <option value="oldest">Más antiguos (creación)</option>
                             <option value="activity_desc">Última actividad (Recientes primero)</option>
                             <option value="activity_asc">Última actividad (Antiguos primero)</option>
                             <option value="az">Nombre (A - Z)</option>
