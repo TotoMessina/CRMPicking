@@ -291,6 +291,17 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                 if (actErr) console.warn('No se pudo guardar historial de edición:', actErr.message);
             }
         } else {
+            // Include creator name for analytics when creating a new client
+            let creadoPor = userName || null;
+            if (!creadoPor && user?.email) {
+                const { data: uData } = await supabase
+                    .from('usuarios')
+                    .select('nombre')
+                    .eq('email', user.email)
+                    .maybeSingle();
+                creadoPor = uData?.nombre || user.email;
+            }
+
             // Use RPC for atomic creation to avoid RLS visibility gaps
             const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_completo', {
                 p_nombre_local: payload.nombre_local,
