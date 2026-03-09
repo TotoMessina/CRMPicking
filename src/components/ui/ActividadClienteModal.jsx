@@ -4,8 +4,10 @@ import { supabase } from '../../lib/supabase';
 import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function ActividadClienteModal({ isOpen, onClose, clienteId, clienteNombre, onSaved }) {
+    const { empresaActiva } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         descripcion: '',
@@ -53,6 +55,7 @@ export function ActividadClienteModal({ isOpen, onClose, clienteId, clienteNombr
             descripcion: formData.descripcion.trim(),
             fecha: fechaISO,
             usuario: formData.usuario.trim() || null,
+            empresa_id: empresaActiva?.id
         };
 
         const { error } = await supabase.from("actividades").insert([payload]);
@@ -61,8 +64,11 @@ export function ActividadClienteModal({ isOpen, onClose, clienteId, clienteNombr
         } else {
             toast.success("Actividad agregada");
 
-            // Sync last activity on main table ignoring errors (ultima_actividad might not exist in clientes, but we update if it does or just ignore)
-            await supabase.from("clientes").update({ ultima_actividad: fechaISO }).eq("id", clienteId);
+            // Sync last activity on both tables
+            await Promise.all([
+                supabase.from("clientes").update({ ultima_actividad: fechaISO }).eq("id", clienteId),
+                supabase.from("empresa_cliente").update({ ultima_actividad: fechaISO }).eq("cliente_id", clienteId).eq("empresa_id", empresaActiva?.id)
+            ]);
 
             onSaved();
         }
