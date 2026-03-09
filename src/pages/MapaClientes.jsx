@@ -75,7 +75,7 @@ export default function MapaClientes() {
     const markersLayerRef = useRef(null);
     const drawnZonesRef = useRef(null);
 
-    const { data: clientes = [], isLoading: loading } = useClientesMapa(empresaActiva?.id);
+    const { data: clientes = [], isLoading: loading, refetch: fetchClientes } = useClientesMapa(empresaActiva?.id);
     const [showZones, setShowZones] = useState(true);
     const [zoneType, setZoneType] = useState('today');
 
