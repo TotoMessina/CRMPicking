@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export function MasivoModal({ isOpen, onClose, usersCache, initialUsuario, onSaved }) {
+export function MasivoModal({ isOpen, onClose, usersCache, initialUsuario, onSaved, empresaActiva }) {
     const [loading, setLoading] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -128,7 +128,8 @@ export function MasivoModal({ isOpen, onClose, usersCache, initialUsuario, onSav
                             start_time: objStart.toISOString(),
                             end_time: objEnd.toISOString(),
                             notas: formData.notas ? `${formData.notas} (Masivo)` : '(Masivo)',
-                            creado_por: creatorName
+                            creado_por: creatorName,
+                            empresa_id: empresaActiva?.id
                         });
                     }
                 }

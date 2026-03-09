@@ -52,13 +52,24 @@ export default function Horarios() {
 
     useEffect(() => {
         loadUsers();
-    }, []);
+    }, [empresaActiva]);
 
     const loadUsers = async () => {
+        if (!empresaActiva?.id) return;
         try {
+            const { data: rels } = await supabase.from("empresa_usuario").select("usuario_email, role").eq("empresa_id", empresaActiva.id);
+            const validEmails = new Set((rels || []).map(r => r.usuario_email));
+
             const { data: users, error } = await supabase.from("usuarios").select("email, nombre, role").order("nombre");
             if (error) throw error;
-            setUsersCache(users || []);
+            
+            const filtered = (users || []).filter(u => validEmails.has(u.email));
+            const formatted = filtered.map(u => {
+                const rel = (rels || []).find(r => r.usuario_email === u.email);
+                return { ...u, role: rel?.role || u.role };
+            });
+
+            setUsersCache(formatted);
         } catch (err) {
             console.warn("No users found or error:", err);
             setUsersCache([]);
@@ -114,6 +125,7 @@ export default function Horarios() {
         const loadTurnos = async () => {
             try {
                 let query = supabase.from("turnos").select("*")
+                    .eq("empresa_id", empresaActiva.id)
                     .gte("start_time", dateRange.start)
                     .lt("end_time", dateRange.end);
 
@@ -398,6 +410,7 @@ export default function Horarios() {
                     usersCache={usersCache}
                     initialData={initialTurnoData}
                     onSaved={refetchEvents}
+                    empresaActiva={empresaActiva}
                 />
             )}
 
@@ -408,6 +421,7 @@ export default function Horarios() {
                     usersCache={usersCache}
                     initialUsuario={filtroEmpleado}
                     onSaved={refetchEvents}
+                    empresaActiva={empresaActiva}
                 />
             )}
         </div>

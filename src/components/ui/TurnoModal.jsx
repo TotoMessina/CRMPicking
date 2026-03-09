@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, onSaved }) {
+export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, onSaved, empresaActiva }) {
     const [loading, setLoading] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -73,7 +73,8 @@ export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, 
             tipo: formData.tipo,
             start_time: startIso,
             end_time: endIso,
-            notas: formData.notas
+            notas: formData.notas,
+            empresa_id: empresaActiva?.id
         };
 
         try {
