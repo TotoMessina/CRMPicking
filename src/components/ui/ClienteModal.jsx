@@ -303,23 +303,26 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             }
 
             // Use RPC for atomic creation to avoid RLS visibility gaps
+            // We use a single JSONB parameter p_data to avoid positional/naming mapping errors
             const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_completo', {
-                p_nombre_local: payload.nombre_local,
-                p_nombre: payload.nombre,
-                p_direccion: payload.direccion,
-                p_telefono: payload.telefono,
-                p_mail: payload.mail,
-                p_cuit: payload.cuit,
-                p_lat: payload.lat,
-                p_lng: payload.lng,
-                p_empresa_id: empresaActiva.id,
-                p_rubro: payload.rubro,
-                p_estado: payload.estado,
-                p_responsable: payload.responsable,
-                p_situacion: payload.situacion,
-                p_notas: payload.notas,
-                p_tipo_contacto: payload.tipo_contacto,
-                p_creado_por: creadoPor
+                p_data: {
+                    p_nombre_local: payload.nombre_local,
+                    p_nombre: payload.nombre,
+                    p_direccion: payload.direccion,
+                    p_telefono: payload.telefono,
+                    p_mail: payload.mail,
+                    p_cuit: payload.cuit,
+                    p_lat: payload.lat,
+                    p_lng: payload.lng,
+                    p_empresa_id: empresaActiva.id,
+                    p_rubro: payload.rubro,
+                    p_estado: payload.estado,
+                    p_responsable: payload.responsable,
+                    p_situacion: payload.situacion,
+                    p_notas: payload.notas,
+                    p_tipo_contacto: payload.tipo_contacto,
+                    p_creado_por: creadoPor
+                }
             });
 
             if (rpcErr) {
