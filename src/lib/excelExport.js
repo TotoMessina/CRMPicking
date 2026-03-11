@@ -28,6 +28,33 @@ export const descargarModeloClientes = () => {
     }
 };
 
+export const descargarModeloConsumidores = () => {
+    try {
+        const wb = window.XLSX.utils.book_new();
+        const headers = ["nombre", "telefono", "direccion", "localidad", "notas"];
+        const data = [
+            headers,
+            ["Juan Pérez", "11-2345-6789", "Calle Falsa 123", "Moreno", "Ejemplo de nota"]
+        ];
+        const ws = window.XLSX.utils.aoa_to_sheet(data);
+        window.XLSX.utils.book_append_sheet(wb, ws, "Modelo Consumidores");
+
+        const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([new Uint8Array(wbout)], { type: "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "modelo_consumidores_crm.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Error al generar modelo consumidores:", error);
+        toast.error("Error al generar el archivo Excel");
+    }
+};
+
 export const importarClientesExcel = async (file, empresaActiva, userName, userEmail, onSuccess) => {
     if (!file) return;
 

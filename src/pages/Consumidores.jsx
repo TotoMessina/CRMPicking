@@ -7,7 +7,7 @@ import { Plus, ChevronLeft, ChevronRight, Download, Upload, Search, MapPin, Phon
 import toast from 'react-hot-toast';
 import { ConsumidorModal } from '../components/ui/ConsumidorModal';
 import { ActividadConsumidorModal } from '../components/ui/ActividadConsumidorModal';
-import { importarConsumidoresExcel } from '../lib/excelExport';
+import { importarConsumidoresExcel, descargarModeloConsumidores } from '../lib/excelExport';
 
 export default function Consumidores() {
     const { empresaActiva } = useAuth();
@@ -146,7 +146,7 @@ export default function Consumidores() {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Button variant="secondary" style={{ borderRadius: '99px', fontSize: '0.95rem' }} title="Descargar Modelo Excel">
+                    <Button variant="secondary" style={{ borderRadius: '99px', fontSize: '0.95rem' }} title="Descargar Modelo Excel" onClick={descargarModeloConsumidores}>
                         Descargar Modelo
                     </Button>
                     <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: '99px', border: '1px solid var(--border)', padding: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
