@@ -65,6 +65,38 @@ export const descargarModeloConsumidores = () => {
     }
 };
 
+export const descargarModeloRepartidores = () => {
+    const toastId = toast.loading("Generando modelo...");
+    try {
+        if (!window.XLSX) {
+            throw new Error("La librería de Excel no ha cargado aún. Por favor, refrescá la página.");
+        }
+        const wb = window.XLSX.utils.book_new();
+        const headers = ["nombre", "telefono", "email", "direccion", "localidad", "responsable", "notas", "estado", "fecha_creacion"];
+        const data = [
+            headers,
+            ["Carlos Delivery", "11-9876-5432", "carlos@reparto.com", "Av. Principal 100", "Morón", "Toto", "Tiene moto propia", "Activo", "2025-01-10"]
+        ];
+        const ws = window.XLSX.utils.aoa_to_sheet(data);
+        window.XLSX.utils.book_append_sheet(wb, ws, "Modelo Repartidores");
+
+        const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([new Uint8Array(wbout)], { type: "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "modelo_repartidores_crm.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Modelo descargado correctamente", { id: toastId });
+    } catch (error) {
+        console.error("Error al generar modelo repartidores:", error);
+        toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
+    }
+};
+
 export const importarClientesExcel = async (file, empresaActiva, userName, userEmail, onSuccess) => {
     if (!file) return;
 
