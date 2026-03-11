@@ -63,6 +63,22 @@ ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE empresas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE empresa_usuario ENABLE ROW LEVEL SECURITY;
 
+-- ============================================================
+-- PASO 2.5: Función para verificar si el usuario es administrador
+-- (SECURITY DEFINER para saltar RLS al verificar rol)
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM usuarios
+        WHERE email = auth.email()
+        AND LOWER(role) IN ('admin', 'super-admin', 'administrador')
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 -- ============================================================
 -- PASO 3: Eliminar políticas antiguas y crear nuevas correctas
@@ -87,13 +103,19 @@ DROP POLICY IF EXISTS "Ver empresa_usuario de mi empresa" ON empresa_usuario;
 DROP POLICY IF EXISTS "Ver mi empresa_usuario" ON empresa_usuario;
 DROP POLICY IF EXISTS "Insert empresa_usuario" ON empresa_usuario;
 
--- EMPRESA_USUARIO: ver solo las filas donde el email coincide (SIMPLE, no circular)
+-- EMPRESA_USUARIO: ver solo las filas donde el email coincide o si soy admin
 CREATE POLICY "Ver mi empresa_usuario" ON empresa_usuario
-    FOR SELECT USING (usuario_email = auth.email());
+    FOR SELECT USING (usuario_email = auth.email() OR is_admin());
 
 -- Permite a admin insertar/actualizar empresa_usuario
 CREATE POLICY "Insert empresa_usuario" ON empresa_usuario
-    FOR INSERT WITH CHECK (usuario_email = auth.email());
+    FOR INSERT WITH CHECK (usuario_email = auth.email() OR is_admin());
+
+CREATE POLICY "Update empresa_usuario" ON empresa_usuario
+    FOR UPDATE USING (is_admin());
+
+CREATE POLICY "Delete empresa_usuario" ON empresa_usuario
+    FOR DELETE USING (is_admin());
 
 -- EMPRESAS: ver solo las empresas a las que pertenezco
 -- Usa SECURITY DEFINER via empresa_usuario simple
@@ -165,6 +187,9 @@ CREATE POLICY "Update clientes" ON clientes
         )
     );
 
--- USUARIOS: cada usuario ve solo su propio perfil
-CREATE POLICY "Ver perfil propio" ON usuarios
-    FOR SELECT USING (email = auth.email());
+-- USUARIOS: cada usuario ve solo su propio perfil, o admin ve todos
+CREATE POLICY "Ver todos los perfiles si soy admin" ON usuarios
+    FOR SELECT USING (is_admin() OR email = auth.email());
+
+CREATE POLICY "Update perfiles si soy admin" ON usuarios
+    FOR UPDATE USING (is_admin());

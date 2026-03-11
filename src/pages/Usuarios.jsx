@@ -121,9 +121,9 @@ export default function Usuarios() {
                         onChange={(e) => setRolFilter(e.target.value)}
                     >
                         <option value="">Todos los roles</option>
-                        <option value="Administrador">Administrador</option>
-                        <option value="Activador PickingUp">Activador PickingUp</option>
-                        <option value="Activador Golomax">Activador Golomax</option>
+                        <option value="admin">Administrador</option>
+                        <option value="activador_pickingup">Activador PickingUp</option>
+                        <option value="activador_golomax">Activador Golomax</option>
                         <option value="user">Usuario (default)</option>
                     </select>
                 </div>
@@ -194,9 +194,9 @@ export default function Usuarios() {
                                     value={editForm.role}
                                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                                 >
-                                    <option value="Administrador">Administrador</option>
-                                    <option value="Activador PickingUp">Activador PickingUp</option>
-                                    <option value="Activador Golomax">Activador Golomax</option>
+                                    <option value="admin">Administrador</option>
+                                    <option value="activador_pickingup">Activador PickingUp</option>
+                                    <option value="activador_golomax">Activador Golomax</option>
                                     <option value="user">Usuario normal</option>
                                 </select>
                             </div>
