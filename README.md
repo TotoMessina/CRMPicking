@@ -1,104 +1,124 @@
 # PickingUp CRM
 
-> CRM interno para la gestión de clientes, activadores, logística y estadísticas del equipo PickingUp.
+![PickingUp CRM](https://img.shields.io/badge/Status-Active_Development-success?style=for-the-badge)
+![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite_4-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+
+**PickingUp CRM** es una plataforma integral de gestión comercial, logística y operativa diseñada específicamente para el ecosistema de PickingUp. El sistema permite administrar de forma centralizada la captación de locales (clientes), la flota logística (repartidores), los usuarios finales (consumidores) y el análisis de rendimiento del equipo comercial (activadores).
+
+Está construido con una arquitectura **Multi-Empresa (Multi-tenant)**, garantizando el aislamiento criptográfico de datos por entorno mediante Row Level Security (RLS) en base de datos.
 
 ---
 
-## 🛠 Stack Tecnológico
+## 🌟 Funcionalidades Core del Producto
 
-| Capa | Tecnología |
-|------|-----------|
-| Frontend | React 18 + Vite |
-| Estilos | Vanilla CSS (dark/light mode) |
-| Base de datos | Supabase (PostgreSQL) |
-| Autenticación | Supabase Auth |
-| Gráficas | Chart.js + react-chartjs-2 |
-| Mapas | Leaflet.js |
-| PWA | vite-plugin-pwa + Workbox |
-| Deploy | Vercel |
+El CRM se divide en módulos interconectados que cubren todo el ciclo de vida del negocio:
 
----
+### 1. 📋 Gestión de Clientes (Comercios/Locales)
+El corazón comercial del sistema. Rastrea a los comercios desde el primer contacto hasta su activación y operación diaria.
+- **Ciclo de Vida (Estados):** 
+  - `1 - Cliente relevado` (Prospecto inicial)
+  - `2 - Local Visitado No Activo`
+  - `3 - Primer Ingreso`
+  - `4 - Local Creado` (En onboarding)
+  - `5 - Local Visitado Activo` (Operando en la plataforma)
+  - `6 - Local No Interesado`
+- **Filtros Avanzados y Búsqueda:** Búsqueda en tiempo real por nombre, teléfono, rubro, estado, situación operativa, nivel de interés, y responsable.
+- **Seguimiento CRM (Agenda):** Botones de acción rápida para reprogramar el próximo contacto (+3 días, +7 días, +15 días, +1 mes). Filtro de "Próximos 7 días" para organizar la semana comercial.
+- **Acciones con 1 Click:** Registro inmediato de "Visitas Presenciales" directamente desde la tarjeta del cliente, retroalimentando las estadísticas de los activadores al instante.
+- **Trazabilidad Absoluta:** Cada edición (cambio de estado, adición de notas, cambio de responsable) genera una entrada automática en el historial de `actividades` para auditoría.
+- **Importación/Exportación Inteligente:** Motor de carga masiva vía Excel (.xlsx/.csv) que soporta mapeo de fechas históricas (`created_at`).
 
-## 🚀 Funcionalidades principales
+### 2. 📊 Ecosistema de Estadísticas y KPIs
+Dashboards en tiempo real potenciados por `Chart.js`, divididos en dos visiones estratégicas:
+- **Dashboard Ecosistema Apps:**
+  - **Crecimiento Diario:** Gráfico de barras de altas por día.
+  - **Distribución de Cartera:** Gráficos Doughnut separando comercios por `Rubro`, `Estado` y `Creador`.
+  - **Situación Operativa:** Análisis de locales en Estado 5 (Activos) fragmentados por "En funcionamiento", "En proceso" o "Sin comunicación nueva", con cruce multi-filtro por rubros.
+  - **Evolución Consumidores/Repartidores:** Curvas de adopción diaria de nuevos usuarios y personal logístico.
+- **Dashboard Gestión Activadores (Equipo Comercial):**
+  - **Ranking de Efectividad:** Mide la tasa de conversión (Locales creados / Locales relevados) por cada activador.
+  - **Volumen de Visitas:** Total de visitas registradas en calle por vendedor en el rango de fechas seleccionado.
+  - **Desglose Diario (Stacked Bar):** Visualización apilada de qué estados logró generar cada activador en el día a día.
 
-### 📋 Clientes
-- Listado con paginación, filtros avanzados (nombre, teléfono, dirección, rubro, estado, situación, responsable, interés, estilo de contacto)
-- Filtro rápido **Próximos 7 días** para agenda de contacto
-- Cards con historial de actividades expandible
-- Botones rápidos de próximo contacto (+3d, +7d, +15d, +1mes, Sin fecha)
-- Registro de **visitas** con un click (contador visible en la card)
-- Edición y eliminación de clientes
-- Importación/exportación a Excel
-- Historial automático al editar un cliente
+### 3. 🗺️ Inteligencia Geoespacial (Mapas)
+Integración profunda con `Leaflet.js` para visualización geográfica táctica.
+- **Mapa de Clientes y Kioscos:** Mapeo de comercios con pines que cambian de color según su estado en el embudo.
+- **Mapa de Repartidores:** Visualización en vivo de la flota logística.
+- **Modo Capa de Cobertura:** Dibuja automáticamente radios de 2KM alrededor de locales/repartidores activos para visualizar agujeros blancos de servicio.
+- **Mapas de Calor (Heatmaps):** Interpolación de densidad térmica para entender zonas de alta concentración de comercios o repartidores consolidados.
+- **Geolocalización en Campo:** Botón de "Ubicarme" (`navigator.geolocation`) para centrar el mapa en el activador y permitir registro in-situ ("Registrar Aquí").
 
-### 📊 Estadísticas
-- **Ecosistema Apps**: crecimiento diario, rubros, estados, situación de locales, rubros por situación (multi-filtro)
-- **Gestión Activadores**: cards individuales por activador con Altas / Efectivas / Visitas y barra de efectividad, gráficos de Altas Diarias (stacked) y Efectividad de Conversión — todos filtrables por activador
+### 4. 🛵 Logística y Usuarios Finales
+- **Repartidores:** Panel de control de la flota. Control de estado documental ("Documentación sin gestionar", "Cuenta confirmada", "Cuenta confirmada y repartiendo"). Soporta importación masiva.
+- **Consumidores:** Base de datos de usuarios de la app final con fechas de registro unificadas.
 
-### 🗺 Mapa
-- Visualización geográfica de clientes y repartidores
+### 5. 🛠️ Herramientas Operativas Adicionales
+- **Pipeline:** Vista Kanban (tipo Trello) para mover clientes arrastrándolos entre diferentes fases de negociación en tiempo real.
+- **Calendario y Horarios:** Visualización de turnos o compromisos a lo largo del mes. Agenda visual tipo grilla.
+- **Soporte (Tickets y Calificaciones):** Gestión de reclamos y análisis del feedback de usuarios.
+- **Chat Interno:** Canal de comunicación integrado en la plataforma.
 
-### 📅 Calendario
-- Agenda visual de actividades programadas
-
-### 🏪 Otros módulos
-- Proveedores, Repartidores, Consumidores, Pipeline, Tickets, Calificaciones
-
----
-
-## 📦 Instalación local
-
-```bash
-# Clonar el repo
-git clone https://github.com/TotoMessina/CRMPicking.git
-cd CRMPicking/crm-react
-
-# Instalar dependencias
-npm install
-
-# Configurar variables de entorno
-cp .env.example .env
-# Completar VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
-
-# Iniciar servidor de desarrollo
-npm run dev
-```
+### 6. 🏢 Arquitectura Multi-Empresa & Seguridad (Multi-tenant)
+- **Aislamiento Total:** El sistema soporta múltiples empresas operando en paralelo. Absolutamente todas las consultas SQL y llamadas a APIs están filtradas por el `empresa_id` de la empresa activa del usuario.
+- **Row Level Security (RLS):** Las políticas en la base de datos limitan la manipulación de datos a nivel subyacente.
+- **Gestión de Permisos:** Los administradores globales pueden navegar entre empresas; los empleados locales solo interactúan con la información de su franquicia asignada.
 
 ---
 
-## 📱 PWA (Instalable)
+## 💻 Arquitectura Técnica (Frontend)
 
-La aplicación es una **Progressive Web App**. En navegadores compatibles (Chrome, Edge, Safari iOS) aparece el botón "Instalar app" en la barra de dirección, o se puede agregar a la pantalla de inicio desde el menú del navegador.
+El proyecto utiliza un stack moderno optimizado para Progressive Web Apps (PWA) de alto rendimiento.
 
-- ✅ Offline-ready (Workbox service worker)
-- ✅ Icono de app personalizado
-- ✅ Funciona en modo standalone (sin barra del navegador)
-- ✅ Tema oscuro nativo
-
----
-
-## 🌐 Deploy
-
-El proyecto se despliega automáticamente en **Vercel** al hacer push a `main`.
-
-Las rutas SPA están configuradas en `vercel.json` para evitar errores 404 al recargar páginas.
+- **Framework:** `React 18` empaquetado y servido a través de un ultra-rápido servidor `Vite`.
+- **Estado Asíncrono (Caching):** Utiliza `React Query (@tanstack/react-query)` v5. Minimiza las peticiones a la red mediante un caché agresivo (staleTime de 30s) permitiendo a múltiples activadores colaborar sin colisiones. Las ediciones locales invalidan inteligentemente (`queryClient.invalidateQueries`) solo las secciones afectadas.
+- **BBackend-as-a-Service:** `Supabase`. Conexión directa a PostgreSQL mediante el sdk de supabase en JavaScript. Uso intensivo de RPCs (Remote Procedure Calls) y Triggers SQL para asegurar transacciones ACID durante cargas complejas.
+- **PWA Ready:** Configurado vía `vite-plugin-pwa` con service workers generados por `Workbox`. 
+  - Capacidad nativa de instalación (Add to Home Screen).
+  - Experiencia "app-like" en iOS y Android.
+  - Funcionamiento offline parcial y caching agresivo de assets.
+- **UI/UX:** Sistema de diseño propietario escrito en `Vanilla CSS` puro, soportando de forma nativa variables CSS (custom properties) para Light/Dark Mode fluído en todo el sistema. 
 
 ---
 
-## 🗂 Estructura del proyecto
+## 📦 Instalación Local y Desarrollo
 
-```
-crm-react/
-├── public/
-│   ├── icon-192.png      # Icono PWA 192x192
-│   └── icon-512.png      # Icono PWA 512x512
-├── src/
-│   ├── components/
-│   │   └── ui/           # Modales, botones y UI compartida
-│   ├── pages/            # Páginas principales (Clientes, Estadísticas, etc.)
-│   ├── lib/              # Cliente Supabase
-│   └── main.jsx
-├── index.html
-├── vite.config.js        # Configuración Vite + PWA
-└── vercel.json           # Redirects para SPA
-```
+### Prerrequisitos
+- Node.js versión 18+ (Recomendado 20 LTS)
+- NPM o Yarn
+
+### Pasos de despliegue local
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/TotoMessina/CRMPicking.git
+   cd CRMPicking/crm-react
+   ```
+
+2. **Instalar las dependencias**
+   ```bash
+   npm install
+   ```
+
+3. **Variables de Entorno**
+   ```bash
+   cp .env.example .env
+   ```
+   Abre el archivo `.env` recién creado y completa las claves de tu proyecto de Supabase:
+   - `VITE_SUPABASE_URL`: La URL de tu instancia de Supabase.
+   - `VITE_SUPABASE_ANON_KEY`: La clave pública anónima de la API.
+
+4. **Levantar el entorno de desarrollo**
+   ```bash
+   npm run dev
+   ```
+   El proyecto estará disponible en `http://localhost:5173`.
+
+---
+
+## 🌐 Estructura de Despliegue (Producción)
+
+El proyecto cuenta con despliegue unificado y automático (CI/CD) a través de **Vercel**. Cualquier Pull Request o push directo a la rama principal (`main`) dispara un build de producción. 
+
+El archivo `vercel.json` incluye reglas personalizadas para Single Page Applications (SPA), interceptando todos los endpoints y redirigiéndolos al `index.html` central, previniendo errores 404 de "Page Not Found" en navegaciones directas a rutas profundas.
