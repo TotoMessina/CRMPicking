@@ -195,11 +195,20 @@ export default function Estadisticas() {
 
 
     const loadActivators = async () => {
-        const { data } = await supabase.from('usuarios')
-            .select('nombre, email')
-            .eq('activo', true)
-            .ilike('role', '%activador%');
-        if (data) setActivators(data);
+        if (!empresaActiva?.id) return;
+
+        // Buscamos usuarios que tienen relación con ESTA empresa
+        const { data } = await supabase.from('empresa_usuario')
+            .select('usuario_email, role, usuarios(nombre)')
+            .eq('empresa_id', empresaActiva.id);
+
+        if (data) {
+            const list = data.map(d => ({
+                email: d.usuario_email,
+                nombre: d.usuarios?.nombre || d.usuario_email
+            })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+            setActivators(list);
+        }
     };
 
     const fetchAll = async (table, selectCols, applyFiltersFn) => {
@@ -247,32 +256,24 @@ export default function Estadisticas() {
                 clientesMeta,
                 { count: act7 },
                 { count: act30 },
-                consumidores
+                consumidores,
+                actividadesRango
             ] = await Promise.all([
                 supabase.from('empresa_cliente').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('activo', true),
                 fetchAll('empresa_cliente', 'id, cliente_id, rubro, estado, situacion, responsable, creado_por, activador_cierre, activo, created_at, ultima_actividad, fecha_proximo_contacto', q => q.eq('empresa_id', empresaActiva.id).eq('activo', true)),
                 supabase.from('actividades').select('*', { count: 'exact', head: true })
-                    .in('cliente_id', (await supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id)).data?.map(c => c.cliente_id) || [])
+                    .eq('empresa_id', empresaActiva.id)
                     .gte('fecha', new Date(new Date().setDate(new Date().getDate() - 7)).toISOString()),
                 supabase.from('actividades').select('*', { count: 'exact', head: true })
-                    .in('cliente_id', (await supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id)).data?.map(c => c.cliente_id) || [])
+                    .eq('empresa_id', empresaActiva.id)
                     .gte('fecha', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()),
-                fetchAll('consumidores', 'id, created_at', q => q.eq('empresa_id', empresaActiva.id).gte('created_at', isoFrom).lt('created_at', isoTo))
+                fetchAll('consumidores', 'id, created_at', q => q.eq('empresa_id', empresaActiva.id).gte('created_at', isoFrom).lt('created_at', isoTo)),
+                fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
+                    let qq = q.eq('empresa_id', empresaActiva.id).gte('fecha', isoFrom).lt('fecha', isoTo);
+                    if (filterActivator) qq = qq.eq('usuario', filterActivator);
+                    return qq;
+                })
             ]);
-
-            // IDs de clientes para filtrar actividades del rango
-            const clienteIds = clientesMeta.map(c => c.cliente_id);
-
-            const actividadesRango = await fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
-                let qq = q.gte('fecha', isoFrom).lt('fecha', isoTo);
-                if (clienteIds.length > 0) {
-                    qq = qq.in('cliente_id', clienteIds);
-                } else {
-                    qq = qq.in('cliente_id', [0]); // Force empty result if no clients
-                }
-                if (filterActivator) qq = qq.eq('usuario', filterActivator);
-                return qq;
-            });
 
             // Agenda Calcs
             let conFecha = 0, sinFecha = 0, vencidos = 0, proxHoy = 0, prox7 = 0, proxFuturo = 0;
