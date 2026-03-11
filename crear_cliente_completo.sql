@@ -26,7 +26,8 @@ BEGIN
     -- 2. Insertar en tabla maestra 'clientes' (id es BIGINT)
     INSERT INTO clientes (
         nombre_local, nombre, direccion, telefono, 
-        mail, cuit, lat, lng, creado_por
+        mail, cuit, lat, lng, creado_por,
+        created_at, updated_at
     )
     VALUES (
         p_payload->>'p_nombre_local', 
