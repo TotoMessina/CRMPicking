@@ -103,6 +103,7 @@ export default function Estadisticas() {
     const [clientesEstado5Raw, setClientesEstado5Raw] = useState([]);
 
     const [loading, setLoading] = useState(false);
+    const [lastUpdate, setLastUpdate] = useState(null);
 
     // DTOs for Charts and Tables
     const [kpis, setKpis] = useState({
@@ -187,10 +188,10 @@ export default function Estadisticas() {
     }, [rangePreset]);
 
     useEffect(() => {
-        if (dateFrom && dateTo) {
+        if (dateFrom && dateTo && empresaActiva?.id) {
             refreshStats();
         }
-    }, [dateFrom, dateTo, filterActivator]);
+    }, [dateFrom, dateTo, filterActivator, empresaActiva?.id]);
 
 
     const loadActivators = async () => {
@@ -238,27 +239,33 @@ export default function Estadisticas() {
                 curr.setDate(curr.getDate() + 1);
             }
 
-            // 1. KPIs Clientes
+            if (!empresaActiva?.id) return;
+
+            // 1. KPIs Clientes (Leemos de empresa_cliente que es la tabla de negocio real)
             const [
                 { count: totalClientes },
                 clientesMeta,
-                agendaRows,
                 actividadesRango,
                 { count: act7 },
                 { count: act30 },
                 consumidores
             ] = await Promise.all([
-                supabase.from('clientes').select('*', { count: 'exact', head: true }).eq('activo', true),
-                fetchAll('clientes', 'id, rubro, estado, situacion, responsable, creado_por, activador_cierre, activo, created_at, ultima_actividad, status_history, visitas', q => q.eq('activo', true)),
-                fetchAll('clientes', 'fecha_proximo_contacto, activo', q => q.eq('activo', true)),
+                supabase.from('empresa_cliente').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('activo', true),
+                fetchAll('empresa_cliente', 'id, rubro, estado, situacion, responsable, creado_por, activador_cierre, activo, created_at, ultima_actividad, fecha_proximo_contacto', q => q.eq('empresa_id', empresaActiva.id).eq('activo', true)),
                 fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
                     let qq = q.gte('fecha', isoFrom).lt('fecha', isoTo);
+                    // IMPORTANTE: Filtrar actividades por los clientes de ESTA empresa
+                    qq = qq.in('cliente_id', supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id));
                     if (filterActivator) qq = qq.eq('usuario', filterActivator);
                     return qq;
                 }),
-                supabase.from('actividades').select('*', { count: 'exact', head: true }).gte('fecha', new Date(new Date().setDate(new Date().getDate() - 7)).toISOString()),
-                supabase.from('actividades').select('*', { count: 'exact', head: true }).gte('fecha', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()),
-                fetchAll('consumidores', 'id, created_at', q => q.gte('created_at', isoFrom).lt('created_at', isoTo))
+                supabase.from('actividades').select('*', { count: 'exact', head: true })
+                    .in('cliente_id', supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id))
+                    .gte('fecha', new Date(new Date().setDate(new Date().getDate() - 7)).toISOString()),
+                supabase.from('actividades').select('*', { count: 'exact', head: true })
+                    .in('cliente_id', supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id))
+                    .gte('fecha', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()),
+                fetchAll('consumidores', 'id, created_at', q => q.eq('empresa_id', empresaActiva.id).gte('created_at', isoFrom).lt('created_at', isoTo))
             ]);
 
             // Agenda Calcs
@@ -266,7 +273,7 @@ export default function Estadisticas() {
             const today0 = new Date(); today0.setHours(0, 0, 0, 0);
             const in7_0 = new Date(today0); in7_0.setDate(in7_0.getDate() + 7);
 
-            agendaRows.forEach(r => {
+            clientesMeta.forEach(r => {
                 if (!r.fecha_proximo_contacto) return sinFecha++;
                 conFecha++;
                 const dList = r.fecha_proximo_contacto.split('-');
@@ -525,6 +532,7 @@ export default function Estadisticas() {
                 }
             }));
 
+            setLastUpdate(new Date());
         } catch (error) {
             console.error(error);
             toast.error("Error cargando estadísticas");
@@ -548,8 +556,15 @@ export default function Estadisticas() {
         <div className="stats-dashboard" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px', overflowY: 'auto' }}>
             <header className="stats-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
                 <div className="stats-title">
-                    <h1 style={{ margin: 0 }}>Estadísticas</h1>
-                    <p className="muted" style={{ margin: 0 }}>Vista ejecutiva del CRM: cartera, agenda y actividad.</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h1 style={{ margin: 0 }}>Estadísticas</h1>
+                        {lastUpdate && (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-elevated)', padding: '4px 10px', borderRadius: '20px', border: '1px solid var(--border)' }}>
+                                Actualizado: {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        )}
+                    </div>
+                    <p className="muted" style={{ margin: 4 }}>Vista de <strong>{empresaActiva?.nombre || 'Seleccione empresa'}</strong>: cartera, agenda y actividad.</p>
                 </div>
 
                 <div className="stats-topbar-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-elevated)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }}>
