@@ -2,7 +2,11 @@ import { supabase } from './supabase';
 import toast from 'react-hot-toast';
 
 export const descargarModeloClientes = () => {
+    const toastId = toast.loading("Generando modelo...");
     try {
+        if (!window.XLSX) {
+            throw new Error("La librería de Excel no ha cargado aún. Por favor, refrescá la página.");
+        }
         const wb = window.XLSX.utils.book_new();
         const headers = ["nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"];
         const data = [
@@ -22,14 +26,19 @@ export const descargarModeloClientes = () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        toast.success("Modelo descargado correctamente", { id: toastId });
     } catch (error) {
         console.error("Error al generar modelo:", error);
-        toast.error("Error al generar el archivo Excel");
+        toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
     }
 };
 
 export const descargarModeloConsumidores = () => {
+    const toastId = toast.loading("Generando modelo...");
     try {
+        if (!window.XLSX) {
+            throw new Error("La librería de Excel no ha cargado aún. Por favor, refrescá la página.");
+        }
         const wb = window.XLSX.utils.book_new();
         const headers = ["nombre", "telefono", "direccion", "localidad", "notas"];
         const data = [
@@ -49,9 +58,10 @@ export const descargarModeloConsumidores = () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        toast.success("Modelo descargado correctamente", { id: toastId });
     } catch (error) {
         console.error("Error al generar modelo consumidores:", error);
-        toast.error("Error al generar el archivo Excel");
+        toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
     }
 };
 
