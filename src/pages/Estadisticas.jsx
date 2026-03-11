@@ -145,6 +145,7 @@ export default function Estadisticas() {
         estados: null,
         creados: null,
         consumidoresEvolucion: null,
+        repartidoresEvolucion: null,
         situacionLocales: null,
 
         // Activadores
@@ -257,6 +258,7 @@ export default function Estadisticas() {
                 { count: act7 },
                 { count: act30 },
                 consumidores,
+                repartidores,
                 actividadesRango
             ] = await Promise.all([
                 supabase.from('empresa_cliente').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('activo', true),
@@ -268,6 +270,7 @@ export default function Estadisticas() {
                     .eq('empresa_id', empresaActiva.id)
                     .gte('fecha', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()),
                 fetchAll('consumidores', 'id, created_at', q => q.eq('empresa_id', empresaActiva.id).gte('created_at', isoFrom).lt('created_at', isoTo)),
+                fetchAll('repartidores', 'id, created_at', q => q.eq('empresa_id', empresaActiva.id).gte('created_at', isoFrom).lt('created_at', isoTo)),
                 fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
                     let qq = q.eq('empresa_id', empresaActiva.id).gte('fecha', isoFrom).lt('fecha', isoTo);
                     if (filterActivator) qq = qq.eq('usuario', filterActivator);
@@ -318,6 +321,13 @@ export default function Estadisticas() {
             consumidores.forEach(c => {
                 const ck = c.created_at.split('T')[0];
                 if (mapCons.has(ck)) mapCons.set(ck, mapCons.get(ck) + 1);
+            });
+
+            // Repartidores Evolución
+            const mapRepartidores = new Map(buckets.map(b => [b.key, 0]));
+            repartidores.forEach(r => {
+                const rk = r.created_at.split('T')[0];
+                if (mapRepartidores.has(rk)) mapRepartidores.set(rk, mapRepartidores.get(rk) + 1);
             });
 
             // Visitas Evolucion
@@ -379,6 +389,15 @@ export default function Estadisticas() {
                         label: 'Nuevos Consumidores',
                         data: buckets.map(b => mapCons.get(b.key)),
                         backgroundColor: '#ec4899',
+                        borderRadius: 4
+                    }]
+                },
+                repartidoresEvolucion: {
+                    labels: buckets.map(b => b.label),
+                    datasets: [{
+                        label: 'Nuevos Repartidores',
+                        data: buckets.map(b => mapRepartidores.get(b.key)),
+                        backgroundColor: THEME.colors.secondary,
                         borderRadius: 4
                     }]
                 },
@@ -646,6 +665,12 @@ export default function Estadisticas() {
                             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Evolución Consumidores</h3>
                             <div style={{ height: '300px' }}>
                                 {chartsData.consumidoresEvolucion && <Bar data={chartsData.consumidoresEvolucion} options={COMMON_OPTIONS} />}
+                            </div>
+                        </div>
+                        <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
+                            <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Evolución Repartidores</h3>
+                            <div style={{ height: '300px' }}>
+                                {chartsData.repartidoresEvolucion && <Bar data={chartsData.repartidoresEvolucion} options={COMMON_OPTIONS} />}
                             </div>
                         </div>
                     </div>
