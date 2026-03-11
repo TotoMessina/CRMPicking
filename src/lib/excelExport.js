@@ -8,10 +8,10 @@ export const descargarModeloClientes = () => {
             throw new Error("La librería de Excel no ha cargado aún. Por favor, refrescá la página.");
         }
         const wb = window.XLSX.utils.book_new();
-        const headers = ["nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"];
+        const headers = ["nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas", "fecha_creacion"];
         const data = [
             headers,
-            ["Ejemplo SRL", "11-2345-6789", "Av. Rivadavia 1234", "Almacén", "1 - Cliente relevado", "Toto", "Visita Presencial", "2025-01-15", "09:00", "Ejemplo de nota"]
+            ["Ejemplo SRL", "11-2345-6789", "Av. Rivadavia 1234", "Almacén", "1 - Cliente relevado", "Toto", "Visita Presencial", "2025-01-15", "09:00", "Ejemplo de nota", "2024-12-01"]
         ];
         const ws = window.XLSX.utils.aoa_to_sheet(data);
         window.XLSX.utils.book_append_sheet(wb, ws, "Modelo");
@@ -40,10 +40,10 @@ export const descargarModeloConsumidores = () => {
             throw new Error("La librería de Excel no ha cargado aún. Por favor, refrescá la página.");
         }
         const wb = window.XLSX.utils.book_new();
-        const headers = ["nombre", "telefono", "direccion", "localidad", "notas"];
+        const headers = ["nombre", "telefono", "direccion", "localidad", "notas", "fecha_creacion"];
         const data = [
             headers,
-            ["Juan Pérez", "11-2345-6789", "Calle Falsa 123", "Moreno", "Ejemplo de nota"]
+            ["Juan Pérez", "11-2345-6789", "Calle Falsa 123", "Moreno", "Ejemplo de nota", "2024-11-20"]
         ];
         const ws = window.XLSX.utils.aoa_to_sheet(data);
         window.XLSX.utils.book_append_sheet(wb, ws, "Modelo Consumidores");
@@ -94,7 +94,8 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
                             direccion: row.direccion || '',
                             telefono: String(row.telefono || ''),
                             mail: row.mail || '',
-                            cuit: String(row.cuit || '')
+                            cuit: String(row.cuit || ''),
+                            created_at: row.fecha_creacion || undefined
                         }]).select('id').single();
 
                         if (cErr) throw cErr;
@@ -112,7 +113,8 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
                             fecha_proximo_contacto: row.fecha_proximo_contacto || null,
                             hora_proximo_contacto: row.hora_proximo_contacto || null,
                             creado_por: userName || userEmail || 'Importación',
-                            activo: true
+                            activo: true,
+                            created_at: row.fecha_creacion || undefined
                         }]);
 
                         if (ecErr) throw ecErr;
@@ -231,7 +233,8 @@ export const importarConsumidoresExcel = async (file, empresaActiva, onSuccess) 
                             direccion: row.direccion || '',
                             localidad: row.localidad || '',
                             notas: row.notas || '',
-                            empresa_id: empresaActiva.id
+                            empresa_id: empresaActiva.id,
+                            created_at: row.fecha_creacion || undefined
                         }]);
 
                         if (error) throw error;
@@ -286,7 +289,8 @@ export const importarRepartidoresExcel = async (file, empresaActiva, onSuccess) 
                             responsable: row.responsable || '',
                             notas: row.notas || '',
                             estado: row.estado || 'Activo',
-                            empresa_id: empresaActiva.id
+                            empresa_id: empresaActiva.id,
+                            created_at: row.fecha_creacion || undefined
                         }]);
 
                         if (error) throw error;
