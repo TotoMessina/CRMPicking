@@ -116,8 +116,8 @@ BEGIN
         CASE WHEN p_sort_by = 'updated' THEN ec.updated_at END DESC,
         CASE WHEN p_sort_by = 'recent' THEN ec.created_at END DESC,
         CASE WHEN p_sort_by = 'oldest' THEN ec.created_at END ASC,
-        CASE WHEN p_sort_by = 'az' THEN c.nombre END ASC,
-        CASE WHEN p_sort_by = 'za' THEN c.nombre END DESC,
+        CASE WHEN p_sort_by = 'az' THEN c.nombre_local END ASC,
+        CASE WHEN p_sort_by = 'za' THEN c.nombre_local END DESC,
         CASE WHEN p_sort_by = 'activity_desc' THEN ec.ultima_actividad END DESC NULLS LAST,
         CASE WHEN p_sort_by = 'activity_asc' THEN ec.ultima_actividad END ASC NULLS FIRST,
         -- Fallback: siempre creacion desc si no coincide nada

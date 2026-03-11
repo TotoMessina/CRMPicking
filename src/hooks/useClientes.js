@@ -39,9 +39,9 @@ export function useClientes(params) {
             } else if (sortBy === 'oldest') {
                 request = request.order('created_at', { ascending: true });
             } else if (sortBy === 'az') {
-                request = request.order('clientes(nombre)', { ascending: true });
+                request = request.order('clientes(nombre_local)', { ascending: true });
             } else if (sortBy === 'za') {
-                request = request.order('clientes(nombre)', { ascending: false });
+                request = request.order('clientes(nombre_local)', { ascending: false });
             } else if (sortBy === 'activity_desc') {
                 request = request.order('ultima_actividad', { ascending: false, nullsFirst: false }).order('updated_at', { ascending: false });
             } else if (sortBy === 'activity_asc') {
