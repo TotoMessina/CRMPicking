@@ -22,7 +22,7 @@ INSERT INTO empresa_cliente (
 SELECT 
     '302444cf-9e6b-4127-b018-6c0d1972b276'::uuid AS empresa_id, -- ID de PickingUp
     c.id,
-    '1 - Cliente relevado' AS estado,
+    COALESCE(c.estado, '1 - Cliente relevado') AS estado,
     c.rubro,
     COALESCE(c.situacion, 'sin comunicacion nueva') AS situacion,
     c.creado_por AS responsable,

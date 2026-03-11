@@ -23,7 +23,7 @@ BEGIN
     ) VALUES (
         '302444cf-9e6b-4127-b018-6c0d1972b276'::uuid, -- ID de PickingUp
         NEW.id,
-        '1 - Cliente relevado',
+        COALESCE(NEW.estado, '1 - Cliente relevado'),
         'sin comunicacion nueva',
         COALESCE(NEW.creado_por, 'Sistema'),
         'Visita Presencial',
