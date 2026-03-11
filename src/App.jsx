@@ -49,7 +49,7 @@ function App() {
             <Route path="/calendario" element={<Suspense fallback={<GlobalLoader />}><Calendario /></Suspense>} />
             <Route path="/horarios" element={<Suspense fallback={<GlobalLoader />}><Horarios /></Suspense>} />
             <Route path="/mapa" element={<Suspense fallback={<GlobalLoader />}><MapaClientes /></Suspense>} />
-            <Route path="/mapa_repartidores" element={<Suspense fallback={<GlobalLoader />}><MapaRepartidores /></Suspense>} />
+            <Route path="/mapa-repartidores" element={<Suspense fallback={<GlobalLoader />}><MapaRepartidores /></Suspense>} />
             <Route path="/kiosco" element={<Suspense fallback={<GlobalLoader />}><MapaKiosco /></Suspense>} />
             <Route path="/estadisticas" element={<Suspense fallback={<GlobalLoader />}><Estadisticas /></Suspense>} />
             <Route path="/tickets" element={<Suspense fallback={<GlobalLoader />}><Tickets /></Suspense>} />
