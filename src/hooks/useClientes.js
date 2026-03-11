@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -7,7 +7,7 @@ export function useClientes(params) {
         empresaId, page, pageSize, isAgendaHoy,
         fEstado, fSituacion, fTipoContacto, fResponsable,
         fRubro, fInteres, fEstilo, fProximos7, fVencidos,
-        fNombre, fTelefono, fDireccion, sortBy
+        fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta, sortBy
     } = params;
 
     return useQuery({
@@ -19,7 +19,7 @@ export function useClientes(params) {
                 empresaId, page, pageSize, isAgendaHoy,
                 fEstado, fSituacion, fTipoContacto, fResponsable,
                 fRubro, fInteres, fEstilo, fProximos7, fVencidos,
-                fNombre, fTelefono, fDireccion, sortBy
+                fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta, sortBy
             }
         ],
         queryFn: async () => {
@@ -27,13 +27,15 @@ export function useClientes(params) {
 
             let request = supabase
                 .from('empresa_cliente')
-                .select('*, clientes(*)', { count: 'exact' })
+                .select('*, clientes!inner(*)', { count: 'exact' })
                 .eq('empresa_id', empresaId)
                 .eq('activo', true);
 
             // Apply sorting
-            if (sortBy === 'updated' || sortBy === 'recent') {
+            if (sortBy === 'updated') {
                 request = request.order('updated_at', { ascending: false }).order('created_at', { ascending: false });
+            } else if (sortBy === 'recent') {
+                request = request.order('created_at', { ascending: false });
             } else if (sortBy === 'oldest') {
                 request = request.order('created_at', { ascending: true });
             } else if (sortBy === 'az') {
@@ -59,6 +61,14 @@ export function useClientes(params) {
             if (fRubro) request = request.eq('rubro', fRubro);
             if (fInteres) request = request.eq('interes', fInteres);
             if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
+
+            // Filtros de fecha de creación (aplicados sobre la tabla foránea 'clientes')
+            if (fCreadoDesde) {
+                request = request.gte('created_at', `${fCreadoDesde}T00:00:00.000Z`);
+            }
+            if (fCreadoHasta) {
+                request = request.lte('created_at', `${fCreadoHasta}T23:59:59.999Z`);
+            }
 
             if (fProximos7) {
                 const hoy = new Date();
@@ -90,6 +100,8 @@ export function useClientes(params) {
                     p_rubro: fRubro || null,
                     p_interes: fInteres || null,
                     p_estilo: fEstilo || null,
+                    p_creado_desde: fCreadoDesde || null,
+                    p_creado_hasta: fCreadoHasta || null,
                     p_offset: (page - 1) * pageSize,
                     p_limit: pageSize,
                     p_sort_by: sortBy || 'recent'
@@ -195,9 +207,119 @@ export function useClientes(params) {
             return { clientes: mapped, total, activities: actsObj };
         },
         enabled: !!empresaId, // No ejecutar hasta que tengamos la empresa activa
-        // Mantiene en caché por 5 minutos
-        staleTime: 1000 * 60 * 5,
+        // Mantiene en caché por 30 segundos para soportar trabajo en equipo concurrente
+        staleTime: 1000 * 30,
         // Si el usuario scrollea, cambia de página y no queremos que haga pantalla en blanco, usamos:
         placeholderData: (previousData) => previousData,
+    });
+}
+
+// React Query Mutations for handling updates to clients
+export function useDeleteCliente() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, empresaActiva }) => {
+            const { error } = await supabase
+                .from("empresa_cliente")
+                .update({ activo: false })
+                .eq("cliente_id", id)
+                .eq("empresa_id", empresaActiva?.id);
+
+            if (error) throw new Error(error.message);
+            return id;
+        },
+        onSuccess: () => {
+            toast.success("Cliente eliminado.");
+            // Invalidate the cache to trigger a UI refresh
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        },
+        onError: () => {
+            toast.error("No se pudo eliminar al cliente.");
+        }
+    });
+}
+
+export function useQuickDateCliente() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ clienteId, daysOffset, empresaActiva, userName, user }) => {
+            let dateStr = null;
+            let displayMsg = 'Fecha de contacto eliminada';
+
+            if (daysOffset !== null) {
+                const d = new Date();
+                d.setDate(d.getDate() + daysOffset);
+                dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                displayMsg = `Próximo contacto: ${d.toLocaleDateString('es-AR')}`;
+            }
+
+            const { error: updateError } = await supabase
+                .from('empresa_cliente')
+                .update({ fecha_proximo_contacto: dateStr })
+                .eq('cliente_id', clienteId)
+                .eq('empresa_id', empresaActiva?.id);
+
+            if (updateError) throw new Error(updateError.message);
+
+            const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${new Date(dateStr).toLocaleDateString('es-AR')}` : '🗑️ Fecha de próximo contacto eliminada';
+
+            const { error: logError } = await supabase.from('actividades').insert([{
+                cliente_id: clienteId,
+                descripcion: desc,
+                usuario: userName || user?.email || 'Sistema',
+                empresa_id: empresaActiva?.id,
+                fecha: new Date().toISOString()
+            }]);
+
+            if (logError) throw new Error(logError.message);
+
+            return { displayMsg };
+        },
+        onSuccess: (data) => {
+            toast.success(data.displayMsg);
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        },
+        onError: () => {
+            toast.error('Error al actualizar la fecha');
+        }
+    });
+}
+
+export function useRegistrarVisitaCliente() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }) => {
+            const now = new Date().toISOString();
+
+            const { error: logError } = await supabase.from('actividades').insert([{
+                cliente_id: clienteId,
+                descripcion: 'Visita realizada',
+                fecha: now,
+                usuario: userName || user?.email || 'Sistema',
+                empresa_id: empresaActiva?.id
+            }]);
+
+            if (logError) throw new Error(logError.message);
+
+            const { error: updateError } = await supabase
+                .from('empresa_cliente')
+                .update({ ultima_actividad: now })
+                .eq('cliente_id', clienteId)
+                .eq('empresa_id', empresaActiva?.id);
+
+            if (updateError) throw new Error(updateError.message);
+
+            return { nombre };
+        },
+        onSuccess: (data) => {
+            toast.success(`Visita registrada para ${data.nombre || 'cliente'}`);
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        },
+        onError: () => {
+            toast.error('Error al registrar visita');
+        }
     });
 }

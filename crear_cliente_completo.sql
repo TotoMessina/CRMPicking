@@ -37,14 +37,20 @@ BEGIN
         p_payload->>'p_cuit', 
         (p_payload->>'p_lat')::FLOAT8, 
         (p_payload->>'p_lng')::FLOAT8, 
-        v_creador
+        v_creador,
+        NOW(),
+        NOW()
     )
     RETURNING id INTO new_id;
 
     -- 3. Insertar en tabla de negocio 'empresa_cliente' (cliente_id es BIGINT)
+    -- Lo convertimos en UPSERT (ON CONFLICT) para que si el Trigger
+    -- "auto_insert" para apps viejas ya lo creó 1 milisegundo antes, 
+    -- lo sobreescribimos pacificamente con los datos ricos de esta RPC.
     INSERT INTO empresa_cliente (
         empresa_id, cliente_id, estado, rubro, responsable, 
-        situacion, notas, tipo_contacto, creado_por, activo
+        situacion, notas, tipo_contacto, creado_por, activo,
+        created_at, updated_at
     )
     VALUES (
         v_emp_id, 
@@ -56,8 +62,20 @@ BEGIN
         p_payload->>'p_notas', 
         p_payload->>'p_tipo_contacto', 
         v_creador, 
-        true
-    );
+        true,
+        NOW(),
+        NOW()
+    )
+    ON CONFLICT (empresa_id, cliente_id) DO UPDATE SET
+        estado = EXCLUDED.estado,
+        rubro = EXCLUDED.rubro,
+        responsable = EXCLUDED.responsable,
+        situacion = EXCLUDED.situacion,
+        notas = EXCLUDED.notas,
+        tipo_contacto = EXCLUDED.tipo_contacto,
+        creado_por = EXCLUDED.creado_por,
+        activo = EXCLUDED.activo,
+        updated_at = EXCLUDED.updated_at;
 
     RETURN new_id;
 END;

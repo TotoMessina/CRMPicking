@@ -7,7 +7,10 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
-import { useClientes } from '../hooks/useClientes';
+import { useClientes, useDeleteCliente, useQuickDateCliente, useRegistrarVisitaCliente } from '../hooks/useClientes';
+import { descargarModeloClientes, importarClientesExcel, exportarClientesExcel } from '../lib/excelExport';
+import { ClienteCard } from '../components/ui/ClienteCard';
+import { useCallback } from 'react';
 
 export default function Clientes() {
     const { user, userName, empresaActiva } = useAuth();
@@ -31,6 +34,8 @@ export default function Clientes() {
     const [fTipoContacto, setFTipoContacto] = useState('Todos');
     const [fProximos7, setFProximos7] = useState(false);
     const [fVencidos, setFVencidos] = useState(false);
+    const [fCreadoDesde, setFCreadoDesde] = useState('');
+    const [fCreadoHasta, setFCreadoHasta] = useState('');
 
     const [sortBy, setSortBy] = useState('updated'); // 'updated', 'recent', 'oldest', 'az', 'za', 'activity_desc', 'activity_asc'
 
@@ -52,10 +57,15 @@ export default function Clientes() {
         page, pageSize, isAgendaHoy,
         fEstado, fSituacion, fTipoContacto, fResponsable,
         fRubro, fInteres, fEstilo, fProximos7, fVencidos,
-        fNombre, fTelefono, fDireccion, sortBy
+        fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta, sortBy
     });
     const { clientes = [], total = 0, activities = {} } = data || {};
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    // Mutations
+    const deleteClienteMutation = useDeleteCliente();
+    const quickDateMutation = useQuickDateCliente();
+    const visitaMutation = useRegistrarVisitaCliente();
 
     useEffect(() => {
         const fetchRubros = async () => {
@@ -69,259 +79,55 @@ export default function Clientes() {
         fetchRubros();
     }, [empresaActiva]);
 
-    const handleCreate = () => {
+    const handleCreate = useCallback(() => {
         setEditingId(null);
         setModalOpen(true);
-    };
+    }, []);
 
-    const handleEdit = (id) => {
+    const handleEdit = useCallback((id) => {
         setEditingId(id);
         setModalOpen(true);
-    };
+    }, []);
 
-    const handleDelete = async (id) => {
+    const handleDelete = useCallback((id) => {
         if (!window.confirm("¿Seguro que querés marcar como inactivo este cliente?")) return;
-        const { error } = await supabase.from("empresa_cliente").update({ activo: false }).eq("cliente_id", id).eq("empresa_id", empresaActiva?.id);
-        if (error) {
-            toast.error("No se pudo eliminar.");
-        } else {
-            toast.success("Cliente eliminado.");
-            fetchClientes();
-        }
-    };
+        deleteClienteMutation.mutate({ id, empresaActiva });
+    }, [empresaActiva, deleteClienteMutation]);
 
-    const handleOpenActivity = (id, nombre) => {
+    const handleOpenActivity = useCallback((id, nombre) => {
         setActTargetId(id);
         setActTargetName(nombre || 'Sin nombre');
         setActModalOpen(true);
-    };
+    }, []);
 
-    const toggleHistory = (id) => {
+    const toggleHistory = useCallback((id) => {
         setExpandedActivities(prev => ({ ...prev, [id]: !prev[id] }));
-    };
+    }, []);
 
-    const handleQuickDate = async (clienteId, daysOffset) => {
-        let dateStr = null;
-        let toastMsg = 'Fecha de contacto eliminada';
-        if (daysOffset !== null) {
-            const d = new Date();
-            d.setDate(d.getDate() + daysOffset);
-            dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            toastMsg = `Próximo contacto: ${d.toLocaleDateString('es-AR')}`;
-        }
+    const handleQuickDate = useCallback((clienteId, daysOffset) => {
+        quickDateMutation.mutate({ clienteId, daysOffset, empresaActiva, userName, user });
+    }, [empresaActiva, userName, user, quickDateMutation]);
 
-        // Update empresa_cliente for company-specific date
-        const { error } = await supabase
-            .from('empresa_cliente')
-            .update({ fecha_proximo_contacto: dateStr })
-            .eq('cliente_id', clienteId)
-            .eq('empresa_id', empresaActiva?.id);
-
-        if (error) {
-            toast.error('Error al guardar fecha');
-        } else {
-            // Log the date change in activities
-            const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${new Date(dateStr).toLocaleDateString('es-AR')}` : '🗑️ Fecha de próximo contacto eliminada';
-
-            await supabase.from('actividades').insert([{
-                cliente_id: clienteId,
-                descripcion: desc,
-                usuario: userName || user?.email || 'Sistema',
-                empresa_id: empresaActiva?.id,
-                fecha: new Date().toISOString()
-            }]);
-
-            toast.success(toastMsg);
-            fetchClientes();
-        }
-    };
-
-    const handleRegistrarVisita = async (clienteId, nombre) => {
-        const now = new Date().toISOString();
-        const { error } = await supabase.from('actividades').insert([{
-            cliente_id: clienteId,
-            descripcion: 'Visita realizada',
-            fecha: now,
-            usuario: userName || user?.email || 'Sistema',
-            empresa_id: empresaActiva?.id
-        }]);
-        if (error) {
-            toast.error('Error al registrar visita');
-        } else {
-            await supabase.from('empresa_cliente').update({ ultima_actividad: now }).eq('cliente_id', clienteId).eq('empresa_id', empresaActiva?.id);
-            toast.success(`Visita registrada para ${nombre || 'cliente'}`);
-            fetchClientes();
-        }
-    };
+    const handleRegistrarVisita = useCallback((clienteId, nombre) => {
+        visitaMutation.mutate({ clienteId, nombre, empresaActiva, userName, user });
+    }, [empresaActiva, userName, user, visitaMutation]);
 
 
 
     const handleDescargarModelo = () => {
-        try {
-            const wb = window.XLSX.utils.book_new();
-            const headers = ["nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"];
-            const data = [
-                headers,
-                ["Ejemplo SRL", "11-2345-6789", "Av. Rivadavia 1234", "Almacén", "1 - Cliente relevado", "Toto", "Visita Presencial", "2025-01-15", "09:00", "Ejemplo de nota"]
-            ];
-            const ws = window.XLSX.utils.aoa_to_sheet(data);
-            window.XLSX.utils.book_append_sheet(wb, ws, "Modelo");
-
-            const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([new Uint8Array(wbout)], { type: "application/octet-stream" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "modelo_clientes_crm.xlsx";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Error al generar modelo:", error);
-            toast.error("Error al generar el archivo Excel");
-        }
+        descargarModeloClientes();
     };
 
     const handleImportExcel = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        const toastId = toast.loading('Procesando archivo...');
-        try {
-            const reader = new FileReader();
-            reader.onload = async (evt) => {
-                try {
-                    const bstr = evt.target.result;
-                    const wb = window.XLSX.read(bstr, { type: 'binary' });
-                    const wsname = wb.SheetNames[0];
-                    const ws = wb.Sheets[wsname];
-                    const data = window.XLSX.utils.sheet_to_json(ws);
-
-                    if (data.length === 0) {
-                        toast.error('El archivo está vacío', { id: toastId });
-                        return;
-                    }
-
-                    let successCount = 0;
-                    for (const row of data) {
-                        try {
-                            // 1. Create universal client
-                            const { data: newC, error: cErr } = await supabase.from('clientes').insert([{
-                                nombre: row.nombre || row.nombre_local || 'Nuevo Cliente',
-                                nombre_local: row.nombre_local || row.nombre || '',
-                                direccion: row.direccion || '',
-                                telefono: String(row.telefono || ''),
-                                mail: row.mail || '',
-                                cuit: String(row.cuit || '')
-                            }]).select('id').single();
-
-                            if (cErr) throw cErr;
-
-                            // 2. Link to company
-                            const { error: ecErr } = await supabase.from('empresa_cliente').insert([{
-                                cliente_id: newC.id,
-                                empresa_id: empresaActiva.id,
-                                estado: row.estado || '1 - Cliente relevado',
-                                rubro: row.rubro || '',
-                                responsable: row.responsable || '',
-                                situacion: row.situacion || '',
-                                notas: row.notas || '',
-                                tipo_contacto: row.tipo_contacto || '',
-                                fecha_proximo_contacto: row.fecha_proximo_contacto || null,
-                                hora_proximo_contacto: row.hora_proximo_contacto || null,
-                                creado_por: userName || user?.email || 'Importación',
-                                activo: true
-                            }]);
-
-                            if (ecErr) throw ecErr;
-                            successCount++;
-                        } catch (err) {
-                            console.error('Error importando fila:', row, err);
-                        }
-                    }
-
-                    toast.success(`Importación finalizada: ${successCount} clientes cargados`, { id: toastId });
-                    fetchClientes();
-                } catch (err) {
-                    console.error(err);
-                    toast.error('Error al procesar el Excel', { id: toastId });
-                }
-            };
-            reader.readAsBinaryString(file);
-        } catch (error) {
-            console.error(error);
-            toast.error('Error al leer el archivo', { id: toastId });
-        }
-        // Reset input
+        await importarClientesExcel(file, empresaActiva, userName, user?.email, () => fetchClientes());
         e.target.value = '';
     };
 
     const handleDescargarExcel = async () => {
         setExportLoading(true);
-        const toastId = toast.loading('Calculando exportación...');
-        try {
-            const { data: allRows, error: errCli } = await supabase
-                .from("empresa_cliente")
-                .select("*, clientes(*)")
-                .eq("empresa_id", empresaActiva?.id)
-                .eq("activo", true);
-
-            if (errCli) throw errCli;
-
-            const ids = (allRows || []).map(r => r.clientes?.id);
-            const { data: allActividades, error: errAct } = await supabase
-                .from("actividades")
-                .select("cliente_id, fecha, usuario, descripcion")
-                .in("cliente_id", ids)
-                .eq("empresa_id", empresaActiva?.id);
-
-            if (errAct) throw errAct;
-
-            const wb = window.XLSX.utils.book_new();
-
-            // Sheet 1: Clientes
-            const dataClientes = [["id", "nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"]];
-            allRows.forEach(r => {
-                const c = r.clientes || {};
-                dataClientes.push([
-                    c.id, c.nombre || r.nombre_local || "", c.telefono || "", c.direccion || r.direccion || "", r.rubro || "",
-                    r.estado || "", r.responsable || "", r.tipo_contacto || "", r.fecha_proximo_contacto || "",
-                    r.hora_proximo_contacto || "", r.notas || ""
-                ]);
-            });
-            const wsClientes = window.XLSX.utils.aoa_to_sheet(dataClientes);
-            window.XLSX.utils.book_append_sheet(wb, wsClientes, "Clientes");
-
-            // Sheet 2: Historial
-            const rowByClientId = {};
-            allRows.forEach(r => (rowByClientId[r.clientes?.id] = r));
-            const dataHist = [["cliente_id", "nombre_cliente", "telefono_cliente", "fecha", "usuario", "descripcion"]];
-            (allActividades || []).forEach(a => {
-                const r = rowByClientId[a.cliente_id] || {};
-                const c = r.clientes || {};
-                dataHist.push([a.cliente_id, c.nombre || r.nombre_local || "", c.telefono || "", a.fecha || "", a.usuario || "", a.descripcion || ""]);
-            });
-            const wsHist = window.XLSX.utils.aoa_to_sheet(dataHist);
-            window.XLSX.utils.book_append_sheet(wb, wsHist, "Historial");
-
-            const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([new Uint8Array(wbout)], { type: "application/octet-stream" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `crm_${empresaActiva?.nombre}_clientes.xlsx`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            toast.success('Excel descargado correctamente', { id: toastId });
-        } catch (error) {
-            console.error(error);
-            toast.error('Error al exportar clientes', { id: toastId });
-        }
-        setExportLoading(false);
+        await exportarClientesExcel(empresaActiva, () => setExportLoading(false));
     };
 
     return (
@@ -466,7 +272,17 @@ export default function Clientes() {
                         </select>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>Creado Desde:</label>
+                        <input type="date" className="input" value={fCreadoDesde} onChange={e => { setFCreadoDesde(e.target.value); setPage(1); }} style={{ width: '100%', borderRadius: '12px' }} />
+                    </div>
+
+                    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>Creado Hasta:</label>
+                        <input type="date" className="input" value={fCreadoHasta} onChange={e => { setFCreadoHasta(e.target.value); setPage(1); }} style={{ width: '100%', borderRadius: '12px' }} />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '2px' }}>
                         <button
                             onClick={() => { setFVencidos(p => !p); if (!fVencidos) setFProximos7(false); setPage(1); }}
                             style={{
@@ -543,150 +359,20 @@ export default function Clientes() {
                         <div style={{ gridColumn: '1 / -1', background: 'var(--bg-elevated)', border: '1px dashed var(--border)', borderRadius: '20px', padding: '40px', textAlign: 'center' }}>
                             <p className="muted" style={{ fontSize: '1.1rem' }}>No se encontraron clientes con esos filtros.</p>
                         </div>
-                    ) : clientes.map(c => {
-                        console.log(`DEBUG CARD: Rendering ${c.id}, notas: "${c.notas}", fecha: ${c.fecha_proximo_contacto}`);
-                        const acts = activities[c.id] || [];
-                        const isExpanded = expandedActivities[c.id];
-                        const visitCount = acts.filter(a => a.descripcion === 'Visita realizada').length;
-
-                        const hasPhone = Boolean(c.telefono);
-                        const hasEmail = Boolean(c.mail);
-                        const hasAddress = Boolean(c.direccion);
-
-                        let accentColor = 'transparent';
-                        if (c.estado?.startsWith('4') || c.estado?.startsWith('5')) {
-                            if (c.situacion === 'en funcionamiento') accentColor = 'var(--success)';
-                            else if (c.situacion === 'en proceso') accentColor = '#f59e0b'; // Amber
-                            else accentColor = 'var(--text-muted)';
-                        }
-
-                        return (
-                            <div key={c.id} className="bento-card" style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
-                                {accentColor !== 'transparent' && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: accentColor }}></div>}
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div style={{ flex: 1, paddingRight: '12px' }}>
-                                        <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
-                                            {c.nombre_local || c.nombre || "(Sin nombre)"}
-                                        </h3>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                                            Creado: {c.clientes?.created_at ? new Date(c.clientes.created_at).toLocaleDateString('es-AR') : c.created_at ? new Date(c.created_at).toLocaleDateString('es-AR') : '-'}
-                                        </div>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                                            {c.tipo_contacto && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text)', fontWeight: 600 }}>
-                                                    {c.tipo_contacto === 'Llamada' ? <Phone size={15} color="var(--accent)" /> : <MapPin size={15} color="var(--accent)" />}
-                                                    {c.tipo_contacto}
-                                                </div>
-                                            )}
-                                            {hasAddress && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={15} /> {c.direccion}</div>}
-                                            {hasPhone && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={15} /> {c.telefono}</div>}
-                                            {hasEmail && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={15} /> {c.mail}</div>}
-                                            {(c.fecha_proximo_contacto || c.hora_proximo_contacto) && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent)', fontWeight: 600, marginTop: '4px' }}>
-                                                    <Calendar size={15} />
-                                                    Próx: {c.fecha_proximo_contacto ? new Date(c.fecha_proximo_contacto).toLocaleDateString('es-AR') : ''}
-                                                    {c.hora_proximo_contacto ? ` a las ${c.hora_proximo_contacto.slice(0, 5)}` : ""}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                        <button onClick={() => handleEdit(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title="Editar">
-                                            <Edit2 size={16} />
-                                        </button>
-                                        <button onClick={() => handleDelete(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title="Eliminar">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                    {c.estado && (
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                                            {c.estado}
-                                        </span>
-                                    )}
-                                    {(c.estado?.startsWith('4') || c.estado?.startsWith('5')) && c.situacion && (
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: accentColor !== 'transparent' ? `${accentColor}20` : 'var(--bg-elevated)', color: accentColor !== 'transparent' ? accentColor : 'var(--text)', border: `1px solid ${accentColor !== 'transparent' ? accentColor : 'var(--border)'}` }}>
-                                            {c.situacion.toUpperCase()}
-                                        </span>
-                                    )}
-                                    {c.rubro && (
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                            {c.rubro}
-                                        </span>
-                                    )}
-                                    {c.interes && (
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: c.interes === 'Alto' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg)', color: c.interes === 'Alto' ? '#ef4444' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                            🔥 Interés: {c.interes}
-                                        </span>
-                                    )}
-                                    {c.responsable && (
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'var(--bg-elevated)', color: 'var(--text)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <User size={12} /> {c.responsable}
-                                        </span>
-                                    )}
-                                </div>
-
-                                {c.notas && (
-                                    <div style={{ fontSize: '0.9rem', color: 'var(--text)', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border)', padding: '12px', borderRadius: '12px', fontStyle: 'italic' }}>
-                                        "{c.notas}"
-                                    </div>
-                                )}
-
-                                <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', marginRight: '2px' }}>
-                                            <Calendar size={13} style={{ marginRight: '4px' }} /> Próx. contacto:
-                                        </span>
-                                        {[{ label: '+3d', days: 3 }, { label: '+7d', days: 7 }, { label: '+15d', days: 15 }, { label: '+1mes', days: 30 }].map(({ label, days }) => (
-                                            <button
-                                                key={label}
-                                                onClick={() => handleQuickDate(c.id, days)}
-                                                className="quick-date-btn"
-                                                style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-muted)', cursor: 'pointer' }}
-                                            >{label}</button>
-                                        ))}
-                                        {c.fecha_proximo_contacto && (
-                                            <button onClick={() => handleQuickDate(c.id, null)} style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)', color: 'var(--danger)', cursor: 'pointer' }}>✕</button>
-                                        )}
-                                    </div>
-
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <button onClick={() => toggleHistory(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <Clock size={16} /> Historial ({acts.length})
-                                        </button>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button onClick={() => handleRegistrarVisita(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>
-                                                🏪 Visita {visitCount > 0 && <span>({visitCount})</span>}
-                                            </button>
-                                            <Button variant="secondary" onClick={() => handleOpenActivity(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
-                                                + Actividad
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {isExpanded && (
-                                        <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px', paddingRight: '4px' }}>
-                                            {acts.length > 0 ? acts.map(a => (
-                                                <div key={a.id} style={{ borderLeft: '3px solid rgba(59, 130, 246, 0.4)', paddingLeft: '12px' }}>
-                                                    <div style={{ fontSize: '0.95rem', color: 'var(--text)', marginBottom: '4px' }}>{a.descripcion}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                        {new Date(a.fecha).toLocaleString('es-AR')} {a.usuario && <span>· <strong>{a.usuario}</strong></span>}
-                                                    </div>
-                                                </div>
-                                            )) : (
-                                                <div className="muted" style={{ fontSize: '0.9rem', textAlign: 'center' }}>No hay actividades registradas.</div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
+                    ) : clientes.map(c => (
+                        <ClienteCard
+                            key={c.id}
+                            cliente={c}
+                            acts={activities[c.id] || []}
+                            isExpanded={expandedActivities[c.id] || false}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onQuickDate={handleQuickDate}
+                            onToggleHistory={toggleHistory}
+                            onRegistrarVisita={handleRegistrarVisita}
+                            onOpenActivity={handleOpenActivity}
+                        />
+                    ))}
                 </div>
             </section>
 

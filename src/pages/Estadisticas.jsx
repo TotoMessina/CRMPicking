@@ -190,7 +190,7 @@ export default function Estadisticas() {
         if (dateFrom && dateTo) {
             refreshStats();
         }
-    }, [dateFrom, dateTo, filterActivator, currentTab]);
+    }, [dateFrom, dateTo, filterActivator]);
 
 
     const loadActivators = async () => {
@@ -432,7 +432,7 @@ export default function Estadisticas() {
                     if (!breakdown.has(creadoRaw)) breakdown.set(creadoRaw, { total: 0, efectivo: 0, sts: {} });
                     const objA = breakdown.get(creadoRaw);
                     objA.total++;
-                    
+
                     if (activoRaw !== creadoRaw && (st.startsWith('4') || st.startsWith('5'))) {
                         objA.sts["1 - Cliente relevado"] = (objA.sts["1 - Cliente relevado"] || 0) + 1;
                     } else {
