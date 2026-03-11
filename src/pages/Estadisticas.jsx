@@ -245,28 +245,34 @@ export default function Estadisticas() {
             const [
                 { count: totalClientes },
                 clientesMeta,
-                actividadesRango,
                 { count: act7 },
                 { count: act30 },
                 consumidores
             ] = await Promise.all([
                 supabase.from('empresa_cliente').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('activo', true),
-                fetchAll('empresa_cliente', 'id, rubro, estado, situacion, responsable, creado_por, activador_cierre, activo, created_at, ultima_actividad, fecha_proximo_contacto', q => q.eq('empresa_id', empresaActiva.id).eq('activo', true)),
-                fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
-                    let qq = q.gte('fecha', isoFrom).lt('fecha', isoTo);
-                    // IMPORTANTE: Filtrar actividades por los clientes de ESTA empresa
-                    qq = qq.in('cliente_id', supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id));
-                    if (filterActivator) qq = qq.eq('usuario', filterActivator);
-                    return qq;
-                }),
+                fetchAll('empresa_cliente', 'id, cliente_id, rubro, estado, situacion, responsable, creado_por, activador_cierre, activo, created_at, ultima_actividad, fecha_proximo_contacto', q => q.eq('empresa_id', empresaActiva.id).eq('activo', true)),
                 supabase.from('actividades').select('*', { count: 'exact', head: true })
-                    .in('cliente_id', supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id))
+                    .in('cliente_id', (await supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id)).data?.map(c => c.cliente_id) || [])
                     .gte('fecha', new Date(new Date().setDate(new Date().getDate() - 7)).toISOString()),
                 supabase.from('actividades').select('*', { count: 'exact', head: true })
-                    .in('cliente_id', supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id))
+                    .in('cliente_id', (await supabase.from('empresa_cliente').select('cliente_id').eq('empresa_id', empresaActiva.id)).data?.map(c => c.cliente_id) || [])
                     .gte('fecha', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()),
                 fetchAll('consumidores', 'id, created_at', q => q.eq('empresa_id', empresaActiva.id).gte('created_at', isoFrom).lt('created_at', isoTo))
             ]);
+
+            // IDs de clientes para filtrar actividades del rango
+            const clienteIds = clientesMeta.map(c => c.cliente_id);
+
+            const actividadesRango = await fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
+                let qq = q.gte('fecha', isoFrom).lt('fecha', isoTo);
+                if (clienteIds.length > 0) {
+                    qq = qq.in('cliente_id', clienteIds);
+                } else {
+                    qq = qq.in('cliente_id', [0]); // Force empty result if no clients
+                }
+                if (filterActivator) qq = qq.eq('usuario', filterActivator);
+                return qq;
+            });
 
             // Agenda Calcs
             let conFecha = 0, sinFecha = 0, vencidos = 0, proxHoy = 0, prox7 = 0, proxFuturo = 0;
