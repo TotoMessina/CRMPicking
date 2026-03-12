@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -10,9 +10,7 @@ import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
 import { useClientes, useDeleteCliente, useQuickDateCliente, useRegistrarVisitaCliente } from '../hooks/useClientes';
 import { descargarModeloClientes, importarClientesExcel, exportarClientesExcel } from '../lib/excelExport';
 import { ClienteCard } from '../components/ui/ClienteCard';
-import { useCallback } from 'react';
-
-export default function Clientes() {
+import { useQueryClient } from '@tanstack/react-query';export default function Clientes() {
     const { user, userName, empresaActiva } = useAuth();
     const [searchParams] = useSearchParams();
     const isAgendaHoy = searchParams.get('agenda') === 'hoy';
@@ -61,6 +59,7 @@ export default function Clientes() {
     });
     const { clientes = [], total = 0, activities = {} } = data || {};
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const queryClient = useQueryClient();
 
     // Mutations
     const deleteClienteMutation = useDeleteCliente();
@@ -390,8 +389,7 @@ export default function Clientes() {
                 clienteId={editingId}
                 onSaved={() => {
                     setModalOpen(false);
-                    // Small delay to ensure DB reflects changes before re-querying
-                    setTimeout(() => fetchClientes(), 300);
+                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
                 }}
             />
 
@@ -400,7 +398,7 @@ export default function Clientes() {
                 onClose={() => setActModalOpen(false)}
                 clienteId={actTargetId}
                 clienteNombre={actTargetName}
-                onSaved={() => { setActModalOpen(false); fetchClientes(); }}
+                onSaved={() => { setActModalOpen(false); queryClient.invalidateQueries({ queryKey: ['clientes'] }); }}
             />
         </div>
     );

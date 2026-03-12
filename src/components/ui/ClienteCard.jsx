@@ -168,6 +168,8 @@ export const ClienteCard = memo(({
         prevProps.cliente.nombre_local === nextProps.cliente.nombre_local &&
         prevProps.cliente.telefono === nextProps.cliente.telefono &&
         prevProps.cliente.mail === nextProps.cliente.mail &&
-        prevProps.cliente.direccion === nextProps.cliente.direccion
+        prevProps.cliente.direccion === nextProps.cliente.direccion &&
+        prevProps.cliente.updated_at === nextProps.cliente.updated_at &&
+        prevProps.cliente.clientes?.created_at === nextProps.cliente.clientes?.created_at
     );
 });
