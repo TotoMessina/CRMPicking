@@ -59,19 +59,29 @@ export function ActividadClienteModal({ isOpen, onClose, clienteId, clienteNombr
         };
 
         const { error } = await supabase.from("actividades").insert([payload]);
-        if (error) {
+        const isOffline = error && (error.message === 'Failed to fetch' || error.message?.includes('fetch') || !navigator.onLine);
+
+        if (error && !isOffline) {
             toast.error(error.message);
-        } else {
-            toast.success("Actividad agregada");
-
-            // Sync last activity on both tables
-            await Promise.all([
-                supabase.from("clientes").update({ ultima_actividad: fechaISO }).eq("id", clienteId),
-                supabase.from("empresa_cliente").update({ ultima_actividad: fechaISO }).eq("cliente_id", clienteId).eq("empresa_id", empresaActiva?.id)
-            ]);
-
-            onSaved();
+            setLoading(false);
+            return;
         }
+
+        toast.success(isOffline ? "Actividad agregada (Offline)" : "Actividad agregada");
+
+        // Sync last activity on both tables
+        const syncUpdates = Promise.all([
+            supabase.from("clientes").update({ ultima_actividad: fechaISO }).eq("id", clienteId),
+            supabase.from("empresa_cliente").update({ ultima_actividad: fechaISO }).eq("cliente_id", clienteId).eq("empresa_id", empresaActiva?.id)
+        ]);
+
+        if (isOffline) {
+            syncUpdates.catch(() => {});
+        } else {
+            await syncUpdates;
+        }
+
+        onSaved();
         setLoading(false);
     };
 

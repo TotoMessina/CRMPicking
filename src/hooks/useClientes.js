@@ -226,11 +226,19 @@ export function useDeleteCliente() {
                 .eq("cliente_id", id)
                 .eq("empresa_id", empresaActiva?.id);
 
-            if (error) throw new Error(error.message);
-            return id;
+            if (error) {
+                const isOfflineError = error.message === 'Failed to fetch' || error.message?.includes('fetch') || !navigator.onLine;
+                if (isOfflineError) return { id, isOffline: true };
+                throw new Error(error.message);
+            }
+            return { id, isOffline: false };
         },
-        onSuccess: () => {
-            toast.success("Cliente eliminado.");
+        onSuccess: (data) => {
+            if (data?.isOffline) {
+                toast.success("Cliente eliminado offline. Se sincronizará.");
+            } else {
+                toast.success("Cliente eliminado.");
+            }
             // Invalidate the cache to trigger a UI refresh
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
@@ -261,7 +269,10 @@ export function useQuickDateCliente() {
                 .eq('cliente_id', clienteId)
                 .eq('empresa_id', empresaActiva?.id);
 
-            if (updateError) throw new Error(updateError.message);
+            if (updateError) {
+                const isOfflineError = updateError.message === 'Failed to fetch' || updateError.message?.includes('fetch') || !navigator.onLine;
+                if (!isOfflineError) throw new Error(updateError.message);
+            }
 
             const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${new Date(dateStr).toLocaleDateString('es-AR')}` : '🗑️ Fecha de próximo contacto eliminada';
 
@@ -273,12 +284,16 @@ export function useQuickDateCliente() {
                 fecha: new Date().toISOString()
             }]);
 
-            if (logError) throw new Error(logError.message);
+            if (logError) {
+                const isOfflineError = logError.message === 'Failed to fetch' || logError.message?.includes('fetch') || !navigator.onLine;
+                if (!isOfflineError) throw new Error(logError.message);
+                return { displayMsg, isOffline: true };
+            }
 
-            return { displayMsg };
+            return { displayMsg, isOffline: false };
         },
         onSuccess: (data) => {
-            toast.success(data.displayMsg);
+            toast.success(data?.isOffline ? `${data.displayMsg} (Offline)` : data.displayMsg);
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
         onError: () => {
@@ -302,7 +317,10 @@ export function useRegistrarVisitaCliente() {
                 empresa_id: empresaActiva?.id
             }]);
 
-            if (logError) throw new Error(logError.message);
+            if (logError) {
+                const isOfflineError = logError.message === 'Failed to fetch' || logError.message?.includes('fetch') || !navigator.onLine;
+                if (!isOfflineError) throw new Error(logError.message);
+            }
 
             const { error: updateError } = await supabase
                 .from('empresa_cliente')
@@ -310,12 +328,20 @@ export function useRegistrarVisitaCliente() {
                 .eq('cliente_id', clienteId)
                 .eq('empresa_id', empresaActiva?.id);
 
-            if (updateError) throw new Error(updateError.message);
+            if (updateError) {
+                const isOfflineError = updateError.message === 'Failed to fetch' || updateError.message?.includes('fetch') || !navigator.onLine;
+                if (!isOfflineError) throw new Error(updateError.message);
+                return { nombre, isOffline: true };
+            }
 
-            return { nombre };
+            return { nombre, isOffline: false };
         },
         onSuccess: (data) => {
-            toast.success(`Visita registrada para ${data.nombre || 'cliente'}`);
+            if (data?.isOffline) {
+                toast.success(`Visita offline para ${data.nombre || 'cliente'}`);
+            } else {
+                toast.success(`Visita registrada para ${data.nombre || 'cliente'}`);
+            }
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
         onError: () => {

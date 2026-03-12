@@ -343,8 +343,15 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         }
 
         if (err) {
-            console.error('Error final guardando cliente:', err);
-            toast.error(`Error al guardar: ${err.message || 'Ocurrió un error inesperado'}`);
+            const isOfflineError = err.message === 'Failed to fetch' || err.message?.includes('fetch') || !navigator.onLine;
+            if (isOfflineError) {
+                console.log('DEBUG: Guardado offline interceptado');
+                toast.success('Guardado sin conexión. Se sincronizará pronto.');
+                onSaved();
+            } else {
+                console.error('Error final guardando cliente:', err);
+                toast.error(`Error al guardar: ${err.message || 'Ocurrió un error inesperado'}`);
+            }
         } else {
             console.log('DEBUG: Cliente guardado con éxito. Datos enviados:', payload);
             toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
