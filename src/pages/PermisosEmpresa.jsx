@@ -25,6 +25,7 @@ const ALL_PAGES = [
     { to: '/empresas', label: 'Empresas' },
     { to: '/configuracion', label: 'Configuración' },
     { to: '/permisos-empresa', label: 'Permisos de Empresa' },
+    { to: '/actividad-sistema', label: 'Auditoría (Log del Sistema)' },
 ];
 
 const ALL_ROLES = ['admin', 'supervisor', 'activador', 'empleado'];
