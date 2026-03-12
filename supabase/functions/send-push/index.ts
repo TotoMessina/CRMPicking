@@ -59,10 +59,10 @@ serve(async (req) => {
         const promises = subs.map(async (row) => {
             try {
                 await appServer.sendPushMessage(notificationPayload, row.subscription)
-            } catch (err) {
+            } catch (err: any) {
                 console.error(`Error sending push to ${row.user_email}:`, err)
                 // If subscription expired/unsubscribed/failed, delete it
-                if (err.statusCode === 410 || err.statusCode === 404 || err.status === 410 || err.status === 404) {
+                if (err?.statusCode === 410 || err?.statusCode === 404 || err?.status === 410 || err?.status === 404) {
                     await supabaseClient.from('push_subscriptions').delete().eq('id', row.id)
                 }
             }
@@ -74,8 +74,8 @@ serve(async (req) => {
             JSON.stringify({ success: true, pushedTo: subs.length }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
-    } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+    } catch (error: any) {
+        return new Response(JSON.stringify({ error: error?.message || 'Unknown error' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         })
