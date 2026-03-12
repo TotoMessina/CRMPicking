@@ -14,6 +14,7 @@ interface AuditLog {
     new_data: any;
     created_at: string;
     changed_by?: string;
+    usuarios?: { nombre: string };
 }
 
 export const ActividadSistema: React.FC = () => {
@@ -47,7 +48,7 @@ export const ActividadSistema: React.FC = () => {
         setLoading(true);
         let query = supabase
             .from('audit_logs')
-            .select('*', { count: 'exact' });
+            .select('*, usuarios(nombre)', { count: 'exact' });
 
         if (filterTable !== 'Todos') {
             query = query.eq('table_name', filterTable);
@@ -217,6 +218,7 @@ export const ActividadSistema: React.FC = () => {
                                 <thead>
                                     <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border)' }}>
                                         <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Momento</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Autor</th>
                                         <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tabla e ID</th>
                                         <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Acción</th>
                                         <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Detalles del Cambio</th>
@@ -225,33 +227,40 @@ export const ActividadSistema: React.FC = () => {
                                 <tbody>
                                     {logs.map(log => (
                                         <tr key={log.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }}>
-                                            <td style={{ padding: '16px', verticalAlign: 'top', width: '200px' }}>
+                                            <td style={{ padding: '16px', verticalAlign: 'top', width: '150px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9rem' }}>
                                                     <Clock size={14} className="muted" />
                                                     {format(parseISO(log.created_at), "HH:mm", { locale: es })}
                                                 </div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                                    {format(parseISO(log.created_at), "dd 'de' MMMM", { locale: es })}
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                    {format(parseISO(log.created_at), "dd/MM/yyyy", { locale: es })}
                                                 </div>
                                             </td>
-                                            <td style={{ padding: '16px', verticalAlign: 'top', width: '220px' }}>
-                                                <div style={{ fontWeight: 700, fontSize: '0.75rem', background: 'var(--accent-soft)', color: 'var(--accent)', padding: '2px 8px', borderRadius: '4px', display: 'inline-block', marginBottom: '8px' }}>
+                                            <td style={{ padding: '16px', verticalAlign: 'top', width: '180px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--accent-soft)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+                                                        {log.usuarios?.nombre?.charAt(0) || '?'}
+                                                    </div>
+                                                    <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{log.usuarios?.nombre || 'Sistema / Desconocido'}</span>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '16px', verticalAlign: 'top', width: '200px' }}>
+                                                <div style={{ fontWeight: 700, fontSize: '0.75rem', background: 'var(--accent-soft)', color: 'var(--accent)', padding: '2px 8px', borderRadius: '4px', display: 'inline-block', marginBottom: '6px' }}>
                                                     {log.table_name.toUpperCase()}
                                                 </div>
-                                                <div className="muted" style={{ fontSize: '0.75rem', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                                <div className="muted" style={{ fontSize: '0.7rem', fontFamily: 'monospace', wordBreak: 'break-all' }}>
                                                     ID: {log.record_id}
                                                 </div>
                                             </td>
-                                            <td style={{ padding: '16px', verticalAlign: 'top', width: '120px' }}>
+                                            <td style={{ padding: '16px', verticalAlign: 'top', width: '100px' }}>
                                                 <span style={{ 
                                                     display: 'inline-flex',
-                                                    padding: '4px 10px', 
-                                                    borderRadius: '8px', 
-                                                    fontSize: '0.7rem', 
+                                                    padding: '4px 8px', 
+                                                    borderRadius: '6px', 
+                                                    fontSize: '0.65rem', 
                                                     fontWeight: 800, 
                                                     background: log.action_type === 'INSERT' ? 'rgba(34, 197, 94, 0.1)' : log.action_type === 'DELETE' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(14, 165, 233, 0.1)',
-                                                    color: log.action_type === 'INSERT' ? '#22c55e' : log.action_type === 'DELETE' ? '#ef4444' : '#0ea5e9',
-                                                    border: `1px solid ${log.action_type === 'INSERT' ? 'rgba(34, 197, 94, 0.2)' : log.action_type === 'DELETE' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(14, 165, 233, 0.2)'}`
+                                                    color: log.action_type === 'INSERT' ? '#22c55e' : log.action_type === 'DELETE' ? '#ef4444' : '#0ea5e9'
                                                 }}>
                                                     {log.action_type}
                                                 </span>
@@ -284,6 +293,12 @@ export const ActividadSistema: React.FC = () => {
                                         }}>
                                             {log.action_type}
                                         </span>
+                                    </div>
+                                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--accent-soft)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700 }}>
+                                            {log.usuarios?.nombre?.charAt(0) || '?'}
+                                        </div>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{log.usuarios?.nombre || 'Sistema'}</span>
                                     </div>
                                     <div style={{ marginBottom: '12px' }}>
                                         <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 700 }}>{log.table_name.toUpperCase()}</div>

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     action_type TEXT NOT NULL,        -- 'INSERT', 'UPDATE', 'DELETE'
     old_data JSONB,                   -- Record state before the change
     new_data JSONB,                   -- Record state after the change
-    changed_by UUID DEFAULT auth.uid(), -- Supabase automatically captures the auth.uid() if executed via REST API
+    changed_by UUID DEFAULT auth.uid() REFERENCES public.usuarios(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
