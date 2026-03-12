@@ -14,17 +14,23 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Enable RLS so only authenticated admins/users can read
+-- 2. Enable RLS and Permissions
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Admins can read all logs. (Simplified policy, adjust based on your role needs)
+-- Grant permissions explicitly
+GRANT SELECT ON public.audit_logs TO authenticated;
+GRANT ALL ON public.audit_logs TO service_role;
+
+-- Admins can read all logs. (Robust policy)
+DROP POLICY IF EXISTS "Admins can view audit logs" ON public.audit_logs;
 CREATE POLICY "Admins can view audit logs"
     ON public.audit_logs FOR SELECT
+    TO authenticated
     USING (
         EXISTS (
             SELECT 1 FROM public.usuarios 
-            WHERE email = auth.jwt() ->> 'email' 
-            AND rol IN ('Administrador', 'admin')
+            WHERE lower(email) = lower(auth.jwt() ->> 'email')
+            AND lower(role) IN ('administrador', 'admin', 'super-admin')
         )
     );
 
@@ -40,10 +46,10 @@ BEGIN
         v_old_data := to_jsonb(OLD);
         v_new_data := to_jsonb(NEW);
         
-        IF NEW ? 'id' THEN
-            v_record_id := NEW.id::TEXT;
-        ELSIF NEW ? 'cliente_id' THEN
-            v_record_id := NEW.cliente_id::TEXT;
+        IF v_new_data ? 'id' THEN
+            v_record_id := (v_new_data->>'id')::TEXT;
+        ELSIF v_new_data ? 'cliente_id' THEN
+            v_record_id := (v_new_data->>'cliente_id')::TEXT;
         ELSE
             v_record_id := 'UNKNOWN';
         END IF;
@@ -55,10 +61,10 @@ BEGIN
     ELSIF (TG_OP = 'DELETE') THEN
         v_old_data := to_jsonb(OLD);
         
-        IF OLD ? 'id' THEN
-            v_record_id := OLD.id::TEXT;
-        ELSIF OLD ? 'cliente_id' THEN
-            v_record_id := OLD.cliente_id::TEXT;
+        IF v_old_data ? 'id' THEN
+            v_record_id := (v_old_data->>'id')::TEXT;
+        ELSIF v_old_data ? 'cliente_id' THEN
+            v_record_id := (v_old_data->>'cliente_id')::TEXT;
         ELSE
             v_record_id := 'UNKNOWN';
         END IF;
@@ -70,10 +76,10 @@ BEGIN
     ELSIF (TG_OP = 'INSERT') THEN
         v_new_data := to_jsonb(NEW);
         
-        IF NEW ? 'id' THEN
-            v_record_id := NEW.id::TEXT;
-        ELSIF NEW ? 'cliente_id' THEN
-            v_record_id := NEW.cliente_id::TEXT;
+        IF v_new_data ? 'id' THEN
+            v_record_id := (v_new_data->>'id')::TEXT;
+        ELSIF v_new_data ? 'cliente_id' THEN
+            v_record_id := (v_new_data->>'cliente_id')::TEXT;
         ELSE
             v_record_id := 'UNKNOWN';
         END IF;
