@@ -2,7 +2,21 @@
  * Constantes para el diseño y configuración de gráficos (Chart.js)
  */
 
-export const STATS_THEME = {
+export interface StatsTheme {
+    colors: {
+        primary: string;
+        secondary: string;
+        accent: string;
+        danger: string;
+        info: string;
+        slate: string;
+        grid: string;
+        text: string;
+    };
+    fontFamily: string;
+}
+
+export const STATS_THEME: StatsTheme = {
     colors: {
         primary: '#4f46e5',
         secondary: '#10b981',
@@ -16,7 +30,7 @@ export const STATS_THEME = {
     fontFamily: "'Inter', sans-serif",
 };
 
-export const COMMON_CHART_OPTIONS = {
+export const COMMON_CHART_OPTIONS: any = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -52,7 +66,7 @@ export const COMMON_CHART_OPTIONS = {
     }
 };
 
-export const DOUGHNUT_COLORS = [
+export const DOUGHNUT_COLORS: string[] = [
     STATS_THEME.colors.primary, 
     STATS_THEME.colors.secondary, 
     STATS_THEME.colors.accent,
@@ -63,7 +77,7 @@ export const DOUGHNUT_COLORS = [
     '#6366f1'
 ];
 
-export const STATUS_COLORS = {
+export const STATUS_COLORS: Record<string, string> = {
     "1 - Cliente relevado": STATS_THEME.colors.slate,
     "2 - Local Visitado No Activo": STATS_THEME.colors.danger,
     "3 - Primer Ingreso": STATS_THEME.colors.accent,

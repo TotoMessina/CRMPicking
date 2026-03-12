@@ -1,12 +1,13 @@
+import React from 'react';
 import { Button } from '../components/ui/Button';
-import { Plus, ChevronLeft, ChevronRight, Download, Upload, Clock, Calendar } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
 import { ClienteCard } from '../components/ui/ClienteCard';
 import { useClientsLogic } from '../hooks/useClientsLogic';
 import { ClientFilters } from '../components/clients/ClientFilters';
 
-export default function Clientes() {
+const Clientes: React.FC = () => {
     const {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
         filters, updateFilter, rubrosValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
@@ -39,7 +40,7 @@ export default function Clientes() {
                         </Button>
                         <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '99px', border: 'none', background: 'transparent', padding: '8px 16px', color: 'var(--text-muted)' }} title="Importar desde Excel">
                             <Upload size={18} />
-                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} />
+                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel as any} />
                         </label>
                     </div>
 
@@ -95,7 +96,7 @@ export default function Clientes() {
                         <div style={{ gridColumn: '1 / -1', background: 'var(--bg-elevated)', border: '1px dashed var(--border)', borderRadius: '20px', padding: '40px', textAlign: 'center' }}>
                             <p className="muted" style={{ fontSize: '1.1rem' }}>No se encontraron clientes con esos filtros.</p>
                         </div>
-                    ) : clientes.map(c => (
+                    ) : clientes.map((c: any) => (
                         <ClienteCard
                             key={c.id}
                             cliente={c}
@@ -140,3 +141,5 @@ export default function Clientes() {
         </div>
     );
 }
+
+export default Clientes;

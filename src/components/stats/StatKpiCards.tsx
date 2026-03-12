@@ -1,6 +1,12 @@
 import { STATS_THEME } from '../../constants/statsConstants';
+import React from 'react';
+import { KpiState } from '../../hooks/useStatistics';
 
-export const StatKpiCards = ({ kpis }) => {
+interface Props {
+    kpis: KpiState;
+}
+
+export const StatKpiCards: React.FC<Props> = ({ kpis }) => {
     const cards = [
         { label: 'Clientes activos', val: kpis.totalClientesActivos, meta: 'Base activa' },
         { label: 'Agenda con fecha', val: kpis.conFecha, meta: 'Próximo contacto' },

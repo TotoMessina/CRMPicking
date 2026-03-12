@@ -1,8 +1,21 @@
 import React, { memo } from 'react';
 import { Phone, MapPin, Mail, Calendar, Edit2, Trash2, User, Clock } from 'lucide-react';
 import { Button } from './Button';
+import { Client, ClientActivity } from '../../types/client';
 
-export const ClienteCard = memo(({
+interface Props {
+    cliente: Client;
+    acts: ClientActivity[];
+    isExpanded: boolean;
+    onEdit: (id: string) => void;
+    onDelete: (id: string) => void;
+    onQuickDate: (id: string, days: number | null) => void;
+    onToggleHistory: (id: string) => void;
+    onRegistrarVisita: (id: string, nombre: string) => void;
+    onOpenActivity: (id: string, nombre: string) => void;
+}
+
+export const ClienteCard = memo<Props>(({
     cliente: c,
     acts,
     isExpanded,
@@ -125,10 +138,10 @@ export const ClienteCard = memo(({
                         <Clock size={16} /> Historial ({acts.length})
                     </button>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => onRegistrarVisita(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>
+                        <button onClick={() => onRegistrarVisita(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>
                             🏪 Visita {visitCount > 0 && <span>({visitCount})</span>}
                         </button>
-                        <Button variant="secondary" onClick={() => onOpenActivity(c.id, c.nombre || c.nombre_local)} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
+                        <Button variant="secondary" onClick={() => onOpenActivity(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
                             + Actividad
                         </Button>
                     </div>

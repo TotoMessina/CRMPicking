@@ -1,6 +1,33 @@
+import React from 'react';
 import { STATS_THEME } from '../../constants/statsConstants';
 
-export const ActivadoresPerformance = ({ stats, detail, filterActivator }) => {
+interface StatusBreakdown {
+    st: string;
+    count: number;
+    color: string;
+}
+
+interface ActivatorDetail {
+    name: string;
+    total: number;
+    statuses: StatusBreakdown[];
+}
+
+interface ActivatorStat {
+    name: string;
+    rate: number;
+    total: number;
+    efectivo: number;
+    visitas: number;
+}
+
+interface Props {
+    stats: ActivatorStat[];
+    detail: ActivatorDetail[];
+    filterActivator: string;
+}
+
+export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, filterActivator }) => {
     if (!stats || stats.length === 0) return null;
 
     return (

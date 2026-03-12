@@ -1,11 +1,34 @@
+import React from 'react';
 import { Bar } from 'react-chartjs-2';
 import { COMMON_CHART_OPTIONS, STATS_THEME } from '../../constants/statsConstants';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    ChartData,
+    ChartOptions
+} from 'chart.js';
 
-export const SituacionChart = ({ data, total }) => {
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend
+);
+
+interface Props {
+    data: ChartData<'bar'> | any;
+    total: number;
+}
+
+export const SituacionChart: React.FC<Props> = ({ data, total }) => {
     if (!data) return <p className="muted" style={{ textAlign: 'center', paddingTop: '80px' }}>Cargando...</p>;
-
-    const SITUACION_LABELS = ['sin comunicacion nueva', 'en proceso', 'en funcionamiento'];
-    const SITUACION_COLORS = ['#94a3b8', '#f59e0b', '#10b981'];
 
     return (
         <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
@@ -20,9 +43,9 @@ export const SituacionChart = ({ data, total }) => {
                             const { ctx } = chart;
                             chart.data.datasets.forEach((dataset, i) => {
                                 const meta = chart.getDatasetMeta(i);
-                                meta.data.forEach((bar, index) => {
+                                meta.data.forEach((bar: any, index) => {
                                     const value = dataset.data[index];
-                                    if (!value) return;
+                                    if (!value || typeof value !== 'number') return;
                                     const barHeight = bar.base - bar.y;
                                     const midY = bar.y + barHeight / 2;
                                     ctx.save();
@@ -31,17 +54,23 @@ export const SituacionChart = ({ data, total }) => {
                                     ctx.textBaseline = 'middle';
                                     if (barHeight > 28) {
                                         ctx.fillStyle = 'rgba(255,255,255,0.95)';
-                                        ctx.fillText(value, bar.x, midY);
+                                        ctx.fillText(value.toString(), bar.x, midY);
                                     } else {
                                         ctx.font = 'bold 13px Inter, sans-serif';
-                                        const tw = ctx.measureText(value).width + 12;
+                                        const tw = ctx.measureText(value.toString()).width + 12;
                                         ctx.fillStyle = 'rgba(15,23,42,0.85)';
                                         const rx = bar.x - tw / 2, ry = bar.y - 24;
                                         ctx.beginPath();
-                                        ctx.roundRect(rx, ry, tw, 20, 10);
+                                        // @ts-ignore
+                                        if (ctx.roundRect) {
+                                            // @ts-ignore
+                                            ctx.roundRect(rx, ry, tw, 20, 10);
+                                        } else {
+                                            ctx.rect(rx, ry, tw, 20);
+                                        }
                                         ctx.fill();
                                         ctx.fillStyle = '#fff';
-                                        ctx.fillText(value, bar.x, ry + 10);
+                                        ctx.fillText(value.toString(), bar.x, ry + 10);
                                     }
                                     ctx.restore();
                                 });
@@ -53,13 +82,13 @@ export const SituacionChart = ({ data, total }) => {
                         plugins: {
                             ...COMMON_CHART_OPTIONS.plugins,
                             legend: { display: false },
-                            tooltip: { ...COMMON_CHART_OPTIONS.plugins.tooltip, callbacks: { label: ctx => ` ${ctx.raw} locales` } }
+                            tooltip: { ...COMMON_CHART_OPTIONS.plugins?.tooltip, callbacks: { label: (ctx: any) => ` ${ctx.raw} locales` } }
                         },
                         scales: {
-                            x: { grid: { display: false }, ticks: { color: STATS_THEME.colors.text, font: { size: 13, weight: '600', family: STATS_THEME.colors.fontFamily } } },
-                            y: { grid: { color: STATS_THEME.colors.grid }, ticks: { color: STATS_THEME.colors.text, stepSize: 1 }, beginAtZero: true }
+                            x: { grid: { display: false }, ticks: { color: STATS_THEME.colors.text, font: { size: 13, weight: '600', family: STATS_THEME.fontFamily } } },
+                            y: { grid: { color: STATS_THEME.colors.grid }, ticks: { color: STATS_THEME.colors.text, stepSize: 1 } }
                         }
-                    }}
+                    } as ChartOptions<'bar'>}
                 />
             </div>
 

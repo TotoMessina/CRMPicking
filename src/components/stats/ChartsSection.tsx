@@ -1,8 +1,41 @@
+import React from 'react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { COMMON_CHART_OPTIONS } from '../../constants/statsConstants';
+import { ChartsData, ListsData } from '../../hooks/useStatistics';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    PointElement,
+    LineElement,
+    ArcElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+} from 'chart.js';
 
-export const ChartsSection = ({ chartsData, listsData }) => {
-    const renderDoughnutList = (items) => (
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    PointElement,
+    LineElement,
+    ArcElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+);
+
+interface Props {
+    chartsData: ChartsData;
+    listsData: ListsData;
+}
+
+export const ChartsSection: React.FC<Props> = ({ chartsData, listsData }) => {
+    const renderDoughnutList = (items: [string, number][]) => (
         <ul className="stats-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {items.slice(0, 10).map((it, idx) => (
                 <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>

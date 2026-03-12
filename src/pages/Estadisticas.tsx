@@ -1,3 +1,4 @@
+import React from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { useStatistics } from '../hooks/useStatistics';
 import { StatsFilters } from '../components/stats/StatsFilters';
@@ -7,10 +8,11 @@ import { SituacionChart } from '../components/stats/SituacionChart';
 import { RubrosSituacionChart } from '../components/stats/RubrosSituacionChart';
 import { ActivadoresPerformance } from '../components/stats/ActivadoresPerformance';
 import { STATS_THEME } from '../constants/statsConstants';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
-export default function Estadisticas() {
+const Estadisticas: React.FC = () => {
     const {
         currentTab, setCurrentTab,
         rangePreset, setRangePreset,
@@ -27,7 +29,7 @@ export default function Estadisticas() {
     return (
         <div className="stats-dashboard" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px', overflowY: 'auto' }}>
             <StatsFilters 
-                rangePreset={rangePreset} setRangePreset={setRangePreset}
+                rangePreset={rangePreset as string} setRangePreset={setRangePreset}
                 dateFrom={dateFrom} setDateFrom={setDateFrom}
                 dateTo={dateTo} setDateTo={setDateTo}
                 filterActivator={filterActivator} setFilterActivator={setFilterActivator}
@@ -53,20 +55,35 @@ export default function Estadisticas() {
 
             {currentTab === 'tabApps' && (
                 <div className="tab-content active">
-                    <StatKpiCards kpis={kpis} />
-                    <ChartsSection chartsData={chartsData} listsData={listsData} />
-                    <SituacionChart data={chartsData.situacionLocales} total={totalSituacion} />
-                    <RubrosSituacionChart data={rubrosEstado5Data} filter={filtroSituacionRubros} setFilter={setFiltroSituacionRubros} />
+                    <ErrorBoundary>
+                        <StatKpiCards kpis={kpis} />
+                    </ErrorBoundary>
+                    
+                    <ErrorBoundary>
+                        <ChartsSection chartsData={chartsData} listsData={listsData} />
+                    </ErrorBoundary>
+                    
+                    <ErrorBoundary>
+                        <SituacionChart data={chartsData.situacionLocales} total={totalSituacion} />
+                    </ErrorBoundary>
+                    
+                    <ErrorBoundary>
+                        <RubrosSituacionChart data={rubrosEstado5Data} filter={filtroSituacionRubros} setFilter={setFiltroSituacionRubros} />
+                    </ErrorBoundary>
                 </div>
             )}
 
             {currentTab === 'tabActivadores' && (
-                <ActivadoresPerformance 
-                    stats={listsData.activadoresStats} 
-                    detail={listsData.activadoresDetalle} 
-                    filterActivator={filterActivator} 
-                />
+                <ErrorBoundary>
+                    <ActivadoresPerformance 
+                        stats={listsData.activadoresStats} 
+                        detail={listsData.activadoresDetalle} 
+                        filterActivator={filterActivator} 
+                    />
+                </ErrorBoundary>
             )}
         </div>
     );
 }
+
+export default Estadisticas;

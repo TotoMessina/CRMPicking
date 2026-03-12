@@ -3,11 +3,13 @@
 ![PickingUp CRM](https://img.shields.io/badge/Status-Active_Development-success?style=for-the-badge)
 ![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite_4-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
 **PickingUp CRM** es una plataforma integral de gestión comercial, logística y operativa diseñada específicamente para el ecosistema de PickingUp. El sistema permite administrar de forma centralizada la captación de locales (clientes), la flota logística (repartidores), los usuarios finales (consumidores) y el análisis de rendimiento del equipo comercial (activadores).
 
-Está construido con una arquitectura **Multi-Empresa (Multi-tenant)**, garantizando el aislamiento criptográfico de datos por entorno mediante Row Level Security (RLS) en base de datos.
+Está construido con una arquitectura **Multi-Empresa (Multi-tenant)** y un **stack fuertemente tipado**, garantizando el aislamiento criptográfico de datos por entorno mediante Row Level Security (RLS) en base de datos.
 
 ---
 
@@ -69,16 +71,22 @@ Integración profunda con `Leaflet.js` para visualización geográfica táctica.
 
 ## 💻 Arquitectura Técnica (Frontend)
 
-El proyecto utiliza un stack moderno optimizado para Progressive Web Apps (PWA) de alto rendimiento.
+El proyecto utiliza un stack moderno optimizado para Progressive Web Apps (PWA) de alto rendimiento, con un enfoque en la robustez y escalabilidad.
 
-- **Framework:** `React 18` empaquetado y servido a través de un ultra-rápido servidor `Vite`.
+- **Framework & Lenguaje:** `React 18` + `TypeScript`. El uso de TypeScript en los módulos de Clientes, Estadísticas y Utilidades garantiza un desarrollo seguro, con detección de errores en tiempo de compilación y autocompletado avanzado.
 - **Estado Asíncrono (Caching):** Utiliza `React Query (@tanstack/react-query)` v5. Minimiza las peticiones a la red mediante un caché agresivo (staleTime de 30s) permitiendo a múltiples activadores colaborar sin colisiones. Las ediciones locales invalidan inteligentemente (`queryClient.invalidateQueries`) solo las secciones afectadas.
-- **BBackend-as-a-Service:** `Supabase`. Conexión directa a PostgreSQL mediante el sdk de supabase en JavaScript. Uso intensivo de RPCs (Remote Procedure Calls) y Triggers SQL para asegurar transacciones ACID durante cargas complejas.
+- **Backend-as-a-Service:** `Supabase`. Conexión directa a PostgreSQL mediante el sdk de supabase. Uso intensivo de RPCs (Remote Procedure Calls) y Triggers SQL para asegurar transacciones ACID durante cargas complejas.
 - **PWA Ready:** Configurado vía `vite-plugin-pwa` con service workers generados por `Workbox`. 
   - Capacidad nativa de instalación (Add to Home Screen).
   - Experiencia "app-like" en iOS y Android.
   - Funcionamiento offline parcial y caching agresivo de assets.
-- **UI/UX:** Sistema de diseño propietario escrito en `Vanilla CSS` puro, soportando de forma nativa variables CSS (custom properties) para Light/Dark Mode fluído en todo el sistema. 
+- **UI/UX:** Sistema de diseño propietario modularizado, escrito en `Vanilla CSS` puro, soportando de forma nativa variables CSS para Light/Dark Mode fluído.
+
+### 🛡️ Calidad y Robustez
+
+- **Unit Testing:** Integración de `Vitest` para pruebas unitarias de lógica de negocio pura (procesamiento de fechas, cálculos de KPIs), asegurando que el motor de la aplicación sea fiable.
+- **Resiliencia (Error Boundaries):** Implementación de límites de error de React en secciones críticas como gráficos. Si un componente falla individualmente, el resto de la aplicación permanece operativa.
+- **Modularización:** Lógica de datos separada de la vista mediante Custom Hooks (`useStatistics`, `useClientsLogic`), mejorando la mantenibilidad y legibilidad del código.
 
 ---
 
@@ -114,6 +122,12 @@ El proyecto utiliza un stack moderno optimizado para Progressive Web Apps (PWA) 
    npm run dev
    ```
    El proyecto estará disponible en `http://localhost:5173`.
+
+5. **Ejecutar Pruebas Unitarias**
+   ```bash
+   npm run test
+   ```
+   Lanza la suite de pruebas de Vitest para validar la lógica de utilidades y hooks.
 
 ---
 

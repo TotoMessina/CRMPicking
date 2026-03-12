@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from './Button';
@@ -6,10 +6,24 @@ import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
-export function ActividadClienteModal({ isOpen, onClose, clienteId, clienteNombre, onSaved }) {
-    const { empresaActiva } = useAuth();
+interface Props {
+    isOpen: boolean;
+    onClose: () => void;
+    clienteId: string | null;
+    clienteNombre: string;
+    onSaved: () => void;
+}
+
+interface FormData {
+    descripcion: string;
+    fecha: string;
+    usuario: string;
+}
+
+export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, clienteNombre, onSaved }) => {
+    const { empresaActiva }: any = useAuth();
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<FormData>({
         descripcion: '',
         fecha: '',
         usuario: ''
@@ -18,7 +32,7 @@ export function ActividadClienteModal({ isOpen, onClose, clienteId, clienteNombr
     useEffect(() => {
         if (isOpen) {
             const now = new Date();
-            const pad = (n) => String(n).padStart(2, "0");
+            const pad = (n: number) => String(n).padStart(2, "0");
             const localDateTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
             setFormData({
@@ -37,12 +51,12 @@ export function ActividadClienteModal({ isOpen, onClose, clienteId, clienteNombr
         }
     }, [isOpen]);
 
-    const handleChange = (e) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.descripcion.trim()) return toast.error("La descripción es obligatoria");
 
@@ -102,7 +116,7 @@ export function ActividadClienteModal({ isOpen, onClose, clienteId, clienteNombr
                 <form onSubmit={handleSubmit}>
                     <label className="field">
                         <span className="field-label">Descripción *</span>
-                        <textarea name="descripcion" className="input" rows="4" placeholder="Detalle de la gestión..." value={formData.descripcion} onChange={handleChange} required></textarea>
+                        <textarea name="descripcion" className="input" rows={4} placeholder="Detalle de la gestión..." value={formData.descripcion} onChange={handleChange} required></textarea>
                     </label>
 
                     <div className="form-row-2">

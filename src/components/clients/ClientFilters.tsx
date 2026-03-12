@@ -1,6 +1,14 @@
+import React from 'react';
 import { Filter, Search, Phone, MapPin, Store, Activity as ActivityIcon, User, Tag, Building, Clock, Calendar } from 'lucide-react';
+import { ClientFilters as ClientFiltersType } from '../../hooks/useClientsLogic';
 
-export const ClientFilters = ({ filters, updateFilter, rubrosValidos }) => {
+interface Props {
+    filters: ClientFiltersType;
+    updateFilter: (name: keyof ClientFiltersType, value: any) => void;
+    rubrosValidos: string[];
+}
+
+export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos }) => {
     return (
         <section style={{
             background: 'var(--bg-elevated)',

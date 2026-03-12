@@ -1,7 +1,15 @@
+import React from 'react';
 import { Bar } from 'react-chartjs-2';
 import { COMMON_CHART_OPTIONS, STATS_THEME } from '../../constants/statsConstants';
+import { ChartData, ChartOptions } from 'chart.js';
 
-export const RubrosSituacionChart = ({ data, filter, setFilter }) => {
+interface Props {
+    data: ChartData<'bar'> | any;
+    filter: Set<string>;
+    setFilter: React.Dispatch<React.SetStateAction<Set<string>>>;
+}
+
+export const RubrosSituacionChart: React.FC<Props> = ({ data, filter, setFilter }) => {
     return (
         <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
@@ -57,7 +65,7 @@ export const RubrosSituacionChart = ({ data, filter, setFilter }) => {
             </div>
 
             <div style={{ height: '280px' }}>
-                {data.labels.length > 0 ? (
+                {data.labels && data.labels.length > 0 ? (
                     <Bar
                         data={data}
                         plugins={[{
@@ -66,9 +74,9 @@ export const RubrosSituacionChart = ({ data, filter, setFilter }) => {
                                 const { ctx } = chart;
                                 chart.data.datasets.forEach((dataset, i) => {
                                     const meta = chart.getDatasetMeta(i);
-                                    meta.data.forEach((bar, index) => {
+                                    meta.data.forEach((bar: any, index) => {
                                         const value = dataset.data[index];
-                                        if (!value) return;
+                                        if (!value || typeof value !== 'number') return;
                                         const barHeight = bar.base - bar.y;
                                         const midY = bar.y + barHeight / 2;
                                         ctx.save();
@@ -77,17 +85,19 @@ export const RubrosSituacionChart = ({ data, filter, setFilter }) => {
                                         if (barHeight > 28) {
                                             ctx.font = 'bold 15px Inter, sans-serif';
                                             ctx.fillStyle = 'rgba(255,255,255,0.95)';
-                                            ctx.fillText(value, bar.x, midY);
+                                            ctx.fillText(value.toString(), bar.x, midY);
                                         } else {
                                             ctx.font = 'bold 12px Inter, sans-serif';
-                                            const tw = ctx.measureText(value).width + 12;
+                                            const tw = ctx.measureText(value.toString()).width + 12;
                                             ctx.fillStyle = 'rgba(15,23,42,0.85)';
                                             const rx = bar.x - tw / 2, ry = bar.y - 22;
                                             ctx.beginPath();
-                                            ctx.roundRect(rx, ry, tw, 18, 9);
+                                            // @ts-ignore
+                                            if (ctx.roundRect) ctx.roundRect(rx, ry, tw, 18, 9);
+                                            else ctx.rect(rx, ry, tw, 18);
                                             ctx.fill();
                                             ctx.fillStyle = '#fff';
-                                            ctx.fillText(value, bar.x, ry + 9);
+                                            ctx.fillText(value.toString(), bar.x, ry + 9);
                                         }
                                         ctx.restore();
                                     });
@@ -99,13 +109,13 @@ export const RubrosSituacionChart = ({ data, filter, setFilter }) => {
                             plugins: {
                                 ...COMMON_CHART_OPTIONS.plugins,
                                 legend: { display: false },
-                                tooltip: { ...COMMON_CHART_OPTIONS.plugins.tooltip, callbacks: { label: ctx => ` ${ctx.raw} local${ctx.raw !== 1 ? 'es' : ''}` } }
+                                tooltip: { ...COMMON_CHART_OPTIONS.plugins?.tooltip, callbacks: { label: (ctx: any) => ` ${ctx.raw} local${ctx.raw !== 1 ? 'es' : ''}` } }
                             },
                             scales: {
-                                x: { grid: { display: false }, ticks: { color: STATS_THEME.colors.text, font: { size: 11, family: STATS_THEME.colors.fontFamily }, maxRotation: 30 } },
+                                x: { grid: { display: false }, ticks: { color: STATS_THEME.colors.text, font: { size: 11, family: STATS_THEME.fontFamily }, maxRotation: 30 } },
                                 y: { grid: { color: STATS_THEME.colors.grid }, ticks: { color: STATS_THEME.colors.text, stepSize: 1 }, beginAtZero: true }
                             }
-                        }}
+                        } as ChartOptions<'bar'>}
                     />
                 ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontStyle: 'italic' }}>

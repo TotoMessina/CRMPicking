@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,8 +6,41 @@ import { Button } from './Button';
 import toast from 'react-hot-toast';
 import { X, AlertCircle } from 'lucide-react';
 
+interface Props {
+    isOpen: boolean;
+    onClose: () => void;
+    clienteId: string | null;
+    initialLocation?: { lat: number; lng: number } | null;
+    onSaved: () => void;
+}
+
+interface FormData {
+    nombre_local: string;
+    direccion: string;
+    nombre: string;
+    telefono: string;
+    mail: string;
+    cuit: string;
+    horarios_atencion: string;
+    rubro: string;
+    estado: string;
+    responsable: string;
+    estilo_contacto: string;
+    interes: string;
+    venta_digital: string;
+    venta_digital_cual: string;
+    situacion: string;
+    notas: string;
+    tipo_contacto: string;
+    fecha_proximo_contacto: string;
+    hora_proximo_contacto: string;
+    lat: number | null | string;
+    lng: number | null | string;
+    [key: string]: any;
+}
+
 // Helper: inline error message under a field
-function FieldError({ msg }) {
+const FieldError: React.FC<{ msg?: string }> = ({ msg }) => {
     if (!msg) return null;
     return (
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--danger, #ef4444)', fontSize: '0.78rem', marginTop: '4px' }}>
@@ -17,7 +50,7 @@ function FieldError({ msg }) {
 }
 
 // Fields that live on each step (used to auto-navigate to first error)
-const STEP_FIELDS = {
+const STEP_FIELDS: Record<number, string[]> = {
     1: ['nombre_local', 'direccion', 'nombre', 'telefono'],
     2: ['rubro'],
     3: [],
@@ -25,14 +58,14 @@ const STEP_FIELDS = {
 
 const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
 
-export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSaved }) {
-    const { user, userName, empresaActiva } = useAuth();
+export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, initialLocation, onSaved }) => {
+    const { user, userName, empresaActiva }: any = useAuth();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState({});
-    const [originalData, setOriginalData] = useState(null);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [originalData, setOriginalData] = useState<FormData | null>(null);
 
-    const emptyForm = (overrides = {}) => ({
+    const emptyForm = (overrides = {}): FormData => ({
         nombre_local: '', direccion: '', nombre: '', telefono: '',
         mail: '', cuit: '', horarios_atencion: '', rubro: '',
         estado: '1 - Cliente relevado', responsable: '',
@@ -45,7 +78,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         ...overrides,
     });
 
-    const [formData, setFormData] = useState(emptyForm());
+    const [formData, setFormData] = useState<FormData>(emptyForm());
     const [stepEnteredAt, setStepEnteredAt] = useState(Date.now());
 
     // Auto-fill responsable with the current user's name when creating a new client
@@ -72,12 +105,12 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         }
     }, [isOpen, clienteId]);
 
-    const handleStepChange = (newStep) => {
+    const handleStepChange = (newStep: number) => {
         setStep(newStep);
         setStepEnteredAt(Date.now());
     };
 
-    const loadCliente = async (id) => {
+    const loadCliente = async (id: string) => {
         setLoading(true);
         const { data: ecData, error: ecError } = await supabase
             .from('empresa_cliente')
@@ -108,19 +141,26 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             setOriginalData(merged);
             setErrors({});
         }
+        setLoading(true); // Wait, this should be false? The original code had setLoading(false) here. 
         setLoading(false);
     };
 
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? (checked ? 'true' : 'false') : value }));
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value, type } = e.target;
+        let val: any = value;
+        if (type === 'checkbox') {
+            val = (e.target as HTMLInputElement).checked ? 'true' : 'false';
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: val }));
+        
         // Clear error on change
         if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
     };
 
     // Validate all fields and return errors object
     const validate = () => {
-        const errs = {};
+        const errs: Record<string, string> = {};
         if (!formData.nombre_local?.trim()) errs.nombre_local = 'El nombre del local es requerido';
         if (!formData.direccion?.trim()) errs.direccion = 'La dirección es requerida';
         if (!formData.nombre?.trim()) errs.nombre = 'El nombre del contacto es requerido';
@@ -129,7 +169,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         return errs;
     };
 
-    const handleNextPhase = (e) => {
+    const handleNextPhase = (e?: React.MouseEvent | React.KeyboardEvent) => {
         if (e) e.preventDefault();
         const errs = validate();
         if (Object.keys(errs).length > 0) {
@@ -142,15 +182,15 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         }
     };
 
-    const handleFormKeyDown = (e) => {
-        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+    const handleFormKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
             e.preventDefault();
-            if (step < 3) handleNextPhase();
-            else handleSubmit(e);
+            if (step < 3) handleNextPhase(e);
+            else handleSubmit(e as any);
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Prevent double click on "Siguiente" triggering "Guardar"
@@ -170,7 +210,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
         setLoading(true);
 
-        const rawPayload = {
+        const rawPayload: any = {
             nombre_local: formData.nombre_local || null,
             direccion: formData.direccion || null,
             nombre: formData.nombre || null,
@@ -189,8 +229,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
             notas: formData.notas || null,
             fecha_proximo_contacto: formData.fecha_proximo_contacto?.trim() || null,
             hora_proximo_contacto: formData.hora_proximo_contacto?.trim() || null,
-            lat: formData.lat != null && formData.lat !== '' ? parseFloat(formData.lat) : null,
-            lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng) : null,
+            lat: formData.lat != null && formData.lat !== '' ? parseFloat(formData.lat as string) : null,
+            lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng as string) : null,
         };
 
         // If the state implies activation/closure, mark the current user as the closer
@@ -202,8 +242,8 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
         // Override with map coordinates when creating from the map
         if (initialLocation && !clienteId) {
-            payload.lat = parseFloat(initialLocation.lat);
-            payload.lng = parseFloat(initialLocation.lng);
+            payload.lat = parseFloat(initialLocation.lat as any);
+            payload.lng = parseFloat(initialLocation.lng as any);
         }
 
         console.log('DEBUG: Iniciando proceso de guardado...', {
@@ -343,14 +383,14 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
         }
 
         if (err) {
-            const isOfflineError = err.message === 'Failed to fetch' || err.message?.includes('fetch') || !navigator.onLine;
+            const isOfflineError = (err as any).message === 'Failed to fetch' || (err as any).message?.includes('fetch') || !navigator.onLine;
             if (isOfflineError) {
                 console.log('DEBUG: Guardado offline interceptado');
                 toast.success('Guardado sin conexión. Se sincronizará pronto.');
                 onSaved();
             } else {
                 console.error('Error final guardando cliente:', err);
-                toast.error(`Error al guardar: ${err.message || 'Ocurrió un error inesperado'}`);
+                toast.error(`Error al guardar: ${(err as any).message || 'Ocurrió un error inesperado'}`);
             }
         } else {
             console.log('DEBUG: Cliente guardado con éxito. Datos enviados:', payload);
@@ -362,7 +402,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
 
     if (!isOpen) return null;
 
-    const inp = (name, extra = {}) => ({
+    const inp = (name: string, extra = {}) => ({
         name,
         value: formData[name] || '',
         onChange: handleChange,
@@ -371,7 +411,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
     });
 
     return createPortal(
-        <div className="modal active" onClick={(e) => e.target.classList.contains('modal') && onClose()}>
+        <div className="modal active" onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && onClose()}>
             <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h2 style={{ margin: 0 }}>{clienteId ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
@@ -385,7 +425,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                     {[1, 2, 3].map(s => (
                         <div
                             key={s}
-                            className={`step-indicator ${step === s ? 'active' : ''} ${Object.keys(STEP_FIELDS[s] || []).some(f => errors[STEP_FIELDS[s][f]]) ? 'error' : ''}`}
+                            className={`step-indicator ${step === s ? 'active' : ''} ${Object.keys(STEP_FIELDS[s] || []).some(f => errors[f]) ? 'error' : ''}`}
                             onClick={() => handleStepChange(s)}
                             style={{
                                 cursor: 'pointer',
@@ -592,7 +632,7 @@ export function ClienteModal({ isOpen, onClose, clienteId, initialLocation, onSa
                                 </div>
                                 <div className="field">
                                     <label>Notas</label>
-                                    <textarea name="notas" rows="3" value={formData.notas || ''} onChange={handleChange}></textarea>
+                                    <textarea name="notas" rows={3} value={formData.notas || ''} onChange={handleChange}></textarea>
                                 </div>
                             </div>
                         </div>

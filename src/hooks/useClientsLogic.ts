@@ -5,18 +5,36 @@ import { useClientes, useDeleteCliente, useQuickDateCliente, useRegistrarVisitaC
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { descargarModeloClientes, importarClientesExcel, exportarClientesExcel } from '../lib/excelExport';
+import { Client, ClientActivity } from '../types/client';
+
+export interface ClientFilters {
+    nombre: string;
+    telefono: string;
+    direccion: string;
+    estado: string;
+    situacion: string;
+    responsable: string;
+    rubro: string;
+    interes: string;
+    estilo: string;
+    tipoContacto: string;
+    proximos7: boolean;
+    vencidos: boolean;
+    creadoDesde: string;
+    creadoHasta: string;
+}
 
 export const useClientsLogic = () => {
-    const { user, userName, empresaActiva } = useAuth();
+    const { user, userName, empresaActiva }: any = useAuth();
     const [searchParams] = useSearchParams();
     const isAgendaHoy = searchParams.get('agenda') === 'hoy';
 
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(25);
+    const [pageSize] = useState(25);
     const [exportLoading, setExportLoading] = useState(false);
 
     // Filters
-    const [filters, setFilters] = useState({
+    const [filters, setFilters] = useState<ClientFilters>({
         nombre: '',
         telefono: '',
         direccion: '',
@@ -34,17 +52,17 @@ export const useClientsLogic = () => {
     });
 
     const [sortBy, setSortBy] = useState('updated');
-    const [rubrosValidos, setRubrosValidos] = useState([]);
-    const [expandedActivities, setExpandedActivities] = useState({});
+    const [rubrosValidos, setRubrosValidos] = useState<string[]>([]);
+    const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
 
     // Modals
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [actModalOpen, setActModalOpen] = useState(false);
-    const [actTargetId, setActTargetId] = useState(null);
+    const [actTargetId, setActTargetId] = useState<string | null>(null);
     const [actTargetName, setActTargetName] = useState('');
 
-    const { data, isLoading: loading, refetch: fetchClientes } = useClientes({
+    const { data, isLoading: loading, refetch: fetchClientes }: any = useClientes({
         empresaId: empresaActiva?.id,
         page, pageSize, isAgendaHoy,
         fEstado: filters.estado, fSituacion: filters.situacion, fTipoContacto: filters.tipoContacto, 
@@ -54,7 +72,7 @@ export const useClientsLogic = () => {
         fCreadoDesde: filters.creadoDesde, fCreadoHasta: filters.creadoHasta, sortBy
     });
 
-    const { clientes = [], total = 0, activities = {} } = data || {};
+    const { clientes = [] as Client[], total = 0, activities = {} as Record<string, ClientActivity[]> } = data || {};
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const queryClient = useQueryClient();
 
@@ -67,14 +85,14 @@ export const useClientsLogic = () => {
             if (!empresaActiva?.id) return;
             const { data } = await supabase.from('empresa_cliente').select('rubro').eq('empresa_id', empresaActiva.id).eq('activo', true);
             if (data) {
-                const uniqueRubros = [...new Set(data.map(c => c.rubro).filter(r => r && r.trim() !== ''))].sort();
+                const uniqueRubros = [...new Set(data.map((c: any) => c.rubro).filter((r: any) => r && r.trim() !== ''))].sort() as string[];
                 setRubrosValidos(uniqueRubros);
             }
         };
         fetchRubros();
     }, [empresaActiva]);
 
-    const updateFilter = (name, value) => {
+    const updateFilter = (name: keyof ClientFilters, value: any) => {
         setFilters(prev => ({ ...prev, [name]: value }));
         setPage(1);
     };
@@ -84,35 +102,35 @@ export const useClientsLogic = () => {
         setModalOpen(true);
     }, []);
 
-    const handleEdit = useCallback((id) => {
+    const handleEdit = useCallback((id: string) => {
         setEditingId(id);
         setModalOpen(true);
     }, []);
 
-    const handleDelete = useCallback((id) => {
+    const handleDelete = useCallback((id: string) => {
         if (!window.confirm("¿Seguro que querés marcar como inactivo este cliente?")) return;
         deleteClienteMutation.mutate({ id, empresaActiva });
     }, [empresaActiva, deleteClienteMutation]);
 
-    const handleOpenActivity = useCallback((id, nombre) => {
+    const handleOpenActivity = useCallback((id: string, nombre: string) => {
         setActTargetId(id);
         setActTargetName(nombre || 'Sin nombre');
         setActModalOpen(true);
     }, []);
 
-    const toggleHistory = useCallback((id) => {
+    const toggleHistory = useCallback((id: string) => {
         setExpandedActivities(prev => ({ ...prev, [id]: !prev[id] }));
     }, []);
 
-    const handleQuickDate = useCallback((clienteId, daysOffset) => {
+    const handleQuickDate = useCallback((clienteId: string, daysOffset: number) => {
         quickDateMutation.mutate({ clienteId, daysOffset, empresaActiva, userName, user });
     }, [empresaActiva, userName, user, quickDateMutation]);
 
-    const handleRegistrarVisita = useCallback((clienteId, nombre) => {
+    const handleRegistrarVisita = useCallback((clienteId: string, nombre: string) => {
         visitaMutation.mutate({ clienteId, nombre, empresaActiva, userName, user });
     }, [empresaActiva, userName, user, visitaMutation]);
 
-    const handleImportExcel = async (e) => {
+    const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         await importarClientesExcel(file, empresaActiva, userName, user?.email, () => fetchClientes());

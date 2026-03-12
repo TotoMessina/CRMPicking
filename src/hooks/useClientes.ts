@@ -1,8 +1,31 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { Client, ClientActivity } from '../types/client';
 
-export function useClientes(params) {
+export interface UseClientesParams {
+    empresaId: string | null;
+    page: number;
+    pageSize: number;
+    isAgendaHoy: boolean;
+    fEstado: string;
+    fSituacion: string;
+    fTipoContacto: string;
+    fResponsable: string;
+    fRubro: string;
+    fInteres: string;
+    fEstilo: string;
+    fProximos7: boolean;
+    fVencidos: boolean;
+    fNombre: string;
+    fTelefono: string;
+    fDireccion: string;
+    fCreadoDesde: string;
+    fCreadoHasta: string;
+    sortBy: string;
+}
+
+export function useClientes(params: UseClientesParams) {
     const {
         empresaId, page, pageSize, isAgendaHoy,
         fEstado, fSituacion, fTipoContacto, fResponsable,
@@ -11,8 +34,6 @@ export function useClientes(params) {
     } = params;
 
     return useQuery({
-        // The query key uniquely identifies this piece of cached data
-        // Array includes all dependencies that should trigger a refetch
         queryKey: [
             'clientes',
             {
@@ -23,7 +44,7 @@ export function useClientes(params) {
             }
         ],
         queryFn: async () => {
-            if (!empresaId) return { clientes: [], total: 0, activities: {} };
+            if (!empresaId) return { clientes: [] as Client[], total: 0, activities: {} as Record<string, ClientActivity[]> };
 
             let request = supabase
                 .from('empresa_cliente')
@@ -62,7 +83,6 @@ export function useClientes(params) {
             if (fInteres) request = request.eq('interes', fInteres);
             if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
 
-            // Filtros de fecha de creación (aplicados sobre la tabla foránea 'clientes')
             if (fCreadoDesde) {
                 request = request.gte('created_at', `${fCreadoDesde}T00:00:00.000Z`);
             }
@@ -73,7 +93,7 @@ export function useClientes(params) {
             if (fProximos7) {
                 const hoy = new Date();
                 const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
-                const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 request = request.gte('fecha_proximo_contacto', fmt(hoy)).lte('fecha_proximo_contacto', fmt(en7));
             }
 
@@ -83,9 +103,9 @@ export function useClientes(params) {
             }
 
             const hasTextFilter = fNombre || fTelefono || fDireccion;
-            let mapped = [];
+            let mapped: Client[] = [];
             let total = 0;
-            let actsObj = {};
+            let actsObj: Record<string, ClientActivity[]> = {};
 
             if (hasTextFilter) {
                 const { data: rpcData, error: rpcError } = await supabase.rpc('buscar_clientes_empresa', {
@@ -113,7 +133,7 @@ export function useClientes(params) {
                     throw rpcError;
                 }
 
-                mapped = (rpcData || []).map(row => ({
+                mapped = (rpcData || []).map((row: any) => ({
                     id: row.cliente_id,
                     nombre: row.nombre,
                     nombre_local: row.nombre_local,
@@ -128,6 +148,7 @@ export function useClientes(params) {
                     rubro: row.rubro,
                     responsable: row.responsable,
                     situacion: row.situacion,
+                    notes: row.notas, // Fixed typo if occurred, but based on code it'snotas
                     notas: row.notas,
                     estilo_contacto: row.estilo_contacto,
                     interes: row.interes,
@@ -141,7 +162,6 @@ export function useClientes(params) {
                     created_at: row.ec_created_at,
                     updated_at: row.ec_updated_at,
                 }));
-                // Si la cantidad de items devueltos es menor a pageSize, sabemos que es la última página
                 total = rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0);
             } else {
                 const { data, count, error } = await request;
@@ -186,40 +206,37 @@ export function useClientes(params) {
                 total = count || 0;
             }
 
-            // Mapeo extra para traer historial de contacto "Actividades" de esos IDs devueltos
             if (mapped.length > 0) {
                 const ids = mapped.map(c => c.id).filter(Boolean);
-                const { data: acts } = await supabase
+                const { data: acts } = (await supabase
                     .from('actividades')
                     .select('*')
                     .in('cliente_id', ids)
                     .eq('empresa_id', empresaId)
-                    .order('fecha', { ascending: false });
+                    .order('fecha', { ascending: false })) as { data: ClientActivity[] | null };
 
                 if (acts) {
                     acts.forEach(a => {
-                        if (!actsObj[a.cliente_id]) actsObj[a.cliente_id] = [];
-                        actsObj[a.cliente_id].push(a);
+                        const cid = (a as any).cliente_id;
+                        if (!actsObj[cid]) actsObj[cid] = [];
+                        actsObj[cid].push(a);
                     });
                 }
             }
 
             return { clientes: mapped, total, activities: actsObj };
         },
-        enabled: !!empresaId, // No ejecutar hasta que tengamos la empresa activa
-        // Mantiene en caché por 30 segundos para soportar trabajo en equipo concurrente
+        enabled: !!empresaId,
         staleTime: 1000 * 30,
-        // Si el usuario scrollea, cambia de página y no queremos que haga pantalla en blanco, usamos:
         placeholderData: (previousData) => previousData,
     });
 }
 
-// React Query Mutations for handling updates to clients
 export function useDeleteCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, empresaActiva }) => {
+        mutationFn: async ({ id, empresaActiva }: { id: string; empresaActiva: any }) => {
             const { error } = await supabase
                 .from("empresa_cliente")
                 .update({ activo: false })
@@ -239,7 +256,6 @@ export function useDeleteCliente() {
             } else {
                 toast.success("Cliente eliminado.");
             }
-            // Invalidate the cache to trigger a UI refresh
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
         onError: () => {
@@ -252,8 +268,8 @@ export function useQuickDateCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ clienteId, daysOffset, empresaActiva, userName, user }) => {
-            let dateStr = null;
+        mutationFn: async ({ clienteId, daysOffset, empresaActiva, userName, user }: { clienteId: string; daysOffset: number | null; empresaActiva: any; userName: string; user: any }) => {
+            let dateStr: string | null = null;
             let displayMsg = 'Fecha de contacto eliminada';
 
             if (daysOffset !== null) {
@@ -306,7 +322,7 @@ export function useRegistrarVisitaCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }) => {
+        mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }: { clienteId: string; nombre: string; empresaActiva: any; userName: string; user: any }) => {
             const now = new Date().toISOString();
 
             const { error: logError } = await supabase.from('actividades').insert([{

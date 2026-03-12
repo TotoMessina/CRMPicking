@@ -1,6 +1,22 @@
+import React from 'react';
 import { Button } from '../ui/Button';
+import { Activator } from '../../hooks/useStatistics';
 
-export const StatsFilters = ({ 
+interface Props {
+    rangePreset: string;
+    setRangePreset: (val: string) => void;
+    dateFrom: string;
+    setDateFrom: (val: string) => void;
+    dateTo: string;
+    setDateTo: (val: string) => void;
+    filterActivator: string;
+    setFilterActivator: (val: string) => void;
+    activators: Activator[];
+    refreshStats: () => void;
+    loading: boolean;
+}
+
+export const StatsFilters: React.FC<Props> = ({ 
     rangePreset, setRangePreset, 
     dateFrom, setDateFrom, 
     dateTo, setDateTo, 
