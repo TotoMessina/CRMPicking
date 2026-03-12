@@ -6,7 +6,7 @@ import { CommandPalette } from '../ui/CommandPalette';
 import { EmpresaSelector } from '../ui/EmpresaSelector';
 import {
     LogOut, Moon, Sun, Bell, MapPin, Users, Activity,
-    Map, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, ChevronDown, Shield
+    Map, Settings, Calendar, Clock, ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, ChevronDown, Shield, Database
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -173,6 +173,7 @@ export function AppShell() {
         { to: '/usuarios', icon: Users, label: 'Usuarios' },
         { to: '/empresas', icon: Building2, label: 'Empresas', adminOnly: true },
         { to: '/permisos-empresa', icon: Shield, label: 'Permisos', superAdminOnly: true },
+        { to: '/actividad-sistema', icon: Database, label: 'Auditoría', adminOnly: true },
         { to: '/configuracion', icon: Settings, label: 'Configuración' },
     ];
 

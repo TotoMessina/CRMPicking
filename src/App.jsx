@@ -26,6 +26,7 @@ const Chat = lazy(() => import('./pages/Chat'));
 const TableroTareas = lazy(() => import('./pages/TableroTareas'));
 const Empresas = lazy(() => import('./pages/Empresas'));
 const PermisosEmpresa = lazy(() => import('./pages/PermisosEmpresa'));
+const ActividadSistema = lazy(() => import('./pages/ActividadSistema'));
 
 function App() {
   return (
@@ -57,6 +58,7 @@ function App() {
             <Route path="/usuarios" element={<Suspense fallback={<GlobalLoader />}><Usuarios /></Suspense>} />
             <Route path="/empresas" element={<Suspense fallback={<GlobalLoader />}><Empresas /></Suspense>} />
             <Route path="/permisos-empresa" element={<Suspense fallback={<GlobalLoader />}><PermisosEmpresa /></Suspense>} />
+            <Route path="/actividad-sistema" element={<Suspense fallback={<GlobalLoader />}><ActividadSistema /></Suspense>} />
             <Route path="/configuracion" element={<Suspense fallback={<GlobalLoader />}><Configuracion /></Suspense>} />
           </Route>
         </Routes>
