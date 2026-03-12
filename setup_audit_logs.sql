@@ -14,6 +14,16 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Ensure the foreign key exists even if the table was created previously without it
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'audit_logs_changed_by_fkey') THEN
+        ALTER TABLE public.audit_logs 
+        ADD CONSTRAINT audit_logs_changed_by_fkey 
+        FOREIGN KEY (changed_by) REFERENCES public.usuarios(id);
+    END IF;
+END $$;
+
 -- 2. Enable RLS and Permissions
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 

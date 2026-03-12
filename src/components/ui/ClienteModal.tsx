@@ -358,9 +358,15 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                     p_rubro: payload.rubro,
                     p_estado: payload.estado,
                     p_responsable: payload.responsable,
+                    p_interes: payload.interes,
+                    p_estilo_contacto: payload.estilo_contacto,
+                    p_venta_digital: payload.venta_digital,
+                    p_venta_digital_cual: payload.venta_digital_cual,
                     p_situacion: payload.situacion,
                     p_notas: payload.notas,
                     p_tipo_contacto: payload.tipo_contacto,
+                    p_fecha_proximo_contacto: payload.fecha_proximo_contacto,
+                    p_hora_proximo_contacto: payload.hora_proximo_contacto,
                     p_creado_por: creadoPor
                 }
             });
