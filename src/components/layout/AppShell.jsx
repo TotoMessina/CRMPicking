@@ -173,7 +173,7 @@ export function AppShell() {
         { to: '/usuarios', icon: Users, label: 'Usuarios' },
         { to: '/empresas', icon: Building2, label: 'Empresas', adminOnly: true },
         { to: '/permisos-empresa', icon: Shield, label: 'Permisos', superAdminOnly: true },
-        { to: '/actividad-sistema', icon: Database, label: 'Auditoría', adminOnly: true },
+        { to: '/actividad-sistema', icon: Database, label: 'Auditoría' },
         { to: '/configuracion', icon: Settings, label: 'Configuración' },
     ];
 

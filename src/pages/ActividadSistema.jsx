@@ -6,7 +6,10 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function ActividadSistema() {
-    const { user, isAdmin } = useAuth();
+    const { user, paginasPermitidas, role } = useAuth();
+    const isSuperAdmin = role === 'super-admin';
+    const hasAccess = isSuperAdmin || (paginasPermitidas && paginasPermitidas['/actividad-sistema']?.includes(role));
+    
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -14,9 +17,9 @@ export default function ActividadSistema() {
     const pageSize = 50;
 
     useEffect(() => {
-        if (!isAdmin) return;
+        if (!hasAccess) return;
         fetchLogs();
-    }, [page, isAdmin]);
+    }, [page, hasAccess]);
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -91,11 +94,11 @@ export default function ActividadSistema() {
         );
     };
 
-    if (!isAdmin) {
+    if (!hasAccess) {
         return (
             <div className="page-container" style={{ textAlign: 'center', padding: '100px 20px' }}>
                 <h2 style={{ color: 'var(--danger)' }}>Acceso Denegado</h2>
-                <p className="muted">Sólo los administradores pueden ver el registro de auditoría del sistema.</p>
+                <p className="muted">No tienes permisos para ver el registro de auditoría del sistema.</p>
             </div>
         );
     }
