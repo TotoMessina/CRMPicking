@@ -9,7 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export const LocationTracker = () => {
     const { user } = useAuth();
     const lastReportedTime = useRef(0);
-    const REPORT_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
+    const REPORT_INTERVAL = 30 * 1000; // 30 seconds for testing
     const watchId = useRef(null);
 
     useEffect(() => {
@@ -17,11 +17,16 @@ export const LocationTracker = () => {
 
         const updateLocation = async (position) => {
             const now = Date.now();
+            console.log('Location change detected:', position.coords);
             
             // Only report if enough time has passed (throttle)
-            if (now - lastReportedTime.current < REPORT_INTERVAL) return;
+            if (now - lastReportedTime.current < REPORT_INTERVAL) {
+                console.log('Reporting throttled. Needs to wait:', (REPORT_INTERVAL - (now - lastReportedTime.current)) / 1000, 's');
+                return;
+            }
 
             const { latitude: lat, longitude: lng } = position.coords;
+            console.log('Reporting location to Supabase...', { lat, lng });
 
             try {
                 const { error } = await supabase
@@ -35,16 +40,21 @@ export const LocationTracker = () => {
 
                 if (!error) {
                     lastReportedTime.current = now;
-                    console.log('Location reported:', { lat, lng });
+                    console.log('✅ Location reported successfully to usuarios table');
+                } else {
+                    console.error('❌ Error reporting location:', error);
                 }
             } catch (err) {
-                console.error('Error reporting location:', err);
+                console.error('❌ Exception in LocationTracker:', err);
             }
         };
 
         const handleError = (error) => {
             console.error('Geolocation error:', error);
         };
+
+        // Initial check
+        navigator.geolocation.getCurrentPosition(updateLocation, handleError, { enableHighAccuracy: true });
 
         // Start watching position
         watchId.current = navigator.geolocation.watchPosition(
@@ -53,14 +63,20 @@ export const LocationTracker = () => {
             {
                 enableHighAccuracy: true,
                 timeout: 30000,
-                maximumAge: 60000
+                maximumAge: 0
             }
         );
+
+        // Also a periodic check every 30s to force update last_seen even if stationary
+        const interval = setInterval(() => {
+            navigator.geolocation.getCurrentPosition(updateLocation, handleError, { enableHighAccuracy: true });
+        }, REPORT_INTERVAL);
 
         return () => {
             if (watchId.current !== null) {
                 navigator.geolocation.clearWatch(watchId.current);
             }
+            clearInterval(interval);
         };
     }, [user]);
 

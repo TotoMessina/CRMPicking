@@ -36,6 +36,7 @@ export default function MapaActivadores() {
 
     const [activadores, setActivadores] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [mapReady, setMapReady] = useState(false);
 
     const fetchActivadores = async () => {
         setLoading(true);
@@ -85,6 +86,7 @@ export default function MapaActivadores() {
 
             setTimeout(() => {
                 m.invalidateSize();
+                setMapReady(true);
             }, 250);
 
             mapRef.current = m;
@@ -148,7 +150,7 @@ export default function MapaActivadores() {
                 </div>
             `);
         });
-    }, [activadores]);
+    }, [activadores, mapReady]);
 
     return (
         <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px' }}>

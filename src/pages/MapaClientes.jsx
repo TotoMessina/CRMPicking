@@ -98,6 +98,7 @@ export default function MapaClientes() {
     const [showActivadores, setShowActivadores] = useState(true);
     const [showZones, setShowZones] = useState(true);
     const [zoneType, setZoneType] = useState('today');
+    const [mapReady, setMapReady] = useState(false);
 
     // Filters & Coloring
     const [colorMode, setColorMode] = useState('estado'); // estado, creador, interes, estilo
@@ -212,7 +213,10 @@ export default function MapaClientes() {
                 u.role?.toLowerCase().includes('activador') || 
                 u.role?.toLowerCase().includes('admin')
             );
+            console.log('Activadores fetched:', filtered.length, filtered);
             setActivadores(filtered);
+        } else {
+            console.error('Error fetching activadores for map:', error);
         }
     };
 
@@ -321,6 +325,7 @@ export default function MapaClientes() {
             setTimeout(() => {
                 if (mapRef.current) {
                     mapRef.current.invalidateSize();
+                    setMapReady(true);
                     loadZonas();
                 }
             }, 250);
@@ -432,7 +437,7 @@ export default function MapaClientes() {
                 });
             }
         });
-    }, [clientes, colorMode, activeFilters, isRoutingMode, routeStops]);
+    }, [clientes, colorMode, activeFilters, isRoutingMode, routeStops, mapReady]);
 
     // Render Activadores
     useEffect(() => {
@@ -466,7 +471,7 @@ export default function MapaClientes() {
                 </div>
             `);
         });
-    }, [activadores, showActivadores]);
+    }, [activadores, showActivadores, mapReady]);
 
     const handleLocateMe = () => {
         if (!navigator.geolocation) return toast.error("Geolocalización no soportada");
