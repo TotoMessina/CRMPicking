@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAppShell } from '../../hooks/useAppShell';
+import { LocationTracker } from '../ui/LocationTracker';
 import { CommandPalette } from '../ui/CommandPalette';
 import { EmpresaSelector } from '../ui/EmpresaSelector';
 import { LogOut, Sun, Moon, Bell, Building2, ChevronDown } from 'lucide-react';
@@ -122,6 +123,7 @@ export function AppShell() {
                     </div>
                 </main>
             </div>
+            <LocationTracker />
             <CommandPalette />
         </div>
     );

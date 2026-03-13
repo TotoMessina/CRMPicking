@@ -11,6 +11,7 @@ import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import 'leaflet-routing-machine';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
+import { Clock, User } from 'lucide-react';
 
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { useClientesMapa } from '../hooks/useClientesMapa';
@@ -53,6 +54,22 @@ const ESTILO_COLORS = {
     "Sin definir": "#64748b"
 };
 
+const timeSince = (date) => {
+    if (!date) return 'Nunca';
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " años";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " meses";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " días";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + " horas";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + " min";
+    return Math.floor(seconds) + " seg";
+};
+
 const CREATOR_COLORS = {};
 function getColorForCreator(user) {
     const key = (user || "Desconocido").trim();
@@ -74,8 +91,11 @@ export default function MapaClientes() {
     const mapRef = useRef(null);
     const markersLayerRef = useRef(null);
     const drawnZonesRef = useRef(null);
+    const markersActivadoresLayerRef = useRef(null);
 
     const { data: clientes = [], isLoading: loading, refetch: fetchClientes } = useClientesMapa(empresaActiva?.id);
+    const [activadores, setActivadores] = useState([]);
+    const [showActivadores, setShowActivadores] = useState(true);
     const [showZones, setShowZones] = useState(true);
     const [zoneType, setZoneType] = useState('today');
 
@@ -179,6 +199,29 @@ export default function MapaClientes() {
         };
     }, [empresaActiva]);
 
+    const fetchActivadores = async () => {
+        const { data, error } = await supabase
+            .from("usuarios")
+            .select("id, nombre, email, role, lat, lng, last_seen, avatar_emoji")
+            .not("lat", "is", null)
+            .not("lng", "is", null)
+            .eq("activo", true);
+
+        if (!error) {
+            const filtered = (data || []).filter(u => 
+                u.role?.toLowerCase().includes('activador') || 
+                u.role?.toLowerCase().includes('admin')
+            );
+            setActivadores(filtered);
+        }
+    };
+
+    useEffect(() => {
+        fetchActivadores();
+        const interval = setInterval(fetchActivadores, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
     // Initialize Map
     useEffect(() => {
         if (!mapContainerRef.current) return;
@@ -190,6 +233,7 @@ export default function MapaClientes() {
             }).addTo(m);
 
             markersLayerRef.current = L.layerGroup().addTo(m);
+            markersActivadoresLayerRef.current = L.layerGroup().addTo(m);
             drawnZonesRef.current = new L.FeatureGroup().addTo(m);
 
             m.isDrawing = false;
@@ -390,6 +434,40 @@ export default function MapaClientes() {
         });
     }, [clientes, colorMode, activeFilters, isRoutingMode, routeStops]);
 
+    // Render Activadores
+    useEffect(() => {
+        if (!mapRef.current || !markersActivadoresLayerRef.current) return;
+        const layer = markersActivadoresLayerRef.current;
+        layer.clearLayers();
+
+        if (!showActivadores) return;
+
+        activadores.forEach(user => {
+            const emoji = user.avatar_emoji || '📍';
+            const iconHtml = `
+                <div style="font-size: 24px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 0 4px rgba(0,0,0,0.4)); cursor: pointer;">
+                    ${emoji}
+                </div>
+            `;
+            const icon = L.divIcon({ className: "", html: iconHtml, iconSize: [30, 30], iconAnchor: [15, 15] });
+            const marker = L.marker([user.lat, user.lng], { icon, title: user.nombre }).addTo(layer);
+
+            marker.bindPopup(`
+                <div style="min-width:180px; padding: 5px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span style="font-size: 20px;">${emoji}</span>
+                        <div style="font-weight:700;">${user.nombre}</div>
+                    </div>
+                    <div style="background: var(--bg-body); padding: 8px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span>🕒 Visto hace: <b>${timeSince(user.last_seen)}</b></span>
+                        </div>
+                    </div>
+                </div>
+            `);
+        });
+    }, [activadores, showActivadores]);
+
     const handleLocateMe = () => {
         if (!navigator.geolocation) return toast.error("Geolocalización no soportada");
 
@@ -527,6 +605,10 @@ export default function MapaClientes() {
 
                     <Button variant={showZones ? 'primary' : 'secondary'} onClick={() => setShowZones(!showZones)}>
                         <Layers size={16} /> {showZones ? 'Zonas: ON' : 'Zonas: OFF'}
+                    </Button>
+
+                    <Button variant={showActivadores ? 'primary' : 'secondary'} onClick={() => setShowActivadores(!showActivadores)}>
+                        <User size={16} /> {showActivadores ? 'Activadores: ON' : 'Activadores: OFF'}
                     </Button>
 
                     {showZones && (
