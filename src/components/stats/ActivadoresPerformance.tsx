@@ -1,5 +1,7 @@
 import React from 'react';
-import { STATS_THEME } from '../../constants/statsConstants';
+import { Bar } from 'react-chartjs-2';
+import { STATS_THEME, COMMON_CHART_OPTIONS } from '../../constants/statsConstants';
+import { ChartsData } from '../../hooks/useStatistics';
 
 interface StatusBreakdown {
     st: string;
@@ -24,14 +26,58 @@ interface ActivatorStat {
 interface Props {
     stats: ActivatorStat[];
     detail: ActivatorDetail[];
+    chartsData: ChartsData;
     filterActivator: string;
 }
 
-export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, filterActivator }) => {
+export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsData, filterActivator }) => {
     if (!stats || stats.length === 0) return null;
 
     return (
         <section className="tab-content active">
+            {/* Top Charts Section */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '28px' }}>
+                {/* 1. Efectividad de Conversión */}
+                <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Efectividad de Conversión (%)</h3>
+                    <div style={{ height: '300px' }}>
+                        {chartsData.activadoresConversion && (
+                            <Bar 
+                                data={chartsData.activadoresConversion} 
+                                options={{
+                                    ...COMMON_CHART_OPTIONS,
+                                    indexAxis: 'y' as const,
+                                    plugins: {
+                                        ...COMMON_CHART_OPTIONS.plugins,
+                                        legend: { display: false }
+                                    }
+                                }} 
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* 2. Actividad Diaria por Estado */}
+                <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Altas por Estado por Día</h3>
+                    <div style={{ height: '300px' }}>
+                        {chartsData.activadoresDia && (
+                            <Bar 
+                                data={chartsData.activadoresDia} 
+                                options={{
+                                    ...COMMON_CHART_OPTIONS,
+                                    scales: {
+                                        ...COMMON_CHART_OPTIONS.scales,
+                                        x: { ...COMMON_CHART_OPTIONS.scales.x, stacked: true },
+                                        y: { ...COMMON_CHART_OPTIONS.scales.y, stacked: true }
+                                    }
+                                }} 
+                            />
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {/* Per-activator KPI cards grid */}
             <div style={{ marginBottom: '28px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>

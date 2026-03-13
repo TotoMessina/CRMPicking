@@ -78,6 +78,7 @@ const Estadisticas: React.FC = () => {
                     <ActivadoresPerformance 
                         stats={listsData.activadoresStats} 
                         detail={listsData.activadoresDetalle} 
+                        chartsData={chartsData}
                         filterActivator={filterActivator} 
                     />
                 </ErrorBoundary>

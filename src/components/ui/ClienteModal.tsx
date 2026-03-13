@@ -141,7 +141,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
             setOriginalData(merged);
             setErrors({});
         }
-        setLoading(true); // Wait, this should be false? The original code had setLoading(false) here. 
         setLoading(false);
     };
 
@@ -376,10 +375,17 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                 err = rpcErr;
             } else if (result) {
                 console.log('DEBUG: Cliente creado exitosamente via RPC. ID:', result);
-                // Automatically count as 1 visit for the creator
+                
+                // Enhanced creation logging
+                const isMapCreation = !!initialLocation;
+                const icon = isMapCreation ? '📍' : '🆕';
+                const origin = isMapCreation ? 'Alta de local desde el mapa' : 'Alta de cliente';
+                const initialStatus = payload.estado || 'Sin estado';
+                const desc = `${icon} ${origin} - Estado inicial: ${initialStatus}`;
+
                 const { error: actErr } = await supabase.from('actividades').insert([{
                     cliente_id: result,
-                    descripcion: 'Visita realizada',
+                    descripcion: desc,
                     usuario: creadoPor,
                     empresa_id: empresaActiva.id,
                     fecha: new Date().toISOString()
