@@ -15,6 +15,7 @@ const ALL_PAGES = [
     { to: '/proveedores', label: 'Proveedores' },
     { to: '/calendario', label: 'Calendario' },
     { to: '/horarios', label: 'Horarios' },
+    { to: '/historial', label: 'Historial de Clientes' },
     { to: '/mapa', label: 'Mapa de Clientes' },
     { to: '/mapa-repartidores', label: 'Mapa Repartidores' },
     { to: '/kiosco', label: 'Mapa Kiosco' },
@@ -259,13 +260,16 @@ export default function PermisosEmpresa() {
 
                                         {/* Toggle ON/OFF */}
                                         <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                                            <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '8px' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isEnabled}
-                                                    onChange={() => toggleHabilitada(page.to)}
-                                                    style={{ display: 'none' }}
-                                                />
+                                            <div 
+                                                onClick={() => toggleHabilitada(page.to)}
+                                                style={{ 
+                                                    display: 'inline-flex', 
+                                                    alignItems: 'center', 
+                                                    cursor: 'pointer', 
+                                                    gap: '8px',
+                                                    userSelect: 'none'
+                                                }}
+                                            >
                                                 <div style={{
                                                     width: '40px', height: '22px', borderRadius: '11px',
                                                     background: isEnabled ? 'var(--accent)' : 'var(--border)',
@@ -282,7 +286,7 @@ export default function PermisosEmpresa() {
                                                 <span style={{ fontSize: '0.82rem', color: isEnabled ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 600 }}>
                                                     {isEnabled ? 'ON' : 'OFF'}
                                                 </span>
-                                            </label>
+                                            </div>
                                         </td>
 
                                         {/* Role checkboxes */}

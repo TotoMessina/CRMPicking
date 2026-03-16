@@ -129,7 +129,7 @@ export const useAppShell = () => {
         const isSuperAdmin = role === 'super-admin';
         const isActivador = role?.includes('activador');
         const isAdmin = role === 'admin' || role === 'super-admin';
-        const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero']);
+        const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial']);
 
         const allItems = [
             { to: '/', icon: MapPin, label: 'Inicio' },
@@ -142,6 +142,7 @@ export const useAppShell = () => {
             { to: '/proveedores', icon: ShoppingCart, label: 'Proveedores' },
             { to: '/calendario', icon: Calendar, label: 'Calendario' },
             { to: '/horarios', icon: Clock, label: 'Horarios' },
+            { to: '/historial', icon: Clock, label: 'Buscador Historial' },
             { to: '/mapa', icon: Map, label: 'Mapa Clientes' },
             { to: '/mapa-repartidores', icon: Map, label: 'Mapa Repartidores' },
             { to: '/kiosco', icon: ShoppingCart, label: 'Mapa Kiosco' },
