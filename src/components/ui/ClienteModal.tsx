@@ -271,6 +271,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                 telefono: payload.telefono,
                 mail: payload.mail,
                 cuit: payload.cuit,
+                // Business synchronization to prevent legacy trigger overwrites
+                estado: payload.estado,
+                rubro: payload.rubro,
+                responsable: payload.responsable,
+                situacion: payload.situacion,
+                notas: payload.notas,
+                fecha_proximo_contacto: payload.fecha_proximo_contacto,
             };
             const companyFields = {
                 estado: payload.estado,

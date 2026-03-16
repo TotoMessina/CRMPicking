@@ -139,7 +139,7 @@ export const useClientsLogic = () => {
 
     const handleDescargarExcel = async () => {
         setExportLoading(true);
-        await exportarClientesExcel(empresaActiva, () => setExportLoading(false));
+        await exportarClientesExcel(empresaActiva, filters, () => setExportLoading(false));
     };
 
     return {

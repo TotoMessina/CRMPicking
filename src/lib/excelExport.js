@@ -16,16 +16,16 @@ export const descargarModeloClientes = () => {
         const ws = window.XLSX.utils.aoa_to_sheet(data);
         window.XLSX.utils.book_append_sheet(wb, ws, "Modelo");
 
-        const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([new Uint8Array(wbout)], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "modelo_clientes_crm.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "modelo_clientes_crm.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+        }, 1000);
         toast.success("Modelo descargado correctamente", { id: toastId });
     } catch (error) {
         console.error("Error al generar modelo:", error);
@@ -48,16 +48,16 @@ export const descargarModeloConsumidores = () => {
         const ws = window.XLSX.utils.aoa_to_sheet(data);
         window.XLSX.utils.book_append_sheet(wb, ws, "Modelo Consumidores");
 
-        const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([new Uint8Array(wbout)], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "modelo_consumidores_crm.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "modelo_consumidores_crm.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+        }, 1000);
         toast.success("Modelo descargado correctamente", { id: toastId });
     } catch (error) {
         console.error("Error al generar modelo consumidores:", error);
@@ -80,16 +80,16 @@ export const descargarModeloRepartidores = () => {
         const ws = window.XLSX.utils.aoa_to_sheet(data);
         window.XLSX.utils.book_append_sheet(wb, ws, "Modelo Repartidores");
 
-        const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([new Uint8Array(wbout)], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "modelo_repartidores_crm.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "modelo_repartidores_crm.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+        }, 1000);
         toast.success("Modelo descargado correctamente", { id: toastId });
     } catch (error) {
         console.error("Error al generar modelo repartidores:", error);
@@ -170,72 +170,90 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
     }
 };
 
-export const exportarClientesExcel = async (empresaActiva, onFinally) => {
-    const toastId = toast.loading('Calculando exportación...');
+export const exportarClientesCSV = async (empresaActiva, filters = {}, onFinally) => {
+    const toastId = toast.loading('Generando CSV conforme a los filtros...');
     try {
-        const { data: allRows, error: errCli } = await supabase
+        let query = supabase
             .from("empresa_cliente")
-            .select("*, clientes(*)")
+            .select("*, clientes!inner(*)")
             .eq("empresa_id", empresaActiva?.id)
             .eq("activo", true);
 
+        // Apply filters (same logic as before)
+        if (filters.estado && filters.estado !== 'Todos') query = query.eq('estado', filters.estado);
+        if (filters.situacion && filters.situacion !== 'Todos') query = query.eq('situacion', filters.situacion);
+        if (filters.tipoContacto && filters.tipoContacto !== 'Todos') query = query.eq('tipo_contacto', filters.tipoContacto);
+        if (filters.responsable) query = query.eq('responsable', filters.responsable);
+        if (filters.rubro) query = query.eq('rubro', filters.rubro);
+        if (filters.interes) query = query.eq('interes', filters.interes);
+        if (filters.estilo) query = query.eq('estilo_contacto', filters.estilo);
+        
+        if (filters.creadoDesde) query = query.gte('created_at', `${filters.creadoDesde}T00:00:00.000Z`);
+        if (filters.creadoHasta) query = query.lte('created_at', `${filters.creadoHasta}T23:59:59.999Z`);
+
+        if (filters.nombre) query = query.ilike('clientes.nombre_local', `%${filters.nombre}%`);
+        if (filters.telefono) query = query.ilike('clientes.telefono', `%${filters.telefono}%`);
+        if (filters.direccion) query = query.ilike('clientes.direccion', `%${filters.direccion}%`);
+
+        const { data: allRows, error: errCli } = await query;
         if (errCli) throw errCli;
 
-        const ids = (allRows || []).map(r => r.clientes?.id);
-        const { data: allActividades, error: errAct } = await supabase
-            .from("actividades")
-            .select("cliente_id, fecha, usuario, descripcion")
-            .in("cliente_id", ids)
-            .eq("empresa_id", empresaActiva?.id);
+        if (!allRows || allRows.length === 0) {
+            toast.error('No hay datos para exportar', { id: toastId });
+            return;
+        }
 
-        if (errAct) throw errAct;
+        // Generate CSV content
+        const firstRow = allRows[0];
+        const ecKeys = Object.keys(firstRow).filter(k => k !== 'clientes');
+        const cKeys = Object.keys(firstRow.clientes || {});
+        
+        const headers = [...cKeys.map(k => `c_${k}`), ...ecKeys];
+        
+        let csvContent = headers.join(";") + "\n"; // Using semicolon for Spanish Excel compatibility
 
-        const wb = window.XLSX.utils.book_new();
-
-        // Sheet 1: Clientes
-        const dataClientes = [["id", "nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas"]];
         allRows.forEach(r => {
             const c = r.clientes || {};
-            dataClientes.push([
-                c.id, c.nombre || r.nombre_local || "", c.telefono || "", c.direccion || r.direccion || "", r.rubro || "",
-                r.estado || "", r.responsable || "", r.tipo_contacto || "", r.fecha_proximo_contacto || "",
-                r.hora_proximo_contacto || "", r.notas || ""
-            ]);
+            const values = [];
+            
+            cKeys.forEach(k => values.push(`"${String(c[k] || "").replace(/"/g, '""')}"`));
+            ecKeys.forEach(k => values.push(`"${String(r[k] || "").replace(/"/g, '""')}"`));
+            
+            csvContent += values.join(";") + "\n";
         });
-        const wsClientes = window.XLSX.utils.aoa_to_sheet(dataClientes);
-        window.XLSX.utils.book_append_sheet(wb, wsClientes, "Clientes");
 
-        // Sheet 2: Historial
-        const rowByClientId = {};
-        allRows.forEach(r => (rowByClientId[r.clientes?.id] = r));
-        const dataHist = [["cliente_id", "nombre_cliente", "telefono_cliente", "fecha", "usuario", "descripcion"]];
-        (allActividades || []).forEach(a => {
-            const r = rowByClientId[a.cliente_id] || {};
-            const c = r.clientes || {};
-            dataHist.push([a.cliente_id, c.nombre || r.nombre_local || "", c.telefono || "", a.fecha || "", a.usuario || "", a.descripcion || ""]);
-        });
-        const wsHist = window.XLSX.utils.aoa_to_sheet(dataHist);
-        window.XLSX.utils.book_append_sheet(wb, wsHist, "Historial");
-
-        const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([new Uint8Array(wbout)], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `crm_${empresaActiva?.nombre || 'export'}_clientes.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        toast.success('Excel descargado correctamente', { id: toastId });
+        // Create Data URI instead of Blob for better filename persistence
+        // Note: Incorporating BOM inside encodeURIComponent for better reliability
+        const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent("\ufeff" + csvContent);
+        const link = document.createElement("a");
+        
+        const rawCompName = empresaActiva?.nombre || 'clientes';
+        const safeCompName = rawCompName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const timestamp = new Date().toISOString().split('T')[0];
+        const fileName = `crm_export_${safeCompName}_${timestamp}.csv`;
+        
+        link.href = encodedUri;
+        link.setAttribute("download", fileName);
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        // Slightly longer timeout and don't revoke anything (it's a data URI)
+        setTimeout(() => {
+            document.body.removeChild(link);
+        }, 1000);
+        
+        toast.success(`Exportados ${allRows.length} registros en CSV`, { id: toastId });
     } catch (error) {
-        console.error(error);
-        toast.error('Error al exportar clientes', { id: toastId });
+        console.error("Error en exportación CSV:", error);
+        toast.error('Error al exportar CSV', { id: toastId });
     } finally {
         if (onFinally) onFinally();
     }
 };
+
+export const exportarClientesExcel = exportarClientesCSV; 
 
 export const importarConsumidoresExcel = async (file, empresaActiva, onSuccess) => {
     if (!file) return;
