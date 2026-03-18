@@ -159,7 +159,8 @@ export const useAppShell = () => {
         ];
 
         if (isSuperAdmin) return allItems;
-        if (paginasPermitidas) {
+        // Only use permission-based filtering if there are actual entries configured
+        if (paginasPermitidas && Object.keys(paginasPermitidas).length > 0) {
             return allItems.filter(item => {
                 if (item.spacer) return true;
                 if (item.superAdminOnly) return false;
@@ -167,6 +168,7 @@ export const useAppShell = () => {
                 return perm && perm.includes(effectiveRole);
             });
         }
+        // Fallback: default role-based filtering
         if (isActivador) return allItems.filter(item => item.spacer || activadorRoutes.has(item.to));
         return allItems.filter(item => !item.adminOnly && !item.superAdminOnly || isAdmin);
     })();
