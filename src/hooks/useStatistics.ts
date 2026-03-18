@@ -52,7 +52,7 @@ export const useStatistics = () => {
     const [rangePreset, setRangePreset] = useState<PresetType | string>('30d');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
-    const [filterActivator, setFilterActivator] = useState('');
+    const [filterActivator, setFilterActivator] = useState<string[]>([]);
     
     const [loading, setLoading] = useState(false);
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -198,7 +198,7 @@ export const useStatistics = () => {
                 fetchAll('repartidores', 'id, created_at', q => q.eq('empresa_id', empresaActiva.id).gte('created_at', isoFrom).lt('created_at', isoTo)),
                 fetchAll('actividades', 'id, fecha, usuario, cliente_id, descripcion', q => {
                     let qq = q.eq('empresa_id', empresaActiva.id).gte('fecha', isoFrom).lt('fecha', isoTo);
-                    if (filterActivator) qq = qq.eq('usuario', filterActivator);
+                    if (filterActivator.length > 0) qq = qq.in('usuario', filterActivator);
                     return qq;
                 })
             ]);
@@ -261,7 +261,10 @@ export const useStatistics = () => {
             // Activadores logic
             const setActNames = new Set(activators.map(a => a.nombre?.trim().toLowerCase()));
             let clientesRango = clientesMeta.filter((c: any) => c.created_at >= isoFrom && c.created_at < isoTo);
-            if (filterActivator) clientesRango = clientesRango.filter((c: any) => c.creado_por?.trim().toLowerCase() === filterActivator.toLowerCase());
+            if (filterActivator.length > 0) {
+                const lowerFilters = filterActivator.map(f => f.toLowerCase());
+                clientesRango = clientesRango.filter((c: any) => lowerFilters.includes(c.creado_por?.trim().toLowerCase()));
+            }
             
             const visitasPorPersona = new Map<string, number>();
             actividadesRango.forEach((a: any) => { if (a.descripcion === 'Visita realizada' && a.usuario) visitasPorPersona.set(a.usuario, (visitasPorPersona.get(a.usuario) || 0) + 1); });

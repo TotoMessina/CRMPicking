@@ -27,7 +27,7 @@ interface Props {
     stats: ActivatorStat[];
     detail: ActivatorDetail[];
     chartsData: ChartsData;
-    filterActivator: string;
+    filterActivator: string[];
 }
 
 export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsData, filterActivator }) => {
@@ -82,9 +82,9 @@ export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsD
             <div style={{ marginBottom: '28px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                     <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
-                        {filterActivator ? `📊 ${filterActivator}` : '📊 Rendimiento por Activador'}
+                        {filterActivator.length > 0 ? `📊 ${filterActivator.join(', ')}` : '📊 Rendimiento por Activador'}
                     </h3>
-                    {!filterActivator && (
+                    {filterActivator.length === 0 && (
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 10px', borderRadius: '99px' }}>
                             {stats.length} activadores
                         </span>
