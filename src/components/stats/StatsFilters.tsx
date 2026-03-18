@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Users, ChevronDown, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Activator } from '../../hooks/useStatistics';
 
@@ -77,27 +78,94 @@ export const StatsFilters: React.FC<Props> = ({
                 <div style={{ position: 'relative' }} ref={dropdownRef}>
                     <button 
                         className="input" 
-                        style={{ minWidth: '180px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }} 
+                        style={{ 
+                            minWidth: '220px', 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            background: filterActivator.length > 0 ? 'var(--accent-soft, rgba(99, 102, 241, 0.1))' : 'var(--bg)',
+                            borderColor: filterActivator.length > 0 ? 'var(--accent, #6366f1)' : 'var(--border)',
+                            color: filterActivator.length > 0 ? 'var(--accent, #6366f1)' : 'var(--text)',
+                            transition: 'all 0.2s ease',
+                            padding: '8px 14px'
+                        }} 
                         onClick={() => setOpenActivators(!openActivators)}
                     >
-                        <span>{filterActivator.length === 0 ? '👨‍💼 Todo el Equipo' : `👨‍💼 Seleccionados (${filterActivator.length})`}</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>▼</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+                            <Users size={16} />
+                            <span>
+                                {filterActivator.length === 0 
+                                    ? 'Todo el Equipo' 
+                                    : filterActivator.length === 1 
+                                        ? filterActivator[0] 
+                                        : `${filterActivator.length} seleccionados`}
+                            </span>
+                        </div>
+                        <ChevronDown size={14} style={{ opacity: 0.7, transform: openActivators ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
                     </button>
                     {openActivators && (
-                        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px', zIndex: 10, minWidth: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '250px', overflowY: 'auto' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px', cursor: 'pointer', fontSize: '0.9rem', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
-                                <input type="checkbox" checked={filterActivator.length === 0} onChange={() => setFilterActivator([])} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
-                                Todo el Equipo
-                            </label>
-                            {activators.map(a => (
-                                <label key={a.email} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text)' }}>
-                                    <input type="checkbox" checked={filterActivator.includes(a.nombre)} onChange={(e) => {
-                                        if (e.target.checked) setFilterActivator([...filterActivator, a.nombre]);
-                                        else setFilterActivator(filterActivator.filter(f => f !== a.nombre));
-                                    }} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
-                                    {a.nombre}
-                                </label>
-                            ))}
+                        <div style={{ 
+                            position: 'absolute', top: '100%', left: 0, marginTop: '8px', 
+                            background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+                            borderRadius: '12px', padding: '8px', zIndex: 50, minWidth: '100%', 
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.2)', maxHeight: '320px', 
+                            overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px'
+                        }}>
+                            <div 
+                                onClick={() => { setFilterActivator([]); setOpenActivators(false); }}
+                                style={{ 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                                    padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', 
+                                    background: filterActivator.length === 0 ? 'var(--accent-soft, rgba(99, 102, 241, 0.15))' : 'transparent',
+                                    color: filterActivator.length === 0 ? 'var(--accent, #6366f1)' : 'var(--text)',
+                                    fontWeight: filterActivator.length === 0 ? 700 : 500,
+                                    borderBottom: '1px solid var(--border)', marginBottom: '4px',
+                                    transition: 'background 0.15s ease'
+                                }}
+                            >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    Todo el Equipo
+                                </span>
+                                {filterActivator.length === 0 && <Check size={16} />}
+                            </div>
+
+                            {activators.map(a => {
+                                const isSelected = filterActivator.includes(a.nombre);
+                                return (
+                                    <div 
+                                        key={a.email} 
+                                        onClick={() => {
+                                            if (isSelected) setFilterActivator(filterActivator.filter(f => f !== a.nombre));
+                                            else setFilterActivator([...filterActivator, a.nombre]);
+                                        }}
+                                        style={{ 
+                                            display: 'flex', alignItems: 'center', gap: '10px', 
+                                            padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', 
+                                            background: isSelected ? 'var(--accent-soft, rgba(99, 102, 241, 0.08))' : 'transparent',
+                                            color: isSelected ? 'var(--accent, #6366f1)' : 'var(--text)',
+                                            fontWeight: isSelected ? 600 : 500,
+                                            transition: 'background 0.15s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isSelected) e.currentTarget.style.background = 'var(--bg-hover, rgba(255, 255, 255, 0.05))';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isSelected) e.currentTarget.style.background = 'transparent';
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '18px', height: '18px', borderRadius: '4px',
+                                            border: `2px solid ${isSelected ? 'var(--accent, #6366f1)' : 'var(--text-muted)'}`,
+                                            background: isSelected ? 'var(--accent, #6366f1)' : 'transparent',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            transition: 'all 0.15s ease', flexShrink: 0
+                                        }}>
+                                            {isSelected && <Check size={12} color="white" strokeWidth={3} />}
+                                        </div>
+                                        <span>{a.nombre}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
