@@ -226,8 +226,15 @@ export default function MapaRepartidores() {
                     mapRef.current.setView(latlng, 15);
                 }
             },
-            () => toast.error("Error al obtener ubicación", { id: 'geo' }),
-            { enableHighAccuracy: true }
+            (err) => {
+                console.error("Geo error:", err);
+                let msg = "Error al obtener ubicación";
+                if (err.code === 1) msg = "Permiso de ubicación denegado";
+                else if (err.code === 2) msg = "Posición no disponible (activar GPS)";
+                else if (err.code === 3) msg = "Tiempo de espera agotado";
+                toast.error(msg, { id: 'geo' });
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
     };
 

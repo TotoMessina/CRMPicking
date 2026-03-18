@@ -54,7 +54,7 @@ export const LocationTracker = () => {
         };
 
         // Initial check
-        navigator.geolocation.getCurrentPosition(updateLocation, handleError, { enableHighAccuracy: true });
+        navigator.geolocation.getCurrentPosition(updateLocation, handleError, { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
 
         // Start watching position
         watchId.current = navigator.geolocation.watchPosition(
@@ -69,7 +69,7 @@ export const LocationTracker = () => {
 
         // Also a periodic check every 30s to force update last_seen even if stationary
         const interval = setInterval(() => {
-            navigator.geolocation.getCurrentPosition(updateLocation, handleError, { enableHighAccuracy: true });
+            navigator.geolocation.getCurrentPosition(updateLocation, handleError, { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
         }, REPORT_INTERVAL);
 
         return () => {
