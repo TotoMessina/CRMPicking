@@ -32,7 +32,7 @@ const ALL_PAGES = [
 const ALL_ROLES = ['admin', 'supervisor', 'activador', 'empleado'];
 
 export default function PermisosEmpresa() {
-    const { role } = useAuth();
+    const { role, empresaActiva, paginasPermitidas } = useAuth();
     const [empresas, setEmpresas] = useState([]);
     const [selectedEmpresa, setSelectedEmpresa] = useState(null);
     const [permisos, setPermisos] = useState({});
@@ -154,12 +154,16 @@ export default function PermisosEmpresa() {
         setSaving(false);
     };
 
-    if (role !== 'super-admin') {
+    const isSuperAdmin = role === 'super-admin';
+    const effectiveRole = isSuperAdmin ? 'super-admin' : (empresaActiva?.role_en_empresa?.toLowerCase() || role);
+    const hasPermission = isSuperAdmin || (paginasPermitidas && paginasPermitidas['/permisos-empresa']?.includes(effectiveRole));
+
+    if (!hasPermission) {
         return (
             <div className="container" style={{ padding: '40px', textAlign: 'center' }}>
                 <Shield size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px' }} />
                 <h2>Acceso restringido</h2>
-                <p className="muted">Esta página es solo para super-administradores.</p>
+                <p className="muted">No tenés permisos para acceder a esta página.</p>
             </div>
         );
     }
