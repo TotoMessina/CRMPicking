@@ -127,8 +127,9 @@ export const useAppShell = () => {
 
     const navItems = (() => {
         const isSuperAdmin = role === 'super-admin';
-        const isActivador = role?.includes('activador');
-        const isAdmin = role === 'admin' || role === 'super-admin';
+        const effectiveRole = isSuperAdmin ? 'super-admin' : (empresaActiva?.role_en_empresa?.toLowerCase() || role);
+        const isActivador = effectiveRole?.includes('activador');
+        const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super-admin';
         const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial']);
 
         const allItems = [
@@ -163,7 +164,7 @@ export const useAppShell = () => {
                 if (item.spacer) return true;
                 if (item.superAdminOnly) return false;
                 const perm = paginasPermitidas[item.to];
-                return perm && perm.includes(role);
+                return perm && perm.includes(effectiveRole);
             });
         }
         if (isActivador) return allItems.filter(item => item.spacer || activadorRoutes.has(item.to));
