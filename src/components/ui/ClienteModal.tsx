@@ -537,6 +537,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                                         <option value="Artículos de Limpieza">Artículos de Limpieza</option>
                                         <option value="Autoservicio">Autoservicio</option>
                                         <option value="Carnicería">Carnicería</option>
+                                        <option value="Computación">Computación</option>
                                         <option value="Cotillón">Cotillón</option>
                                         <option value="Dietética">Dietética</option>
                                         <option value="Farmacia">Farmacia</option>
