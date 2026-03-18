@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
     Search, History, User, MapPin, Phone, 
-    Calendar, ArrowLeft, Loader2, Info
+    Calendar, ArrowLeft, Loader2, Info, Activity
 } from 'lucide-react';
+import { format as formatFecha } from 'date-fns';
 import HistoryTimeline from '../components/historial/HistoryTimeline';
 import toast from 'react-hot-toast';
 
@@ -210,7 +211,7 @@ export default function Historial() {
                                     <div className="meta-grid">
                                         <div className="meta-item"><MapPin size={14} /> {selectedClient.clientes?.direccion || 'Sin dirección'}</div>
                                         <div className="meta-item"><Phone size={14} /> {selectedClient.clientes?.telefono || 'Sin teléfono'}</div>
-                                        <div className="meta-item"><Calendar size={14} /> Creado: {format(new Date(selectedClient.created_at), 'dd/MM/yyyy')}</div>
+                                        <div className="meta-item"><Calendar size={14} /> Creado: {selectedClient.created_at ? formatFecha(new Date(selectedClient.created_at), 'dd/MM/yyyy') : 'N/A'}</div>
                                     </div>
                                 </div>
                                 <div className="client-status-badge">

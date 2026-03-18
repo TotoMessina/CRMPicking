@@ -3,7 +3,7 @@ import {
     Clock, History, MessageSquare, 
     ArrowRight, MapPin, Calendar, Plus, Database 
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format as formatFecha } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const EventIcon = ({ type }) => {
@@ -80,10 +80,10 @@ export default function HistoryTimeline({ events, loading }) {
                     <div key={event.id || index} className="timeline-item">
                         <div className="timeline-left">
                             <div className="timeline-time">
-                                {format(dateObj, 'HH:mm', { locale: es })}hs
+                                {formatFecha(dateObj, 'HH:mm', { locale: es })}hs
                             </div>
                             <div className="timeline-date">
-                                {format(dateObj, 'dd MMM yyyy', { locale: es })}
+                                {formatFecha(dateObj, 'dd MMM yyyy', { locale: es })}
                             </div>
                         </div>
 
