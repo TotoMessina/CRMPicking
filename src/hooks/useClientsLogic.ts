@@ -25,7 +25,7 @@ export interface ClientFilters {
 }
 
 export const useClientsLogic = () => {
-    const { user, userName, empresaActiva }: any = useAuth();
+    const { user, userName, empresaActiva } = useAuth();
     const [searchParams] = useSearchParams();
     const isAgendaHoy = searchParams.get('agenda') === 'hoy';
 
@@ -63,7 +63,7 @@ export const useClientsLogic = () => {
     const [actTargetId, setActTargetId] = useState<string | null>(null);
     const [actTargetName, setActTargetName] = useState('');
 
-    const { data, isLoading: loading, refetch: fetchClientes }: any = useClientes({
+    const { data, isLoading: loading, refetch: fetchClientes } = useClientes({
         empresaId: empresaActiva?.id,
         page, pageSize, isAgendaHoy,
         fEstado: filters.estado, fSituacion: filters.situacion, fTipoContacto: filters.tipoContacto, 
@@ -88,14 +88,14 @@ export const useClientsLogic = () => {
             // Rubros
             const { data: rubrosData } = await supabase.from('empresa_cliente').select('rubro').eq('empresa_id', empresaActiva.id).eq('activo', true);
             if (rubrosData) {
-                const uniqueRubros = [...new Set(rubrosData.map((c: any) => c.rubro).filter((r: any) => r && r.trim() !== ''))].sort() as string[];
+                const uniqueRubros = [...new Set(rubrosData.map(c => c.rubro).filter(r => r && r.trim() !== ''))].sort() as string[];
                 setRubrosValidos(uniqueRubros);
             }
 
             // Users
             const { data: usersData } = await supabase.from('empresa_usuario').select('usuario_email, usuarios(nombre)').eq('empresa_id', empresaActiva.id);
             if (usersData) {
-                const list = usersData.map((d: any) => ({ email: d.usuario_email, nombre: d.usuarios?.nombre || d.usuario_email })).sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
+                const list = usersData.map(d => ({ email: d.usuario_email, nombre: (d.usuarios as any)?.nombre || d.usuario_email })).sort((a, b) => a.nombre.localeCompare(b.nombre));
                 setActivators(list);
             }
         };

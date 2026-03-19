@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { Database } from '../types/database.types';
 import { useAuth } from '../contexts/AuthContext';
 import { calculatePresetDates, PresetType } from '../utils/dateUtils';
 import toast from 'react-hot-toast';
@@ -46,7 +47,7 @@ export interface Activator {
 }
 
 export const useStatistics = () => {
-    const { empresaActiva }: any = useAuth();
+    const { empresaActiva } = useAuth();
     
     const [currentTab, setCurrentTab] = useState('tabApps');
     const [rangePreset, setRangePreset] = useState<PresetType | string>('30d');
@@ -144,7 +145,7 @@ export const useStatistics = () => {
         }
     };
 
-    const fetchAll = async (table: string, selectCols: string, applyFiltersFn?: (q: any) => any) => {
+    const fetchAll = async (table: keyof Database['public']['Tables'], selectCols: string, applyFiltersFn?: (q: any) => any) => {
         const out: any[] = [];
         let from = 0;
         const pageSize = 1000;

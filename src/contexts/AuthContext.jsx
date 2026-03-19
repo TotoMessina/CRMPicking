@@ -145,6 +145,27 @@ export function AuthProvider({ children }) {
     );
 }
 
+/**
+ * @typedef {import('../types/database.types').Database} Database
+ * @typedef {Database['public']['Tables']['empresas']['Row'] & { role_en_empresa?: string }} Empresa
+ * @typedef {import('@supabase/supabase-js').User} User
+ * 
+ * @typedef {Object} AuthContextType
+ * @property {function(string, string): Promise<any>} signIn
+ * @property {function(): Promise<void>} signOut
+ * @property {User|null} user
+ * @property {string|null} role
+ * @property {string|null} userName
+ * @property {boolean} loading
+ * @property {Empresa[]} empresasDisponibles
+ * @property {Empresa|null} empresaActiva
+ * @property {function(Empresa|null): void} setEmpresaActiva
+ * @property {Record<string, string[]>|null} paginasPermitidas
+ */
+
+/**
+ * @returns {AuthContextType}
+ */
 export const useAuth = () => {
     return useContext(AuthContext);
 };

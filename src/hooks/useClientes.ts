@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { Database } from '../types/database.types';
+
+type Empresa = Database['public']['Tables']['empresas']['Row'];
+type User = import('@supabase/supabase-js').User;
 import toast from 'react-hot-toast';
 import { Client, ClientActivity } from '../types/client';
 
@@ -177,7 +181,7 @@ export function useClientes(params: UseClientesParams) {
                     throw error;
                 }
 
-                mapped = (data || []).map(row => {
+                mapped = (data || []).map((row: any) => {
                     const c = row.clientes || {};
                     return {
                         id: c.id,
@@ -216,7 +220,7 @@ export function useClientes(params: UseClientesParams) {
                 const { data: acts } = (await supabase
                     .from('actividades')
                     .select('*')
-                    .in('cliente_id', ids)
+                    .in('cliente_id', ids.map(id => parseInt(id as any, 10)))
                     .eq('empresa_id', empresaId)
                     .order('fecha', { ascending: false })) as { data: ClientActivity[] | null };
 
@@ -241,11 +245,11 @@ export function useDeleteCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, empresaActiva }: { id: string; empresaActiva: any }) => {
+        mutationFn: async ({ id, empresaActiva }: { id: string; empresaActiva: Empresa | null }) => {
             const { error } = await supabase
                 .from("empresa_cliente")
                 .update({ activo: false })
-                .eq("cliente_id", id)
+                .eq("cliente_id", parseInt(id, 10))
                 .eq("empresa_id", empresaActiva?.id);
 
             if (error) {
@@ -273,7 +277,7 @@ export function useQuickDateCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ clienteId, daysOffset, empresaActiva, userName, user }: { clienteId: string; daysOffset: number | null; empresaActiva: any; userName: string; user: any }) => {
+        mutationFn: async ({ clienteId, daysOffset, empresaActiva, userName, user }: { clienteId: string; daysOffset: number | null; empresaActiva: Empresa | null; userName: string; user: User | null }) => {
             let dateStr: string | null = null;
             let displayMsg = 'Fecha de contacto eliminada';
 
@@ -287,7 +291,7 @@ export function useQuickDateCliente() {
             const { error: updateError } = await supabase
                 .from('empresa_cliente')
                 .update({ fecha_proximo_contacto: dateStr })
-                .eq('cliente_id', clienteId)
+                .eq('cliente_id', parseInt(clienteId, 10))
                 .eq('empresa_id', empresaActiva?.id);
 
             if (updateError) {
@@ -298,7 +302,7 @@ export function useQuickDateCliente() {
             const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${new Date(dateStr).toLocaleDateString('es-AR')}` : '🗑️ Fecha de próximo contacto eliminada';
 
             const { error: logError } = await supabase.from('actividades').insert([{
-                cliente_id: clienteId,
+                cliente_id: parseInt(clienteId, 10),
                 descripcion: desc,
                 usuario: userName || user?.email || 'Sistema',
                 empresa_id: empresaActiva?.id,
@@ -327,11 +331,11 @@ export function useRegistrarVisitaCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }: { clienteId: string; nombre: string; empresaActiva: any; userName: string; user: any }) => {
+        mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }: { clienteId: string; nombre: string; empresaActiva: Empresa | null; userName: string; user: User | null }) => {
             const now = new Date().toISOString();
 
             const { error: logError } = await supabase.from('actividades').insert([{
-                cliente_id: clienteId,
+                cliente_id: parseInt(clienteId, 10),
                 descripcion: 'Visita realizada',
                 fecha: now,
                 usuario: userName || user?.email || 'Sistema',
@@ -346,7 +350,7 @@ export function useRegistrarVisitaCliente() {
             const { error: updateError } = await supabase
                 .from('empresa_cliente')
                 .update({ ultima_actividad: now })
-                .eq('cliente_id', clienteId)
+                .eq('cliente_id', parseInt(clienteId, 10))
                 .eq('empresa_id', empresaActiva?.id);
 
             if (updateError) {
