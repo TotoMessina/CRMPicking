@@ -87,12 +87,11 @@ function getColorForCreator(user) {
 
 const RUBRO_COLORS = {};
 function getColorForRubro(rubro) {
-    const key = (rubro || "Sin rubro").trim();
-    if (!key) return "#94a3b8";
+    const key = (rubro || 'Sin rubro').trim();
     if (RUBRO_COLORS[key]) return RUBRO_COLORS[key];
     let hash = 0;
     for (let i = 0; i < key.length; i++) hash = key.charCodeAt(i) + ((hash << 5) - hash);
-    const color = `hsl(${Math.abs(hash) % 360}, 75%, 45%)`;
+    const color = `hsl(${Math.abs(hash) % 360}, 72%, 45%)`;
     RUBRO_COLORS[key] = color;
     return color;
 }
@@ -221,8 +220,8 @@ export default function MapaClientes() {
             .eq("activo", true);
 
         if (!error) {
-            const filtered = (data || []).filter(u => 
-                u.role?.toLowerCase().includes('activador') || 
+            const filtered = (data || []).filter(u =>
+                u.role?.toLowerCase().includes('activador') ||
                 u.role?.toLowerCase().includes('admin')
             );
             console.log('Activadores fetched:', filtered.length, filtered);
@@ -509,15 +508,8 @@ export default function MapaClientes() {
                     mapRef.current.setView(latlng, 15);
                 }
             },
-            (err) => {
-                console.error("Geo error:", err);
-                let msg = "Error al obtener ubicación";
-                if (err.code === 1) msg = "Permiso de ubicación denegado";
-                else if (err.code === 2) msg = "Posición no disponible (activar GPS)";
-                else if (err.code === 3) msg = "Tiempo de espera agotado";
-                toast.error(msg, { id: 'geo' });
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+            (err) => toast.error("Error al obtener ubicación", { id: 'geo' }),
+            { enableHighAccuracy: true }
         );
     };
 

@@ -1,9 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { Database } from '../types/database.types';
-
-type Empresa = Database['public']['Tables']['empresas']['Row'];
-type User = import('@supabase/supabase-js').User;
 import toast from 'react-hot-toast';
 import { Client, ClientActivity } from '../types/client';
 
@@ -15,7 +11,7 @@ export interface UseClientesParams {
     fEstado: string;
     fSituacion: string;
     fTipoContacto: string;
-    fResponsable: string[];
+    fResponsable: string;
     fRubro: string;
     fInteres: string;
     fEstilo: string;
@@ -82,7 +78,7 @@ export function useClientes(params: UseClientesParams) {
             if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
             if (fSituacion !== 'Todos') request = request.eq('situacion', fSituacion);
             if (fTipoContacto !== 'Todos') request = request.eq('tipo_contacto', fTipoContacto);
-            if (fResponsable && fResponsable.length > 0) request = request.in('responsable', fResponsable);
+            if (fResponsable) request = request.eq('responsable', fResponsable);
             if (fRubro) request = request.eq('rubro', fRubro);
             if (fInteres) request = request.eq('interes', fInteres);
             if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
@@ -120,7 +116,7 @@ export function useClientes(params: UseClientesParams) {
                     p_estado: fEstado !== 'Todos' ? fEstado : null,
                     p_situacion: fSituacion !== 'Todos' ? fSituacion : null,
                     p_tipo_contacto: fTipoContacto !== 'Todos' ? fTipoContacto : null,
-                    p_responsable: fResponsable && fResponsable.length === 1 ? fResponsable[0] : null,
+                    p_responsable: fResponsable || null,
                     p_rubro: fRubro || null,
                     p_interes: fInteres || null,
                     p_estilo: fEstilo || null,
@@ -166,12 +162,7 @@ export function useClientes(params: UseClientesParams) {
                     created_at: row.ec_created_at,
                     updated_at: row.ec_updated_at,
                 }));
-                if (fResponsable && fResponsable.length > 1) {
-                    mapped = mapped.filter(c => fResponsable.includes(c.responsable));
-                    total = mapped.length;
-                } else {
-                    total = rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0);
-                }
+                total = rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0);
             } else {
                 const { data, count, error } = await request;
 
@@ -181,7 +172,7 @@ export function useClientes(params: UseClientesParams) {
                     throw error;
                 }
 
-                mapped = (data || []).map((row: any) => {
+                mapped = (data || []).map(row => {
                     const c = row.clientes || {};
                     return {
                         id: c.id,
@@ -220,7 +211,7 @@ export function useClientes(params: UseClientesParams) {
                 const { data: acts } = (await supabase
                     .from('actividades')
                     .select('*')
-                    .in('cliente_id', ids.map(id => parseInt(id as any, 10)))
+                    .in('cliente_id', ids)
                     .eq('empresa_id', empresaId)
                     .order('fecha', { ascending: false })) as { data: ClientActivity[] | null };
 
@@ -245,11 +236,11 @@ export function useDeleteCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, empresaActiva }: { id: string; empresaActiva: Empresa | null }) => {
+        mutationFn: async ({ id, empresaActiva }: { id: string; empresaActiva: any }) => {
             const { error } = await supabase
                 .from("empresa_cliente")
                 .update({ activo: false })
-                .eq("cliente_id", parseInt(id, 10))
+                .eq("cliente_id", id)
                 .eq("empresa_id", empresaActiva?.id);
 
             if (error) {
@@ -277,7 +268,7 @@ export function useQuickDateCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ clienteId, daysOffset, empresaActiva, userName, user }: { clienteId: string; daysOffset: number | null; empresaActiva: Empresa | null; userName: string; user: User | null }) => {
+        mutationFn: async ({ clienteId, daysOffset, empresaActiva, userName, user }: { clienteId: string; daysOffset: number | null; empresaActiva: any; userName: string; user: any }) => {
             let dateStr: string | null = null;
             let displayMsg = 'Fecha de contacto eliminada';
 
@@ -291,7 +282,7 @@ export function useQuickDateCliente() {
             const { error: updateError } = await supabase
                 .from('empresa_cliente')
                 .update({ fecha_proximo_contacto: dateStr })
-                .eq('cliente_id', parseInt(clienteId, 10))
+                .eq('cliente_id', clienteId)
                 .eq('empresa_id', empresaActiva?.id);
 
             if (updateError) {
@@ -302,7 +293,7 @@ export function useQuickDateCliente() {
             const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${new Date(dateStr).toLocaleDateString('es-AR')}` : '🗑️ Fecha de próximo contacto eliminada';
 
             const { error: logError } = await supabase.from('actividades').insert([{
-                cliente_id: parseInt(clienteId, 10),
+                cliente_id: clienteId,
                 descripcion: desc,
                 usuario: userName || user?.email || 'Sistema',
                 empresa_id: empresaActiva?.id,
@@ -331,11 +322,11 @@ export function useRegistrarVisitaCliente() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }: { clienteId: string; nombre: string; empresaActiva: Empresa | null; userName: string; user: User | null }) => {
+        mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }: { clienteId: string; nombre: string; empresaActiva: any; userName: string; user: any }) => {
             const now = new Date().toISOString();
 
             const { error: logError } = await supabase.from('actividades').insert([{
-                cliente_id: parseInt(clienteId, 10),
+                cliente_id: clienteId,
                 descripcion: 'Visita realizada',
                 fecha: now,
                 usuario: userName || user?.email || 'Sistema',
@@ -350,7 +341,7 @@ export function useRegistrarVisitaCliente() {
             const { error: updateError } = await supabase
                 .from('empresa_cliente')
                 .update({ ultima_actividad: now })
-                .eq('cliente_id', parseInt(clienteId, 10))
+                .eq('cliente_id', clienteId)
                 .eq('empresa_id', empresaActiva?.id);
 
             if (updateError) {

@@ -13,7 +13,7 @@ export interface ClientFilters {
     direccion: string;
     estado: string;
     situacion: string;
-    responsable: string[];
+    responsable: string;
     rubro: string;
     interes: string;
     estilo: string;
@@ -25,7 +25,7 @@ export interface ClientFilters {
 }
 
 export const useClientsLogic = () => {
-    const { user, userName, empresaActiva } = useAuth();
+    const { user, userName, empresaActiva }: any = useAuth();
     const [searchParams] = useSearchParams();
     const isAgendaHoy = searchParams.get('agenda') === 'hoy';
 
@@ -40,7 +40,7 @@ export const useClientsLogic = () => {
         direccion: '',
         estado: 'Todos',
         situacion: 'Todos',
-        responsable: [],
+        responsable: '',
         rubro: '',
         interes: '',
         estilo: '',
@@ -54,7 +54,6 @@ export const useClientsLogic = () => {
     const [sortBy, setSortBy] = useState('updated');
     const [rubrosValidos, setRubrosValidos] = useState<string[]>([]);
     const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
-    const [activators, setActivators] = useState<{email: string, nombre: string}[]>([]);
 
     // Modals
     const [modalOpen, setModalOpen] = useState(false);
@@ -63,13 +62,13 @@ export const useClientsLogic = () => {
     const [actTargetId, setActTargetId] = useState<string | null>(null);
     const [actTargetName, setActTargetName] = useState('');
 
-    const { data, isLoading: loading, refetch: fetchClientes } = useClientes({
+    const { data, isLoading: loading, refetch: fetchClientes }: any = useClientes({
         empresaId: empresaActiva?.id,
         page, pageSize, isAgendaHoy,
-        fEstado: filters.estado, fSituacion: filters.situacion, fTipoContacto: filters.tipoContacto, 
-        fResponsable: filters.responsable, fRubro: filters.rubro, fInteres: filters.interes, 
+        fEstado: filters.estado, fSituacion: filters.situacion, fTipoContacto: filters.tipoContacto,
+        fResponsable: filters.responsable, fRubro: filters.rubro, fInteres: filters.interes,
         fEstilo: filters.estilo, fProximos7: filters.proximos7, fVencidos: filters.vencidos,
-        fNombre: filters.nombre, fTelefono: filters.telefono, fDireccion: filters.direccion, 
+        fNombre: filters.nombre, fTelefono: filters.telefono, fDireccion: filters.direccion,
         fCreadoDesde: filters.creadoDesde, fCreadoHasta: filters.creadoHasta, sortBy
     });
 
@@ -82,24 +81,15 @@ export const useClientsLogic = () => {
     const visitaMutation = useRegistrarVisitaCliente();
 
     useEffect(() => {
-        const fetchRubrosAndUsers = async () => {
+        const fetchRubros = async () => {
             if (!empresaActiva?.id) return;
-            
-            // Rubros
-            const { data: rubrosData } = await supabase.from('empresa_cliente').select('rubro').eq('empresa_id', empresaActiva.id).eq('activo', true);
-            if (rubrosData) {
-                const uniqueRubros = [...new Set(rubrosData.map(c => c.rubro).filter(r => r && r.trim() !== ''))].sort() as string[];
+            const { data } = await supabase.from('empresa_cliente').select('rubro').eq('empresa_id', empresaActiva.id).eq('activo', true);
+            if (data) {
+                const uniqueRubros = [...new Set(data.map((c: any) => c.rubro).filter((r: any) => r && r.trim() !== ''))].sort() as string[];
                 setRubrosValidos(uniqueRubros);
             }
-
-            // Users
-            const { data: usersData } = await supabase.from('empresa_usuario').select('usuario_email, usuarios(nombre)').eq('empresa_id', empresaActiva.id);
-            if (usersData) {
-                const list = usersData.map(d => ({ email: d.usuario_email, nombre: (d.usuarios as any)?.nombre || d.usuario_email })).sort((a, b) => a.nombre.localeCompare(b.nombre));
-                setActivators(list);
-            }
         };
-        fetchRubrosAndUsers();
+        fetchRubros();
     }, [empresaActiva]);
 
     const updateFilter = (name: keyof ClientFilters, value: any) => {
@@ -154,7 +144,7 @@ export const useClientsLogic = () => {
 
     return {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
-        filters, updateFilter, rubrosValidos, activators, sortBy, setSortBy, expandedActivities, toggleHistory,
+        filters, updateFilter, rubrosValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
         exportLoading, handleDescargarExcel, handleImportExcel, handleDescargarModelo: descargarModeloClientes,
         modalOpen, setModalOpen, editingId, handleCreate, handleEdit, handleDelete,
         actModalOpen, setActModalOpen, actTargetId, actTargetName, handleOpenActivity,
