@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useClientes, useDeleteCliente, useQuickDateCliente, useRegistrarVisitaCliente } from '../hooks/useClientes';
+import { useCompanyUsers } from '../hooks/useCompanyUsers';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { descargarModeloClientes, importarClientesExcel, exportarClientesExcel } from '../lib/excelExport';
@@ -13,7 +14,7 @@ export interface ClientFilters {
     direccion: string;
     estado: string;
     situacion: string;
-    responsable: string;
+    responsable: string[];
     rubro: string;
     interes: string;
     estilo: string;
@@ -40,7 +41,7 @@ export const useClientsLogic = () => {
         direccion: '',
         estado: 'Todos',
         situacion: 'Todos',
-        responsable: '',
+        responsable: [],
         rubro: '',
         interes: '',
         estilo: '',
@@ -52,6 +53,7 @@ export const useClientsLogic = () => {
     });
 
     const [sortBy, setSortBy] = useState('updated');
+    const { data: responsablesValidos = [] } = useCompanyUsers(empresaActiva?.id);
     const [rubrosValidos, setRubrosValidos] = useState<string[]>([]);
     const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
 
@@ -144,7 +146,7 @@ export const useClientsLogic = () => {
 
     return {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
-        filters, updateFilter, rubrosValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
+        filters, updateFilter, rubrosValidos, responsablesValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
         exportLoading, handleDescargarExcel, handleImportExcel, handleDescargarModelo: descargarModeloClientes,
         modalOpen, setModalOpen, editingId, handleCreate, handleEdit, handleDelete,
         actModalOpen, setActModalOpen, actTargetId, actTargetName, handleOpenActivity,

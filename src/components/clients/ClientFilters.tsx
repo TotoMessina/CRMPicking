@@ -6,9 +6,10 @@ interface Props {
     filters: ClientFiltersType;
     updateFilter: (name: keyof ClientFiltersType, value: any) => void;
     rubrosValidos: string[];
+    responsablesValidos: string[];
 }
 
-export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos }) => {
+export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos, responsablesValidos }) => {
     return (
         <section style={{
             background: 'var(--bg-elevated)',
@@ -83,19 +84,44 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                     </select>
                 </div>
 
-                <div style={{ position: 'relative' }}>
-                    <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                    <select className="input" value={filters.responsable} onChange={e => updateFilter('responsable', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                        <option value="">Cualquier responsable</option>
-                        <option value="Toto">Toto</option>
-                        <option value="Ruben">Ruben</option>
-                        <option value="Tincho(B)">Tincho(B)</option>
-                        <option value="Fran">Fran</option>
-                        <option value="Ari">Ari</option>
-                        <option value="Nati">Nati</option>
-                        <option value="Dani">Dani</option>
-                        <option value="Otro">Otro</option>
-                    </select>
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                        <User size={14} /> Responsables
+                    </div>
+                    <div className="input" style={{ 
+                        width: '100%', 
+                        minHeight: '44px', 
+                        height: 'auto', 
+                        borderRadius: '12px', 
+                        padding: '8px 12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        maxHeight: '120px',
+                        overflowY: 'auto',
+                        background: 'var(--bg-input)'
+                    }}>
+                        {responsablesValidos.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Cargando...</span>}
+                        {responsablesValidos.map(r => {
+                            const isSelected = filters.responsable.includes(r);
+                            return (
+                                <label key={r} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isSelected} 
+                                        onChange={() => {
+                                            const next = isSelected 
+                                                ? filters.responsable.filter(v => v !== r)
+                                                : [...filters.responsable, r];
+                                            updateFilter('responsable', next);
+                                        }}
+                                        style={{ accentColor: 'var(--accent)' }}
+                                    />
+                                    {r}
+                                </label>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <div style={{ position: 'relative' }}>

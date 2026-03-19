@@ -13,6 +13,7 @@ import {
     esEstadoFinal
 } from '../../constants/estados';
 import { useRubros } from '../../hooks/useRubros';
+import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 
 interface Props {
     isOpen: boolean;
@@ -69,6 +70,7 @@ const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68
 export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, initialLocation, onSaved }) => {
     const { user, userName, empresaActiva }: any = useAuth();
     const { data: rubrosDB = [] } = useRubros();
+    const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -519,14 +521,17 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                                 </div>
                                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                                     <label>Responsable</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="responsable"
                                         value={formData.responsable || ''}
                                         onChange={handleChange}
-                                        placeholder="Nombre del responsable"
                                         style={{ background: 'var(--bg-elevated)', fontWeight: 500 }}
-                                    />
+                                    >
+                                        <option value="">Seleccionar responsable...</option>
+                                        {responsablesDB.map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                         </div>
