@@ -270,8 +270,8 @@ export default function MapaClientes() {
             const drawControl = new L.Control.Draw({
                 position: 'topright',
                 draw: {
-                    polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: ZONE_COLORS.today, fillOpacity: 0.2, bubblingMouseEvents: false } },
-                    rectangle: { shapeOptions: { color: ZONE_COLORS.today, fillOpacity: 0.2, bubblingMouseEvents: false } },
+                    polygon: { allowIntersection: false, showArea: true, metric: true, shapeOptions: { color: ZONE_COLORS.today, fillOpacity: 0.2, bubblingMouseEvents: false } },
+                    rectangle: { showArea: true, metric: true, shapeOptions: { color: ZONE_COLORS.today, fillOpacity: 0.2, bubblingMouseEvents: false } },
                     polyline: false, circle: false, marker: false, circlemarker: false
                 },
                 edit: {
