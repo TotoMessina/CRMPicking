@@ -267,12 +267,28 @@ export default function MapaClientes() {
             });
 
             // Draw Control setup
+            // Monkey-patch leaflet-draw 1.0.4 bug: `readableArea` uses `type` var that
+            // is undefined in minified builds. Override with a safe implementation.
+            if (L.GeometryUtil) {
+                L.GeometryUtil.readableArea = function(area, isMetric) {
+                    if (isMetric) {
+                        return area >= 10000
+                            ? (area / 1000000).toFixed(2) + ' km²'
+                            : area.toFixed(0) + ' m²';
+                    }
+                    const sqyards = area / 0.836127;
+                    if (sqyards >= 3097600) return (sqyards / 3097600).toFixed(2) + ' mi²';
+                    if (sqyards >= 4840)    return (sqyards / 4840).toFixed(2) + ' ac';
+                    return sqyards.toFixed(0) + ' yd²';
+                };
+            }
             const drawControl = new L.Control.Draw({
                 position: 'topright',
                 draw: {
                     polygon: { allowIntersection: false, showArea: true, metric: true, shapeOptions: { color: ZONE_COLORS.today, fillOpacity: 0.2, bubblingMouseEvents: false } },
                     rectangle: { showArea: true, metric: true, shapeOptions: { color: ZONE_COLORS.today, fillOpacity: 0.2, bubblingMouseEvents: false } },
                     polyline: false, circle: false, marker: false, circlemarker: false
+                    // NOTE: showArea uses the patched L.GeometryUtil.readableArea above
                 },
                 edit: {
                     featureGroup: drawnZonesRef.current,
