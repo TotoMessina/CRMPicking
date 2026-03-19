@@ -1,14 +1,27 @@
-import React from 'react';
-import { Filter, Search, Phone, MapPin, Store, Activity as ActivityIcon, User, Tag, Building, Clock, Calendar } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Filter, Search, Phone, MapPin, Store, Activity as ActivityIcon, User, Tag, Building, Clock, Calendar, Users, ChevronDown, Check } from 'lucide-react';
 import { ClientFilters as ClientFiltersType } from '../../hooks/useClientsLogic';
 
 interface Props {
     filters: ClientFiltersType;
     updateFilter: (name: keyof ClientFiltersType, value: any) => void;
     rubrosValidos: string[];
+    activators?: { email: string, nombre: string }[];
 }
 
-export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos }) => {
+export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos, activators = [] }) => {
+    const [openResponsables, setOpenResponsables] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setOpenResponsables(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
     return (
         <section style={{
             background: 'var(--bg-elevated)',
@@ -83,19 +96,102 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                     </select>
                 </div>
 
-                <div style={{ position: 'relative' }}>
-                    <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                    <select className="input" value={filters.responsable} onChange={e => updateFilter('responsable', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                        <option value="">Cualquier responsable</option>
-                        <option value="Toto">Toto</option>
-                        <option value="Ruben">Ruben</option>
-                        <option value="Tincho(B)">Tincho(B)</option>
-                        <option value="Fran">Fran</option>
-                        <option value="Ari">Ari</option>
-                        <option value="Nati">Nati</option>
-                        <option value="Dani">Dani</option>
-                        <option value="Otro">Otro</option>
-                    </select>
+                <div style={{ position: 'relative' }} ref={dropdownRef}>
+                    <button 
+                        className="input" 
+                        style={{ 
+                            width: '100%', 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            background: filters.responsable.length > 0 ? 'var(--accent-soft, rgba(99, 102, 241, 0.1))' : 'var(--bg)',
+                            borderColor: filters.responsable.length > 0 ? 'var(--accent, #6366f1)' : 'var(--border)',
+                            color: filters.responsable.length > 0 ? 'var(--accent, #6366f1)' : 'var(--text)',
+                            transition: 'all 0.2s ease',
+                            padding: '8px 12px 8px 36px',
+                            minHeight: '40px',
+                            borderRadius: '12px'
+                        }} 
+                        onClick={() => setOpenResponsables(!openResponsables)}
+                    >
+                        <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: filters.responsable.length > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
+                        <span style={{ fontSize: '0.95rem', fontWeight: filters.responsable.length > 0 ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {filters.responsable.length === 0 
+                                ? 'Cualquier responsable' 
+                                : filters.responsable.length === 1 
+                                    ? filters.responsable[0] 
+                                    : `${filters.responsable.length} seleccionados`}
+                        </span>
+                        <ChevronDown size={14} style={{ opacity: 0.7, transform: openResponsables ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                    </button>
+                    {openResponsables && (
+                        <div style={{ 
+                            position: 'absolute', top: '100%', left: 0, marginTop: '8px', 
+                            background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+                            borderRadius: '12px', padding: '8px', zIndex: 50, minWidth: '100%', 
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.2)', maxHeight: '320px', 
+                            overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px'
+                        }}>
+                            <div 
+                                onClick={() => { updateFilter('responsable', []); setOpenResponsables(false); }}
+                                style={{ 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                                    padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', 
+                                    background: filters.responsable.length === 0 ? 'var(--accent-soft, rgba(99, 102, 241, 0.15))' : 'transparent',
+                                    color: filters.responsable.length === 0 ? 'var(--accent, #6366f1)' : 'var(--text)',
+                                    fontWeight: filters.responsable.length === 0 ? 700 : 500,
+                                    borderBottom: '1px solid var(--border)', marginBottom: '4px',
+                                    transition: 'background 0.15s ease'
+                                }}
+                            >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    Cualquier responsable
+                                </span>
+                                {filters.responsable.length === 0 && <Check size={16} />}
+                            </div>
+
+                            {activators.map(a => {
+                                const isSelected = filters.responsable.includes(a.nombre);
+                                return (
+                                    <div 
+                                        key={a.email} 
+                                        onClick={() => {
+                                            if (isSelected) {
+                                                updateFilter('responsable', filters.responsable.filter(f => f !== a.nombre));
+                                            } else {
+                                                updateFilter('responsable', [...filters.responsable, a.nombre]);
+                                            }
+                                        }}
+                                        style={{ 
+                                            display: 'flex', alignItems: 'center', gap: '10px', 
+                                            padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', 
+                                            background: isSelected ? 'var(--accent-soft, rgba(99, 102, 241, 0.08))' : 'transparent',
+                                            color: isSelected ? 'var(--accent, #6366f1)' : 'var(--text)',
+                                            fontWeight: isSelected ? 600 : 500,
+                                            transition: 'background 0.15s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isSelected) e.currentTarget.style.background = 'var(--bg-hover, rgba(0,0,0,0.05))';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isSelected) e.currentTarget.style.background = 'transparent';
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '18px', height: '18px', borderRadius: '4px',
+                                            border: `2px solid ${isSelected ? 'var(--accent, #6366f1)' : 'var(--text-muted)'}`,
+                                            background: isSelected ? 'var(--accent, #6366f1)' : 'transparent',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            transition: 'all 0.15s ease', flexShrink: 0
+                                        }}>
+                                            {isSelected && <Check size={12} color="white" strokeWidth={3} />}
+                                        </div>
+                                        <span>{a.nombre}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ position: 'relative' }}>

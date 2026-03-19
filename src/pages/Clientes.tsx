@@ -10,7 +10,7 @@ import { ClientFilters } from '../components/clients/ClientFilters';
 const Clientes: React.FC = () => {
     const {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
-        filters, updateFilter, rubrosValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
+        filters, updateFilter, rubrosValidos, activators, sortBy, setSortBy, expandedActivities, toggleHistory,
         exportLoading, handleDescargarExcel, handleImportExcel, handleDescargarModelo,
         modalOpen, setModalOpen, editingId, handleCreate, handleEdit, handleDelete,
         actModalOpen, setActModalOpen, actTargetId, actTargetName, handleOpenActivity,
@@ -55,6 +55,7 @@ const Clientes: React.FC = () => {
                 filters={filters} 
                 updateFilter={updateFilter} 
                 rubrosValidos={rubrosValidos} 
+                activators={activators}
             />
 
             {/* 3. LIST SECTION */}

@@ -11,7 +11,7 @@ export interface UseClientesParams {
     fEstado: string;
     fSituacion: string;
     fTipoContacto: string;
-    fResponsable: string;
+    fResponsable: string[];
     fRubro: string;
     fInteres: string;
     fEstilo: string;
@@ -78,7 +78,7 @@ export function useClientes(params: UseClientesParams) {
             if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
             if (fSituacion !== 'Todos') request = request.eq('situacion', fSituacion);
             if (fTipoContacto !== 'Todos') request = request.eq('tipo_contacto', fTipoContacto);
-            if (fResponsable) request = request.eq('responsable', fResponsable);
+            if (fResponsable && fResponsable.length > 0) request = request.in('responsable', fResponsable);
             if (fRubro) request = request.eq('rubro', fRubro);
             if (fInteres) request = request.eq('interes', fInteres);
             if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
@@ -116,7 +116,7 @@ export function useClientes(params: UseClientesParams) {
                     p_estado: fEstado !== 'Todos' ? fEstado : null,
                     p_situacion: fSituacion !== 'Todos' ? fSituacion : null,
                     p_tipo_contacto: fTipoContacto !== 'Todos' ? fTipoContacto : null,
-                    p_responsable: fResponsable || null,
+                    p_responsable: fResponsable && fResponsable.length === 1 ? fResponsable[0] : null,
                     p_rubro: fRubro || null,
                     p_interes: fInteres || null,
                     p_estilo: fEstilo || null,
@@ -162,7 +162,12 @@ export function useClientes(params: UseClientesParams) {
                     created_at: row.ec_created_at,
                     updated_at: row.ec_updated_at,
                 }));
-                total = rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0);
+                if (fResponsable && fResponsable.length > 1) {
+                    mapped = mapped.filter(c => fResponsable.includes(c.responsable));
+                    total = mapped.length;
+                } else {
+                    total = rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0);
+                }
             } else {
                 const { data, count, error } = await request;
 
