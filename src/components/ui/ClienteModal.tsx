@@ -5,6 +5,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import toast from 'react-hot-toast';
 import { X, AlertCircle } from 'lucide-react';
+import {
+    ESTADO_DEFAULT, SITUACION_DEFAULT, ESTADO_RELEVADO,
+    ESTADO_VISITADO_NO_ACTIVO, ESTADO_PRIMER_INGRESO, ESTADO_LOCAL_CREADO,
+    ESTADO_ACTIVO, ESTADO_NO_INTERESADO,
+    SITUACION_SIN_COMUNICACION, SITUACION_EN_PROCESO, SITUACION_FUNCIONANDO,
+    esEstadoFinal
+} from '../../constants/estados';
 
 interface Props {
     isOpen: boolean;
@@ -68,10 +75,10 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
     const emptyForm = (overrides = {}): FormData => ({
         nombre_local: '', direccion: '', nombre: '', telefono: '',
         mail: '', cuit: '', horarios_atencion: '', rubro: '',
-        estado: '1 - Cliente relevado', responsable: '',
+        estado: ESTADO_DEFAULT, responsable: '',
         estilo_contacto: 'Sin definir', interes: 'Bajo',
         venta_digital: 'false', venta_digital_cual: '',
-        situacion: 'sin comunicacion nueva', notas: '',
+        situacion: SITUACION_DEFAULT, notas: '',
         tipo_contacto: 'Visita Presencial',
         fecha_proximo_contacto: '', hora_proximo_contacto: '',
         lat: null, lng: null,
@@ -233,7 +240,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
         };
 
         // If the state implies activation/closure, mark the current user as the closer
-        if (formData.estado?.startsWith('4') || formData.estado?.startsWith('5')) {
+        if (esEstadoFinal(formData.estado)) {
             rawPayload.activador_cierre = userName || user?.email || null;
         }
 
@@ -316,7 +323,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                     parts.push(`Estado: ${payload.estado}`);
                 }
 
-                if (payload.situacion && (payload.estado?.startsWith('4') || payload.estado?.startsWith('5'))) {
+                if (payload.situacion && esEstadoFinal(payload.estado)) {
                     if (originalData?.situacion !== payload.situacion) {
                         parts.push(`Nueva Situación: ${payload.situacion}`);
                     }
@@ -562,12 +569,12 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                                 <div className="field">
                                     <label>Estado</label>
                                     <select name="estado" value={formData.estado || ''} onChange={handleChange}>
-                                        <option value="1 - Cliente relevado">1 - Cliente relevado</option>
-                                        <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-                                        <option value="3 - Primer Ingreso">3 - Primer Ingreso</option>
-                                        <option value="4 - Local Creado">4 - Local Creado</option>
-                                        <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
-                                        <option value="6 - Local No Interesado">6 - Local No Interesado</option>
+                                        <option value={ESTADO_RELEVADO}>1 - Cliente relevado</option>
+                                        <option value={ESTADO_VISITADO_NO_ACTIVO}>2 - Local Visitado No Activo</option>
+                                        <option value={ESTADO_PRIMER_INGRESO}>3 - Primer Ingreso</option>
+                                        <option value={ESTADO_LOCAL_CREADO}>4 - Local Creado</option>
+                                        <option value={ESTADO_ACTIVO}>5 - Local Visitado Activo</option>
+                                        <option value={ESTADO_NO_INTERESADO}>6 - Local No Interesado</option>
                                     </select>
                                 </div>
 
@@ -617,14 +624,14 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                                 </div>
                             </div>
 
-                            {(formData.estado.startsWith('4') || formData.estado.startsWith('5')) && (
+                            {esEstadoFinal(formData.estado) && (
                                 <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginTop: '16px' }}>
                                     <div className="field">
                                         <label>Situación *</label>
                                         <select name="situacion" value={formData.situacion || 'sin comunicacion nueva'} onChange={handleChange}>
-                                            <option value="sin comunicacion nueva">Sin comunicación nueva</option>
-                                            <option value="en proceso">En proceso</option>
-                                            <option value="en funcionamiento">En funcionamiento</option>
+                                        <option value={SITUACION_SIN_COMUNICACION}>Sin comunicación nueva</option>
+                                        <option value={SITUACION_EN_PROCESO}>En proceso</option>
+                                        <option value={SITUACION_FUNCIONANDO}>En funcionamiento</option>
                                         </select>
                                     </div>
                                 </div>

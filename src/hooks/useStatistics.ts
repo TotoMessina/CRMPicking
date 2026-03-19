@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { calculatePresetDates, PresetType } from '../utils/dateUtils';
 import toast from 'react-hot-toast';
+import { ESTADO_RELEVADO, ESTADO_LOCAL_CREADO, ESTADO_ACTIVO, esEstadoFinal, esEstadoActivo } from '../constants/estados';
 
 export interface KpiState {
     totalClientesActivos: number;
@@ -252,9 +253,9 @@ export const useStatistics = () => {
             const creadorArr = groupCount(clientesMeta, "creado_por", "Desconocido");
 
             const situacionMap: Record<string, number> = { 'sin comunicacion nueva': 0, 'en proceso': 0, 'en funcionamiento': 0 };
-            clientesMeta.forEach((c: any) => { if (c.estado?.startsWith('5')) { const sit = c.situacion || 'sin comunicacion nueva'; if (sit in situacionMap) situacionMap[sit]++; else situacionMap['sin comunicacion nueva']++; } });
+            clientesMeta.forEach((c: any) => { if (esEstadoActivo(c.estado)) { const sit = c.situacion || 'sin comunicacion nueva'; if (sit in situacionMap) situacionMap[sit]++; else situacionMap['sin comunicacion nueva']++; } });
             setTotalSituacion(Object.values(situacionMap).reduce((a, b) => a + b, 0));
-            setClientesEstado5Raw(clientesMeta.filter((c: any) => c.estado?.startsWith('5')));
+            setClientesEstado5Raw(clientesMeta.filter((c: any) => esEstadoActivo(c.estado)));
 
             setListsData({ rubros: rubrosArr, estados: estadosArr, creados: creadorArr, activadoresDetalle: [], activadoresStats: [] });
 
@@ -275,10 +276,10 @@ export const useStatistics = () => {
                     if (!breakdown.has(creadoRaw)) breakdown.set(creadoRaw, { total: 0, efectivo: 0, sts: {} });
                     const objA = breakdown.get(creadoRaw)!;
                     objA.total++;
-                    if (activoRaw !== creadoRaw && (st.startsWith('4') || st.startsWith('5'))) objA.sts["1 - Cliente relevado"] = (objA.sts["1 - Cliente relevado"] || 0) + 1;
-                    else { objA.sts[st] = (objA.sts[st] || 0) + 1; if (st.startsWith('4') || st.startsWith('5')) objA.efectivo++; }
+                    if (activoRaw !== creadoRaw && esEstadoFinal(st)) objA.sts[ESTADO_RELEVADO] = (objA.sts[ESTADO_RELEVADO] || 0) + 1;
+                    else { objA.sts[st] = (objA.sts[st] || 0) + 1; if (esEstadoFinal(st)) objA.efectivo++; }
                 }
-                if (activoRaw !== creadoRaw && (st.startsWith('4') || st.startsWith('5')) && setActNames.has(activoRaw.toLowerCase())) {
+                if (activoRaw !== creadoRaw && esEstadoFinal(st) && setActNames.has(activoRaw.toLowerCase())) {
                     if (!breakdown.has(activoRaw)) breakdown.set(activoRaw, { total: 0, efectivo: 0, sts: {} });
                     const objB = breakdown.get(activoRaw)!; objB.total++; objB.efectivo++; objB.sts[st] = (objB.sts[st] || 0) + 1;
                 }
@@ -302,7 +303,7 @@ export const useStatistics = () => {
                 }
             });
 
-            const COLORS: Record<string, string> = { "1 - Cliente relevado": '#475569', "2 - Local Visitado No Activo": '#ef4444', "3 - Primer Ingreso": '#f59e0b', "4 - Local Creado": '#10b981', "5 - Local Visitado Activo": '#3b82f6', "6 - Local No Interesado": "#ef4444", "Sin estado": "#cbd5e1" };
+            const COLORS: Record<string, string> = { [ESTADO_RELEVADO]: '#475569', "2 - Local Visitado No Activo": '#ef4444', "3 - Primer Ingreso": '#f59e0b', [ESTADO_LOCAL_CREADO]: '#10b981', [ESTADO_ACTIVO]: '#3b82f6', "6 - Local No Interesado": "#ef4444", "Sin estado": "#cbd5e1" };
             const datasetsStacked = Array.from(allSt).sort().map(st => ({ label: st, stack: 'A', backgroundColor: COLORS[st] || "#a78bfa", data: buckets.map(b => dailyStMap.get(b.key)!.get(st) || 0) }));
 
             const bdownClean = [...breakdown.entries()].sort((a, b) => b[1].total - a[1].total).map(([k, v]) => ({

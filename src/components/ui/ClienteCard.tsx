@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Phone, MapPin, Mail, Calendar, Edit2, Trash2, User, Clock } from 'lucide-react';
 import { Button } from './Button';
 import { Client, ClientActivity } from '../../types/client';
+import { esEstadoFinal } from '../../constants/estados';
 
 interface Props {
     cliente: Client;
@@ -32,7 +33,7 @@ export const ClienteCard = memo<Props>(({
     const hasAddress = Boolean(c.direccion);
 
     let accentColor = 'transparent';
-    if (c.estado?.startsWith('4') || c.estado?.startsWith('5')) {
+    if (esEstadoFinal(c.estado)) {
         if (c.situacion === 'en funcionamiento') accentColor = 'var(--success)';
         else if (c.situacion === 'en proceso') accentColor = '#f59e0b'; // Amber
         else accentColor = 'var(--text-muted)';
@@ -87,7 +88,7 @@ export const ClienteCard = memo<Props>(({
                         {c.estado}
                     </span>
                 )}
-                {(c.estado?.startsWith('4') || c.estado?.startsWith('5')) && c.situacion && (
+                {esEstadoFinal(c.estado) && c.situacion && (
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: accentColor !== 'transparent' ? `${accentColor}20` : 'var(--bg-elevated)', color: accentColor !== 'transparent' ? accentColor : 'var(--text)', border: `1px solid ${accentColor !== 'transparent' ? accentColor : 'var(--border)'}` }}>
                         {c.situacion.toUpperCase()}
                     </span>

@@ -6,14 +6,19 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { Edit2 } from 'lucide-react';
+import {
+    ESTADO_RELEVADO, ESTADO_VISITADO_NO_ACTIVO, ESTADO_PRIMER_INGRESO,
+    ESTADO_LOCAL_CREADO, ESTADO_ACTIVO, ESTADO_NO_INTERESADO,
+    esEstadoFinal
+} from '../constants/estados';
 
 const COLUMNS = [
-    { id: '1 - Cliente relevado', label: 'Relevado', color: '#64748b' },
-    { id: '2 - Local Visitado No Activo', label: 'Visitado (No Act)', color: '#ef4444' },
-    { id: '3 - Primer Ingreso', label: 'Primer Ingreso', color: '#f59e0b' },
-    { id: '4 - Local Creado', label: 'Creado', color: '#3b82f6' },
-    { id: '5 - Local Visitado Activo', label: 'Visitado (Activo)', color: '#10b981' },
-    { id: '6 - Local No Interesado', label: 'No Interesado', color: '#ef4444' }
+    { id: ESTADO_RELEVADO,          label: 'Relevado',          color: '#64748b' },
+    { id: ESTADO_VISITADO_NO_ACTIVO, label: 'Visitado (No Act)', color: '#ef4444' },
+    { id: ESTADO_PRIMER_INGRESO,    label: 'Primer Ingreso',    color: '#f59e0b' },
+    { id: ESTADO_LOCAL_CREADO,      label: 'Creado',            color: '#3b82f6' },
+    { id: ESTADO_ACTIVO,            label: 'Visitado (Activo)', color: '#10b981' },
+    { id: ESTADO_NO_INTERESADO,     label: 'No Interesado',     color: '#ef4444' }
 ];
 
 export default function Pipeline() {
@@ -77,7 +82,7 @@ export default function Pipeline() {
             .from('empresa_cliente')
             .update({
                 estado: newStatus,
-                ...((newStatus.startsWith('4') || newStatus.startsWith('5')) ? { activador_cierre: userName || user?.email || null } : {})
+                ...( esEstadoFinal(newStatus) ? { activador_cierre: userName || user?.email || null } : {})
             })
             .eq('cliente_id', clientId)
             .eq('empresa_id', empresaActiva.id);
@@ -112,7 +117,7 @@ export default function Pipeline() {
 
     const getColumnClients = (colId) => {
         return filteredClients.filter(c => {
-            if (colId === '1 - Cliente relevado' && !c.estado) return true; // Fallback
+            if (colId === ESTADO_RELEVADO && !c.estado) return true; // Fallback
             return c.estado === colId;
         });
     };

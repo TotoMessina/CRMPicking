@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { MapPin, RefreshCw, Route as RouteIcon, Navigation, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ESTADOS_LISTA, ESTADO_RELEVADO, esEstadoFinal } from '../constants/estados';
 import L from 'leaflet';
 window.L = window.L || L;
 import 'leaflet/dist/leaflet.css';
@@ -22,22 +23,15 @@ const ZONE_COLORS = {
     extra: "#f97316"
 };
 
-const ESTADOS = [
-    "1 - Cliente relevado",
-    "2 - Local Visitado No Activo",
-    "3 - Primer Ingreso",
-    "4 - Local Creado",
-    "5 - Local Visitado Activo",
-    "6 - Local No Interesado",
-];
+const ESTADOS = ESTADOS_LISTA;
 
 const ESTADO_COLOR = {
-    "1 - Cliente relevado": "#ff3d3d",
+    [ESTADO_RELEVADO]:          "#ff3d3d",
     "2 - Local Visitado No Activo": "#ff9f1c",
-    "3 - Primer Ingreso": "#ffef16",
-    "4 - Local Creado": "#7700ff",
+    "3 - Primer Ingreso":       "#ffef16",
+    "4 - Local Creado":         "#7700ff",
     "5 - Local Visitado Activo": "#22ff34",
-    "6 - Local No Interesado": "#5f5f5f",
+    "6 - Local No Interesado":  "#5f5f5f",
 };
 
 const INTERES_COLORS = {
