@@ -183,7 +183,7 @@ export const useStatistics = () => {
                     p_empresa_id: empresaActiva.id,
                     p_date_from: dateFrom,
                     p_date_to: dateTo,
-                    p_filter_activators: filterActivator.length > 0 ? filterActivator : null
+                    p_filter_activators: filterActivator.length > 0 ? filterActivator : []
                 }),
                 supabase.from('empresa_cliente').select('rubro, situacion').eq('empresa_id', empresaActiva.id).eq('activo', true).like('estado', '5%')
             ]);
