@@ -183,7 +183,7 @@ export const exportarClientesCSV = async (empresaActiva, filters = {}, onFinally
         if (filters.estado && filters.estado !== 'Todos') query = query.eq('estado', filters.estado);
         if (filters.situacion && filters.situacion !== 'Todos') query = query.eq('situacion', filters.situacion);
         if (filters.tipoContacto && filters.tipoContacto !== 'Todos') query = query.eq('tipo_contacto', filters.tipoContacto);
-        if (filters.responsable) query = query.eq('responsable', filters.responsable);
+        if (filters.responsable && filters.responsable.length > 0) query = query.in('responsable', filters.responsable);
         if (filters.rubro) query = query.eq('rubro', filters.rubro);
         if (filters.interes) query = query.eq('interes', filters.interes);
         if (filters.estilo) query = query.eq('estilo_contacto', filters.estilo);

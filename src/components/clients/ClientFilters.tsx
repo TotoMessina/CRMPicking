@@ -101,8 +101,8 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                         overflowY: 'auto',
                         background: 'var(--bg-input)'
                     }}>
-                        {responsablesValidos.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Cargando...</span>}
-                        {responsablesValidos.map(r => {
+                        {(responsablesValidos || []).length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Cargando...</span>}
+                        {(responsablesValidos || []).map(r => {
                             const isSelected = filters.responsable.includes(r);
                             return (
                                 <label key={r} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>

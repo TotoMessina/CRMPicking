@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation, onSaved }) {
     const { empresaActiva } = useAuth();
+    const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '', telefono: '', email: '', localidad: '', direccion: '',
@@ -178,14 +180,9 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
                                 <span className="field-label">Responsable</span>
                                 <select name="responsable" className="input" value={formData.responsable} onChange={handleChange}>
                                     <option value="">Sin responsable</option>
-                                    <option value="Toto">Toto</option>
-                                    <option value="Ruben">Ruben</option>
-                                    <option value="Tincho(B)">Tincho(B)</option>
-                                    <option value="Fran">Fran</option>
-                                    <option value="Ari">Ari</option>
-                                    <option value="Nati">Nati</option>
-                                    <option value="Dani">Dani</option>
-                                    <option value="Otro">Otro</option>
+                                    {responsablesDB.map(r => (
+                                        <option key={r} value={r}>{r}</option>
+                                    ))}
                                 </select>
                             </label>
                             <div></div>
