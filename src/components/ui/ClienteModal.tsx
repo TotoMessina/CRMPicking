@@ -12,6 +12,7 @@ import {
     SITUACION_SIN_COMUNICACION, SITUACION_EN_PROCESO, SITUACION_FUNCIONANDO,
     esEstadoFinal
 } from '../../constants/estados';
+import { useRubros } from '../../hooks/useRubros';
 
 interface Props {
     isOpen: boolean;
@@ -67,6 +68,7 @@ const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68
 
 export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, initialLocation, onSaved }) => {
     const { user, userName, empresaActiva }: any = useAuth();
+    const { data: rubrosDB = [] } = useRubros();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -539,30 +541,9 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                                     <label>Rubro *</label>
                                     <select {...inp('rubro')}>
                                         <option value="">Seleccionar rubro...</option>
-                                        <option value="Accesorios de Celular">Accesorios de Celular</option>
-                                        <option value="Almacén">Almacén</option>
-                                        <option value="Artículos de Limpieza">Artículos de Limpieza</option>
-                                        <option value="Autoservicio">Autoservicio</option>
-                                        <option value="Carnicería">Carnicería</option>
-                                        <option value="Cotillón">Cotillón</option>
-                                        <option value="Dietética">Dietética</option>
-                                        <option value="Farmacia">Farmacia</option>
-                                        <option value="Ferretería">Ferretería</option>
-                                        <option value="Fiambrería">Fiambrería</option>
-                                        <option value="Gastronómico">Gastronómico</option>
-                                        <option value="Granja">Granja</option>
-                                        <option value="Heladería">Heladería</option>
-                                        <option value="Juguetería">Juguetería</option>
-                                        <option value="Kiosco">Kiosco</option>
-                                        <option value="Librería">Librería</option>
-                                        <option value="Mercería">Mercería</option>
-                                        <option value="Panadería">Panadería</option>
-                                        <option value="Papelera">Papelera</option>
-                                        <option value="Pescadería">Pescadería</option>
-                                        <option value="Pet Shop">Pet Shop</option>
-                                        <option value="Sin definir">Sin definir</option>
-                                        <option value="Verdulería">Verdulería</option>
-                                        <option value="Vinoteca">Vinoteca</option>
+                                        {rubrosDB.map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
                                     </select>
                                     <FieldError msg={errors.rubro} />
                                 </div>
