@@ -85,6 +85,18 @@ function getColorForCreator(user) {
     return hex;
 }
 
+const RUBRO_COLORS = {};
+function getColorForRubro(rubro) {
+    const key = (rubro || "Sin rubro").trim();
+    if (!key) return "#94a3b8";
+    if (RUBRO_COLORS[key]) return RUBRO_COLORS[key];
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    const color = `hsl(${Math.abs(hash) % 360}, 75%, 45%)`;
+    RUBRO_COLORS[key] = color;
+    return color;
+}
+
 export default function MapaClientes() {
     const { empresaActiva } = useAuth();
     const mapContainerRef = useRef(null);
@@ -359,6 +371,7 @@ export default function MapaClientes() {
             // Apply filtering
             if (hasFilters) {
                 if (colorMode === "creador" && !activeFilters.has((rec.creado_por || "Desconocido").trim())) return;
+                else if (colorMode === "rubro" && !activeFilters.has((rec.rubro || "Sin rubro").trim())) return;
                 else if (colorMode === "interes" && !activeFilters.has(rec.interes || "Bajo")) return;
                 else if (colorMode === "estilo" && !activeFilters.has(rec.estilo_contacto || "Sin definir")) return;
                 else if (colorMode === "estado" && !activeFilters.has(rec.estado)) return;
@@ -367,6 +380,7 @@ export default function MapaClientes() {
             // Determine Color
             let color = "#94a3b8";
             if (colorMode === "creador") color = getColorForCreator(rec.creado_por);
+            else if (colorMode === "rubro") color = getColorForRubro(rec.rubro);
             else if (colorMode === "interes") color = INTERES_COLORS[rec.interes || "Bajo"] || INTERES_COLORS["Sin interés"];
             else if (colorMode === "estilo") color = ESTILO_COLORS[rec.estilo_contacto || "Sin definir"] || ESTILO_COLORS["Sin definir"];
             else color = ESTADO_COLOR[rec.estado] || "#94a3b8";
@@ -587,6 +601,10 @@ export default function MapaClientes() {
         if (colorMode === 'estado') return ESTADOS.map(e => ({ label: e, color: ESTADO_COLOR[e] }));
         if (colorMode === 'interes') return Object.keys(INTERES_COLORS).map(k => ({ label: k, color: INTERES_COLORS[k] }));
         if (colorMode === 'estilo') return Object.keys(ESTILO_COLORS).map(k => ({ label: k, color: ESTILO_COLORS[k] }));
+        if (colorMode === 'rubro') {
+            const rubros = [...new Set(clientes.map(c => (c.rubro || 'Sin rubro').trim()))].sort();
+            return rubros.map(r => ({ label: r, color: getColorForRubro(r) }));
+        }
         // Creador
         const creators = [...new Set(clientes.map(c => (c.creado_por || 'Desconocido').trim()))];
         return creators.map(c => ({ label: c, color: getColorForCreator(c) }));
@@ -606,6 +624,7 @@ export default function MapaClientes() {
 
                     <select className="input" style={{ width: 'auto' }} value={colorMode} onChange={(e) => { setColorMode(e.target.value); setActiveFilters(new Set()); }}>
                         <option value="estado">Ver por Estado</option>
+                        <option value="rubro">Ver por Rubro</option>
                         <option value="creador">Ver por Creador</option>
                         <option value="interes">Ver por Interés</option>
                         <option value="estilo">Ver por Estilo Contacto</option>
