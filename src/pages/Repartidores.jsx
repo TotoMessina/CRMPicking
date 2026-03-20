@@ -17,9 +17,7 @@ export default function Repartidores() {
     const [pageSize, setPageSize] = useState(25);
 
     // Filters
-    const [fNombre, setFNombre] = useState('');
-    const [fTelefono, setFTelefono] = useState('');
-    const [fLocalidad, setFLocalidad] = useState('');
+    const [fSearch, setFSearch] = useState('');
     const [fEstado, setFEstado] = useState('Todos');
     const [fResponsable, setFResponsable] = useState('');
 
@@ -47,10 +45,12 @@ export default function Repartidores() {
             .range((page - 1) * pageSize, page * pageSize - 1);
 
         if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
-        if (fNombre) request = request.ilike('nombre', `%${fNombre}%`);
-        if (fTelefono) request = request.ilike('telefono', `%${fTelefono}%`);
-        if (fLocalidad) request = request.ilike('localidad', `%${fLocalidad}%`);
         if (fResponsable) request = request.eq('responsable', fResponsable);
+        
+        if (fSearch) {
+            const term = `%${fSearch}%`;
+            request = request.or(`nombre.ilike.${term},telefono.ilike.${term},localidad.ilike.${term},estado.ilike.${term},responsable.ilike.${term},direccion.ilike.${term}`);
+        }
 
         const { data, count, error } = await request;
 
@@ -85,7 +85,7 @@ export default function Repartidores() {
 
     useEffect(() => {
         fetchRepartidores();
-    }, [page, pageSize, fNombre, fTelefono, fLocalidad, fEstado, fResponsable, empresaActiva]);
+    }, [page, pageSize, fSearch, fEstado, fResponsable, empresaActiva]);
 
     const handleImportExcel = async (e) => {
         const file = e.target.files?.[0];
@@ -182,22 +182,20 @@ export default function Repartidores() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                    <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'relative', gridColumn: 'span 2' }}>
                         <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Nombre..." value={fNombre} onChange={e => { setFNombre(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Teléfono..." value={fTelefono} onChange={e => { setFTelefono(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Localidad..." value={fLocalidad} onChange={e => { setFLocalidad(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                        <input 
+                            className="input" 
+                            placeholder="Buscar por nombre, tel, localidad, responsable..." 
+                            value={fSearch} 
+                            onChange={e => { setFSearch(e.target.value); setPage(1); }} 
+                            style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px', height: '48px', fontSize: '1rem' }} 
+                        />
                     </div>
 
                     <div style={{ position: 'relative' }}>
                         <ActivityIcon size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                        <select className="input" value={fEstado} onChange={e => { setFEstado(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
+                        <select className="input" value={fEstado} onChange={e => { setFEstado(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px', height: '48px' }}>
                             <option value="Todos">Todos los estados</option>
                             <option value="Documentación sin gestionar">Documentación sin gestionar</option>
                             <option value="Cuenta aun no confirmada">Cuenta aun no confirmada</option>
@@ -207,7 +205,7 @@ export default function Repartidores() {
 
                     <div style={{ position: 'relative' }}>
                         <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                        <select className="input" value={fResponsable} onChange={e => { setFResponsable(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
+                        <select className="input" value={fResponsable} onChange={e => { setFResponsable(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px', height: '48px' }}>
                             <option value="">Cualquier responsable</option>
                             <option value="Toto">Toto</option>
                             <option value="Ruben">Ruben</option>
