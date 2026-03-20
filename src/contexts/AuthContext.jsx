@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
     const [empresasDisponibles, setEmpresasDisponibles] = useState([]);
     const [empresaActiva, setEmpresaActivaState] = useState(null);
     const [paginasPermitidas, setPaginasPermitidas] = useState(null); // null = no loaded yet
+    const [sessionId, setSessionId] = useState(null);
 
     const setEmpresaActiva = (empresa) => {
         setEmpresaActivaState(empresa);
@@ -115,6 +116,56 @@ export function AuthProvider({ children }) {
         return () => subscription.unsubscribe();
     }, []);
 
+    // Session Tracking logic
+    useEffect(() => {
+        if (!user) {
+            setSessionId(null);
+            return;
+        }
+
+        let currentSessionId = null;
+
+        const startSession = async () => {
+            const { data, error } = await supabase
+                .from('sesiones_usuario')
+                .insert({
+                    user_id: user.id,
+                    user_email: user.email,
+                    inicio: new Date().toISOString()
+                })
+                .select('id')
+                .single();
+            
+            if (!error && data) {
+                setSessionId(data.id);
+                currentSessionId = data.id;
+            }
+        };
+
+        startSession();
+
+        const heartbeat = setInterval(async () => {
+            if (currentSessionId) {
+                await supabase
+                    .from('sesiones_usuario')
+                    .update({ last_ping: new Date().toISOString() })
+                    .eq('id', currentSessionId);
+            }
+        }, 60000); // Latido cada minuto
+
+        return () => {
+            clearInterval(heartbeat);
+            if (currentSessionId) {
+                // Intentar cerrar sesión (aunque el cierre de pestaña es incierto)
+                supabase
+                    .from('sesiones_usuario')
+                    .update({ fin: new Date().toISOString() })
+                    .eq('id', currentSessionId)
+                    .then(() => {});
+            }
+        };
+    }, [user]);
+
     const signIn = async (email, password) => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -122,6 +173,12 @@ export function AuthProvider({ children }) {
     };
 
     const signOut = async () => {
+        if (sessionId) {
+            await supabase
+                .from('sesiones_usuario')
+                .update({ fin: new Date().toISOString() })
+                .eq('id', sessionId);
+        }
         localStorage.removeItem(EMPRESA_KEY);
         const { error } = await supabase.auth.signOut();
         if (error) throw error;

@@ -9,7 +9,7 @@ interface AuditLog {
     id: string;
     table_name: string;
     record_id: string;
-    action_type: 'INSERT' | 'UPDATE' | 'DELETE';
+    action_type: 'INSERT' | 'UPDATE' | 'DELETE' | 'SESSION_END';
     old_data: any;
     new_data: any;
     created_at: string;
@@ -90,6 +90,23 @@ export const ActividadSistema: React.FC = () => {
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <X size={12} /> Registro Eliminado
                     </span>
+                </div>
+            );
+        }
+
+        // Special handling for SESSION_END
+        if (newData && newData.duracion) {
+            return (
+                <div style={{ padding: '12px', background: 'var(--accent-soft)', borderRadius: '12px', border: '1px solid var(--accent)', color: 'var(--accent)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.9rem', marginBottom: '4px' }}>
+                        <Clock size={16} /> Sesión Finalizada
+                    </div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                        Tiempo en App: <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{newData.duracion}</span>
+                    </div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '4px' }}>
+                        Inicio: {new Date(newData.inicio).toLocaleTimeString()} • Fin: {new Date(newData.fin).toLocaleTimeString()}
+                    </div>
                 </div>
             );
         }
@@ -182,6 +199,7 @@ export const ActividadSistema: React.FC = () => {
                     <div style={{ display: 'flex', gap: '8px', flex: '1 1 400px' }}>
                         <select className="input" style={{ flex: 1 }} value={filterTable} onChange={(e) => { setFilterTable(e.target.value); setPage(1); }}>
                             <option value="Todos">Todas las tablas</option>
+                            <option value="sesiones">Sesiones (Tiempo App)</option>
                             <option value="clientes">Clientes</option>
                             <option value="empresa_cliente">Ficha de Cliente</option>
                             <option value="repartidores">Repartidores</option>
