@@ -1,6 +1,8 @@
 import React, { memo } from 'react';
 import { Phone, MapPin, Mail, Calendar, Edit2, Trash2, User, Clock } from 'lucide-react';
 import { Button } from './Button';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ActivityTimeline } from './ActivityTimeline';
 import { Client, ClientActivity } from '../../types/client';
 import { esEstadoFinal } from '../../constants/estados';
 
@@ -148,20 +150,21 @@ export const ClienteCard = memo<Props>(({
                     </div>
                 </div>
 
-                {isExpanded && (
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px', paddingRight: '4px' }}>
-                        {acts.length > 0 ? acts.map(a => (
-                            <div key={a.id} style={{ borderLeft: '3px solid rgba(59, 130, 246, 0.4)', paddingLeft: '12px' }}>
-                                <div style={{ fontSize: '0.95rem', color: 'var(--text)', marginBottom: '4px' }}>{a.descripcion}</div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                    {new Date(a.fecha).toLocaleString('es-AR')} {a.usuario && <span>· <strong>{a.usuario}</strong></span>}
-                                </div>
+                <AnimatePresence>
+                    {isExpanded && (
+                        <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                            style={{ overflow: 'hidden' }}
+                        >
+                            <div style={{ padding: '12px 4px 12px 0', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
+                                <ActivityTimeline activities={acts} />
                             </div>
-                        )) : (
-                            <div className="muted" style={{ fontSize: '0.9rem', textAlign: 'center' }}>No hay actividades registradas.</div>
-                        )}
-                    </div>
-                )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
