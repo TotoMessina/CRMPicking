@@ -30,6 +30,16 @@ export const useAppShell = () => {
     const [pushEnabled, setPushEnabled] = useState(false);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [showEmpresaSelector, setShowEmpresaSelector] = useState(false);
+    const [isRutaActive, setIsRutaActive] = useState(() => {
+        return localStorage.getItem('modo-ruta-active') === 'true';
+    });
+
+    const toggleModoRuta = () => {
+        const next = !isRutaActive;
+        setIsRutaActive(next);
+        localStorage.setItem('modo-ruta-active', next);
+        window.dispatchEvent(new CustomEvent('modo-ruta-changed', { detail: next }));
+    };
 
     useEffect(() => {
         if ('Notification' in window && navigator.serviceWorker) {
@@ -188,8 +198,9 @@ export const useAppShell = () => {
         user, role, userName, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva,
         theme, toggleTheme, navigate, location,
         isMobileMenuOpen, setIsMobileMenuOpen,
-        pushEnabled, unreadChatCount,
+        pushEnabled,        unreadChatCount,
         showEmpresaSelector, setShowEmpresaSelector,
+        isRutaActive, toggleModoRuta,
         handleLogout, handleSubscribePush, handleForceUpdate,
         navItems
     };

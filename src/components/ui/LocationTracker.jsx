@@ -1,32 +1,91 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 /**
- * LocationTracker: A background component that reports the current user's location
- * to the 'usuarios' table in Supabase.
+ * LocationTracker: Componente en segundo plano que reporta la ubicación
+ * e implementa el Wake Lock API para el "Modo Ruta".
  */
 export const LocationTracker = () => {
     const { user } = useAuth();
     const lastReportedTime = useRef(0);
-    const REPORT_INTERVAL = 30 * 1000; // 30 seconds for testing
     const watchId = useRef(null);
+    const wakeLock = useRef(null);
+    const [isRutaActive, setIsRutaActive] = useState(() => {
+        return localStorage.getItem('modo-ruta-active') === 'true';
+    });
 
+    const REPORT_INTERVAL = isRutaActive ? 15000 : 60000; // 15s en ruta, 60s normal
+
+    // 1. Manejo del Wake Lock (Mantener pantalla encendida)
+    const requestWakeLock = async () => {
+        if (!('wakeLock' in navigator)) return;
+        try {
+            wakeLock.current = await navigator.wakeLock.request('screen');
+            console.log('🔒 Wake Lock activado: La pantalla no se apagará');
+            
+            wakeLock.current.addEventListener('release', () => {
+                console.log('🔓 Wake Lock liberado');
+            });
+        } catch (err) {
+            console.error(`❌ Error al solicitar Wake Lock: ${err.name}, ${err.message}`);
+        }
+    };
+
+    const releaseWakeLock = () => {
+        if (wakeLock.current) {
+            wakeLock.current.release();
+            wakeLock.current = null;
+        }
+    };
+
+    // 2. Escuchar cambios de Modo Ruta desde la UI
+    useEffect(() => {
+        const handleRutaChange = (e) => {
+            const active = e.detail;
+            setIsRutaActive(active);
+            localStorage.setItem('modo-ruta-active', active);
+            if (active) {
+                requestWakeLock();
+                toast('Modo Ruta Activo: Rastreo Priorizado', { icon: '🚀', style: { borderRadius: '10px', background: '#333', color: '#fff' } });
+            } else {
+                releaseWakeLock();
+                toast('Modo Ruta Desactivado', { icon: '🛑' });
+            }
+        };
+
+        window.addEventListener('modo-ruta-changed', handleRutaChange);
+        
+        // Si ya estaba activo al cargar, intentar re-activar wake lock
+        if (isRutaActive) requestWakeLock();
+
+        // Re-activar wake lock si la pestaña vuelve a ser visible (requerido por el navegador)
+        const handleVisibilityChange = () => {
+            if (wakeLock.current !== null && document.visibilityState === 'visible' && isRutaActive) {
+                requestWakeLock();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener('modo-ruta-changed', handleRutaChange);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            releaseWakeLock();
+        };
+    }, [isRutaActive]);
+
+    // 3. Lógica de Geolocalización
     useEffect(() => {
         if (!user || !navigator.geolocation) return;
 
         const updateLocation = async (position) => {
             const now = Date.now();
-            console.log('Location change detected:', position.coords);
             
-            // Only report if enough time has passed (throttle)
-            if (now - lastReportedTime.current < REPORT_INTERVAL) {
-                console.log('Reporting throttled. Needs to wait:', (REPORT_INTERVAL - (now - lastReportedTime.current)) / 1000, 's');
-                return;
-            }
+            // Throttle basado en el modo
+            if (now - lastReportedTime.current < REPORT_INTERVAL) return;
 
-            const { latitude: lat, longitude: lng } = position.coords;
-            console.log('Reporting location to Supabase...', { lat, lng });
+            const { latitude: lat, longitude: lng, accuracy } = position.coords;
 
             try {
                 const { error } = await supabase
@@ -40,9 +99,7 @@ export const LocationTracker = () => {
 
                 if (!error) {
                     lastReportedTime.current = now;
-                    console.log('✅ Location reported successfully to usuarios table');
-                } else {
-                    console.error('❌ Error reporting location:', error);
+                    console.log(`📍 Ubicación [${isRutaActive ? 'RUTA' : 'NORMAL'}]:`, { lat, lng, acc: accuracy });
                 }
             } catch (err) {
                 console.error('❌ Exception in LocationTracker:', err);
@@ -51,12 +108,16 @@ export const LocationTracker = () => {
 
         const handleError = (error) => {
             console.error('Geolocation error:', error);
+            if (error.code === 1) toast.error('Permiso de ubicación denegado');
         };
 
-        // Initial check
-        navigator.geolocation.getCurrentPosition(updateLocation, handleError, { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
+        // Primera captura
+        navigator.geolocation.getCurrentPosition(updateLocation, handleError, { 
+            enableHighAccuracy: true, 
+            timeout: 10000 
+        });
 
-        // Start watching position
+        // Ver vigía
         watchId.current = navigator.geolocation.watchPosition(
             updateLocation,
             handleError,
@@ -67,18 +128,20 @@ export const LocationTracker = () => {
             }
         );
 
-        // Also a periodic check every 30s to force update last_seen even if stationary
+        // Forzar actualización periódica
         const interval = setInterval(() => {
-            navigator.geolocation.getCurrentPosition(updateLocation, handleError, { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
+            navigator.geolocation.getCurrentPosition(updateLocation, handleError, { 
+                enableHighAccuracy: true, 
+                timeout: 10000 
+            });
         }, REPORT_INTERVAL);
 
         return () => {
-            if (watchId.current !== null) {
-                navigator.geolocation.clearWatch(watchId.current);
-            }
+            if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
             clearInterval(interval);
         };
-    }, [user]);
+    }, [user, isRutaActive, REPORT_INTERVAL]);
 
-    return null; // This component has no UI
+    return null;
 };
+

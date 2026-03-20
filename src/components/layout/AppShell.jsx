@@ -4,7 +4,7 @@ import { useAppShell } from '../../hooks/useAppShell';
 import { LocationTracker } from '../ui/LocationTracker';
 import { CommandPalette } from '../ui/CommandPalette';
 import { EmpresaSelector } from '../ui/EmpresaSelector';
-import { LogOut, Sun, Moon, Bell, Building2, ChevronDown } from 'lucide-react';
+import { LogOut, Sun, Moon, Bell, Building2, ChevronDown, Navigation } from 'lucide-react';
 
 const SidebarBrand = ({ setIsMobileMenuOpen }) => (
     <div className="sidebar-brand">
@@ -52,6 +52,7 @@ export function AppShell() {
         isMobileMenuOpen, setIsMobileMenuOpen,
         pushEnabled, unreadChatCount,
         showEmpresaSelector, setShowEmpresaSelector,
+        isRutaActive, toggleModoRuta,
         handleLogout, handleSubscribePush, handleForceUpdate,
         navItems
     } = useAppShell();
@@ -97,6 +98,37 @@ export function AppShell() {
                 <button type="button" onClick={handleSubscribePush} disabled={pushEnabled} className="btn-secundario theme-toggle" style={{ marginTop: '8px', opacity: pushEnabled ? 0.6 : 1, cursor: pushEnabled ? 'default' : 'pointer' }}>
                     <Bell size={16} className="mr-2" /> {pushEnabled ? 'Notificaciones On' : 'Activar Notificaciones'}
                 </button>
+
+                <div style={{ padding: '8px 16px' }}>
+                    <button 
+                        onClick={toggleModoRuta}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '12px',
+                            borderRadius: '12px',
+                            border: isRutaActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+                            background: isRutaActive ? 'var(--accent-soft)' : 'var(--bg-elevated)',
+                            color: isRutaActive ? 'var(--accent)' : 'var(--text-muted)',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            boxShadow: isRutaActive ? '0 0 15px rgba(37, 99, 235, 0.2)' : 'none'
+                        }}
+                    >
+                        <Navigation size={16} style={{ transform: isRutaActive ? 'rotate(45deg)' : 'none', transition: 'transform 0.5s ease' }} />
+                        {isRutaActive ? 'MODO RUTA: ON' : 'ACTIVAR MODO RUTA'}
+                    </button>
+                    {isRutaActive && (
+                        <div style={{ fontSize: '0.65rem', color: 'var(--accent)', textAlign: 'center', marginTop: '4px', fontWeight: 600, animation: 'pulse 2s infinite' }}>
+                            Pantalla encendida • Tracking priorizado
+                        </div>
+                    )}
+                </div>
 
                 <nav className="sidebar-nav" aria-label="Navegación principal">
                     <ul className="sidebar-menu">
