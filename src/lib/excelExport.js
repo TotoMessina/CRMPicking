@@ -330,6 +330,20 @@ export const importarRepartidoresExcel = async (file, empresaActiva, onSuccess) 
                 let successCount = 0;
                 for (const row of data) {
                     try {
+                        let fechaNorm = row.fecha_creacion || undefined;
+                        
+                        // Si la fecha viene como DD/MM/YYYY, la normalizamos para Supabase
+                        if (typeof fechaNorm === 'string' && fechaNorm.includes('/')) {
+                            const parts = fechaNorm.split(' ')[0].split('/'); // Maneja "13/1/2025" o "13/1/2025 00:00"
+                            if (parts.length === 3) {
+                                // Asumimos DD/MM/YYYY
+                                const day = parts[0].padStart(2, '0');
+                                const month = parts[1].padStart(2, '0');
+                                const year = parts[2];
+                                fechaNorm = `${year}-${month}-${day}T00:00:00Z`;
+                            }
+                        }
+
                         const { error } = await supabase.from('repartidores').insert([{
                             nombre: row.nombre || 'Nuevo Repartidor',
                             telefono: String(row.telefono || ''),
@@ -340,7 +354,7 @@ export const importarRepartidoresExcel = async (file, empresaActiva, onSuccess) 
                             notas: row.notas || '',
                             estado: row.estado || 'Activo',
                             empresa_id: empresaActiva.id,
-                            created_at: row.fecha_creacion || undefined
+                            created_at: fechaNorm
                         }]);
 
                         if (error) throw error;
