@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -30,16 +30,54 @@ export const useAppShell = () => {
     const [pushEnabled, setPushEnabled] = useState(false);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [showEmpresaSelector, setShowEmpresaSelector] = useState(false);
+    
     const [isRutaActive, setIsRutaActive] = useState(() => {
         return localStorage.getItem('modo-ruta-active') === 'true';
     });
+    const wakeLockRef = useRef(null);
 
-    const toggleModoRuta = () => {
+    const toggleModoRuta = async () => {
         const next = !isRutaActive;
+        
+        if (next) {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLockRef.current = await navigator.wakeLock.request('screen');
+                    toast.success('Modo Ruta: Pantalla bloqueada', { icon: '🔒' });
+                } catch (err) {
+                    console.error('Wake Lock Error:', err);
+                    toast.error('No se pudo bloquear la pantalla (Requiere HTTPS)');
+                }
+            } else {
+                toast.error('Navegador no soporta bloqueo de pantalla');
+            }
+        } else {
+            if (wakeLockRef.current) {
+                await wakeLockRef.current.release();
+                wakeLockRef.current = null;
+            }
+        }
+
         setIsRutaActive(next);
         localStorage.setItem('modo-ruta-active', next);
         window.dispatchEvent(new CustomEvent('modo-ruta-changed', { detail: next }));
     };
+
+    useEffect(() => {
+        if (!isRutaActive) return;
+
+        const handleVisibility = async () => {
+            if (document.visibilityState === 'visible' && isRutaActive) {
+                try {
+                    if (!wakeLockRef.current) {
+                        wakeLockRef.current = await navigator.wakeLock.request('screen');
+                    }
+                } catch (e) { console.error(e); }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, [isRutaActive]);
 
     useEffect(() => {
         if ('Notification' in window && navigator.serviceWorker) {
@@ -169,7 +207,6 @@ export const useAppShell = () => {
         ];
 
         if (isSuperAdmin) return allItems;
-        // Only use permission-based filtering if there are actual entries configured
         if (paginasPermitidas && Object.keys(paginasPermitidas).length > 0) {
             return allItems.filter(item => {
                 if (item.spacer) return true;
@@ -178,7 +215,6 @@ export const useAppShell = () => {
                 return perm && perm.includes(effectiveRole);
             });
         }
-        // Fallback: default role-based filtering
         if (isActivador) return allItems.filter(item => item.spacer || activadorRoutes.has(item.to));
         return allItems.filter(item => !item.adminOnly && !item.superAdminOnly || isAdmin);
     })();
@@ -198,7 +234,7 @@ export const useAppShell = () => {
         user, role, userName, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva,
         theme, toggleTheme, navigate, location,
         isMobileMenuOpen, setIsMobileMenuOpen,
-        pushEnabled,        unreadChatCount,
+        pushEnabled, unreadChatCount,
         showEmpresaSelector, setShowEmpresaSelector,
         isRutaActive, toggleModoRuta,
         handleLogout, handleSubscribePush, handleForceUpdate,
