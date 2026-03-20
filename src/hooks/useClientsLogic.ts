@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useClientes, useDeleteCliente, useQuickDateCliente, useRegistrarVisitaCliente } from '../hooks/useClientes';
 import { useCompanyUsers } from '../hooks/useCompanyUsers';
+import { useRubros } from '../hooks/useRubros';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { descargarModeloClientes, importarClientesExcel, exportarClientesExcel } from '../lib/excelExport';
@@ -54,7 +55,7 @@ export const useClientsLogic = () => {
 
     const [sortBy, setSortBy] = useState('updated');
     const { data: responsablesValidos = [] } = useCompanyUsers(empresaActiva?.id);
-    const [rubrosValidos, setRubrosValidos] = useState<string[]>([]);
+    const { data: rubrosValidos = [] } = useRubros();
     const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
 
     // Modals
@@ -82,17 +83,7 @@ export const useClientsLogic = () => {
     const quickDateMutation = useQuickDateCliente();
     const visitaMutation = useRegistrarVisitaCliente();
 
-    useEffect(() => {
-        const fetchRubros = async () => {
-            if (!empresaActiva?.id) return;
-            const { data } = await supabase.from('empresa_cliente').select('rubro').eq('empresa_id', empresaActiva.id).eq('activo', true);
-            if (data) {
-                const uniqueRubros = [...new Set(data.map((c: any) => c.rubro).filter((r: any) => r && r.trim() !== ''))].sort() as string[];
-                setRubrosValidos(uniqueRubros);
-            }
-        };
-        fetchRubros();
-    }, [empresaActiva]);
+
 
     const updateFilter = (name: keyof ClientFilters, value: any) => {
         setFilters(prev => ({ ...prev, [name]: value }));

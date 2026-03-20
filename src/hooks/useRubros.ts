@@ -13,6 +13,6 @@ export const useRubros = () => {
             if (error) throw error;
             return data.map(r => r.nombre);
         },
-        staleTime: 1000 * 60 * 30, // 30 minutes
+        staleTime: 1000 * 60 * 1, // 1 minute
     });
 };
