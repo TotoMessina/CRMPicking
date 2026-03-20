@@ -119,6 +119,30 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
                 let successCount = 0;
                 for (const row of data) {
                     try {
+                        // Intentar obtener la fecha de varias columnas posibles
+                        let rawFecha = row.fecha_creacion || row.created_at || row.fecha || row.Fecha || undefined;
+                        let fechaNorm = undefined;
+                        
+                        if (rawFecha) {
+                            if (typeof rawFecha === 'string') {
+                                if (rawFecha.includes('/')) {
+                                    const parts = rawFecha.split(' ')[0].split('/');
+                                    if (parts.length === 3) {
+                                        const day = parts[0].padStart(2, '0');
+                                        const month = parts[1].padStart(2, '0');
+                                        const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                                        fechaNorm = `${year}-${month}-${day}T00:00:00Z`;
+                                    }
+                                } else {
+                                    const d = new Date(rawFecha);
+                                    if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
+                                }
+                            } else if (typeof rawFecha === 'number') {
+                                const d = new Date((rawFecha - 25569) * 86400 * 1000);
+                                if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
+                            }
+                        }
+
                         // 1. Create universal client
                         const { data: newC, error: cErr } = await supabase.from('clientes').insert([{
                             nombre: row.nombre || row.nombre_local || 'Nuevo Cliente',
@@ -127,7 +151,7 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
                             telefono: String(row.telefono || ''),
                             mail: row.mail || '',
                             cuit: String(row.cuit || ''),
-                            created_at: row.fecha_creacion || undefined
+                            created_at: fechaNorm || undefined
                         }]).select('id').single();
 
                         if (cErr) throw cErr;
@@ -146,7 +170,7 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
                             hora_proximo_contacto: row.hora_proximo_contacto || null,
                             creado_por: userName || userEmail || 'Importación',
                             activo: true,
-                            created_at: row.fecha_creacion || undefined
+                            created_at: fechaNorm || undefined
                         }]);
 
                         if (ecErr) throw ecErr;
@@ -330,17 +354,33 @@ export const importarRepartidoresExcel = async (file, empresaActiva, onSuccess) 
                 let successCount = 0;
                 for (const row of data) {
                     try {
-                        let fechaNorm = row.fecha_creacion || undefined;
+                        // Intentar obtener la fecha de varias columnas posibles
+                        let rawFecha = row.fecha_creacion || row.created_at || row.fecha || row.Fecha || undefined;
+                        let fechaNorm = undefined;
                         
-                        // Si la fecha viene como DD/MM/YYYY, la normalizamos para Supabase
-                        if (typeof fechaNorm === 'string' && fechaNorm.includes('/')) {
-                            const parts = fechaNorm.split(' ')[0].split('/'); // Maneja "13/1/2025" o "13/1/2025 00:00"
-                            if (parts.length === 3) {
-                                // Asumimos DD/MM/YYYY
-                                const day = parts[0].padStart(2, '0');
-                                const month = parts[1].padStart(2, '0');
-                                const year = parts[2];
-                                fechaNorm = `${year}-${month}-${day}T00:00:00Z`;
+                        if (rawFecha) {
+                            if (typeof rawFecha === 'string') {
+                                if (rawFecha.includes('/')) {
+                                    const parts = rawFecha.split(' ')[0].split('/');
+                                    if (parts.length === 3) {
+                                        const day = parts[0].padStart(2, '0');
+                                        const month = parts[1].padStart(2, '0');
+                                        const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                                        fechaNorm = `${year}-${month}-${day}T00:00:00Z`;
+                                    }
+                                } else {
+                                    // Probamos si es un ISO string o algo que JS entienda
+                                    const d = new Date(rawFecha);
+                                    if (!isNaN(d.getTime())) {
+                                        fechaNorm = d.toISOString();
+                                    }
+                                }
+                            } else if (typeof rawFecha === 'number') {
+                                // Caso Excel Serial Date (ej: 45658)
+                                const d = new Date((rawFecha - 25569) * 86400 * 1000);
+                                if (!isNaN(d.getTime())) {
+                                    fechaNorm = d.toISOString();
+                                }
                             }
                         }
 
@@ -354,7 +394,7 @@ export const importarRepartidoresExcel = async (file, empresaActiva, onSuccess) 
                             notas: row.notas || '',
                             estado: row.estado || 'Activo',
                             empresa_id: empresaActiva.id,
-                            created_at: fechaNorm
+                            created_at: fechaNorm || undefined
                         }]);
 
                         if (error) throw error;
