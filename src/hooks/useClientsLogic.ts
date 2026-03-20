@@ -12,13 +12,13 @@ export interface ClientFilters {
     nombre: string;
     telefono: string;
     direccion: string;
-    estado: string;
-    situacion: string;
+    estado: string[];
+    situacion: string[];
     responsable: string[];
-    rubro: string;
-    interes: string;
-    estilo: string;
-    tipoContacto: string;
+    rubro: string[];
+    interes: string[];
+    estilo: string[];
+    tipoContacto: string[];
     proximos7: boolean;
     vencidos: boolean;
     creadoDesde: string;
@@ -39,13 +39,13 @@ export const useClientsLogic = () => {
         nombre: '',
         telefono: '',
         direccion: '',
-        estado: 'Todos',
-        situacion: 'Todos',
+        estado: [],
+        situacion: [],
         responsable: [],
-        rubro: '',
-        interes: '',
-        estilo: '',
-        tipoContacto: 'Todos',
+        rubro: [],
+        interes: [],
+        estilo: [],
+        tipoContacto: [],
         proximos7: false,
         vencidos: false,
         creadoDesde: '',

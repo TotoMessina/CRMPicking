@@ -9,11 +9,14 @@ interface Props {
     responsablesValidos: string[];
 }
 
-const ResponsableMultiSelect: React.FC<{
+const MultiSelectFilter: React.FC<{
+    label: string;
+    icon: React.ReactNode;
     selected: string[];
     options: string[];
     onChange: (next: string[]) => void;
-}> = ({ selected, options, onChange }) => {
+    placeholder?: string;
+}> = ({ label, icon, selected, options, onChange, placeholder = "Todos" }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
@@ -42,7 +45,10 @@ const ResponsableMultiSelect: React.FC<{
     };
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+        <div ref={containerRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                {icon} {label}
+            </div>
             {/* Trigger Container */}
             <div 
                 onClick={() => setIsOpen(!isOpen)}
@@ -60,14 +66,15 @@ const ResponsableMultiSelect: React.FC<{
                     flexWrap: 'wrap',
                     border: isOpen ? '1px solid var(--accent)' : '1px solid var(--border)',
                     boxShadow: isOpen ? '0 0 0 2px rgba(59, 130, 246, 0.1)' : 'none',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    width: '100%'
                 }}
             >
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1, maxWidth: 'calc(100% - 24px)' }}>
                     {selected.length === 0 ? (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Todos</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{placeholder}</span>
                     ) : (
-                        selected.slice(0, 2).map(val => (
+                        selected.slice(0, 1).map(val => (
                             <span key={val} style={{ 
                                 background: 'var(--accent)', 
                                 color: '#fff', 
@@ -77,21 +84,26 @@ const ResponsableMultiSelect: React.FC<{
                                 fontWeight: 600,
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px'
+                                gap: '4px',
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                             }}>
                                 {val}
-                                <X size={12} onClick={(e) => { e.stopPropagation(); toggleOption(val); }} style={{ cursor: 'pointer' }} />
+                                <X size={12} onClick={(e) => { e.stopPropagation(); toggleOption(val); }} style={{ cursor: 'pointer', flexShrink: 0 }} />
                             </span>
                         ))
                     )}
-                    {selected.length > 2 && (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>+{selected.length - 2}</span>
+                    {selected.length > 1 && (
+                        <span style={{ color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 700 }}>+{selected.length - 1}</span>
                     )}
                 </div>
                 <ChevronDown size={16} style={{ 
                     color: 'var(--text-muted)', 
                     transform: isOpen ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 0.2s ease'
+                    transition: 'transform 0.2s ease',
+                    flexShrink: 0
                 }} />
             </div>
 
@@ -106,19 +118,21 @@ const ResponsableMultiSelect: React.FC<{
                     border: '1px solid var(--border)',
                     borderRadius: '16px',
                     boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                    zIndex: 100,
+                    zIndex: 1000,
                     padding: '12px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '10px',
-                    animation: 'page-enter 0.2s ease-out forwards'
+                    animation: 'page-enter 0.2s ease-out forwards',
+                    minWidth: '220px'
                 }}>
                     <div style={{ position: 'relative' }}>
                         <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                         <input 
                             autoFocus
-                            placeholder="Buscar responsable..."
+                            placeholder={`Buscar ${label.toLowerCase()}...`}
                             value={searchTerm}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             style={{ 
                                 width: '100%', 
@@ -131,7 +145,7 @@ const ResponsableMultiSelect: React.FC<{
                         />
                     </div>
 
-                    <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '4px' }}>
                         {filteredOptions.length === 0 ? (
                             <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                                 No se encontraron resultados
@@ -142,7 +156,7 @@ const ResponsableMultiSelect: React.FC<{
                                 return (
                                     <div 
                                         key={opt}
-                                        onClick={() => toggleOption(opt)}
+                                        onClick={(e) => { e.stopPropagation(); toggleOption(opt); }}
                                         style={{
                                             padding: '8px 10px',
                                             borderRadius: '8px',
@@ -166,19 +180,19 @@ const ResponsableMultiSelect: React.FC<{
                     </div>
 
                     {selected.length > 0 && (
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                             <button 
-                                onClick={() => onChange([])}
+                                onClick={(e) => { e.stopPropagation(); onChange([]); }}
                                 style={{ 
                                     background: 'transparent', 
-                                    color: 'var(--danger)', 
+                                    color: 'var(--text-muted)', 
                                     fontSize: '0.75rem', 
                                     fontWeight: 600,
                                     padding: '4px 8px',
                                     borderRadius: '6px'
                                 }}
                             >
-                                Limpiar selección
+                                Limpiar
                             </button>
                         </div>
                     )}
@@ -201,7 +215,7 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
             gap: '20px',
             boxShadow: '0 4px 24px -10px rgba(0, 0, 0, 0.08)',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'visible'
         }}>
             <div style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)', opacity: 0.5 }}></div>
 
@@ -209,98 +223,122 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                 <Filter size={18} style={{ color: 'var(--accent)' }} /> Filtros de Búsqueda
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                <div style={{ position: 'relative' }}>
-                    <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input className="input" placeholder="Nombre o local..." value={filters.nombre} onChange={e => updateFilter('nombre', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                </div>
-                <div style={{ position: 'relative' }}>
-                    <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input className="input" placeholder="Teléfono..." value={filters.telefono} onChange={e => updateFilter('telefono', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                </div>
-                <div style={{ position: 'relative' }}>
-                    <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input className="input" placeholder="Dirección..." value={filters.direccion} onChange={e => updateFilter('direccion', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                    <Store size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                    <select className="input" value={filters.rubro} onChange={e => updateFilter('rubro', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                        <option value="">Cualquier rubro</option>
-                        {rubrosValidos.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                    <ActivityIcon size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                    <select className="input" value={filters.estado} onChange={e => updateFilter('estado', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                        <option value="Todos">Todos los estados</option>
-                        <option value="1 - Cliente relevado">1 - Cliente relevado</option>
-                        <option value="2 - Local Visitado No Activo">2 - Local Visitado No Activo</option>
-                        <option value="3 - Primer ingreso">3 - Primer Ingreso</option>
-                        <option value="4 - Local Creado">4 - Local Creado</option>
-                        <option value="5 - Local Visitado Activo">5 - Local Visitado Activo</option>
-                        <option value="6 - Local No Interesado">6 - Local No Interesado</option>
-                    </select>
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                    <ActivityIcon size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                    <select className="input" value={filters.situacion} onChange={e => updateFilter('situacion', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                        <option value="Todos">Todas las situaciones</option>
-                        <option value="sin comunicacion nueva">Sin comunicación nueva</option>
-                        <option value="en proceso">En proceso</option>
-                        <option value="en funcionamiento">En funcionamiento</option>
-                    </select>
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                    <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                    <select className="input" value={filters.tipoContacto} onChange={e => updateFilter('tipoContacto', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                        <option value="Todos">Todos los tipos de contacto</option>
-                        <option value="Visita Presencial">Visita Presencial</option>
-                        <option value="Llamada">Llamada</option>
-                    </select>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                        <Search size={14} /> Nombre / Local
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                        <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input className="input" placeholder="Buscar..." value={filters.nombre} onChange={e => updateFilter('nombre', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                    </div>
                 </div>
 
                 <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                        <User size={14} /> Responsables
+                        <Phone size={14} /> Teléfono
                     </div>
-                    <ResponsableMultiSelect 
-                        selected={filters.responsable} 
-                        options={responsablesValidos} 
-                        onChange={(next) => updateFilter('responsable', next)} 
-                    />
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                    <Tag size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                    <select className="input" value={filters.interes} onChange={e => updateFilter('interes', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                        <option value="">Cualquier interés</option>
-                        <option value="Bajo">Bajo</option>
-                        <option value="Medio">Medio</option>
-                        <option value="Alto">Alto</option>
-                    </select>
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                    <Building size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                    <select className="input" value={filters.estilo} onChange={e => updateFilter('estilo', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                        <option value="">Cualquier estilo</option>
-                        <option value="Dueño">Dueño</option>
-                        <option value="Empleado">Empleado</option>
-                        <option value="Cerrado">Cerrado</option>
-                    </select>
+                    <div style={{ position: 'relative' }}>
+                        <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input className="input" placeholder="Teléfono..." value={filters.telefono} onChange={e => updateFilter('telefono', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                    </div>
                 </div>
 
                 <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>Creado Desde:</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                        <MapPin size={14} /> Dirección
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                        <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input className="input" placeholder="Dirección..." value={filters.direccion} onChange={e => updateFilter('direccion', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                    </div>
+                </div>
+
+                <MultiSelectFilter 
+                    label="Rubros" 
+                    icon={<Store size={14} />} 
+                    selected={filters.rubro} 
+                    options={rubrosValidos} 
+                    onChange={(next) => updateFilter('rubro', next)} 
+                    placeholder="Cualquier rubro"
+                />
+
+                <MultiSelectFilter 
+                    label="Estados" 
+                    icon={<ActivityIcon size={14} />} 
+                    selected={filters.estado} 
+                    options={[
+                        "1 - Cliente relevado",
+                        "2 - Local Visitado No Activo",
+                        "3 - Primer ingreso",
+                        "4 - Local Creado",
+                        "5 - Local Visitado Activo",
+                        "6 - Local No Interesado"
+                    ]} 
+                    onChange={(next) => updateFilter('estado', next)} 
+                    placeholder="Todos los estados"
+                />
+
+                <MultiSelectFilter 
+                    label="Situaciones" 
+                    icon={<ActivityIcon size={14} />} 
+                    selected={filters.situacion} 
+                    options={[
+                        "sin comunicacion nueva",
+                        "en proceso",
+                        "en funcionamiento"
+                    ]} 
+                    onChange={(next) => updateFilter('situacion', next)} 
+                    placeholder="Todas las situaciones"
+                />
+
+                <MultiSelectFilter 
+                    label="Tipos de Contacto" 
+                    icon={<Phone size={14} />} 
+                    selected={filters.tipoContacto} 
+                    options={["Visita Presencial", "Llamada"]} 
+                    onChange={(next) => updateFilter('tipoContacto', next)} 
+                    placeholder="Todos los tipos"
+                />
+
+                <MultiSelectFilter 
+                    label="Responsables" 
+                    icon={<User size={14} />} 
+                    selected={filters.responsable} 
+                    options={responsablesValidos} 
+                    onChange={(next) => updateFilter('responsable', next)} 
+                    placeholder="Todos"
+                />
+
+                <MultiSelectFilter 
+                    label="Interés" 
+                    icon={<Tag size={14} />} 
+                    selected={filters.interes} 
+                    options={["Bajo", "Medio", "Alto"]} 
+                    onChange={(next) => updateFilter('interes', next)} 
+                    placeholder="Cualquier interés"
+                />
+
+                <MultiSelectFilter 
+                    label="Estilos de Contacto" 
+                    icon={<Building size={14} />} 
+                    selected={filters.estilo} 
+                    options={["Dueño", "Empleado", "Cerrado"]} 
+                    onChange={(next) => updateFilter('estilo', next)} 
+                    placeholder="Cualquier estilo"
+                />
+
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                        <Calendar size={14} /> Fecha Alta (Desde)
+                    </div>
                     <input type="date" className="input" value={filters.creadoDesde} onChange={e => updateFilter('creadoDesde', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
                 </div>
 
                 <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>Creado Hasta:</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                        <Calendar size={14} /> Fecha Alta (Hasta)
+                    </div>
                     <input type="date" className="input" value={filters.creadoHasta} onChange={e => updateFilter('creadoHasta', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
                 </div>
 
@@ -314,13 +352,14 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                         style={{
                             flex: 1,
                             display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '10px 14px', borderRadius: '12px', cursor: 'pointer',
+                            height: '44px', borderRadius: '12px', cursor: 'pointer',
                             fontWeight: 600, fontSize: '0.85rem',
                             background: filters.vencidos ? '#ef4444' : 'var(--bg-elevated)',
                             color: filters.vencidos ? '#fff' : 'var(--text-muted)',
                             border: filters.vencidos ? '1px solid #ef4444' : '1px solid var(--border)',
                             boxShadow: filters.vencidos ? '0 4px 14px -4px rgba(239,68,68,0.5)' : 'none',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            justifyContent: 'center'
                         }}
                     >
                         <Clock size={16} />
@@ -335,17 +374,18 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                         style={{
                             flex: 1,
                             display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '10px 14px', borderRadius: '12px', cursor: 'pointer',
+                            height: '44px', borderRadius: '12px', cursor: 'pointer',
                             fontWeight: 600, fontSize: '0.85rem',
                             background: filters.proximos7 ? 'var(--accent)' : 'var(--bg-elevated)',
                             color: filters.proximos7 ? '#fff' : 'var(--text-muted)',
                             border: filters.proximos7 ? '1px solid var(--accent)' : '1px solid var(--border)',
                             boxShadow: filters.proximos7 ? '0 4px 14px -4px rgba(37,99,235,0.5)' : 'none',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            justifyContent: 'center'
                         }}
                     >
                         <Calendar size={16} />
-                        Próximos 7 días{filters.proximos7 ? ' ✓' : ''}
+                        Próximos 7{filters.proximos7 ? ' ✓' : ''}
                     </button>
                 </div>
             </div>

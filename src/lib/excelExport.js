@@ -179,14 +179,14 @@ export const exportarClientesCSV = async (empresaActiva, filters = {}, onFinally
             .eq("empresa_id", empresaActiva?.id)
             .eq("activo", true);
 
-        // Apply filters (same logic as before)
-        if (filters.estado && filters.estado !== 'Todos') query = query.eq('estado', filters.estado);
-        if (filters.situacion && filters.situacion !== 'Todos') query = query.eq('situacion', filters.situacion);
-        if (filters.tipoContacto && filters.tipoContacto !== 'Todos') query = query.eq('tipo_contacto', filters.tipoContacto);
+        // Apply filters (multi-select supported)
+        if (filters.estado && filters.estado.length > 0) query = query.in('estado', filters.estado);
+        if (filters.situacion && filters.situacion.length > 0) query = query.in('situacion', filters.situacion);
+        if (filters.tipoContacto && filters.tipoContacto.length > 0) query = query.in('tipo_contacto', filters.tipoContacto);
         if (filters.responsable && filters.responsable.length > 0) query = query.in('responsable', filters.responsable);
-        if (filters.rubro) query = query.eq('rubro', filters.rubro);
-        if (filters.interes) query = query.eq('interes', filters.interes);
-        if (filters.estilo) query = query.eq('estilo_contacto', filters.estilo);
+        if (filters.rubro && filters.rubro.length > 0) query = query.in('rubro', filters.rubro);
+        if (filters.interes && filters.interes.length > 0) query = query.in('interes', filters.interes);
+        if (filters.estilo && filters.estilo.length > 0) query = query.in('estilo_contacto', filters.estilo);
         
         if (filters.creadoDesde) query = query.gte('created_at', `${filters.creadoDesde}T00:00:00.000Z`);
         if (filters.creadoHasta) query = query.lte('created_at', `${filters.creadoHasta}T23:59:59.999Z`);

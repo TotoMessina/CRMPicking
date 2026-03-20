@@ -8,13 +8,13 @@ export interface UseClientesParams {
     page: number;
     pageSize: number;
     isAgendaHoy: boolean;
-    fEstado: string;
-    fSituacion: string;
-    fTipoContacto: string;
+    fEstado: string[];
+    fSituacion: string[];
+    fTipoContacto: string[];
     fResponsable: string[];
-    fRubro: string;
-    fInteres: string;
-    fEstilo: string;
+    fRubro: string[];
+    fInteres: string[];
+    fEstilo: string[];
     fProximos7: boolean;
     fVencidos: boolean;
     fNombre: string;
@@ -75,13 +75,13 @@ export function useClientes(params: UseClientesParams) {
                 request = request.eq('fecha_proximo_contacto', new Date().toISOString().split('T')[0]);
             }
 
-            if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
-            if (fSituacion !== 'Todos') request = request.eq('situacion', fSituacion);
-            if (fTipoContacto !== 'Todos') request = request.eq('tipo_contacto', fTipoContacto);
+            if (fEstado && fEstado.length > 0) request = request.in('estado', fEstado);
+            if (fSituacion && fSituacion.length > 0) request = request.in('situacion', fSituacion);
+            if (fTipoContacto && fTipoContacto.length > 0) request = request.in('tipo_contacto', fTipoContacto);
             if (fResponsable && fResponsable.length > 0) request = request.in('responsable', fResponsable);
-            if (fRubro) request = request.eq('rubro', fRubro);
-            if (fInteres) request = request.eq('interes', fInteres);
-            if (fEstilo) request = request.eq('estilo_contacto', fEstilo);
+            if (fRubro && fRubro.length > 0) request = request.in('rubro', fRubro);
+            if (fInteres && fInteres.length > 0) request = request.in('interes', fInteres);
+            if (fEstilo && fEstilo.length > 0) request = request.in('estilo_contacto', fEstilo);
 
             if (fCreadoDesde) {
                 request = request.gte('created_at', `${fCreadoDesde}T00:00:00.000Z`);
@@ -113,14 +113,13 @@ export function useClientes(params: UseClientesParams) {
                     p_nombre: fNombre || null,
                     p_telefono: fTelefono || null,
                     p_direccion: fDireccion || null,
-                    p_estado: fEstado !== 'Todos' ? fEstado : null,
-                    p_situacion: fSituacion !== 'Todos' ? fSituacion : null,
-                    p_tipo_contacto: fTipoContacto !== 'Todos' ? fTipoContacto : null,
-                    p_responsable: fResponsable && fResponsable.length > 0 ? fResponsable[0] : null, // TEMPORARY: using first element until RPC is updated
+                    p_estados: fEstado && fEstado.length > 0 ? fEstado : null,
+                    p_situaciones: fSituacion && fSituacion.length > 0 ? fSituacion : null,
+                    p_tipos_contacto: fTipoContacto && fTipoContacto.length > 0 ? fTipoContacto : null,
                     p_responsables: fResponsable && fResponsable.length > 0 ? fResponsable : null,
-                    p_rubro: fRubro || null,
-                    p_interes: fInteres || null,
-                    p_estilo: fEstilo || null,
+                    p_rubros: fRubro && fRubro.length > 0 ? fRubro : null,
+                    p_intereses: fInteres && fInteres.length > 0 ? fInteres : null,
+                    p_estilos: fEstilo && fEstilo.length > 0 ? fEstilo : null,
                     p_creado_desde: fCreadoDesde || null,
                     p_creado_hasta: fCreadoHasta || null,
                     p_offset: (page - 1) * pageSize,
