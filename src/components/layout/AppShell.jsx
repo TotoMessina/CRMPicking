@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import ErrorBoundary from '../common/ErrorBoundary';
 import { useAppShell } from '../../hooks/useAppShell';
 import { LocationTracker } from '../ui/LocationTracker';
 import { CommandPalette } from '../ui/CommandPalette';
@@ -119,7 +120,9 @@ export function AppShell() {
             <div className="app-content">
                 <main style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
                     <div key={location.pathname} className="page-transition" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <Outlet />
+                        <ErrorBoundary>
+                            <Outlet />
+                        </ErrorBoundary>
                     </div>
                 </main>
             </div>

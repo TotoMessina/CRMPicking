@@ -225,9 +225,11 @@ export default function Dashboard() {
                     <div className="db-mini-map">
                         <MapContainer center={[-34.6, -58.4]} zoom={11} style={{ height: '100%', width: '100%' }} zoomControl={false}>
                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                            {stats.localesMapa.map(l => (
-                                <CircleMarker key={l.id} center={[l.clientes?.lat, l.clientes?.lng]} radius={4} fillOpacity={0.7} color="#3b82f6" stroke={false}>
-                                    <Popup>{l.clientes?.nombre_local}</Popup>
+                            {stats.localesMapa
+                                .filter(l => l.clientes?.lat && l.clientes?.lng)
+                                .map(l => (
+                                <CircleMarker key={l.id} center={[l.clientes.lat, l.clientes.lng]} radius={4} fillOpacity={0.7} color="#3b82f6" stroke={false}>
+                                    <Popup>{l.clientes.nombre_local}</Popup>
                                 </CircleMarker>
                             ))}
                         </MapContainer>
