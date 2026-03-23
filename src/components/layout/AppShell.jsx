@@ -92,12 +92,34 @@ export function AppShell() {
                     </div>
                 )}
 
-                <button type="button" onClick={toggleTheme} className="btn-secundario theme-toggle">
-                    {theme === 'dark' ? <><Sun size={16} className="mr-2" /> Modo día</> : <><Moon size={16} className="mr-2" /> Modo noche</>}
-                </button>
-                <button type="button" onClick={handleSubscribePush} disabled={pushEnabled} className="btn-secundario theme-toggle" style={{ marginTop: '8px', opacity: pushEnabled ? 0.6 : 1, cursor: pushEnabled ? 'default' : 'pointer' }}>
-                    <Bell size={16} className="mr-2" /> {pushEnabled ? 'Notificaciones On' : 'Activar Notificaciones'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', marginTop: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Tema visual</span>
+                    <button 
+                        onClick={toggleTheme}
+                        type="button"
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            background: theme === 'dark' ? '#0f172a' : '#cbd5e1', border: '1px solid var(--border)', borderRadius: '30px',
+                            width: '56px', height: '28px', padding: '3px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s ease',
+                            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        <Sun size={13} color={theme === 'dark' ? '#64748b' : '#f59e0b'} style={{ zIndex: 1, marginLeft: '3px' }} />
+                        <Moon size={13} color={theme === 'dark' ? '#60a5fa' : '#64748b'} style={{ zIndex: 1, marginRight: '3px' }} />
+                        <div style={{
+                            position: 'absolute', top: '1px', left: theme === 'dark' ? '29px' : '1px',
+                            width: '24px', height: '24px', background: theme === 'dark' ? '#1e293b' : '#ffffff',
+                            borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.3)', zIndex: 2
+                        }} />
+                    </button>
+                </div>
+                
+                <div style={{ padding: '0 16px', marginTop: '16px' }}>
+                    <button type="button" onClick={handleSubscribePush} disabled={pushEnabled} className="btn-secundario theme-toggle" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: pushEnabled ? 0.6 : 1, cursor: pushEnabled ? 'default' : 'pointer' }}>
+                        <Bell size={16} style={{ marginRight: '8px' }} /> {pushEnabled ? 'Notificaciones On' : 'Activar Notificaciones'}
+                    </button>
+                </div>
 
                 <div style={{ padding: '8px 16px' }}>
                     <button 

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
+import { Download } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { COMMON_CHART_OPTIONS, STATS_THEME } from '../../constants/statsConstants';
 import { ChartData, ChartOptions } from 'chart.js';
 
@@ -10,11 +12,29 @@ interface Props {
 }
 
 export const RubrosSituacionChart: React.FC<Props> = ({ data, filter, setFilter }) => {
+    const navigate = useNavigate();
+
+    const handleDownloadChart = (e: React.MouseEvent) => {
+        const panel = (e.currentTarget as HTMLElement).closest('.panel');
+        if (!panel) return;
+        const canvas = panel.querySelector('canvas');
+        if (!canvas) return;
+        const link = document.createElement('a');
+        link.download = `rubros_situacion.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
+
     return (
         <div className="panel" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
                 <div>
-                    <h3 style={{ margin: '0 0 4px' }}>Rubros — Locales Estado 5</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                        <h3 style={{ margin: 0 }}>Rubros — Locales Estado 5</h3>
+                        <button onClick={handleDownloadChart} title="Descargar PNG" style={{ background: 'var(--accent-soft)', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+                            <Download size={14} />
+                        </button>
+                    </div>
                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         {filter.size === 0
                             ? 'Mostrando todos los locales activos'
@@ -106,6 +126,27 @@ export const RubrosSituacionChart: React.FC<Props> = ({ data, filter, setFilter 
                         }]}
                         options={{
                             ...COMMON_CHART_OPTIONS,
+                            onClick: (e: any, elements: any, chart: any) => {
+                                if (elements && elements.length > 0) {
+                                    const index = elements[0].index;
+                                    const rubroClick = chart.data.labels?.[index] as string;
+                                    if (rubroClick) {
+                                        const activeSituaciones = Array.from(filter);
+                                        navigate('/clientes', { 
+                                            state: { 
+                                                estado: ['5 - Local Visitado Activo'], 
+                                                situacion: activeSituaciones.length > 0 ? activeSituaciones : [],
+                                                rubro: [rubroClick] 
+                                            } 
+                                        });
+                                    }
+                                }
+                            },
+                            onHover: (event: any, chartElement: any) => {
+                                if (event.native?.target) {
+                                    (event.native.target as HTMLElement).style.cursor = chartElement[0] ? 'pointer' : 'default';
+                                }
+                            },
                             plugins: {
                                 ...COMMON_CHART_OPTIONS.plugins,
                                 legend: { display: false },

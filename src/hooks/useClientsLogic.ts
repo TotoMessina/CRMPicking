@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useClientes, useDeleteCliente, useQuickDateCliente, useRegistrarVisitaCliente } from '../hooks/useClientes';
 import { useCompanyUsers } from '../hooks/useCompanyUsers';
@@ -29,28 +29,30 @@ export interface ClientFilters {
 export const useClientsLogic = () => {
     const { user, userName, empresaActiva }: any = useAuth();
     const [searchParams] = useSearchParams();
+    const location = useLocation();
+    const stateFilters = location.state as Partial<ClientFilters> | null;
     const isAgendaHoy = searchParams.get('agenda') === 'hoy';
 
     const [page, setPage] = useState(1);
     const [pageSize] = useState(25);
     const [exportLoading, setExportLoading] = useState(false);
 
-    // Filters
+    // Filters (merge with incoming navigation state for drill-down)
     const [filters, setFilters] = useState<ClientFilters>({
-        nombre: '',
-        telefono: '',
-        direccion: '',
-        estado: [],
-        situacion: [],
-        responsable: [],
-        rubro: [],
-        interes: [],
-        estilo: [],
-        tipoContacto: [],
-        proximos7: false,
-        vencidos: false,
-        creadoDesde: '',
-        creadoHasta: ''
+        nombre: stateFilters?.nombre || '',
+        telefono: stateFilters?.telefono || '',
+        direccion: stateFilters?.direccion || '',
+        estado: stateFilters?.estado || [],
+        situacion: stateFilters?.situacion || [],
+        responsable: stateFilters?.responsable || [],
+        rubro: stateFilters?.rubro || [],
+        interes: stateFilters?.interes || [],
+        estilo: stateFilters?.estilo || [],
+        tipoContacto: stateFilters?.tipoContacto || [],
+        proximos7: stateFilters?.proximos7 || false,
+        vencidos: stateFilters?.vencidos || false,
+        creadoDesde: stateFilters?.creadoDesde || '',
+        creadoHasta: stateFilters?.creadoHasta || ''
     });
 
     const [sortBy, setSortBy] = useState('updated');

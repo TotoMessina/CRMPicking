@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from './Button';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,11 +23,22 @@ interface FormData {
 export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, clienteNombre, onSaved }) => {
     const { empresaActiva }: any = useAuth();
     const [loading, setLoading] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const [formData, setFormData] = useState<FormData>({
         descripcion: '',
         fecha: '',
         usuario: ''
     });
+
+    const handleClose = () => {
+        if (isDirty) {
+            setShowConfirm(true);
+            return;
+        }
+        setIsDirty(false);
+        onClose();
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -48,12 +59,14 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
                     setFormData(prev => ({ ...prev, usuario: name }));
                 }
             });
+            setIsDirty(false);
         }
     }, [isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        setIsDirty(true);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -95,6 +108,7 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
             await syncUpdates;
         }
 
+        setIsDirty(false);
         onSaved();
         setLoading(false);
     };
@@ -102,11 +116,11 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="modal is-open">
+        <div className="modal is-open" onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && handleClose()}>
             <div className="modal-content" style={{ maxWidth: '500px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h3 style={{ margin: 0 }}>Agregar actividad</h3>
-                    <button className="modal-close" type="button" onClick={onClose}><X size={20} /></button>
+                    <button className="modal-close" type="button" onClick={handleClose}><X size={20} /></button>
                 </div>
 
                 <div className="muted" style={{ marginBottom: '16px', fontSize: '14px' }}>
@@ -131,11 +145,38 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
                     </div>
 
                     <div className="modal-actions" style={{ marginTop: '24px' }}>
-                        <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
+                        <Button variant="secondary" type="button" onClick={handleClose}>Cancelar</Button>
                         <Button variant="primary" type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</Button>
                     </div>
                 </form>
             </div>
+
+            {showConfirm && (
+                <div className="modal is-open" style={{ zIndex: 9999, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(5px)' }}>
+                    <div className="modal-content" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '32px 24px', position: 'relative' }}>
+                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                            <AlertCircle size={32} />
+                        </div>
+                        <h3 style={{ margin: '0 0 12px', fontSize: '1.4rem' }}>¿Descartar cambios?</h3>
+                        <p className="muted" style={{ margin: '0 0 24px', fontSize: '1rem', lineHeight: 1.5 }}>Escribiste una descripción sin guardar. Si sales ahora, se perderá tu nota.</p>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                            <Button variant="secondary" onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: '12px' }}>
+                                Seguir editando
+                            </Button>
+                            <button
+                                type="button"
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: '10px', fontWeight: 600, fontSize: '0.95rem',
+                                    background: 'var(--danger)', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(239,68,68,0.3)'
+                                }}
+                                onClick={() => { setShowConfirm(false); setIsDirty(false); onClose(); }}
+                            >
+                                Sí, descartar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>,
         document.body
     );

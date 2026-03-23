@@ -14,6 +14,7 @@ import {
 } from '../../constants/estados';
 import { useRubros } from '../../hooks/useRubros';
 import { useCompanyUsers } from '../../hooks/useCompanyUsers';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
     isOpen: boolean;
@@ -75,6 +76,17 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [originalData, setOriginalData] = useState<FormData | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+
+    const handleClose = () => {
+        if (isDirty) {
+            setShowConfirm(true);
+            return;
+        }
+        setIsDirty(false);
+        onClose();
+    };
 
     const emptyForm = (overrides = {}): FormData => ({
         nombre_local: '', direccion: '', nombre: '', telefono: '',
@@ -114,6 +126,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
             setErrors({});
             handleStepChange(1);
         }
+        if (isOpen) setIsDirty(false);
     }, [isOpen, clienteId]);
 
     const handleStepChange = (newStep: number) => {
@@ -135,10 +148,11 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
             const { data, error } = await supabase.from('clientes').select('*').eq('id', id).single();
             if (error) {
                 toast.error('Error cargando cliente');
-                onClose();
+                handleClose();
             } else {
                 setFormData({ ...emptyForm(), ...data, venta_digital: data.venta_digital ? 'true' : 'false' });
                 setErrors({});
+                setIsDirty(false);
             }
         } else if (ecData) {
             // Merge both
@@ -152,6 +166,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
             setOriginalData(merged);
             setErrors({});
         }
+        setIsDirty(false);
         setLoading(false);
     };
 
@@ -163,6 +178,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
         }
 
         setFormData(prev => ({ ...prev, [name]: val }));
+        setIsDirty(true);
 
         // Clear error on change
         if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
@@ -417,6 +433,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
             if (isOfflineError) {
                 console.log('DEBUG: Guardado offline interceptado');
                 toast.success('Guardado sin conexión. Se sincronizará pronto.');
+                setIsDirty(false);
                 onSaved();
             } else {
                 console.error('Error final guardando cliente:', err);
@@ -425,12 +442,11 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
         } else {
             console.log('DEBUG: Cliente guardado con éxito. Datos enviados:', payload);
             toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
+            setIsDirty(false);
             onSaved();
         }
         setLoading(false);
     };
-
-    if (!isOpen) return null;
 
     const inp = (name: string, extra = {}) => ({
         name,
@@ -441,11 +457,21 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
     });
 
     return createPortal(
-        <div className="modal active" onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && onClose()}>
-            <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div 
+                    className="modal active" 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && handleClose()}
+                >
+                    <motion.div 
+                        className="modal-content" style={{ maxWidth: '600px', width: '90%' }}
+                        initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                        transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h2 style={{ margin: 0 }}>{clienteId ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-                    <Button variant="secondary" onClick={onClose} style={{ padding: '8px' }}>
+                    <Button variant="secondary" onClick={handleClose} style={{ padding: '8px' }}>
                         <X size={20} />
                     </Button>
                 </div>
@@ -466,6 +492,19 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                 </div>
 
                 <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
+                    <AnimatePresence mode="wait">
+                    {clienteId && loading && Object.keys(formData).length === 0 ? (
+                        <motion.div key="skeleton-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '10px 0' }}>
+                            <div className="skeleton" style={{ gridColumn: '1 / -1', height: '24px', width: '35%', marginBottom: '8px', borderRadius: '6px' }} />
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <div key={i} className="field">
+                                    <div className="skeleton" style={{ height: '14px', width: '30%', marginBottom: '6px', borderRadius: '4px' }} />
+                                    <div className="skeleton" style={{ height: '38px', width: '100%', borderRadius: '8px' }} />
+                                </div>
+                            ))}
+                        </motion.div>
+                    ) : (
+                    <motion.div key={step} initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} transition={{ duration: 0.2 }}>
                     {/* ── STEP 1 ── */}
                     {step === 1 && (
                         <div>
@@ -579,13 +618,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                 <div style={{ display: 'flex', gap: '4px', height: '10px' }}>
                                                     {levels.map((l, i) => (
-                                                        <div key={l.value} onClick={() => setFormData(prev => ({ ...prev, interes: l.value }))}
+                                                        <div key={l.value} onClick={() => { setFormData(prev => ({ ...prev, interes: l.value })); setIsDirty(true); }}
                                                             style={{ flex: 1, borderRadius: '99px', cursor: 'pointer', background: i <= activeIdx ? activeColor : 'var(--border)', transition: 'background 0.25s ease', opacity: i <= activeIdx ? 1 : 0.4 }} />
                                                     ))}
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '4px' }}>
                                                     {levels.map((l, i) => (
-                                                        <button key={l.value} type="button" onClick={() => setFormData(prev => ({ ...prev, interes: l.value }))}
+                                                        <button key={l.value} type="button" onClick={() => { setFormData(prev => ({ ...prev, interes: l.value })); setIsDirty(true); }}
                                                             style={{ flex: 1, padding: '6px 4px', fontSize: '0.78rem', fontWeight: 600, borderRadius: '8px', cursor: 'pointer', border: '1px solid', background: i <= activeIdx ? `${activeColor}18` : 'var(--bg)', color: i <= activeIdx ? activeColor : 'var(--text-muted)', borderColor: i <= activeIdx ? `${activeColor}60` : 'var(--border)', transition: 'all 0.2s ease' }}>
                                                             {l.label}
                                                         </button>
@@ -636,7 +675,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                                         <input type="date" name="fecha_proximo_contacto" value={formData.fecha_proximo_contacto || ''} onChange={handleChange} style={{ flex: 1 }} />
                                         {formData.fecha_proximo_contacto && (
                                             <button type="button"
-                                                onClick={() => setFormData(prev => ({ ...prev, fecha_proximo_contacto: '' }))}
+                                                onClick={() => { setFormData(prev => ({ ...prev, fecha_proximo_contacto: '' })); setIsDirty(true); }}
                                                 style={{ padding: '8px 14px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
                                             >✕ Sin fecha</button>
                                         )}
@@ -649,13 +688,16 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                             </div>
                         </div>
                     )}
+                     </motion.div>
+                    )}
+                    </AnimatePresence>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
                         <Button variant="secondary" type="button" onClick={() => handleStepChange(step > 1 ? step - 1 : 1)} style={{ visibility: step === 1 ? 'hidden' : 'visible' }}>
                             Anterior
                         </Button>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
+                            <Button variant="secondary" type="button" onClick={handleClose}>Cancelar</Button>
                             {step < 3 ? (
                                 <Button key="siguiente" variant="primary" type="button" onClick={handleNextPhase}>Siguiente</Button>
                             ) : (
@@ -666,8 +708,39 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                         </div>
                     </div>
                 </form>
-            </div>
-        </div>,
+            </motion.div>
+
+            <AnimatePresence>
+            {showConfirm && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal active" style={{ zIndex: 9999, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(5px)' }}>
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="modal-content" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '32px 24px', position: 'relative' }}>
+                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                            <AlertCircle size={32} />
+                        </div>
+                        <h3 style={{ margin: '0 0 12px', fontSize: '1.4rem' }}>¿Descartar cambios?</h3>
+                        <p className="muted" style={{ margin: '0 0 24px', fontSize: '1rem', lineHeight: 1.5 }}>Tienes datos sin guardar en el formulario. Si sales ahora, se perderán para siempre.</p>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                            <Button variant="secondary" onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: '12px' }}>
+                                Volver al formulario
+                            </Button>
+                            <button
+                                type="button"
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: '10px', fontWeight: 600, fontSize: '0.95rem',
+                                    background: 'var(--danger)', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(239,68,68,0.3)'
+                                }}
+                                onClick={() => { setShowConfirm(false); setIsDirty(false); onClose(); }}
+                            >
+                                Sí, descartar
+                            </button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+            </AnimatePresence>
+        </motion.div>
+            )}
+        </AnimatePresence>,
         document.body
     );
 }

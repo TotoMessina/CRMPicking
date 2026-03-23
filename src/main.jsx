@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { registerSW } from 'virtual:pwa-register';
 import App from './App.jsx';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import { ThemeProvider } from './contexts/ThemeContext.jsx';
@@ -27,16 +28,17 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 );
 
-// Register Service Worker for PWA
+// Register Service Worker for PWA handled by Vite Plugin
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(registration => {
-        console.log('SW registered: ', registration);
-      })
-      .catch(registrationError => {
-        console.log('SW registration failed: ', registrationError);
-      });
+    registerSW({ 
+      immediate: true,
+      onRegistered(r) {
+        console.log('SW Registered: ', r);
+      },
+      onRegisterError(error) {
+        console.log('SW registration error', error);
+      }
+    })();
   });
 }
-

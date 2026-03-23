@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Target, Users, TrendingUp } from 'lucide-react';
+import { Trophy, Medal, Target, Users, TrendingUp, Download } from 'lucide-react';
 import { STATS_THEME, COMMON_CHART_OPTIONS } from '../../constants/statsConstants';
 import { ChartsData } from '../../hooks/useStatistics';
 import { CircularProgress } from '../ui/CircularProgress';
@@ -49,6 +49,17 @@ export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsD
         return null;
     };
 
+    const handleDownloadChart = (e: React.MouseEvent, filename: string) => {
+        const panel = (e.currentTarget as HTMLElement).closest('.panel');
+        if (!panel) return;
+        const canvas = panel.querySelector('canvas');
+        if (!canvas) return;
+        const link = document.createElement('a');
+        link.download = `${filename}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
+
     return (
         <section className="tab-content active" style={{ animation: 'fadeIn 0.5s ease-out' }}>
             {/* 1. Header & Quick View */}
@@ -67,9 +78,14 @@ export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsD
             {/* 2. Top Charts Section */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '32px' }}>
                 <div className="panel bento-card" style={{ padding: '24px' }}>
-                    <h3 style={{ marginTop: 0, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <TrendingUp size={18} color="var(--accent)" /> Efectividad General
-                    </h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <TrendingUp size={18} color="var(--accent)" /> Efectividad General
+                        </h3>
+                        <button onClick={(e) => handleDownloadChart(e, 'efectividad_general')} title="Descargar PNG" style={{ background: 'var(--accent-soft)', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+                            <Download size={14} />
+                        </button>
+                    </div>
                     <div style={{ height: '300px' }}>
                         {chartsData.activadoresConversion && (
                             <Bar 
@@ -88,9 +104,14 @@ export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsD
                 </div>
 
                 <div className="panel bento-card" style={{ padding: '24px' }}>
-                    <h3 style={{ marginTop: 0, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Target size={18} color="var(--accent)" /> Actividad por Estado
-                    </h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Target size={18} color="var(--accent)" /> Actividad por Estado
+                        </h3>
+                        <button onClick={(e) => handleDownloadChart(e, 'actividad_por_estado')} title="Descargar PNG" style={{ background: 'var(--accent-soft)', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+                            <Download size={14} />
+                        </button>
+                    </div>
                     <div style={{ height: '300px' }}>
                         {chartsData.activadoresDia && (
                             <Bar 

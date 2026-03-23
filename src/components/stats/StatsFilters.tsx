@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Users, ChevronDown, Check } from 'lucide-react';
+import { Users, ChevronDown, Check, Download, FileText, Printer } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/Button';
 import { Activator } from '../../hooks/useStatistics';
 
@@ -14,6 +15,9 @@ interface Props {
     setFilterActivator: (val: string[]) => void;
     activators: Activator[];
     refreshStats: () => void;
+    onExport: () => void;
+    onExportPdf: () => void;
+    isExportingPdf?: boolean;
     loading: boolean;
 }
 
@@ -24,6 +28,9 @@ export const StatsFilters: React.FC<Props> = ({
     filterActivator, setFilterActivator, 
     activators, 
     refreshStats, 
+    onExport,
+    onExportPdf,
+    isExportingPdf,
     loading 
 }) => {
     const [openActivators, setOpenActivators] = useState(false);
@@ -103,8 +110,14 @@ export const StatsFilters: React.FC<Props> = ({
                         </div>
                         <ChevronDown size={14} style={{ opacity: 0.7, transform: openActivators ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
                     </button>
+                    <AnimatePresence>
                     {openActivators && (
-                        <div style={{ 
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            transition={{ duration: 0.15 }}
+                            style={{ 
                             position: 'absolute', top: '100%', left: 0, marginTop: '8px', 
                             background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
                             borderRadius: '12px', padding: '8px', zIndex: 50, minWidth: '100%', 
@@ -166,13 +179,29 @@ export const StatsFilters: React.FC<Props> = ({
                                     </div>
                                 );
                             })}
-                        </div>
+                        </motion.div>
                     )}
+                    </AnimatePresence>
                 </div>
 
-                <Button variant="secondary" onClick={refreshStats} disabled={loading}>
-                    {loading ? 'Cargando...' : 'Actualizar'}
-                </Button>
+                {!isExportingPdf && (
+                    <>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <Button variant="secondary" onClick={() => window.print()} disabled={loading} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--bg-elevated)' }}>
+                                <Printer size={16} /> Imprimir
+                            </Button>
+                            <Button variant="secondary" onClick={onExport} disabled={loading} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--bg-elevated)' }}>
+                                <Download size={16} /> Excel (.xlsx)
+                            </Button>
+                            <Button variant="primary" onClick={onExportPdf} disabled={loading} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <FileText size={16} /> PDF Reporte
+                            </Button>
+                        </div>
+                        <Button variant="secondary" onClick={refreshStats} disabled={loading}>
+                            {loading ? 'Cargando...' : 'Actualizar'}
+                        </Button>
+                    </>
+                )}
             </div>
         </header>
     );

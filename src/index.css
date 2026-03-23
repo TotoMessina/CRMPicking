@@ -6470,4 +6470,38 @@ fieldset legend:hover {
   .db-kpi-grid { grid-template-columns: 1fr; }
   .db-header { flex-direction: column; align-items: flex-start; gap: 16px; }
   .db-search { width: 100%; }
+}
+
+/* ===========================
+   IMPRESIÓN / PRINTING
+   =========================== */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  
+  /* Ocultar UI inservible en papel */
+  nav, .sidebar, .app-sidebar, header, .nav, .stats-topbar-actions, button,
+  .filters, .theme-toggle, .btn-link, .modal, .toast, .form-box {
+    display: none !important;
+  }
+
+  /* Expandir contenedor principal */
+  .app-shell, .main-content, .stats-dashboard, #root, .container {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  
+  /* Evitar quiebres de página absurdos en gráficos */
+  .panel, .card, canvas, section {
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
 }
