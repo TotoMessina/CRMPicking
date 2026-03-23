@@ -342,6 +342,20 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                     <input type="date" className="input" value={filters.creadoHasta} onChange={e => updateFilter('creadoHasta', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
                 </div>
 
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                        <Calendar size={14} /> Agenda (Desde)
+                    </div>
+                    <input type="date" className="input" value={filters.contactoDesde} onChange={e => { updateFilter('contactoDesde', e.target.value); updateFilter('proximos7', false); updateFilter('vencidos', false); }} style={{ width: '100%', borderRadius: '12px', borderColor: filters.contactoDesde ? 'var(--accent)' : 'var(--border)' }} />
+                </div>
+
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                        <Calendar size={14} /> Agenda (Hasta)
+                    </div>
+                    <input type="date" className="input" value={filters.contactoHasta} onChange={e => { updateFilter('contactoHasta', e.target.value); updateFilter('proximos7', false); updateFilter('vencidos', false); }} style={{ width: '100%', borderRadius: '12px', borderColor: filters.contactoHasta ? 'var(--accent)' : 'var(--border)' }} />
+                </div>
+
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '2px' }}>
                     <button
                         onClick={() => {

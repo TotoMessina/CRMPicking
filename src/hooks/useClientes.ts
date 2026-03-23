@@ -22,6 +22,8 @@ export interface UseClientesParams {
     fDireccion: string;
     fCreadoDesde: string;
     fCreadoHasta: string;
+    fContactoDesde: string;
+    fContactoHasta: string;
     sortBy: string;
 }
 
@@ -30,7 +32,8 @@ export function useClientes(params: UseClientesParams) {
         empresaId, page, pageSize, isAgendaHoy,
         fEstado, fSituacion, fTipoContacto, fResponsable,
         fRubro, fInteres, fEstilo, fProximos7, fVencidos,
-        fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta, sortBy
+        fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta,
+        fContactoDesde, fContactoHasta, sortBy
     } = params;
 
     return useQuery({
@@ -40,7 +43,8 @@ export function useClientes(params: UseClientesParams) {
                 empresaId, page, pageSize, isAgendaHoy,
                 fEstado, fSituacion, fTipoContacto, fResponsable,
                 fRubro, fInteres, fEstilo, fProximos7, fVencidos,
-                fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta, sortBy
+                fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta,
+                fContactoDesde, fContactoHasta, sortBy
             }
         ],
         queryFn: async () => {
@@ -90,6 +94,13 @@ export function useClientes(params: UseClientesParams) {
                 request = request.lte('created_at', `${fCreadoHasta}T23:59:59.999Z`);
             }
 
+            if (fContactoDesde) {
+                request = request.gte('fecha_proximo_contacto', fContactoDesde);
+            }
+            if (fContactoHasta) {
+                request = request.lte('fecha_proximo_contacto', fContactoHasta);
+            }
+
             if (fProximos7) {
                 const hoy = new Date();
                 const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
@@ -122,6 +133,8 @@ export function useClientes(params: UseClientesParams) {
                     p_estilos: fEstilo && fEstilo.length > 0 ? fEstilo : null,
                     p_creado_desde: fCreadoDesde || null,
                     p_creado_hasta: fCreadoHasta || null,
+                    p_contacto_desde: fContactoDesde || null,
+                    p_contacto_hasta: fContactoHasta || null,
                     p_offset: (page - 1) * pageSize,
                     p_limit: pageSize,
                     p_sort_by: sortBy || 'recent'

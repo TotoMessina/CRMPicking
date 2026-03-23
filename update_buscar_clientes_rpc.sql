@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- PickingUp CRM - Actualización de RPC buscar_clientes_empresa
 -- ==============================================================================
--- Esta actualización permite filtrar por MÚLTIPLES responsables a la vez.
+-- Esta actualización agrega filtros multi-select y rango de fecha de agenda.
 -- ==============================================================================
 
 CREATE OR REPLACE FUNCTION public.buscar_clientes_empresa(
@@ -19,6 +19,8 @@ CREATE OR REPLACE FUNCTION public.buscar_clientes_empresa(
     p_estilo TEXT DEFAULT NULL,
     p_creado_desde TEXT DEFAULT NULL,
     p_creado_hasta TEXT DEFAULT NULL,
+    p_contacto_desde TEXT DEFAULT NULL, -- Nuevo: rango de fecha próximo contacto (desde)
+    p_contacto_hasta TEXT DEFAULT NULL, -- Nuevo: rango de fecha próximo contacto (hasta)
     p_offset INTEGER DEFAULT 0,
     p_limit INTEGER DEFAULT 50,
     p_sort_by TEXT DEFAULT 'recent'
@@ -111,6 +113,8 @@ BEGIN
       AND (p_estilo IS NULL OR ec.estilo_contacto = p_estilo)
       AND (p_creado_desde IS NULL OR c.created_at >= (p_creado_desde || ' 00:00:00')::TIMESTAMPTZ)
       AND (p_creado_hasta IS NULL OR c.created_at <= (p_creado_hasta || ' 23:59:59')::TIMESTAMPTZ)
+      AND (p_contacto_desde IS NULL OR ec.fecha_proximo_contacto >= p_contacto_desde)
+      AND (p_contacto_hasta IS NULL OR ec.fecha_proximo_contacto <= p_contacto_hasta)
     ORDER BY 
         CASE WHEN p_sort_by = 'updated' THEN ec.updated_at END DESC,
         CASE WHEN p_sort_by = 'recent' THEN ec.created_at END DESC,

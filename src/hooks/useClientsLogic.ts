@@ -24,6 +24,8 @@ export interface ClientFilters {
     vencidos: boolean;
     creadoDesde: string;
     creadoHasta: string;
+    contactoDesde: string;
+    contactoHasta: string;
 }
 
 export const useClientsLogic = () => {
@@ -52,7 +54,9 @@ export const useClientsLogic = () => {
         proximos7: stateFilters?.proximos7 || false,
         vencidos: stateFilters?.vencidos || false,
         creadoDesde: stateFilters?.creadoDesde || '',
-        creadoHasta: stateFilters?.creadoHasta || ''
+        creadoHasta: stateFilters?.creadoHasta || '',
+        contactoDesde: stateFilters?.contactoDesde || '',
+        contactoHasta: stateFilters?.contactoHasta || ''
     });
 
     const [sortBy, setSortBy] = useState('updated');
@@ -74,7 +78,8 @@ export const useClientsLogic = () => {
         fResponsable: filters.responsable, fRubro: filters.rubro, fInteres: filters.interes,
         fEstilo: filters.estilo, fProximos7: filters.proximos7, fVencidos: filters.vencidos,
         fNombre: filters.nombre, fTelefono: filters.telefono, fDireccion: filters.direccion,
-        fCreadoDesde: filters.creadoDesde, fCreadoHasta: filters.creadoHasta, sortBy
+        fCreadoDesde: filters.creadoDesde, fCreadoHasta: filters.creadoHasta, 
+        fContactoDesde: filters.contactoDesde, fContactoHasta: filters.contactoHasta, sortBy
     });
 
     const { clientes = [] as Client[], total = 0, activities = {} as Record<string, ClientActivity[]> } = data || {};
