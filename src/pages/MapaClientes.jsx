@@ -12,6 +12,7 @@ import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import 'leaflet-routing-machine';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
+import 'leaflet.heat';
 import { Clock, User } from 'lucide-react';
 
 import { ClienteModal } from '../components/ui/ClienteModal';
@@ -105,6 +106,10 @@ export default function MapaClientes() {
     const [showZones, setShowZones] = useState(true);
     const [zoneType, setZoneType] = useState('today');
     const [mapReady, setMapReady] = useState(false);
+
+    // Heatmap Mode
+    const [isHeatmapMode, setIsHeatmapMode] = useState(false);
+    const heatLayerRef = useRef(null);
 
     // Filters & Coloring
     const [colorMode, setColorMode] = useState('estado'); // estado, creador, interes, estilo
@@ -397,6 +402,7 @@ export default function MapaClientes() {
 
             // Marker interaction
             const isSelectedForRouting = routeStops.some(s => s.id === rec.id);
+            const opacityStyle = isHeatmapMode ? 'opacity: 0.15;' : '';
 
             const iconHtml = `
                 <div style="
@@ -407,6 +413,7 @@ export default function MapaClientes() {
                     border: 2px solid ${isSelectedForRouting ? '#000' : '#fff'};
                     box-shadow: 0 0 4px rgba(0,0,0,0.4);
                     ${isSelectedForRouting ? 'transform: scale(1.3);' : ''}
+                    ${opacityStyle}
                 "></div>
             `;
 
@@ -461,7 +468,51 @@ export default function MapaClientes() {
                 });
             }
         });
-    }, [clientes, colorMode, activeFilters, isRoutingMode, routeStops, mapReady]);
+    }, [clientes, colorMode, activeFilters, isRoutingMode, routeStops, mapReady, isHeatmapMode]);
+
+    // Render Heatmap
+    useEffect(() => {
+        if (!mapRef.current) return;
+        
+        if (!isHeatmapMode) {
+            if (heatLayerRef.current) {
+                mapRef.current.removeLayer(heatLayerRef.current);
+                heatLayerRef.current = null;
+            }
+            return;
+        }
+
+        const points = [];
+        const hasFilters = activeFilters.size > 0;
+
+        clientes.forEach(rec => {
+            if (hasFilters) {
+                if (colorMode === "creador" && !activeFilters.has((rec.creado_por || "Desconocido").trim())) return;
+                else if (colorMode === "rubro" && !activeFilters.has((rec.rubro || "Sin rubro").trim())) return;
+                else if (colorMode === "interes" && !activeFilters.has(rec.interes || "Bajo")) return;
+                else if (colorMode === "estilo" && !activeFilters.has(rec.estilo_contacto || "Sin definir")) return;
+                else if (colorMode === "estado" && !activeFilters.has(rec.estado)) return;
+            }
+            if (rec.lat && rec.lng) {
+                points.push([rec.lat, rec.lng, 1]);
+            }
+        });
+
+        if (heatLayerRef.current) {
+            mapRef.current.removeLayer(heatLayerRef.current);
+        }
+
+        if (L.heatLayer) {
+            heatLayerRef.current = L.heatLayer(points, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17,
+                gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}
+            }).addTo(mapRef.current);
+        } else {
+            console.warn("L.heatLayer no está disponible.");
+        }
+    }, [clientes, isHeatmapMode, activeFilters, colorMode, mapReady]);
 
     // Render Activadores
     useEffect(() => {
@@ -635,6 +686,10 @@ export default function MapaClientes() {
 
                     <Button variant={isRoutingMode ? 'primary' : 'secondary'} onClick={() => setIsRoutingMode(!isRoutingMode)}>
                         <RouteIcon size={16} /> {isRoutingMode ? 'Cancelar Ruta' : 'Modo Ruta'}
+                    </Button>
+
+                    <Button variant={isHeatmapMode ? 'primary' : 'secondary'} onClick={() => setIsHeatmapMode(!isHeatmapMode)}>
+                        🔥 {isHeatmapMode ? 'Ocultar Calor' : 'Mapa de Calor'}
                     </Button>
 
                     <Button variant={showZones ? 'primary' : 'secondary'} onClick={() => setShowZones(!showZones)}>

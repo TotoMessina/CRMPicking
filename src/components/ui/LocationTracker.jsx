@@ -35,7 +35,10 @@ export const LocationTracker = () => {
     useEffect(() => {
         if (!user || !navigator.geolocation) return;
 
+        let permissionDenied = false;
+
         const updateLocation = async (position) => {
+            if (permissionDenied) return;
             const now = Date.now();
             
             // Throttle basado en el modo
@@ -63,8 +66,12 @@ export const LocationTracker = () => {
         };
 
         const handleError = (error) => {
-            console.error('Geolocation error:', error);
-            if (error.code === 1) toast.error('Permiso de ubicación denegado');
+            if (permissionDenied) return;
+            console.warn('Geolocation warn:', error.message);
+            if (error.code === 1) {
+                permissionDenied = true;
+                toast.error('Permiso de GPS denegado. Se pausó el rastreo.');
+            }
         };
 
         // Primera captura

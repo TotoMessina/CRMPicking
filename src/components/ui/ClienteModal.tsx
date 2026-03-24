@@ -461,6 +461,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
             {isOpen && (
                 <motion.div 
                     className="modal active" 
+                    style={{ background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', zIndex: 1000 }}
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                     onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && handleClose()}
                 >

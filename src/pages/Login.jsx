@@ -154,10 +154,18 @@ export default function Login() {
         <div className="login-split-layout">
             {/* Left: Brand Panel */}
             <div className="login-brand-panel">
-                <div className="brand-content">
-                    <div className="brand-logo">PU</div>
-                    <h1>PickingUp</h1>
-                    <p>Buen dia Ruben</p>
+                <div className="brand-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <img 
+                        src="/logo-vertical.png" 
+                        alt="PickingUp CRM" 
+                        style={{ width: '220px', height: 'auto', objectFit: 'contain', display: 'block', marginBottom: '16px' }} 
+                        onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'block'; }}
+                    />
+                    <div style={{ display: 'none', textAlign: 'center' }}>
+                        <div className="brand-logo" style={{ margin: '0 auto' }}>PU</div>
+                        <h1>PickingUp</h1>
+                    </div>
+                    <p style={{ fontSize: '1.2rem', marginTop: '8px', color: 'rgba(255,255,255,0.7)' }}>Buen día Ruben</p>
                 </div>
             </div>
 

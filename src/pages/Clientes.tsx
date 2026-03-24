@@ -6,6 +6,7 @@ import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
 import { ClienteCard } from '../components/ui/ClienteCard';
 import { useClientsLogic } from '../hooks/useClientsLogic';
 import { ClientFilters } from '../components/clients/ClientFilters';
+import { motion } from 'framer-motion';
 
 const Clientes: React.FC = () => {
     const {
@@ -97,19 +98,25 @@ const Clientes: React.FC = () => {
                         <div style={{ gridColumn: '1 / -1', background: 'var(--bg-elevated)', border: '1px dashed var(--border)', borderRadius: '20px', padding: '40px', textAlign: 'center' }}>
                             <p className="muted" style={{ fontSize: '1.1rem' }}>No se encontraron clientes con esos filtros.</p>
                         </div>
-                    ) : clientes.map((c: any) => (
-                        <ClienteCard
+                    ) : clientes.map((c: any, index: number) => (
+                        <motion.div
                             key={c.id}
-                            cliente={c}
-                            acts={activities[c.id] || []}
-                            isExpanded={expandedActivities[c.id] || false}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                            onQuickDate={handleQuickDate}
-                            onToggleHistory={toggleHistory}
-                            onRegistrarVisita={handleRegistrarVisita}
-                            onOpenActivity={handleOpenActivity}
-                        />
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: index * 0.05, ease: 'easeOut' }}
+                        >
+                            <ClienteCard
+                                cliente={c}
+                                acts={activities[c.id] || []}
+                                isExpanded={expandedActivities[c.id] || false}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                onQuickDate={handleQuickDate}
+                                onToggleHistory={toggleHistory}
+                                onRegistrarVisita={handleRegistrarVisita}
+                                onOpenActivity={handleOpenActivity}
+                            />
+                        </motion.div>
                     ))}
                 </div>
             </section>

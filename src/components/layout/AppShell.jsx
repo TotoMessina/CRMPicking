@@ -5,10 +5,17 @@ import { LocationTracker } from '../ui/LocationTracker';
 import { CommandPalette } from '../ui/CommandPalette';
 import { EmpresaSelector } from '../ui/EmpresaSelector';
 import { LogOut, Sun, Moon, Bell, Building2, ChevronDown, Navigation } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const SidebarBrand = ({ setIsMobileMenuOpen }) => (
     <div className="sidebar-brand">
-        <div className="sidebar-brand-text">
+        <img 
+            src="/logo-horizontal.png" 
+            alt="PickingUp CRM" 
+            style={{ height: '36px', width: 'auto', objectFit: 'contain', display: 'block' }} 
+            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
+        />
+        <div className="sidebar-brand-text" style={{ display: 'none' }}>
             <div className="logo-pu">
                 <div className="sidebar-logo">PU</div>
                 <div className="sidebar-title">PickingUp</div>
@@ -172,12 +179,22 @@ export function AppShell() {
             </aside>
 
             <div className="app-content">
-                <main style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <div key={location.pathname} className="page-transition" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <ErrorBoundary>
-                            <Outlet />
-                        </ErrorBoundary>
-                    </div>
+                <main style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+                    <AnimatePresence mode="wait">
+                        <motion.div 
+                            key={location.pathname} 
+                            className="page-transition" 
+                            style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -15 }}
+                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                        >
+                            <ErrorBoundary>
+                                <Outlet />
+                            </ErrorBoundary>
+                        </motion.div>
+                    </AnimatePresence>
                 </main>
             </div>
             <LocationTracker />

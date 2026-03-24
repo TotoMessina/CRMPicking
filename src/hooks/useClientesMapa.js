@@ -11,7 +11,30 @@ export function useClientesMapa(empresaId) {
 
             const { data, error } = await supabase.rpc('buscar_clientes_empresa', {
                 p_empresa_id: empresaId,
-                p_limit: 5000
+                p_nombre: null,
+                p_telefono: null,
+                p_direccion: null,
+                p_estado: null,
+                p_estados: null,
+                p_situacion: null,
+                p_situaciones: null,
+                p_tipo_contacto: null,
+                p_tipos_contacto: null,
+                p_responsable: null,
+                p_responsables: null,
+                p_rubro: null,
+                p_rubros: null,
+                p_interes: null,
+                p_intereses: null,
+                p_estilo: null,
+                p_estilos: null,
+                p_creado_desde: null,
+                p_creado_hasta: null,
+                p_contacto_desde: null,
+                p_contacto_hasta: null,
+                p_offset: 0,
+                p_limit: 5000,
+                p_sort_by: 'recent'
             });
 
             if (error) {

@@ -48,24 +48,29 @@ const Estadisticas: React.FC = () => {
             // Guardar estilos originales para evitar el corte por scroll
             const originalHeight = element.style.height;
             const originalOverflow = element.style.overflowY;
+            const originalPadding = element.style.padding;
+            const originalBg = element.style.background;
             
-            // Expandir al 100% de su contenido real
+            // Preparar contenedor como 'hoja de papel'
             element.style.height = 'max-content';
             element.style.overflowY = 'visible';
+            element.style.padding = '40px'; 
+            element.style.background = '#ffffff';
             
-            await new Promise(resolve => setTimeout(resolve, 300)); // Esperar render del DOM y expansión
+            await new Promise(resolve => setTimeout(resolve, 400)); // Esperar render del DOM y expansión
 
             const canvas = await html2canvas(element, { 
-                scale: 2, // 2 es óptimo con el devicePixelRatiox3 subyacente de ChartJS
+                scale: 2, // 2 es óptimo para la calidad de ChartJS
                 useCORS: true,
                 backgroundColor: '#ffffff',
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight
+                windowWidth: 1440 // Forzar un render ancho constante para evitar gráficos apretados en móviles
             });
             
             // Revertir
             element.style.height = originalHeight;
             element.style.overflowY = originalOverflow;
+            element.style.padding = originalPadding;
+            element.style.background = originalBg;
             
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
             const pdf = new jsPDF('p', 'mm', 'a4');
@@ -176,27 +181,61 @@ const Estadisticas: React.FC = () => {
             
             {isExportingPdf && (
                 <div style={{ 
-                    padding: '24px 32px', 
+                    padding: '32px 40px', 
                     background: '#ffffff', 
                     color: '#0f172a',
                     borderBottom: '4px solid #4f46e5', 
-                    marginBottom: '24px', 
-                    borderRadius: '12px',
+                    marginBottom: '32px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '12px'
+                    gap: '24px'
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px' }}>Reporte Ejecutivo de Rendimiento Comercial</h1>
-                            <h2 style={{ margin: '6px 0 0 0', fontSize: '18px', fontWeight: '500', color: '#475569' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <img 
+                                src="/logo-horizontal.png" 
+                                alt="PickingUp" 
+                                style={{ height: '56px', objectFit: 'contain' }}
+                                onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; ((e.currentTarget as HTMLElement).nextElementSibling as HTMLElement).style.display = 'flex'; }} 
+                            />
+                            <div style={{ display: 'none', alignItems: 'center', gap: '16px' }}>
+                                <div style={{ 
+                                    background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)', 
+                                    color: 'white', 
+                                    fontWeight: 800, 
+                                    fontSize: '28px', 
+                                    width: '56px', 
+                                    height: '56px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    borderRadius: '14px',
+                                    boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)'
+                                }}>
+                                    PU
+                                </div>
+                                <div>
+                                    <h1 style={{ margin: 0, fontSize: '32px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.1 }}>PickingUp</h1>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                        Reporte Corporativo
+                                    </p>
+                                </div>
+                            </div>
+                            <div style={{ marginLeft: '12px', borderLeft: '2px solid #e2e8f0', paddingLeft: '20px' }}>
+                                <p style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    Reporte Ejecutivo
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style={{ textAlign: 'right', fontSize: '13px', color: '#475569' }}>
+                           <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#1e293b' }}>
                                 Empresa: <strong style={{color: '#4f46e5'}}>{empresaActiva?.nombre || 'General'}</strong>
                             </h2>
-                        </div>
-                        <div style={{ textAlign: 'right', fontSize: '13px', color: '#64748b', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ margin: 0 }}><strong>Generado por:</strong> {userName || user?.email || 'Usuario del Sistema'}</p>
-                            <p style={{ margin: '6px 0 0 0' }}><strong>Fecha del Reporte:</strong> {new Date().toLocaleDateString()} a las {new Date().toLocaleTimeString()}</p>
-                            <p style={{ margin: '6px 0 0 0' }}><strong>ID Auditoría:</strong> #{Math.random().toString(36).substring(2, 9).toUpperCase()}</p>
+                            <p style={{ margin: '4px 0 0 0' }}><strong>Generado por:</strong> {userName || user?.email || 'Sistema'}</p>
+                            <p style={{ margin: '4px 0 0 0' }}><strong>Fecha:</strong> {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
+                            <p style={{ margin: '4px 0 0 0' }}><strong>Audit ID:</strong> #{Math.random().toString(36).substring(2, 9).toUpperCase()}</p>
                         </div>
                     </div>
                 </div>
