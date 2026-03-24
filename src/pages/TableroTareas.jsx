@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Plus, CheckSquare, Clock, User, Trash2, Edit2, X, GripVertical, Activity } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
+import { formatToLocal } from '../utils/dateUtils';
 
 const COLUMNS = [
     { id: 'Pendiente', title: 'Pendientes', color: 'var(--text)' },
@@ -344,7 +345,7 @@ export default function TableroTareas() {
                                                                         background: new Date(task.fecha_vencimiento) < new Date() && task.estado !== 'Finalizado' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg)',
                                                                         padding: '4px 8px', borderRadius: '12px'
                                                                     }}>
-                                                                        <Clock size={12} /> {new Date(task.fecha_vencimiento).toLocaleDateString()}
+                                                                        <Clock size={12} /> {formatToLocal(task.fecha_vencimiento)}
                                                                     </div>
                                                                 )}
                                                             </div>

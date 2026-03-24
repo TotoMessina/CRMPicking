@@ -1,5 +1,6 @@
 import { UserCircle, X, MessageCircle, Send, ClipboardList, Check, CheckCheck, Calendar, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { formatToLocal } from '../../utils/dateUtils';
 
 const formatTime = (isoString) => {
     if (!isoString) return '';
@@ -69,7 +70,7 @@ export const ChatArea = ({
                                     <div style={{ background: 'var(--bg-elevated)', border: `1px solid ${isMe ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '16px', padding: '14px', width: isMobile ? '230px' : '270px', display: 'flex', flexDirection: 'column', gap: '9px' }}>
                                         <div style={{ fontWeight: 600, fontSize: '0.98rem' }}>{parts[1]}</div>
                                         {parts[2] && <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>{parts[2]}</div>}
-                                        {parts[3] && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', background: 'var(--bg)', padding: '5px' }}>Vence: {new Date(parts[3]).toLocaleDateString()}</div>}
+                                        {parts[3] && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', background: 'var(--bg)', padding: '5px' }}>Vence: {formatToLocal(parts[3])}</div>}
                                         <Link to="/tablero" style={{ textAlign: 'center', padding: '7px', background: 'var(--bg)', borderRadius: '10px', color: 'var(--accent)', textDecoration: 'none', fontSize: '0.83rem', fontWeight: 600 }}>Ver en Tablero</Link>
                                     </div>
                                 ) : (

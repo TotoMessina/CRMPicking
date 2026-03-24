@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ActivityTimeline } from './ActivityTimeline';
 import { Client, ClientActivity } from '../../types/client';
 import { esEstadoFinal } from '../../constants/estados';
+import { formatToLocal } from '../../utils/dateUtils';
 
 interface Props {
     cliente: Client;
@@ -67,7 +68,7 @@ export const ClienteCard = memo<Props>(({
                         {(c.fecha_proximo_contacto || c.hora_proximo_contacto) && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent)', fontWeight: 600, marginTop: '4px' }}>
                                 <Calendar size={15} />
-                                Próx: {c.fecha_proximo_contacto ? new Date(c.fecha_proximo_contacto).toLocaleDateString('es-AR') : ''}
+                                Próx: {c.fecha_proximo_contacto ? formatToLocal(c.fecha_proximo_contacto) : ''}
                                 {c.hora_proximo_contacto ? ` a las ${c.hora_proximo_contacto.slice(0, 5)}` : ""}
                             </div>
                         )}

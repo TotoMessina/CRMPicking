@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { Client, ClientActivity } from '../types/client';
+import { formatToLocal } from '../utils/dateUtils';
 
 export interface UseClientesParams {
     empresaId: string | null;
@@ -303,7 +304,7 @@ export function useQuickDateCliente() {
                 if (!isOfflineError) throw new Error(updateError.message);
             }
 
-            const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${new Date(dateStr).toLocaleDateString('es-AR')}` : '🗑️ Fecha de próximo contacto eliminada';
+            const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${formatToLocal(dateStr)}` : '🗑️ Fecha de próximo contacto eliminada';
 
             const { error: logError } = await supabase.from('actividades').insert([{
                 cliente_id: clienteId,

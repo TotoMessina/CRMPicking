@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { Edit2 } from 'lucide-react';
+import { formatToLocal } from '../utils/dateUtils';
 import {
     ESTADO_RELEVADO, ESTADO_VISITADO_NO_ACTIVO, ESTADO_PRIMER_INGRESO,
     ESTADO_LOCAL_CREADO, ESTADO_ACTIVO, ESTADO_NO_INTERESADO,
@@ -229,7 +230,7 @@ export default function Pipeline() {
                                                                 )}
                                                                 {client.fecha_proximo_contacto && (
                                                                     <div style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                        <Calendar size={14} /> {new Date(client.fecha_proximo_contacto).toLocaleDateString()}
+                                                                        <Calendar size={14} /> {formatToLocal(client.fecha_proximo_contacto)}
                                                                     </div>
                                                                 )}
                                                             </div>

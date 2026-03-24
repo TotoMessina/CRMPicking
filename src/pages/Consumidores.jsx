@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-
+import { formatToLocal } from '../utils/dateUtils';
 import { Button } from '../components/ui/Button';
 import { Plus, ChevronLeft, ChevronRight, Download, Upload, Search, MapPin, Phone, Mail, Calendar, Clock, Store, Tag, User, Hash, Filter, Activity as ActivityIcon, Edit2, Trash2, Building, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -274,7 +274,7 @@ export default function Consumidores() {
                                             {(c.fecha_proximo_contacto || c.hora_proximo_contacto) && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent)', fontWeight: 600, marginTop: '4px' }}>
                                                     <Calendar size={15} />
-                                                    Próx: {c.fecha_proximo_contacto ? new Date(c.fecha_proximo_contacto).toLocaleDateString('es-AR') : ''}
+                                                    Próx: {c.fecha_proximo_contacto ? formatToLocal(c.fecha_proximo_contacto) : ''}
                                                     {c.hora_proximo_contacto ? ` a las ${c.hora_proximo_contacto.slice(0, 5)}` : ""}
                                                 </div>
                                             )}

@@ -16,6 +16,7 @@ import { Clock, User } from 'lucide-react';
 
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { useClientesMapa } from '../hooks/useClientesMapa';
+import { formatToLocal } from '../utils/dateUtils';
 
 const ZONE_COLORS = {
     today: "#3b82f6",
@@ -430,7 +431,7 @@ export default function MapaClientes() {
                         <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.9em; color: #444; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05);">
                             ${rec.direccion ? `<span>📍 ${rec.direccion}</span>` : ''}
                             ${rec.telefono ? `<span>📞 ${rec.telefono}</span>` : ''}
-                            ${rec.fecha_proximo_contacto ? `<span style="color: var(--accent); font-weight: 700;">📅 Próx: ${new Date(rec.fecha_proximo_contacto).toLocaleDateString()}</span>` : ''}
+                            ${rec.fecha_proximo_contacto ? `<span style="color: var(--accent); font-weight: 700;">📅 Próx: ${formatToLocal(rec.fecha_proximo_contacto)}</span>` : ''}
                         </div>
 
                         ${rec.notas ? `
