@@ -12,7 +12,7 @@ const SidebarBrand = ({ setIsMobileMenuOpen }) => (
         <img 
             src="/logo-horizontal.png" 
             alt="PickingUp CRM" 
-            style={{ height: '36px', width: 'auto', objectFit: 'contain', display: 'block' }} 
+            style={{ height: '52px', width: 'auto', objectFit: 'contain', display: 'block', margin: '-8px 0', transform: 'scale(1.1)' }} 
             onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
         />
         <div className="sidebar-brand-text" style={{ display: 'none' }}>

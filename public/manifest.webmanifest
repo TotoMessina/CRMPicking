@@ -7,12 +7,12 @@
     "description": "CRM para gestión de clientes, activadores, estadísticas y logística.",
     "icons": [
         {
-            "src": "/icon-192.png",
+            "src": "/favicon-brand.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "/icon-512.png",
+            "src": "/favicon-brand.png",
             "sizes": "512x512",
             "type": "image/png"
         }

@@ -196,7 +196,7 @@ const Estadisticas: React.FC = () => {
                             <img 
                                 src="/logo-horizontal.png" 
                                 alt="PickingUp" 
-                                style={{ height: '56px', objectFit: 'contain' }}
+                                style={{ height: '80px', objectFit: 'contain' }}
                                 onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; ((e.currentTarget as HTMLElement).nextElementSibling as HTMLElement).style.display = 'flex'; }} 
                             />
                             <div style={{ display: 'none', alignItems: 'center', gap: '16px' }}>
