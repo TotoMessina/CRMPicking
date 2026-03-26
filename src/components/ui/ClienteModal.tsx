@@ -162,6 +162,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                 ...ecData,
                 venta_digital: ecData.venta_digital ? 'true' : 'false'
             };
+            
+            // Auto-fill responsible if empty during edit
+            if (!merged.responsable && (userName || user?.email)) {
+                merged.responsable = userName || user?.email;
+                setIsDirty(true);
+            }
+
             setFormData(merged);
             setOriginalData(merged);
             setErrors({});
@@ -325,12 +332,14 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
             // 1. Update universal client record
             const { error: uErr } = await supabase.from('clientes').update(universalFields).eq('id', clienteId);
 
-            // 2. Update company-specific record
+            // 2. Upsert company-specific record to ensure it exists
             const { error: cErr } = await supabase
                 .from('empresa_cliente')
-                .update(companyFields)
-                .eq('cliente_id', clienteId)
-                .eq('empresa_id', empresaActiva.id);
+                .upsert({
+                    ...companyFields,
+                    cliente_id: clienteId,
+                    empresa_id: empresaActiva.id
+                }, { onConflict: 'empresa_id,cliente_id' });
 
             err = uErr || cErr;
 
