@@ -13,7 +13,7 @@ import 'leaflet-draw';
 import '../index.css';
 
 const ZONE_COLORS = {
-    today: "#3b82f6", // Blue
+    today: "#8b5cf6", // Violet
     done: "#ef4444",  // Red
     extra: "#f97316"  // Orange
 };
@@ -71,7 +71,7 @@ export default function MapaKiosco() {
         const popupContent = `
             <div style="margin-bottom:8px; font-weight:bold;">Zona</div>
             <div style="display:flex; flex-direction:column; gap:6px;">
-                <button class="btn-popup-local" style="color:#0284c7; border:1px solid #0284c7; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#3b82f6')">🔵 Marcar "Hoy"</button>
+                <button class="btn-popup-local" style="color:#7c3aed; border:1px solid #7c3aed; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#8b5cf6')">🟣 Marcar "Hoy"</button>
                 <button class="btn-popup-local" style="color:#dc2626; border:1px solid #dc2626; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#ef4444')">🔴 Marcar "Realizada"</button>
                 <button class="btn-popup-local" style="color:#ea580c; border:1px solid #ea580c; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#f97316')">🟠 Marcar "Extra"</button>
                 <hr style="width:100%; border:0; border-top:1px solid #eee; margin:4px 0;">

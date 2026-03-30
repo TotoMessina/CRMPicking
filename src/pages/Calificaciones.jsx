@@ -167,7 +167,7 @@ export default function Calificaciones() {
     };
 
     const getStatusColor = (status) => {
-        if (status === 'Nuevo') return '#3b82f6'; // Blue
+        if (status === 'Nuevo') return '#8b5cf6'; // Violet
         if (status === 'Leído') return '#10b981'; // Green
         return '#9ca3af'; // Gray for Archivado or other
     };

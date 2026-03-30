@@ -90,7 +90,7 @@ export default function Dashboard() {
                     datasets: [{
                         label: 'Nuevos Locales',
                         data: growthCounts,
-                        backgroundColor: '#3b82f6',
+                        backgroundColor: '#8b5cf6',
                         borderRadius: 6
                     }]
                 },
@@ -98,7 +98,7 @@ export default function Dashboard() {
                     labels: stateLabels,
                     datasets: [{
                         data: stateValues,
-                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'],
+                        backgroundColor: ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#a78bfa', '#64748b'],
                         borderWidth: 0
                     }]
                 },
@@ -228,7 +228,7 @@ export default function Dashboard() {
                             {stats.localesMapa
                                 .filter(l => l.clientes?.lat && l.clientes?.lng)
                                 .map(l => (
-                                <CircleMarker key={l.id} center={[l.clientes.lat, l.clientes.lng]} radius={4} fillOpacity={0.7} color="#3b82f6" stroke={false}>
+                                <CircleMarker key={l.id} center={[l.clientes.lat, l.clientes.lng]} radius={4} fillOpacity={0.7} color="#8b5cf6" stroke={false}>
                                     <Popup>{l.clientes.nombre_local}</Popup>
                                 </CircleMarker>
                             ))}

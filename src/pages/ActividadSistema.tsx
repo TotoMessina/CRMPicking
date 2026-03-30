@@ -278,7 +278,7 @@ export const ActividadSistema: React.FC = () => {
                                                     fontSize: '0.65rem', 
                                                     fontWeight: 800, 
                                                     background: log.action_type === 'INSERT' ? 'rgba(34, 197, 94, 0.1)' : log.action_type === 'DELETE' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(14, 165, 233, 0.1)',
-                                                    color: log.action_type === 'INSERT' ? '#22c55e' : log.action_type === 'DELETE' ? '#ef4444' : '#0ea5e9'
+                                                    color: log.action_type === 'INSERT' ? '#22c55e' : log.action_type === 'DELETE' ? '#ef4444' : '#8b5cf6'
                                                 }}>
                                                     {log.action_type}
                                                 </span>
@@ -307,7 +307,7 @@ export const ActividadSistema: React.FC = () => {
                                             fontSize: '0.65rem', 
                                             fontWeight: 800, 
                                             background: log.action_type === 'INSERT' ? 'rgba(34, 197, 94, 0.1)' : log.action_type === 'DELETE' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(14, 165, 233, 0.1)',
-                                            color: log.action_type === 'INSERT' ? '#22c55e' : log.action_type === 'DELETE' ? '#ef4444' : '#0ea5e9'
+                                            color: log.action_type === 'INSERT' ? '#22c55e' : log.action_type === 'DELETE' ? '#ef4444' : '#8b5cf6'
                                         }}>
                                             {log.action_type}
                                         </span>

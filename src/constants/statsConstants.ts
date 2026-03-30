@@ -22,7 +22,7 @@ export const STATS_THEME: StatsTheme = {
         secondary: '#10b981',
         accent: '#f59e0b',
         danger: '#ef4444',
-        info: '#3b82f6',
+        info: '#8b5cf6',
         slate: '#475569',
         grid: 'rgba(255, 255, 255, 0.05)',
         text: '#94a3b8',

@@ -151,7 +151,6 @@ export default function Login() {
     };
 
     return (
-    return (
         <div className="login-page-wrapper" style={{ minHeight: '100dvh' }}>
             <div className="login-orb-1"></div>
             <div className="login-orb-2"></div>

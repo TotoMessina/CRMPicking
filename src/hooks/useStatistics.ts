@@ -102,7 +102,7 @@ export const useStatistics = () => {
             counts[r] = (counts[r] || 0) + 1;
         });
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        const RUBRO_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#14b8a6', '#6366f1'];
+        const RUBRO_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#a78bfa', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#14b8a6', '#6366f1'];
         return {
             labels: sorted.map(x => x[0]),
             datasets: [{
@@ -328,7 +328,7 @@ export const useStatistics = () => {
                 }
             });
 
-            const COLORS: Record<string, string> = { [ESTADO_RELEVADO]: '#475569', "2 - Local Visitado No Activo": '#ef4444', "3 - Primer Ingreso": '#f59e0b', [ESTADO_LOCAL_CREADO]: '#10b981', [ESTADO_ACTIVO]: '#3b82f6', "6 - Local No Interesado": "#ef4444", "Sin estado": "#cbd5e1" };
+            const COLORS: Record<string, string> = { [ESTADO_RELEVADO]: '#475569', "2 - Local Visitado No Activo": '#ef4444', "3 - Primer Ingreso": '#f59e0b', [ESTADO_LOCAL_CREADO]: '#10b981', [ESTADO_ACTIVO]: '#8b5cf6', "6 - Local No Interesado": "#ef4444", "Sin estado": "#cbd5e1" };
             const datasetsStacked = Array.from(allSt).sort().map(st => ({ label: st, stack: 'A', backgroundColor: COLORS[st] || "#a78bfa", data: buckets.map(b => dailyStMap.get(b.key)!.get(st) || 0) }));
 
             const bdownClean = [...breakdown.entries()].sort((a, b) => b[1].total - a[1].total).map(([k, v]) => ({
@@ -342,9 +342,9 @@ export const useStatistics = () => {
                 consumidoresEvolucion: { labels: buckets.map(b => b.label), datasets: [{ label: 'Nuevos Consumidores', data: buckets.map(b => mapCons.get(b.key) || 0), backgroundColor: '#ec4899', borderRadius: 4 }] },
                 repartidoresEvolucion: { labels: buckets.map(b => b.label), datasets: [{ label: 'Nuevos Repartidores', data: buckets.map(b => mapRepartidores.get(b.key) || 0), backgroundColor: '#10b981', borderRadius: 4 }] },
                 visitasEvolucion: { labels: buckets.map(b => b.label), datasets: [{ label: 'Visitas', data: buckets.map(b => mapVisitas.get(b.key) || 0), backgroundColor: '#4f46e5', borderRadius: 4 }] },
-                rubros: { labels: rubrosArr.map(x => x[0]), datasets: [{ data: rubrosArr.map(x => x[1]), backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'], borderWidth: 0 }] },
-                estados: { labels: estadosArr.map(x => x[0]), datasets: [{ data: estadosArr.map(x => x[1]), backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'], borderWidth: 0 }] },
-                creados: { labels: creadorArr.map(x => x[0]), datasets: [{ data: creadorArr.map(x => x[1]), backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'], borderWidth: 0 }] },
+                rubros: { labels: rubrosArr.map(x => x[0]), datasets: [{ data: rubrosArr.map(x => x[1]), backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#a78bfa', '#ec4899', '#6366f1'], borderWidth: 0 }] },
+                estados: { labels: estadosArr.map(x => x[0]), datasets: [{ data: estadosArr.map(x => x[1]), backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#a78bfa', '#ec4899', '#6366f1'], borderWidth: 0 }] },
+                creados: { labels: creadorArr.map(x => x[0]), datasets: [{ data: creadorArr.map(x => x[1]), backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#a78bfa', '#ec4899', '#6366f1'], borderWidth: 0 }] },
                 situacionLocales: { labels: ['Sin comunicación nueva', 'En proceso', 'En funcionamiento'], datasets: [{ label: 'Locales (Est. 4 y 5)', data: ['sin comunicacion nueva', 'en proceso', 'en funcionamiento'].map(k => situacionMap[k]), backgroundColor: ['#94a3b8', '#f59e0b', '#10b981'], borderRadius: 8, borderWidth: 0 }] },
                 activadoresConversion: { labels: actConv.map(a => `${a.name} (${Math.round(a.rate)}%)`), datasets: [{ label: 'Efectividad %', data: actConv.map(a => a.rate), backgroundColor: '#4f46e5', borderRadius: 4 }] },
                 activadoresDia: { labels: buckets.map(b => b.label), datasets: datasetsStacked }

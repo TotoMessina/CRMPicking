@@ -112,7 +112,7 @@ export function AppShell() {
                         }}
                     >
                         <Sun size={13} color={theme === 'dark' ? '#64748b' : '#f59e0b'} style={{ zIndex: 1, marginLeft: '3px' }} />
-                        <Moon size={13} color={theme === 'dark' ? '#60a5fa' : '#64748b'} style={{ zIndex: 1, marginRight: '3px' }} />
+                        <Moon size={13} color={theme === 'dark' ? '#a78bfa' : '#64748b'} style={{ zIndex: 1, marginRight: '3px' }} />
                         <div style={{
                             position: 'absolute', top: '1px', left: theme === 'dark' ? '29px' : '1px',
                             width: '24px', height: '24px', background: theme === 'dark' ? '#1e293b' : '#ffffff',

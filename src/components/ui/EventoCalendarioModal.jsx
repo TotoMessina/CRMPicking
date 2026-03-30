@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 const EVENT_COLORS = {
     interno: "#FF2BD6",
-    reunion: "#3b82f6",
+    reunion: "#8b5cf6",
     virtual: "#8b5cf6",
     contacto: "#f97316",
     empresa: "#ec4899",

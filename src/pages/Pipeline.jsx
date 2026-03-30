@@ -17,7 +17,7 @@ const COLUMNS = [
     { id: ESTADO_RELEVADO,          label: 'Relevado',          color: '#64748b' },
     { id: ESTADO_VISITADO_NO_ACTIVO, label: 'Visitado (No Act)', color: '#ef4444' },
     { id: ESTADO_PRIMER_INGRESO,    label: 'Primer Ingreso',    color: '#f59e0b' },
-    { id: ESTADO_LOCAL_CREADO,      label: 'Creado',            color: '#3b82f6' },
+    { id: ESTADO_LOCAL_CREADO,      label: 'Creado',            color: '#8b5cf6' },
     { id: ESTADO_ACTIVO,            label: 'Visitado (Activo)', color: '#10b981' },
     { id: ESTADO_NO_INTERESADO,     label: 'No Interesado',     color: '#ef4444' }
 ];
@@ -242,7 +242,7 @@ export default function Pipeline() {
                                                                             <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', textTransform: 'uppercase' }}>🔥 Caliente</span>
                                                                         )}
                                                                         {client.venta_digital && (
-                                                                            <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', textTransform: 'uppercase' }}>🌐 Digital</span>
+                                                                            <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', textTransform: 'uppercase' }}>🌐 Digital</span>
                                                                         )}
                                                                     </div>
                                                                     {client.notas && (

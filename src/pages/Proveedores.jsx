@@ -14,7 +14,7 @@ import { ProveedorModal } from '../components/ui/ProveedorModal';
 import { EventoProveedorModal } from '../components/ui/EventoProveedorModal';
 
 const TYPE_COLORS = {
-    pedido: "#3b82f6", // Blue
+    pedido: "#8b5cf6", // Violet
     idea: "#eab308",   // Yellow
     plazo: "#ef4444",  // Red
     otro: "#64748b"    // Slate
@@ -216,7 +216,7 @@ export default function Proveedores() {
                             </Button>
                             <div className="muted" style={{ fontSize: '0.85rem', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: '100px', border: '1px solid var(--border)' }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: '50%' }}></span> Pedido
+                                    <span style={{ width: 10, height: 10, background: '#8b5cf6', borderRadius: '50%' }}></span> Pedido
                                 </span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <span style={{ width: 10, height: 10, background: '#ef4444', borderRadius: '50%' }}></span> Plazo / Límite
