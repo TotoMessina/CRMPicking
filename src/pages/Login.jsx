@@ -151,31 +151,23 @@ export default function Login() {
     };
 
     return (
-        <div className="login-split-layout">
-            {/* Left: Brand Panel */}
-            <div className="login-brand-panel">
-                <div className="brand-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    return (
+        <div className="login-page-wrapper" style={{ minHeight: '100dvh' }}>
+            <div className="login-orb-1"></div>
+            <div className="login-orb-2"></div>
+
+            <div className="login-glass-card">
+                <div className="login-brand-header">
                     <img 
                         src="/logo-vertical.png" 
                         alt="PickingUp CRM" 
-                        style={{ width: '220px', height: 'auto', objectFit: 'contain', display: 'block', marginBottom: '16px' }} 
-                        onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'block'; }}
+                        style={{ height: '70px', width: 'auto', margin: '0 auto 24px', display: 'block', objectFit: 'contain' }} 
+                        onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
                     />
-                    <div style={{ display: 'none', textAlign: 'center' }}>
-                        <div className="brand-logo" style={{ margin: '0 auto' }}>PU</div>
-                        <h1>PickingUp</h1>
-                    </div>
-                    <p style={{ fontSize: '1.2rem', marginTop: '8px', color: 'rgba(255,255,255,0.7)' }}>Buen día Ruben</p>
+                    <div className="login-brand-logo" style={{ display: 'none' }}>PU</div>
+                    <h1>{formMode === 'login' ? 'Bienvenido' : formMode === 'signup' ? 'Nueva Cuenta' : 'Recuperar'}</h1>
+                    <p>{formMode === 'login' ? 'Ingresá tus credenciales para continuar' : formMode === 'signup' ? 'Completá tus datos de acceso' : 'Te enviaremos un link de acceso'}</p>
                 </div>
-            </div>
-
-            {/* Right: Form Panel */}
-            <div className="login-form-panel">
-                <div className="login-form-container">
-                    <div className="login-header">
-                        <h2>Bienvenido</h2>
-                        <p className="muted">Ingresá tus credenciales para continuar</p>
-                    </div>
 
                     {formMode === 'login' && (
                         <form onSubmit={handleLogin} className="form-stack">
@@ -265,12 +257,12 @@ export default function Login() {
                         </p>
                     )}
 
-                    <div className="theme-toggle-fixed">
-                        <button className="btn-icon" type="button" title="Cambiar tema" onClick={toggleTheme}>
-                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                        </button>
-                    </div>
-                </div>
+            </div>
+            
+            <div className="theme-toggle-fixed" style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 50 }}>
+                <button className="btn-icon" type="button" title="Cambiar tema" onClick={toggleTheme}>
+                    {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
             </div>
         </div>
     );

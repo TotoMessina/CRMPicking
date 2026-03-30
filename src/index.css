@@ -12,9 +12,9 @@
   --text: #0f172a;
   --text-muted: #64748b;
   --border: #e2e8f0;
-  --accent: #3b82f6;
-  /* Azul moderno */
-  --accent-soft: #eff6ff;
+  --accent: #8b5cf6;
+  /* Violeta Premium */
+  --accent-soft: #f5f3ff;
   --danger: #ef4444;
   --success: #10b981;
   --warning: #f59e0b;
@@ -43,8 +43,8 @@
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --border: #334155;
-  --accent: #60a5fa;
-  --accent-soft: rgba(59, 130, 246, 0.15);
+  --accent: #a78bfa;
+  --accent-soft: rgba(139, 92, 246, 0.15);
   --danger: #f87171;
   --success: #34d399;
   --warning: #fbbf24;
@@ -4140,135 +4140,105 @@ button:active {
    LOGIN SPLIT LAYOUT
    =========================== */
 
-.login-split-layout {
-  display: grid;
-  grid-template-columns: 1fr;
+.login-page-wrapper {
   min-height: 100vh;
-  width: 100%;
-  overflow: hidden;
-}
-
-@media (min-width: 1024px) {
-  .login-split-layout {
-    grid-template-columns: 1.2fr 1fr;
-    /* Brand panel slightly larger */
-  }
-}
-
-/* --- Brand Panel (Left) --- */
-.login-brand-panel {
-  position: relative;
-  background: #0f172a;
-  /* Fallback */
-  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
-  overflow: hidden;
-}
-
-.login-brand-panel::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #9333ea 100%);
-  opacity: 0.8;
-  z-index: 1;
-  background-size: 200% 200%;
-  animation: bgGradientMove 10s ease infinite;
-}
-
-@keyframes bgGradientMove {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* Floating shapes for visual interest */
-.login-brand-panel::after {
-  content: "";
-  position: absolute;
-  width: 400px;
-  height: 400px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 50%;
-  top: -100px;
-  left: -100px;
-  z-index: 2;
-  filter: blur(60px);
-}
-
-.brand-content {
-  position: relative;
-  z-index: 10;
-  text-align: center;
-}
-
-.brand-logo {
-  font-size: 48px;
-  font-weight: 900;
-  margin-bottom: 16px;
-  letter-spacing: -2px;
-  background: rgba(255, 255, 255, 0.2);
-  width: 100px;
-  height: 100px;
-  border-radius: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
-}
-
-.brand-content h1 {
-  font-size: 42px;
-  margin-bottom: 12px;
-  font-weight: 800;
-}
-
-.brand-content p {
-  font-size: 18px;
-  opacity: 0.9;
-  font-weight: 300;
-}
-
-/* --- Form Panel (Right) --- */
-.login-form-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
   background: var(--bg);
   position: relative;
+  overflow: hidden;
+  padding: 20px;
 }
 
-.login-form-container {
+.login-orb-1 {
+  position: absolute;
+  top: -10vw;
+  left: -10vw;
+  width: 50vw;
+  height: 50vw;
+  max-width: 600px;
+  max-height: 600px;
+  background: var(--accent);
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.25;
+  animation: orbFloat 12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.login-orb-2 {
+  position: absolute;
+  bottom: -10vw;
+  right: -10vw;
+  width: 60vw;
+  height: 60vw;
+  max-width: 700px;
+  max-height: 700px;
+  background: #c084fc;
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.2;
+  animation: orbFloatReverse 15s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes orbFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(50px, 50px) scale(1.1); }
+}
+@keyframes orbFloatReverse {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-50px, -50px) scale(1.05); }
+}
+
+.login-glass-card {
+  position: relative;
+  z-index: 10;
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 24px;
+  padding: 48px 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
 }
 
-.login-header {
-  margin-bottom: 32px;
+.login-brand-header {
   text-align: center;
+  margin-bottom: 32px;
 }
 
-.login-header h2 {
+.login-brand-logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  background: var(--accent-soft);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.login-brand-header h1 {
+  font-size: 24px;
   font-weight: 700;
+  margin: 0 0 8px;
   color: var(--text);
-  margin-bottom: 8px;
+}
+
+.login-brand-header p {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
 }
 
 .form-stack {
@@ -4363,19 +4333,7 @@ button:active {
   border-color: var(--accent);
 }
 
-/* Mobile Adjustments */
-@media (max-width: 1023px) {
-  .login-brand-panel {
-    display: none;
-    /* Simplify for mobile, or make it a top header */
-  }
-
-  /* Optional: Show mini header on mobile */
-  .login-split-layout {
-    grid-template-rows: auto 1fr;
-    grid-template-columns: 1fr;
-  }
-}
+/* Mobile Adjustments Handled by flexbox fluid width */
 
 /* ===========================
    SETTINGS PAGE
