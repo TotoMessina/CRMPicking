@@ -68,7 +68,7 @@ const STEP_FIELDS: Record<number, string[]> = {
 
 const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
 
-export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, initialLocation, onSaved }) => {
+export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: initialClienteId, initialLocation, onSaved }) => {
     const { user, userName, empresaActiva }: any = useAuth();
     const { data: rubrosDB = [] } = useRubros();
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
@@ -78,6 +78,8 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
     const [originalData, setOriginalData] = useState<FormData | null>(null);
     const [isDirty, setIsDirty] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [clienteId, setClienteId] = useState<string | null>(initialClienteId);
+    const [verifyingPhone, setVerifyingPhone] = useState(false);
 
     const handleClose = () => {
         if (isDirty) {
@@ -115,19 +117,53 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
             });
     }, [isOpen, clienteId, user]);
 
-    useEffect(() => {
-        if (isOpen && clienteId) {
-            loadCliente(clienteId);
-        } else if (isOpen && !clienteId) {
-            setFormData(emptyForm({
-                lat: initialLocation?.lat ?? null,
-                lng: initialLocation?.lng ?? null,
-            }));
-            setErrors({});
+    const handleVerifyPhone = async (e?: React.MouseEvent | React.KeyboardEvent) => {
+        if (e) e.preventDefault();
+        const tel = formData.telefono?.trim();
+        if (!tel) {
+            setErrors({ telefono: 'Ingresá un número de teléfono para verificar' });
+            return;
+        }
+
+        setVerifyingPhone(true);
+        const { data, error } = await supabase
+            .from('clientes')
+            .select('id, nombre, nombre_local')
+            .eq('telefono', tel)
+            .maybeSingle();
+
+        setVerifyingPhone(false);
+
+        if (data && data.id) {
+            toast.success(`Cliente encontrado: ${data.nombre_local || data.nombre}`);
+            setClienteId(data.id);
+            setErrors(prev => { const n = { ...prev }; delete n.telefono; return n; });
+            loadCliente(data.id);
+            handleStepChange(1);
+        } else {
+            toast.success('Teléfono nuevo, podés continuar con la carga.');
+            setErrors(prev => { const n = { ...prev }; delete n.telefono; return n; });
             handleStepChange(1);
         }
-        if (isOpen) setIsDirty(false);
-    }, [isOpen, clienteId]);
+    };
+
+    useEffect(() => {
+        if (isOpen) {
+            setClienteId(initialClienteId);
+            if (initialClienteId) {
+                loadCliente(initialClienteId);
+                handleStepChange(1);
+            } else {
+                setFormData(emptyForm({
+                    lat: initialLocation?.lat ?? null,
+                    lng: initialLocation?.lng ?? null,
+                }));
+                setErrors({});
+                handleStepChange(0);
+            }
+            setIsDirty(false);
+        }
+    }, [isOpen, initialClienteId]);
 
     const handleStepChange = (newStep: number) => {
         setStep(newStep);
@@ -155,11 +191,19 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                 setIsDirty(false);
             }
         } else if (ecData) {
-            // Merge both
+            // Merge both: fallback to universal if specific is null
             const merged = {
                 ...emptyForm(),
                 ...ecData.clientes,
                 ...ecData,
+                estado: ecData.estado || ecData.clientes?.estado || ESTADO_DEFAULT,
+                rubro: ecData.rubro || ecData.clientes?.rubro || '',
+                responsable: ecData.responsable || ecData.clientes?.responsable || '',
+                situacion: ecData.situacion || ecData.clientes?.situacion || SITUACION_DEFAULT,
+                notas: ecData.notas || ecData.clientes?.notas || '',
+                tipo_contacto: ecData.tipo_contacto || ecData.clientes?.tipo_contacto || 'Visita Presencial',
+                fecha_proximo_contacto: ecData.fecha_proximo_contacto || ecData.clientes?.fecha_proximo_contacto || '',
+                hora_proximo_contacto: ecData.hora_proximo_contacto || ecData.clientes?.hora_proximo_contacto || '',
                 venta_digital: ecData.venta_digital ? 'true' : 'false'
             };
             
@@ -487,6 +531,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                 </div>
 
                 {/* Step indicators */}
+                {step > 0 && (
                 <div className="wizard-steps" style={{ marginBottom: '24px' }}>
                     {[1, 2, 3].map(s => (
                         <div
@@ -500,6 +545,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                         />
                     ))}
                 </div>
+                )}
 
                 <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
                     <AnimatePresence mode="wait">
@@ -515,6 +561,30 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                         </motion.div>
                     ) : (
                     <motion.div key={step} initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} transition={{ duration: 0.2 }}>
+                    
+                    {/* ── STEP 0 ── */}
+                    {step === 0 && (
+                        <div>
+                            <h3 style={{ marginBottom: '16px' }}>Verificar Teléfono</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
+                                Ingresá el teléfono del cliente para verificar si ya existe en la base de datos.
+                            </p>
+                            <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                                <div className="field">
+                                    <label>Teléfono *</label>
+                                    <input type="text" {...inp('telefono')} placeholder="Ej: 112345678" onKeyDown={(e) => e.key === 'Enter' && handleVerifyPhone(e as any)} />
+                                    <FieldError msg={errors.telefono} />
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', gap: '12px' }}>
+                                <Button variant="secondary" type="button" onClick={handleClose}>Cancelar</Button>
+                                <Button variant="primary" type="button" onClick={handleVerifyPhone} disabled={verifyingPhone}>
+                                    {verifyingPhone ? 'Verificando...' : 'Verificar y Continuar'}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* ── STEP 1 ── */}
                     {step === 1 && (
                         <div>
@@ -577,7 +647,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                                         style={{ background: 'var(--bg-elevated)', fontWeight: 500 }}
                                     >
                                         <option value="">Seleccionar responsable...</option>
-                                        {responsablesDB.map(r => (
+                                        {[...new Set([...responsablesDB, formData.responsable])].filter(Boolean).map((r: any) => (
                                             <option key={r} value={r}>{r}</option>
                                         ))}
                                     </select>
@@ -702,6 +772,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                     )}
                     </AnimatePresence>
 
+                    {step > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
                         <Button variant="secondary" type="button" onClick={() => handleStepChange(step > 1 ? step - 1 : 1)} style={{ visibility: step === 1 ? 'hidden' : 'visible' }}>
                             Anterior
@@ -717,6 +788,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, init
                             )}
                         </div>
                     </div>
+                    )}
                 </form>
             </motion.div>
 

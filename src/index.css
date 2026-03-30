@@ -96,7 +96,6 @@ body::-webkit-scrollbar-thumb {
 .container {
   max-width: 1100px;
   margin: 24px auto;
-  padding: 24px;
   background: var(--card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -1557,7 +1556,7 @@ body.modal-open {
   padding: 10px 10px;
   border-radius: 14px;
   margin-bottom: 10px;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .sidebar-logo {
@@ -2914,16 +2913,17 @@ body.modal-open {
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 10px;
+  padding: 20px;
   border: 1px solid rgba(148, 163, 184, .25);
   border-radius: 16px;
   background: rgba(255, 255, 255, .55);
-  justify-content: space-between;
+  justify-content: center;
 }
 
 :root[data-theme="dark"] .sidebar-brand {
   background: rgba(255, 255, 255, .03);
   border-color: rgba(255, 255, 255, .10);
+  justify-content: center;
 }
 
 .sidebar-logo {
@@ -3004,6 +3004,7 @@ body.modal-open {
 .app-content {
   flex: 1;
   min-width: 0;
+  padding: 20px;
 }
 
 /* Responsive: sidebar arriba en móvil */
@@ -6504,4 +6505,4 @@ fieldset legend:hover {
     box-shadow: none !important;
     border: 1px solid #e2e8f0 !important;
   }
-}
+}
