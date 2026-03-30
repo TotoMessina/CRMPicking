@@ -268,22 +268,47 @@ export const useStatistics = () => {
             actividadesRango.forEach((a: any) => { if (a.descripcion === 'Visita realizada' && a.usuario) visitasPorPersona.set(a.usuario, (visitasPorPersona.get(a.usuario) || 0) + 1); });
 
             const breakdown = new Map<string, { total: number, efectivo: number, sts: Record<string, number> }>();
+            
+            // 1. Relevos == Clientes creados por la persona
             clientesRango.forEach((c: any) => {
                 const creadoRaw = (c.creado_por as string)?.trim() || "Desconocido";
-                const activoRaw = (c.activador_cierre as string)?.trim() || creadoRaw;
                 const st = (c.estado as string) || "Sin estado";
                 if (setActNames.has(creadoRaw.toLowerCase())) {
                     if (!breakdown.has(creadoRaw)) breakdown.set(creadoRaw, { total: 0, efectivo: 0, sts: {} });
                     const objA = breakdown.get(creadoRaw)!;
                     objA.total++;
-                    if (activoRaw !== creadoRaw && esEstadoFinal(st)) objA.sts[ESTADO_RELEVADO] = (objA.sts[ESTADO_RELEVADO] || 0) + 1;
-                    else { objA.sts[st] = (objA.sts[st] || 0) + 1; if (esEstadoFinal(st)) objA.efectivo++; }
-                }
-                if (activoRaw !== creadoRaw && esEstadoFinal(st) && setActNames.has(activoRaw.toLowerCase())) {
-                    if (!breakdown.has(activoRaw)) breakdown.set(activoRaw, { total: 0, efectivo: 0, sts: {} });
-                    const objB = breakdown.get(activoRaw)!; objB.total++; objB.efectivo++; objB.sts[st] = (objB.sts[st] || 0) + 1;
+                    objA.sts[st] = (objA.sts[st] || 0) + 1;
                 }
             });
+
+            // 2. Cierres efectivos == Unique clients changed to state 4/5 by the user in this period
+            const cerradosPorActivador = new Map<string, Set<number>>();
+            actividadesRango.forEach((a: any) => {
+                const usr = a.usuario?.trim();
+                const desc = a.descripcion || '';
+                if (usr && setActNames.has(usr.toLowerCase())) {
+                    const isCierre = desc.includes('➔ 4 - Local Creado') || 
+                                     desc.includes('➔ 5 - Local Visitado Activo') || 
+                                     desc.includes('Estado inicial: 4 - Local Creado') || 
+                                     desc.includes('Estado inicial: 5 - Local Visitado Activo');
+                    if (isCierre) {
+                        let targetKey = usr;
+                        for (const act of activators) {
+                            if (act.nombre.trim().toLowerCase() === usr.toLowerCase()) {
+                                targetKey = act.nombre.trim();
+                                break;
+                            }
+                        }
+                        if (!cerradosPorActivador.has(targetKey)) cerradosPorActivador.set(targetKey, new Set());
+                        cerradosPorActivador.get(targetKey)!.add(a.cliente_id);
+                    }
+                }
+            });
+
+            for (const [usr, setClients] of cerradosPorActivador.entries()) {
+                if (!breakdown.has(usr)) breakdown.set(usr, { total: 0, efectivo: 0, sts: {} });
+                breakdown.get(usr)!.efectivo = setClients.size;
+            }
 
             const actConv = [...breakdown.entries()].map(([k, v]) => ({
                 name: k, rate: v.total > 0 ? (v.efectivo / v.total) * 100 : 0, total: v.total, efectivo: v.efectivo, visitas: visitasPorPersona.get(k) || 0

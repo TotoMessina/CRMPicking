@@ -16,6 +16,7 @@ export interface ClientFilters {
     estado: string[];
     situacion: string[];
     responsable: string[];
+    creadoPor: string[];
     rubro: string[];
     interes: string[];
     estilo: string[];
@@ -47,6 +48,7 @@ export const useClientsLogic = () => {
         estado: stateFilters?.estado || [],
         situacion: stateFilters?.situacion || [],
         responsable: stateFilters?.responsable || [],
+        creadoPor: stateFilters?.creadoPor || [],
         rubro: stateFilters?.rubro || [],
         interes: stateFilters?.interes || [],
         estilo: stateFilters?.estilo || [],
@@ -75,7 +77,7 @@ export const useClientsLogic = () => {
         empresaId: empresaActiva?.id,
         page, pageSize, isAgendaHoy,
         fEstado: filters.estado, fSituacion: filters.situacion, fTipoContacto: filters.tipoContacto,
-        fResponsable: filters.responsable, fRubro: filters.rubro, fInteres: filters.interes,
+        fResponsable: filters.responsable, fCreadoPor: filters.creadoPor, fRubro: filters.rubro, fInteres: filters.interes,
         fEstilo: filters.estilo, fProximos7: filters.proximos7, fVencidos: filters.vencidos,
         fNombre: filters.nombre, fTelefono: filters.telefono, fDireccion: filters.direccion,
         fCreadoDesde: filters.creadoDesde, fCreadoHasta: filters.creadoHasta, 

@@ -13,6 +13,7 @@ export interface UseClientesParams {
     fSituacion: string[];
     fTipoContacto: string[];
     fResponsable: string[];
+    fCreadoPor: string[];
     fRubro: string[];
     fInteres: string[];
     fEstilo: string[];
@@ -31,7 +32,7 @@ export interface UseClientesParams {
 export function useClientes(params: UseClientesParams) {
     const {
         empresaId, page, pageSize, isAgendaHoy,
-        fEstado, fSituacion, fTipoContacto, fResponsable,
+        fEstado, fSituacion, fTipoContacto, fResponsable, fCreadoPor,
         fRubro, fInteres, fEstilo, fProximos7, fVencidos,
         fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta,
         fContactoDesde, fContactoHasta, sortBy
@@ -42,7 +43,7 @@ export function useClientes(params: UseClientesParams) {
             'clientes',
             {
                 empresaId, page, pageSize, isAgendaHoy,
-                fEstado, fSituacion, fTipoContacto, fResponsable,
+                fEstado, fSituacion, fTipoContacto, fResponsable, fCreadoPor,
                 fRubro, fInteres, fEstilo, fProximos7, fVencidos,
                 fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta,
                 fContactoDesde, fContactoHasta, sortBy
@@ -84,6 +85,7 @@ export function useClientes(params: UseClientesParams) {
             if (fSituacion && fSituacion.length > 0) request = request.in('situacion', fSituacion);
             if (fTipoContacto && fTipoContacto.length > 0) request = request.in('tipo_contacto', fTipoContacto);
             if (fResponsable && fResponsable.length > 0) request = request.in('responsable', fResponsable);
+            if (fCreadoPor && fCreadoPor.length > 0) request = request.in('creado_por', fCreadoPor);
             if (fRubro && fRubro.length > 0) request = request.in('rubro', fRubro);
             if (fInteres && fInteres.length > 0) request = request.in('interes', fInteres);
             if (fEstilo && fEstilo.length > 0) request = request.in('estilo_contacto', fEstilo);
@@ -125,19 +127,13 @@ export function useClientes(params: UseClientesParams) {
                     p_nombre: fNombre || null,
                     p_telefono: fTelefono || null,
                     p_direccion: fDireccion || null,
-                    p_estado: null,
                     p_estados: fEstado && fEstado.length > 0 ? fEstado : null,
-                    p_situacion: null,
                     p_situaciones: fSituacion && fSituacion.length > 0 ? fSituacion : null,
-                    p_tipo_contacto: null,
                     p_tipos_contacto: fTipoContacto && fTipoContacto.length > 0 ? fTipoContacto : null,
-                    p_responsable: null,
                     p_responsables: fResponsable && fResponsable.length > 0 ? fResponsable : null,
-                    p_rubro: null,
+                    p_creados_por: fCreadoPor && fCreadoPor.length > 0 ? fCreadoPor : null,
                     p_rubros: fRubro && fRubro.length > 0 ? fRubro : null,
-                    p_interes: null,
                     p_intereses: fInteres && fInteres.length > 0 ? fInteres : null,
-                    p_estilo: null,
                     p_estilos: fEstilo && fEstilo.length > 0 ? fEstilo : null,
                     p_creado_desde: fCreadoDesde || null,
                     p_creado_hasta: fCreadoHasta || null,
@@ -183,7 +179,7 @@ export function useClientes(params: UseClientesParams) {
                     created_at: row.ec_created_at,
                     updated_at: row.ec_updated_at,
                 }));
-                total = rpcData?.length === pageSize ? (page * pageSize) + 1 : (page - 1) * pageSize + (rpcData?.length || 0);
+                total = rpcData && rpcData.length > 0 ? Number(rpcData[0].total_count) : 0;
             } else {
                 const { data, count, error } = await request;
 

@@ -203,206 +203,285 @@ const MultiSelectFilter: React.FC<{
 };
 
 export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos, responsablesValidos }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    let activeCount = 0;
+    if (filters.telefono) activeCount++;
+    if (filters.direccion) activeCount++;
+    if (filters.estado.length) activeCount += filters.estado.length;
+    if (filters.situacion.length) activeCount += filters.situacion.length;
+    if (filters.responsable.length) activeCount += filters.responsable.length;
+    if (filters.creadoPor?.length) activeCount += filters.creadoPor.length;
+    if (filters.rubro.length) activeCount += filters.rubro.length;
+    if (filters.interes.length) activeCount += filters.interes.length;
+    if (filters.estilo.length) activeCount += filters.estilo.length;
+    if (filters.tipoContacto.length) activeCount += filters.tipoContacto.length;
+    if (filters.proximos7) activeCount++;
+    if (filters.vencidos) activeCount++;
+    if (filters.creadoDesde) activeCount++;
+    if (filters.creadoHasta) activeCount++;
+    if (filters.contactoDesde) activeCount++;
+    if (filters.contactoHasta) activeCount++;
+
     return (
         <section style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border)',
             borderRadius: '24px',
-            padding: '24px',
+            padding: '20px',
             marginBottom: '32px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '20px',
-            boxShadow: '0 4px 24px -10px rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 4px 24px -10px rgba(0, 0, 0, 0.05)',
             position: 'relative',
-            overflow: 'visible'
         }}>
-            <div style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)', opacity: 0.5 }}></div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)', fontWeight: 700, fontSize: '1.1rem' }}>
-                <Filter size={18} style={{ color: 'var(--accent)' }} /> Filtros de Búsqueda
+            {/* Minimal Header / Main Search */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+                <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+                    <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input 
+                        className="input" 
+                        placeholder="Buscar por Nombre o Local..." 
+                        value={filters.nombre} 
+                        onChange={e => updateFilter('nombre', e.target.value)} 
+                        style={{ 
+                            width: '100%', 
+                            padding: '12px 16px 12px 42px', 
+                            borderRadius: '16px', 
+                            fontSize: '1rem', 
+                            background: 'var(--bg-active)', 
+                            border: '1px solid var(--border)',
+                            transition: 'all 0.2s ease',
+                            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                        }} 
+                    />
+                </div>
+                
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    style={{
+                        padding: '12px 20px',
+                        borderRadius: '16px',
+                        background: activeCount > 0 ? 'var(--accent)' : 'var(--bg-active)',
+                        border: activeCount > 0 ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        color: activeCount > 0 ? '#fff' : 'var(--text)',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        whiteSpace: 'nowrap',
+                        boxShadow: activeCount > 0 ? '0 4px 12px -2px rgba(37,99,235,0.3)' : 'none'
+                    }}
+                >
+                    <Filter size={18} />
+                    Filtros Avanzados
+                    {activeCount > 0 && (
+                        <span style={{ 
+                            background: 'rgba(255,255,255,0.25)', 
+                            color: '#fff', 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '0.8rem', 
+                            marginLeft: '4px' 
+                        }}>
+                            {activeCount}
+                        </span>
+                    )}
+                    <ChevronDown size={18} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                        <Search size={14} /> Nombre / Local
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Buscar..." value={filters.nombre} onChange={e => updateFilter('nombre', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+            {/* Collapsible Advanced Filters */}
+            {isExpanded && (
+                <div style={{ 
+                    marginTop: '20px', 
+                    paddingTop: '20px', 
+                    borderTop: '1px dashed var(--border)', 
+                    animation: 'page-enter 0.3s ease-out forwards' 
+                }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                                <Phone size={14} /> Teléfono
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                                <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input className="input" placeholder="Teléfono..." value={filters.telefono} onChange={e => updateFilter('telefono', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                            </div>
+                        </div>
+
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                                <MapPin size={14} /> Dirección
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                                <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input className="input" placeholder="Dirección..." value={filters.direccion} onChange={e => updateFilter('direccion', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                            </div>
+                        </div>
+
+                        <MultiSelectFilter 
+                            label="Rubros" 
+                            icon={<Store size={14} />} 
+                            selected={filters.rubro} 
+                            options={rubrosValidos} 
+                            onChange={(next) => updateFilter('rubro', next)} 
+                            placeholder="Cualquier rubro"
+                        />
+
+                        <MultiSelectFilter 
+                            label="Estados" 
+                            icon={<ActivityIcon size={14} />} 
+                            selected={filters.estado} 
+                            options={[
+                                "1 - Cliente relevado",
+                                "2 - Local Visitado No Activo",
+                                "3 - Primer ingreso",
+                                "4 - Local Creado",
+                                "5 - Local Visitado Activo",
+                                "6 - Local No Interesado"
+                            ]} 
+                            onChange={(next) => updateFilter('estado', next)} 
+                            placeholder="Todos los estados"
+                        />
+
+                        <MultiSelectFilter 
+                            label="Situaciones" 
+                            icon={<ActivityIcon size={14} />} 
+                            selected={filters.situacion} 
+                            options={[
+                                "sin comunicacion nueva",
+                                "en proceso",
+                                "en funcionamiento"
+                            ]} 
+                            onChange={(next) => updateFilter('situacion', next)} 
+                            placeholder="Todas las situaciones"
+                        />
+
+                        <MultiSelectFilter 
+                            label="Tipos de Contacto" 
+                            icon={<Phone size={14} />} 
+                            selected={filters.tipoContacto} 
+                            options={["Visita Presencial", "Llamada"]} 
+                            onChange={(next) => updateFilter('tipoContacto', next)} 
+                            placeholder="Todos los tipos"
+                        />
+
+                        <MultiSelectFilter 
+                            label="Responsables" 
+                            icon={<User size={14} />} 
+                            selected={filters.responsable} 
+                            options={responsablesValidos} 
+                            onChange={(next) => updateFilter('responsable', next)} 
+                            placeholder="Todos"
+                        />
+
+                        <MultiSelectFilter 
+                            label="Creado Por" 
+                            icon={<User size={14} />} 
+                            selected={filters.creadoPor || []} 
+                            options={responsablesValidos} 
+                            onChange={(next) => updateFilter('creadoPor', next)} 
+                            placeholder="Todos"
+                        />
+
+                        <MultiSelectFilter 
+                            label="Interés" 
+                            icon={<Tag size={14} />} 
+                            selected={filters.interes} 
+                            options={["Bajo", "Medio", "Alto"]} 
+                            onChange={(next) => updateFilter('interes', next)} 
+                            placeholder="Cualquier interés"
+                        />
+
+                        <MultiSelectFilter 
+                            label="Estilos de Contacto" 
+                            icon={<Building size={14} />} 
+                            selected={filters.estilo} 
+                            options={["Dueño", "Empleado", "Cerrado"]} 
+                            onChange={(next) => updateFilter('estilo', next)} 
+                            placeholder="Cualquier estilo"
+                        />
+
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                                <Calendar size={14} /> Fecha Alta (Desde)
+                            </div>
+                            <input type="date" className="input" value={filters.creadoDesde} onChange={e => updateFilter('creadoDesde', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
+                        </div>
+
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                                <Calendar size={14} /> Fecha Alta (Hasta)
+                            </div>
+                            <input type="date" className="input" value={filters.creadoHasta} onChange={e => updateFilter('creadoHasta', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
+                        </div>
+
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                                <Calendar size={14} /> Agenda (Desde)
+                            </div>
+                            <input type="date" className="input" value={filters.contactoDesde} onChange={e => { updateFilter('contactoDesde', e.target.value); updateFilter('proximos7', false); updateFilter('vencidos', false); }} style={{ width: '100%', borderRadius: '12px', borderColor: filters.contactoDesde ? 'var(--accent)' : 'var(--border)' }} />
+                        </div>
+
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
+                                <Calendar size={14} /> Agenda (Hasta)
+                            </div>
+                            <input type="date" className="input" value={filters.contactoHasta} onChange={e => { updateFilter('contactoHasta', e.target.value); updateFilter('proximos7', false); updateFilter('vencidos', false); }} style={{ width: '100%', borderRadius: '12px', borderColor: filters.contactoHasta ? 'var(--accent)' : 'var(--border)' }} />
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '2px', gridColumn: '1 / -1' }}>
+                            <button
+                                onClick={() => {
+                                    const newVal = !filters.vencidos;
+                                    updateFilter('vencidos', newVal);
+                                    if (newVal) updateFilter('proximos7', false);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    height: '44px', borderRadius: '12px', cursor: 'pointer',
+                                    fontWeight: 600, fontSize: '0.85rem',
+                                    background: filters.vencidos ? '#ef4444' : 'var(--bg-elevated)',
+                                    color: filters.vencidos ? '#fff' : 'var(--text-muted)',
+                                    border: filters.vencidos ? '1px solid #ef4444' : '1px solid var(--border)',
+                                    boxShadow: filters.vencidos ? '0 4px 14px -4px rgba(239,68,68,0.5)' : 'none',
+                                    transition: 'all 0.2s ease',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <Clock size={16} />
+                                Vencidos{filters.vencidos ? ' ✓' : ''}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const newVal = !filters.proximos7;
+                                    updateFilter('proximos7', newVal);
+                                    if (newVal) updateFilter('vencidos', false);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    height: '44px', borderRadius: '12px', cursor: 'pointer',
+                                    fontWeight: 600, fontSize: '0.85rem',
+                                    background: filters.proximos7 ? 'var(--accent)' : 'var(--bg-elevated)',
+                                    color: filters.proximos7 ? '#fff' : 'var(--text-muted)',
+                                    border: filters.proximos7 ? '1px solid var(--accent)' : '1px solid var(--border)',
+                                    boxShadow: filters.proximos7 ? '0 4px 14px -4px rgba(37,99,235,0.5)' : 'none',
+                                    transition: 'all 0.2s ease',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <Calendar size={16} />
+                                Próximos 7{filters.proximos7 ? ' ✓' : ''}
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                        <Phone size={14} /> Teléfono
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Teléfono..." value={filters.telefono} onChange={e => updateFilter('telefono', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                    </div>
-                </div>
-
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                        <MapPin size={14} /> Dirección
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Dirección..." value={filters.direccion} onChange={e => updateFilter('direccion', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                    </div>
-                </div>
-
-                <MultiSelectFilter 
-                    label="Rubros" 
-                    icon={<Store size={14} />} 
-                    selected={filters.rubro} 
-                    options={rubrosValidos} 
-                    onChange={(next) => updateFilter('rubro', next)} 
-                    placeholder="Cualquier rubro"
-                />
-
-                <MultiSelectFilter 
-                    label="Estados" 
-                    icon={<ActivityIcon size={14} />} 
-                    selected={filters.estado} 
-                    options={[
-                        "1 - Cliente relevado",
-                        "2 - Local Visitado No Activo",
-                        "3 - Primer ingreso",
-                        "4 - Local Creado",
-                        "5 - Local Visitado Activo",
-                        "6 - Local No Interesado"
-                    ]} 
-                    onChange={(next) => updateFilter('estado', next)} 
-                    placeholder="Todos los estados"
-                />
-
-                <MultiSelectFilter 
-                    label="Situaciones" 
-                    icon={<ActivityIcon size={14} />} 
-                    selected={filters.situacion} 
-                    options={[
-                        "sin comunicacion nueva",
-                        "en proceso",
-                        "en funcionamiento"
-                    ]} 
-                    onChange={(next) => updateFilter('situacion', next)} 
-                    placeholder="Todas las situaciones"
-                />
-
-                <MultiSelectFilter 
-                    label="Tipos de Contacto" 
-                    icon={<Phone size={14} />} 
-                    selected={filters.tipoContacto} 
-                    options={["Visita Presencial", "Llamada"]} 
-                    onChange={(next) => updateFilter('tipoContacto', next)} 
-                    placeholder="Todos los tipos"
-                />
-
-                <MultiSelectFilter 
-                    label="Responsables" 
-                    icon={<User size={14} />} 
-                    selected={filters.responsable} 
-                    options={responsablesValidos} 
-                    onChange={(next) => updateFilter('responsable', next)} 
-                    placeholder="Todos"
-                />
-
-                <MultiSelectFilter 
-                    label="Interés" 
-                    icon={<Tag size={14} />} 
-                    selected={filters.interes} 
-                    options={["Bajo", "Medio", "Alto"]} 
-                    onChange={(next) => updateFilter('interes', next)} 
-                    placeholder="Cualquier interés"
-                />
-
-                <MultiSelectFilter 
-                    label="Estilos de Contacto" 
-                    icon={<Building size={14} />} 
-                    selected={filters.estilo} 
-                    options={["Dueño", "Empleado", "Cerrado"]} 
-                    onChange={(next) => updateFilter('estilo', next)} 
-                    placeholder="Cualquier estilo"
-                />
-
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                        <Calendar size={14} /> Fecha Alta (Desde)
-                    </div>
-                    <input type="date" className="input" value={filters.creadoDesde} onChange={e => updateFilter('creadoDesde', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
-                </div>
-
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                        <Calendar size={14} /> Fecha Alta (Hasta)
-                    </div>
-                    <input type="date" className="input" value={filters.creadoHasta} onChange={e => updateFilter('creadoHasta', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
-                </div>
-
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                        <Calendar size={14} /> Agenda (Desde)
-                    </div>
-                    <input type="date" className="input" value={filters.contactoDesde} onChange={e => { updateFilter('contactoDesde', e.target.value); updateFilter('proximos7', false); updateFilter('vencidos', false); }} style={{ width: '100%', borderRadius: '12px', borderColor: filters.contactoDesde ? 'var(--accent)' : 'var(--border)' }} />
-                </div>
-
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                        <Calendar size={14} /> Agenda (Hasta)
-                    </div>
-                    <input type="date" className="input" value={filters.contactoHasta} onChange={e => { updateFilter('contactoHasta', e.target.value); updateFilter('proximos7', false); updateFilter('vencidos', false); }} style={{ width: '100%', borderRadius: '12px', borderColor: filters.contactoHasta ? 'var(--accent)' : 'var(--border)' }} />
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '2px' }}>
-                    <button
-                        onClick={() => {
-                            const newVal = !filters.vencidos;
-                            updateFilter('vencidos', newVal);
-                            if (newVal) updateFilter('proximos7', false);
-                        }}
-                        style={{
-                            flex: 1,
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            height: '44px', borderRadius: '12px', cursor: 'pointer',
-                            fontWeight: 600, fontSize: '0.85rem',
-                            background: filters.vencidos ? '#ef4444' : 'var(--bg-elevated)',
-                            color: filters.vencidos ? '#fff' : 'var(--text-muted)',
-                            border: filters.vencidos ? '1px solid #ef4444' : '1px solid var(--border)',
-                            boxShadow: filters.vencidos ? '0 4px 14px -4px rgba(239,68,68,0.5)' : 'none',
-                            transition: 'all 0.2s ease',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        <Clock size={16} />
-                        Vencidos{filters.vencidos ? ' ✓' : ''}
-                    </button>
-                    <button
-                        onClick={() => {
-                            const newVal = !filters.proximos7;
-                            updateFilter('proximos7', newVal);
-                            if (newVal) updateFilter('vencidos', false);
-                        }}
-                        style={{
-                            flex: 1,
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            height: '44px', borderRadius: '12px', cursor: 'pointer',
-                            fontWeight: 600, fontSize: '0.85rem',
-                            background: filters.proximos7 ? 'var(--accent)' : 'var(--bg-elevated)',
-                            color: filters.proximos7 ? '#fff' : 'var(--text-muted)',
-                            border: filters.proximos7 ? '1px solid var(--accent)' : '1px solid var(--border)',
-                            boxShadow: filters.proximos7 ? '0 4px 14px -4px rgba(37,99,235,0.5)' : 'none',
-                            transition: 'all 0.2s ease',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        <Calendar size={16} />
-                        Próximos 7{filters.proximos7 ? ' ✓' : ''}
-                    </button>
-                </div>
-            </div>
+            )}
         </section>
     );
 };
