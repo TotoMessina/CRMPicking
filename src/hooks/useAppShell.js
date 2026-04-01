@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { 
     MapPin, Users, Activity, Map, Settings, Calendar, Clock, 
-    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database 
+    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList 
 } from 'lucide-react';
 
 function urlBase64ToUint8Array(base64String) {
@@ -178,7 +178,7 @@ export const useAppShell = () => {
         const effectiveRole = isSuperAdmin ? 'super-admin' : (empresaActiva?.role_en_empresa?.toLowerCase() || role);
         const isActivador = effectiveRole?.includes('activador');
         const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super-admin';
-        const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial']);
+        const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial', '/ruta']);
 
         const allItems = [
             { to: '/', icon: MapPin, label: 'Inicio' },
@@ -192,6 +192,8 @@ export const useAppShell = () => {
             { to: '/calendario', icon: Calendar, label: 'Calendario' },
             { to: '/horarios', icon: Clock, label: 'Horarios' },
             { to: '/historial', icon: Clock, label: 'Buscador Historial' },
+            { to: '/ruta', icon: Route, label: 'Ruta de Hoy' },
+            { to: '/asignador-rutas', icon: ClipboardList, label: 'Asignador de Rutas', adminOnly: true },
             { to: '/mapa', icon: Map, label: 'Mapa Clientes' },
             { to: '/mapa-repartidores', icon: Map, label: 'Mapa Repartidores' },
             { to: '/kiosco', icon: ShoppingCart, label: 'Mapa Kiosco' },

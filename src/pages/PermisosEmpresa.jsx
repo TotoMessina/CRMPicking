@@ -16,6 +16,8 @@ const ALL_PAGES = [
     { to: '/calendario', label: 'Calendario' },
     { to: '/horarios', label: 'Horarios' },
     { to: '/historial', label: 'Historial de Clientes' },
+    { to: '/ruta', label: 'Ruta de Hoy' },
+    { to: '/asignador-rutas', label: 'Asignador de Rutas' },
     { to: '/mapa', label: 'Mapa de Clientes' },
     { to: '/mapa-repartidores', label: 'Mapa Repartidores' },
     { to: '/kiosco', label: 'Mapa Kiosco' },

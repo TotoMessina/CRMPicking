@@ -28,6 +28,8 @@ const Empresas = lazy(() => import('./pages/Empresas'));
 const PermisosEmpresa = lazy(() => import('./pages/PermisosEmpresa'));
 const ActividadSistema = lazy(() => import('./pages/ActividadSistema'));
 const Historial = lazy(() => import('./pages/Historial'));
+const RutaDiaria = lazy(() => import('./pages/RutaDiaria'));
+const AsignadorRutas = lazy(() => import('./pages/AsignadorRutas'));
 
 function App() {
   return (
@@ -51,6 +53,8 @@ function App() {
             <Route path="/calendario" element={<Suspense fallback={<GlobalLoader />}><Calendario /></Suspense>} />
             <Route path="/horarios" element={<Suspense fallback={<GlobalLoader />}><Horarios /></Suspense>} />
             <Route path="/historial" element={<Suspense fallback={<GlobalLoader />}><Historial /></Suspense>} />
+            <Route path="/ruta" element={<Suspense fallback={<GlobalLoader />}><RutaDiaria /></Suspense>} />
+            <Route path="/asignador-rutas" element={<Suspense fallback={<GlobalLoader />}><AsignadorRutas /></Suspense>} />
             <Route path="/mapa" element={<Suspense fallback={<GlobalLoader />}><MapaClientes /></Suspense>} />
             <Route path="/mapa-repartidores" element={<Suspense fallback={<GlobalLoader />}><MapaRepartidores /></Suspense>} />
             <Route path="/kiosco" element={<Suspense fallback={<GlobalLoader />}><MapaKiosco /></Suspense>} />
