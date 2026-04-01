@@ -72,45 +72,54 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.descripcion.trim()) return toast.error("La descripción es obligatoria");
+        if (!empresaActiva?.id) return toast.error("No se detectó la empresa activa. Recargá la página.");
+        if (!clienteId) return toast.error("Error: ID de cliente no detectado.");
 
         setLoading(true);
 
-        const fechaISO = formData.fecha ? new Date(formData.fecha).toISOString() : new Date().toISOString();
+        try {
+            const fechaISO = formData.fecha ? new Date(formData.fecha).toISOString() : new Date().toISOString();
 
-        const payload = {
-            cliente_id: clienteId,
-            descripcion: formData.descripcion.trim(),
-            fecha: fechaISO,
-            usuario: formData.usuario.trim() || null,
-            empresa_id: empresaActiva?.id
-        };
+            const payload = {
+                cliente_id: Number(clienteId),
+                descripcion: formData.descripcion.trim(),
+                fecha: fechaISO,
+                usuario: formData.usuario.trim() || null,
+                empresa_id: empresaActiva.id
+            };
 
-        const { error } = await supabase.from("actividades").insert([payload]);
-        const isOffline = error && (error.message === 'Failed to fetch' || error.message?.includes('fetch') || !navigator.onLine);
+            const { error } = await supabase.from("actividades").insert([payload]);
+            const isOffline = error && (error.message === 'Failed to fetch' || error.message?.includes('fetch') || !navigator.onLine);
 
-        if (error && !isOffline) {
-            toast.error(error.message);
+            if (error && !isOffline) {
+                console.error("Supabase insert error:", error);
+                toast.error(`Error de base de datos: ${error.message}`);
+                return; // Finally will clear loading
+            }
+
+            toast.success(isOffline ? "Actividad agregada (Offline)" : "Actividad agregada");
+
+            // Sync last activity on both tables
+            const syncUpdates = Promise.all([
+                supabase.from("clientes").update({ ultima_actividad: fechaISO }).eq("id", clienteId),
+                supabase.from("empresa_cliente").update({ ultima_actividad: fechaISO }).eq("cliente_id", clienteId).eq("empresa_id", empresaActiva.id)
+            ]);
+
+            if (isOffline) {
+                syncUpdates.catch((err) => console.warn("Offline sync update catch:", err));
+            } else {
+                await syncUpdates;
+            }
+
+            setIsDirty(false);
+            onSaved();
+            onClose(); // Auto-close on success
+        } catch (err: any) {
+            console.error("ActividadClienteModal - Uncaught handleSubmit Error:", err);
+            toast.error("Ocurrió un error inesperado al guardar la actividad.");
+        } finally {
             setLoading(false);
-            return;
         }
-
-        toast.success(isOffline ? "Actividad agregada (Offline)" : "Actividad agregada");
-
-        // Sync last activity on both tables
-        const syncUpdates = Promise.all([
-            supabase.from("clientes").update({ ultima_actividad: fechaISO }).eq("id", clienteId),
-            supabase.from("empresa_cliente").update({ ultima_actividad: fechaISO }).eq("cliente_id", clienteId).eq("empresa_id", empresaActiva?.id)
-        ]);
-
-        if (isOffline) {
-            syncUpdates.catch(() => {});
-        } else {
-            await syncUpdates;
-        }
-
-        setIsDirty(false);
-        onSaved();
-        setLoading(false);
     };
 
     if (!isOpen) return null;
