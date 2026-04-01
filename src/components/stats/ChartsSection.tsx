@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Download } from 'lucide-react';
-import { COMMON_CHART_OPTIONS } from '../../constants/statsConstants';
+import { COMMON_CHART_OPTIONS, barValueLabelPlugin } from '../../constants/statsConstants';
 import { ChartsData, ListsData } from '../../hooks/useStatistics';
 import {
     Chart as ChartJS,
@@ -74,7 +74,7 @@ export const ChartsSection: React.FC<Props> = ({ chartsData, listsData }) => {
                             </button>
                         </div>
                         <div style={{ height: '300px' }}>
-                            {c.data && <Bar data={c.data} options={COMMON_CHART_OPTIONS} />}
+                            {c.data && <Bar data={c.data} options={COMMON_CHART_OPTIONS} plugins={[barValueLabelPlugin]} />}
                         </div>
                     </div>
                 ))}

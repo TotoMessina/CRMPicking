@@ -54,15 +54,71 @@ export const COMMON_CHART_OPTIONS: any = {
             usePointStyle: true,
         }
     },
+    layout: { padding: { top: 24 } },
     scales: {
         x: {
             grid: { display: false },
-            ticks: { color: STATS_THEME.colors.text, font: { family: STATS_THEME.fontFamily, size: 10 } }
+            ticks: { color: STATS_THEME.colors.text, font: { family: STATS_THEME.fontFamily, size: 10 } },
+            border: { display: false }
         },
         y: {
-            grid: { color: STATS_THEME.colors.grid, borderDash: [4, 4] },
-            ticks: { color: STATS_THEME.colors.text, font: { family: STATS_THEME.fontFamily, size: 10 }, beginAtZero: true }
+            grid: { display: false },
+            ticks: { display: false },
+            border: { display: false }
         }
+    }
+};
+
+export const barValueLabelPlugin: any = {
+    id: 'barValueLabel',
+    afterDatasetsDraw(chart: any) {
+        if (chart.config.type !== 'bar') return;
+        const { ctx, data } = chart;
+        
+        ctx.save();
+        chart.getDatasetMeta(0).data.forEach((bar: any, index: number) => {
+            const value = data.datasets[0].data[index];
+            if (!value) return;
+            
+            ctx.font = 'bold 12px "Inter", "system-ui", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const txt = value.toString();
+            const barHeight = bar.base - bar.y;
+            const isTallEnough = barHeight > 24;
+            
+            const x = bar.x;
+            const y = isTallEnough ? bar.y + 14 : bar.y - 12;
+            
+            const paddingX = 6;
+            const paddingY = 4;
+            const textWidth = ctx.measureText(txt).width;
+            
+            // Extract bar color safely
+            let rawColor = data.datasets[0].backgroundColor;
+            if (Array.isArray(rawColor)) rawColor = rawColor[index] || rawColor[0];
+            const fallbackColor = typeof rawColor === 'string' ? rawColor : '#8b5cf6';
+            
+            const hexToRgb = (hex: string) => {
+                if (!hex.startsWith('#')) return '139, 92, 246';
+                return `${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}`;
+            };
+            
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(x - (textWidth / 2) - paddingX, y - paddingY - 6, textWidth + (paddingX * 2), 12 + (paddingY * 2), 6);
+            } else {
+                ctx.rect(x - (textWidth / 2) - paddingX, y - paddingY - 6, textWidth + (paddingX * 2), 12 + (paddingY * 2));
+            }
+            
+            ctx.fillStyle = isTallEnough ? 'rgba(255, 255, 255, 0.25)' : `rgba(${hexToRgb(fallbackColor)}, 0.15)`;
+            ctx.fill();
+            
+            ctx.fillStyle = isTallEnough ? '#ffffff' : fallbackColor;
+            ctx.fillText(txt, x, y);
+        });
+        ctx.restore();
     }
 };
 

@@ -18,6 +18,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { format, subDays, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { barValueLabelPlugin } from '../constants/statsConstants';
 
 // Register ChartJS
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
@@ -127,8 +128,12 @@ export default function Dashboard() {
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 24 } },
         plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } }
+        scales: { 
+            y: { beginAtZero: true, grid: { display: false }, border: { display: false }, ticks: { display: false } }, 
+            x: { grid: { display: false }, border: { display: false } } 
+        }
     };
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -200,7 +205,11 @@ export default function Dashboard() {
                         <MoreVertical size={18} className="muted" />
                     </div>
                     <div className="chart-container-db">
-                        <Bar data={stats.crecimientoDiario} options={chartOptions} />
+                        <Bar 
+                            data={stats.crecimientoDiario} 
+                            options={chartOptions} 
+                            plugins={[barValueLabelPlugin]}
+                        />
                     </div>
                 </div>
                 <div className="db-section-card">
@@ -217,7 +226,7 @@ export default function Dashboard() {
             {/* Bottom Row */}
             <div className="db-bottom-grid">
                 {/* Mini Map */}
-                <div className="db-section-card" style={{ gridColumn: 'span 1' }}>
+                <div className="db-section-card db-map-card">
                     <div className="db-section-header">
                         <h2>Mapa de Cobertura Inteligente</h2>
                         <button className="btn-link" style={{ background: 'var(--accent)', color: 'white', border: 'none', padding: '4px 12px', fontSize: '0.75rem' }}>MAPA COMPLETO</button>
