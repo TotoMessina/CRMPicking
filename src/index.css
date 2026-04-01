@@ -6795,6 +6795,108 @@ fieldset legend:hover {
   animation: spin 0.8s linear infinite;
 }
 
+/* Nuevos estilos para el Mapa y Split View */
+.ruta-vista-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-elevated);
+  padding: 4px;
+  border-radius: 12px;
+  margin-top: 14px;
+  border: 1px solid var(--border);
+}
+
+.ruta-vista-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ruta-vista-tab.active {
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.ruta-split {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ruta-split--ambos {
+  display: grid;
+  grid-template-rows: 300px 1fr;
+}
+
+.ruta-map-wrap {
+  width: 100%;
+  height: 400px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  z-index: 10;
+}
+
+.ruta-split--ambos .ruta-map-wrap {
+  height: 100%;
+  position: sticky;
+  top: 180px;
+}
+
+@media (min-width: 1024px) {
+  .ruta-page {
+    max-width: 1100px;
+  }
+  
+  .ruta-split--ambos {
+    grid-template-columns: 1fr 400px;
+    grid-template-rows: auto;
+    align-items: start;
+  }
+
+  .ruta-split--ambos .ruta-map-wrap {
+    height: 600px;
+    position: sticky;
+    top: 140px;
+  }
+  
+  .ruta-split--ambos .ruta-list {
+    order: -1;
+  }
+}
+
+/* Ajustes para Leaflet dentro del CRM */
+.leaflet-container {
+  background: var(--bg-elevated) !important;
+  font-family: inherit !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--card) !important;
+}
+
+
 /* ==========================================================
    ASIGNADOR DE RUTAS — Desktop Admin View
    ========================================================== */
@@ -7080,18 +7182,81 @@ fieldset legend:hover {
   justify-content: flex-end;
 }
 
-.asign-btn-cancel {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.asign-btn-remove {
   background: none;
   border: none;
+  color: var(--text-muted);
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
+
+.asign-btn-remove:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.asign-layout-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.asign-layout-main--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 24px;
+}
+
+.asign-map-wrap {
+  position: sticky;
+  top: 20px;
+  height: 600px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  z-index: 5;
+}
+
+.asign-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.asign-btn-save {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 1200px) {
+  .asign-layout-main--split {
+    grid-template-columns: 1fr;
+  }
+  .asign-map-wrap {
+    height: 400px;
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .asign-layout {
+    grid-template-columns: 1fr;
+  }
+  .asign-panel-left {
+    position: static;
+  }
+}
+
 
 .asign-btn-save {
   display: flex;
