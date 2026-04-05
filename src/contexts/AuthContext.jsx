@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null);
     const [userName, setUserName] = useState(null);
+    const [avatarUrl, setAvatarUrl] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // Multi-empresa
@@ -37,12 +38,13 @@ export function AuthProvider({ children }) {
 
         const { data } = await supabase
             .from('usuarios')
-            .select('role, nombre')
+            .select('role, nombre, avatar_url')
             .eq('email', authUser.email)
             .maybeSingle();
 
         setRole(data?.role?.toLowerCase() || null);
         setUserName(data?.nombre || null);
+        setAvatarUrl(data?.avatar_url || null);
 
         // Load empresas this user belongs to
         const { data: empData } = await supabase
@@ -139,10 +141,27 @@ export function AuthProvider({ children }) {
         fetchPermisosPaginas(empresaActiva?.id, role);
     }, [empresaActiva, role]);
 
+    const updateProfile = async (metadata) => {
+        const { error } = await supabase.auth.updateUser({ data: metadata });
+        if (error) throw error;
+        if (metadata.display_name) setUserName(metadata.display_name);
+    };
+
+    const updateAvatarUrl = async (url) => {
+        if (!user?.email) return;
+        const { error } = await supabase
+            .from('usuarios')
+            .update({ avatar_url: url })
+            .eq('email', user.email);
+        if (error) throw error;
+        setAvatarUrl(url);
+    };
+
     const value = {
-        signIn, signOut, user, role, userName, loading,
+        signIn, signOut, user, role, userName, avatarUrl, loading,
         empresasDisponibles, empresaActiva, setEmpresaActiva,
-        paginasPermitidas
+        paginasPermitidas,
+        updateProfile, updateAvatarUrl
     };
 
     return (

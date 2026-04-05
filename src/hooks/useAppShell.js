@@ -21,7 +21,7 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export const useAppShell = () => {
-    const { user, role, userName, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva, paginasPermitidas } = useAuth();
+    const { user, role, userName, avatarUrl, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva, paginasPermitidas } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -181,31 +181,30 @@ export const useAppShell = () => {
         const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial', '/ruta']);
 
         const allItems = [
-            { to: '/', icon: MapPin, label: 'Inicio' },
-            { to: '/chat', icon: MessageCircle, label: 'Chat Interno' },
-            { to: '/clientes', icon: Activity, label: 'Clientes' },
-            { to: '/pipeline', icon: Activity, label: 'Pipeline' },
-            { to: '/tablero', icon: LayoutDashboard, label: 'Tablero Tareas' },
-            { to: '/consumidores', icon: Users, label: 'Consumidores' },
-            { to: '/repartidores', icon: Truck, label: 'Repartidores' },
-            { to: '/proveedores', icon: ShoppingCart, label: 'Proveedores' },
-            { to: '/calendario', icon: Calendar, label: 'Calendario' },
-            { to: '/horarios', icon: Clock, label: 'Horarios' },
-            { to: '/historial', icon: Clock, label: 'Buscador Historial' },
-            { to: '/ruta', icon: Route, label: 'Ruta de Hoy' },
-            { to: '/asignador-rutas', icon: ClipboardList, label: 'Asignador de Rutas', adminOnly: true },
-            { to: '/mapa', icon: Map, label: 'Mapa Clientes' },
-            { to: '/mapa-repartidores', icon: Map, label: 'Mapa Repartidores' },
-            { to: '/kiosco', icon: ShoppingCart, label: 'Mapa Kiosco' },
-            { to: '/estadisticas', icon: Activity, label: 'Estadísticas' },
-            { to: '/tickets', icon: Ticket, label: 'Tickets' },
-            { to: '/calificaciones', icon: Star, label: 'Calificaciones' },
-            { spacer: true },
-            { to: '/usuarios', icon: Users, label: 'Usuarios' },
-            { to: '/empresas', icon: Building2, label: 'Empresas', adminOnly: true },
-            { to: '/permisos-empresa', icon: Shield, label: 'Permisos' },
-            { to: '/actividad-sistema', icon: Database, label: 'Auditoría' },
-            { to: '/configuracion', icon: Settings, label: 'Configuración' },
+            { to: '/', icon: MapPin, label: 'Inicio', group: 'Activaciones' },
+            { to: '/chat', icon: MessageCircle, label: 'Chat Interno', group: 'Activaciones' },
+            { to: '/clientes', icon: Activity, label: 'Clientes', group: 'Activaciones' },
+            { to: '/pipeline', icon: Activity, label: 'Pipeline', group: 'Activaciones' },
+            { to: '/ruta', icon: Route, label: 'Ruta de Hoy', group: 'Activaciones' },
+            { to: '/historial', icon: Clock, label: 'Buscador Historial', group: 'Activaciones' },
+            { to: '/asignador-rutas', icon: ClipboardList, label: 'Asignador de Rutas', group: 'Activaciones', adminOnly: true },
+            { to: '/consumidores', icon: Users, label: 'Consumidores', group: 'Operaciones' },
+            { to: '/repartidores', icon: Truck, label: 'Repartidores', group: 'Operaciones' },
+            { to: '/proveedores', icon: ShoppingCart, label: 'Proveedores', group: 'Operaciones' },
+            { to: '/calendario', icon: Calendar, label: 'Calendario', group: 'Planificación' },
+            { to: '/horarios', icon: Clock, label: 'Horarios', group: 'Planificación' },
+            { to: '/tablero', icon: LayoutDashboard, label: 'Tablero Tareas', group: 'Planificación' },
+            { to: '/mapa', icon: Map, label: 'Mapa Clientes', group: 'Mapas' },
+            { to: '/mapa-repartidores', icon: Map, label: 'Mapa Repartidores', group: 'Mapas' },
+            { to: '/kiosco', icon: ShoppingCart, label: 'Mapa Kiosco', group: 'Mapas' },
+            { to: '/estadisticas', icon: Activity, label: 'Estadísticas', group: 'Listados' },
+            { to: '/tickets', icon: Ticket, label: 'Tickets', group: 'Listados' },
+            { to: '/calificaciones', icon: Star, label: 'Calificaciones', group: 'Listados' },
+            { to: '/usuarios', icon: Users, label: 'Usuarios', group: 'Administrativo' },
+            { to: '/empresas', icon: Building2, label: 'Empresas', group: 'Administrativo', adminOnly: true },
+            { to: '/permisos-empresa', icon: Shield, label: 'Permisos', group: 'Administrativo' },
+            { to: '/actividad-sistema', icon: Database, label: 'Auditoría', group: 'Administrativo' },
+            { to: '/configuracion', icon: Settings, label: 'Configuración', group: 'Administrativo' },
         ];
 
         if (isSuperAdmin) return allItems;
@@ -233,7 +232,7 @@ export const useAppShell = () => {
     };
 
     return {
-        user, role, userName, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva,
+        user, role, userName, avatarUrl, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva,
         theme, toggleTheme, navigate, location,
         isMobileMenuOpen, setIsMobileMenuOpen,
         pushEnabled, unreadChatCount,
