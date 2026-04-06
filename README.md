@@ -45,24 +45,38 @@ Dashboards en tiempo real potenciados por `Chart.js`, divididos en dos visiones 
   - **Desglose Diario (Stacked Bar):** Visualización apilada de qué estados logró generar cada activador en el día a día.
 
 ### 3. 🗺️ Inteligencia Geoespacial (Mapas)
-Integración profunda con `Leaflet.js` para visualización geográfica táctica.
-- **Mapa de Clientes y Kioscos:** Mapeo de comercios con pines que cambian de color según su estado en el embudo.
-- **Mapa de Repartidores:** Visualización en vivo de la flota logística.
-- **Modo Capa de Cobertura:** Dibuja automáticamente radios de 2KM alrededor de locales/repartidores activos para visualizar agujeros blancos de servicio.
-- **Mapas de Calor (Heatmaps):** Interpolación de densidad térmica para entender zonas de alta concentración de comercios o repartidores consolidados.
-- **Geolocalización en Campo:** Botón de "Ubicarme" (`navigator.geolocation`) para centrar el mapa en el activador y permitir registro in-situ ("Registrar Aquí").
+Integración profunda con `Leaflet.js` para visualización geográfica táctica y operativa.
+- **Mapa de Clientes y Kioscos:** Mapeo de comercios con pines dinámicos que cambian de color según su estado, creador, rubro o interés.
+- **Filtros Avanzados (Side Drawer):** Panel lateral flotante con diseño *Glassmorphism* que permite filtrar la base de datos geográfica en tiempo real sin perder visibilidad del mapa.
+- **Asignación Directa a Rutas:** Capacidad de asignar un cliente a la hoja de ruta de un vendedor/activador directamente desde el marcador del mapa, seleccionando usuario y fecha en un modal integrado.
+- **Mapa de Repartidores:** Visualización en vivo de la ubicación y estado de la flota logística.
+- **Modo Capa de Cobertura:** Dibujado automático de radios de influencia para detectar zonas desatendidas.
+- **Mapas de Calor (Heatmaps):** Análisis de densidad comercial y logística para identificar clusters de oportunidad.
+- **Geolocalización en Campo:** Herramientas de "Ubicarme" y "Registrar Aquí" para el equipo de calle.
 
-### 4. 🛵 Logística y Usuarios Finales
-- **Repartidores:** Panel de control de la flota. Control de estado documental ("Documentación sin gestionar", "Cuenta confirmada", "Cuenta confirmada y repartiendo"). Soporta importación masiva.
-- **Consumidores:** Base de datos de usuarios de la app final con fechas de registro unificadas.
+### 4. 🛵 Logística y Operación de Calle
+El sistema cierra el círculo operativo con herramientas para el personal en campo.
+- **Ruta Diaria (Driver App):** Interfaz optimizada para móviles donde el repartidor o activador visualiza su hoja de ruta, marca visitas y registra evidencias.
+- **Mapa de Repartidores:** Seguimiento en tiempo real de la flota logística, permitiendo coordinar entregas basadas en la posición actual.
+- **Mapa de Kioscos y Puntos de Retiro:** Visualización de la red de entrega de PickingUp.
+- **Gestión de Flota:** Panel de control de repartidores con seguimiento de documentación y estado de cuenta.
 
-### 5. 🛠️ Herramientas Operativas Adicionales
-- **Pipeline:** Vista Kanban (tipo Trello) para mover clientes arrastrándolos entre diferentes fases de negociación en tiempo real.
-- **Calendario y Horarios:** Visualización de turnos o compromisos a lo largo del mes. Agenda visual tipo grilla.
-- **Soporte (Tickets y Calificaciones):** Gestión de reclamos y análisis del feedback de usuarios.
-- **Chat Interno:** Canal de comunicación integrado en la plataforma.
+### 5. ⚙️ Herramientas de Productividad y Operaciones
+Módulos para la gestión diaria del equipo administrativo y de soporte.
+- **Pipeline de Ventas:** Tablero Kanban para la gestión visual del embudo de conversión de nuevos locales.
+- **Tablero de Tareas:** Sistema de gestión interna para el seguimiento de pendientes operativos.
+- **Calendario y Turnos:** Organización visual de compromisos, visitas programadas y horarios operativos.
+- **Módulo de Soporte (Tickets):** Centralización de reclamos y consultas de usuarios con sistema de prioridades.
+- **Calificaciones y Feedback:** Análisis del sentimiento de los usuarios finales y comercios sobre el servicio.
 
-### 6. 🏢 Arquitectura Multi-Empresa & Seguridad (Multi-tenant)
+### 6. 🛡️ Auditoría, Control y Gestión de Seguridad
+Garantiza la integridad de los datos y el control total sobre la plataforma.
+- **Actividad del Sistema (Audit Log):** Registro detallado de cada acción realizada en la plataforma (quién, qué y cuándo).
+- **Gestión Multi-Empresa:** Panel de administración de franquicias/empresas con aislamiento criptográfico de datos.
+- **Control de Permisos:** Gestión granular de accesos para administradores, activadores y operadores logísticos.
+- **Chat Interno:** Canal de comunicación integrado para el equipo.
+
+### 7. 🏢 Arquitectura Multi-Empresa & Seguridad (Multi-tenant)
 - **Aislamiento Total:** El sistema soporta múltiples empresas operando en paralelo. Absolutamente todas las consultas SQL y llamadas a APIs están filtradas por el `empresa_id` de la empresa activa del usuario.
 - **Row Level Security (RLS):** Las políticas en la base de datos limitan la manipulación de datos a nivel subyacente.
 - **Gestión de Permisos:** Los administradores globales pueden navegar entre empresas; los empleados locales solo interactúan con la información de su franquicia asignada.
