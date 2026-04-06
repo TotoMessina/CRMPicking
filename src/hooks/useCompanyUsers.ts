@@ -7,7 +7,6 @@ export const useCompanyUsers = (empresaId: string | null) => {
         queryFn: async () => {
             if (!empresaId) return [];
 
-            // Fetch users linked to this company via empresa_usuario
             const { data, error } = await supabase
                 .from('empresa_usuario')
                 .select('usuario_email, usuarios(nombre)')
@@ -15,15 +14,40 @@ export const useCompanyUsers = (empresaId: string | null) => {
 
             if (error) throw error;
 
-            // Map to a simple list of names (responsables are strings in the clients table)
             const users = (data || [])
-                .map((eu: any) => eu.usuarios?.nombre)
+                .map((eu: any) => eu.usuarios?.nombre || eu.usuario_email)
                 .filter(Boolean)
                 .sort();
 
-            return [...new Set(users)]; // Unique names
+            return [...new Set(users)];
         },
         enabled: !!empresaId,
-        staleTime: 1000 * 60 * 10, // 10 minutes
+        staleTime: 1000 * 60 * 10,
+    });
+};
+
+export const useCompanyUsersDetailed = (empresaId: string | null) => {
+    return useQuery({
+        queryKey: ['company_users_detailed', empresaId],
+        queryFn: async () => {
+            if (!empresaId) return [];
+
+            const { data, error } = await supabase
+                .from('empresa_usuario')
+                .select('usuario_email, usuarios(nombre)')
+                .eq('empresa_id', empresaId);
+
+            if (error) throw error;
+
+            return (data || [])
+                .map((eu: any) => ({
+                    email: eu.usuario_email,
+                    nombre: eu.usuarios?.nombre || eu.usuario_email
+                }))
+                .filter(u => u.email)
+                .sort((a, b) => a.nombre.localeCompare(b.nombre));
+        },
+        enabled: !!empresaId,
+        staleTime: 1000 * 60 * 10,
     });
 };

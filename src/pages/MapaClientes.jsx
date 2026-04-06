@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
-import { MapPin, RefreshCw, Route as RouteIcon, Navigation, Layers } from 'lucide-react';
+import { MapPin, RefreshCw, Route as RouteIcon, Navigation, Layers, Filter, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ESTADOS_LISTA, ESTADO_RELEVADO, esEstadoFinal } from '../constants/estados';
 import L from 'leaflet';
@@ -16,8 +16,12 @@ import 'leaflet.heat';
 import { Clock, User } from 'lucide-react';
 
 import { ClienteModal } from '../components/ui/ClienteModal';
+import { AsignarRutaModal } from '../components/ui/AsignarRutaModal';
 import { useClientesMapa } from '../hooks/useClientesMapa';
 import { formatToLocal } from '../utils/dateUtils';
+import { useCompanyUsers } from '../hooks/useCompanyUsers';
+import { useRubros } from '../hooks/useRubros';
+import { ClientFilters } from '../components/clients/ClientFilters';
 
 const ZONE_COLORS = {
     today: "#8b5cf6",
@@ -100,7 +104,33 @@ export default function MapaClientes() {
     const drawnZonesRef = useRef(null);
     const markersActivadoresLayerRef = useRef(null);
 
-    const { data: clientes = [], isLoading: loading, refetch: fetchClientes } = useClientesMapa(empresaActiva?.id);
+    const [filters, setFilters] = useState({
+        nombre: '',
+        telefono: '',
+        direccion: '',
+        estado: [],
+        situacion: [],
+        responsable: [],
+        creadoPor: [],
+        rubro: [],
+        interes: [],
+        estilo: [],
+        tipoContacto: [],
+        proximos7: false,
+        vencidos: false,
+        creadoDesde: '',
+        creadoHasta: '',
+        contactoDesde: '',
+        contactoHasta: ''
+    });
+
+    const updateFilter = (name, value) => {
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const { data: clientes = [], isLoading: loading, refetch: fetchClientes } = useClientesMapa(empresaActiva?.id, filters);
+    const { data: responsablesValidos = [] } = useCompanyUsers(empresaActiva?.id);
+    const { data: rubrosValidos = [] } = useRubros();
     const [activadores, setActivadores] = useState([]);
     const [showActivadores, setShowActivadores] = useState(true);
     const [showZones, setShowZones] = useState(true);
@@ -109,6 +139,7 @@ export default function MapaClientes() {
 
     // Heatmap Mode
     const [isHeatmapMode, setIsHeatmapMode] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
     const heatLayerRef = useRef(null);
 
     // Filters & Coloring
@@ -119,6 +150,10 @@ export default function MapaClientes() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [selectedLatLng, setSelectedLatLng] = useState(null);
+
+    // Asignar Ruta Modal state
+    const [asignarModalOpen, setAsignarModalOpen] = useState(false);
+    const [selectedClienteForRuta, setSelectedClienteForRuta] = useState(null);
 
     // Geolocation
     const [myLocation, setMyLocation] = useState(null);
@@ -449,9 +484,14 @@ export default function MapaClientes() {
 
                         <div style="margin-top: 12px; font-size: 0.75em; color: #888;">👤 ${rec.creado_por || 'Desconocido'}</div>
                         
-                        <button class="btn-popup-edit" style="margin-top: 10px; width: 100%; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem;">
-                            ✏️ Editar Cliente
-                        </button>
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                            <button class="btn-popup-edit" style="width: 100%; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem;">
+                                ✏️ Editar Cliente
+                            </button>
+                            <button class="btn-popup-assign" style="width: 100%; padding: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                📍 Asignar a Ruta
+                            </button>
+                        </div>
                     </div>
                 `);
 
@@ -462,6 +502,15 @@ export default function MapaClientes() {
                             setEditingId(rec.id);
                             setSelectedLatLng(null);
                             setModalOpen(true);
+                            marker.closePopup();
+                        };
+                    }
+
+                    const btnAssign = e.popup.getElement().querySelector('.btn-popup-assign');
+                    if (btnAssign) {
+                        btnAssign.onclick = () => {
+                            setSelectedClienteForRuta({ id: rec.id, nombre: rec.nombre_local || rec.nombre });
+                            setAsignarModalOpen(true);
                             marker.closePopup();
                         };
                     }
@@ -709,6 +758,85 @@ export default function MapaClientes() {
                     )}
                 </div>
             </div>
+            
+            {/* Sidebar Filters Drawer */}
+            <div style={{
+                position: 'fixed',
+                top: '100px',
+                left: showFilters ? '20px' : '-450px',
+                width: 'min(400px, 90vw)',
+                height: 'calc(100vh - 140px)',
+                zIndex: 1000,
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                pointerEvents: 'none'
+            }}>
+                <div style={{
+                    background: 'rgba(255, 255, 255, 0.7)',
+                    backdropFilter: 'blur(16px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: '24px',
+                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
+                    height: '100%',
+                    overflowY: 'auto',
+                    padding: '4px',
+                    pointerEvents: 'auto',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
+                }}>
+                    <style>{`
+                        .drawer-hide-scrollbar::-webkit-scrollbar { display: none; }
+                    `}</style>
+                    <div className="drawer-hide-scrollbar">
+                        <ClientFilters 
+                            filters={filters}
+                            updateFilter={updateFilter}
+                            rubrosValidos={rubrosValidos}
+                            responsablesValidos={responsablesValidos}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Toggle Button */}
+            <button 
+                onClick={() => setShowFilters(!showFilters)}
+                style={{
+                    position: 'fixed',
+                    left: showFilters ? '430px' : '20px',
+                    top: '120px',
+                    zIndex: 1001,
+                    background: showFilters ? 'var(--accent)' : 'var(--bg-elevated)',
+                    color: showFilters ? '#fff' : 'var(--text)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '50%',
+                    width: '48px',
+                    height: '48px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    cursor: 'pointer',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                title={showFilters ? "Cerrar Filtros" : "Abrir Filtros"}
+            >
+                {showFilters ? <X size={20} /> : <Filter size={20} />}
+                {!showFilters && Object.values(filters).some(v => Array.isArray(v) ? v.length > 0 : v !== '' && v !== false) && (
+                    <span style={{
+                        position: 'absolute',
+                        top: '-4px',
+                        right: '-4px',
+                        width: '12px',
+                        height: '12px',
+                        background: '#ef4444',
+                        borderRadius: '50%',
+                        border: '2px solid #fff'
+                    }}></span>
+                )}
+            </button>
 
             {isRoutingMode && (
                 <div style={{ background: 'var(--bg-elevated)', padding: '12px', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)' }}>
@@ -729,8 +857,18 @@ export default function MapaClientes() {
                 </div>
             )}
 
-            <div style={{ flex: 1, width: '100%', minHeight: '600px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', zIndex: 1 }}>
-                <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '600px' }}></div>
+            <div style={{ 
+                flex: 1, 
+                width: '100%', 
+                minHeight: 'calc(100vh - 250px)', 
+                borderRadius: '24px', 
+                overflow: 'hidden', 
+                border: '1px solid var(--border)', 
+                position: 'relative', 
+                zIndex: 1,
+                boxShadow: '0 4px 24px rgba(0,0,0,0.05)'
+            }}>
+                <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: 'calc(100vh - 250px)' }}></div>
             </div>
 
             <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -762,6 +900,13 @@ export default function MapaClientes() {
                     setTimeout(() => fetchClientes(), 300);
                     setSelectedLatLng(null);
                 }}
+            />
+
+            <AsignarRutaModal 
+                isOpen={asignarModalOpen}
+                onClose={() => setAsignarModalOpen(false)}
+                clienteId={selectedClienteForRuta?.id || null}
+                clienteNombre={selectedClienteForRuta?.nombre || null}
             />
         </div>
     );
