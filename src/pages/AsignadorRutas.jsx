@@ -280,6 +280,32 @@ export default function AsignadorRutas() {
         }
     };
 
+    const guardarComentario = async () => {
+        if (!editingComentario) return;
+        setSavingComentario(true);
+        try {
+            const { error } = await supabase
+                .from('visitas_diarias')
+                .update({ comentarios_admin: editingComentario.texto || null })
+                .eq('id', editingComentario.id);
+            if (error) throw error;
+            setRutaActual(prev =>
+                prev.map(v =>
+                    v.id === editingComentario.id
+                        ? { ...v, comentarios_admin: editingComentario.texto || null }
+                        : v
+                )
+            );
+            setEditingComentario(null);
+            toast.success('Nota guardada');
+        } catch (e) {
+            console.error(e);
+            toast.error('Error al guardar la nota');
+        } finally {
+            setSavingComentario(false);
+        }
+    };
+
     const optimizarRuta = async () => {
         if (rutaActual.length <= 2) { toast('Agregá más locales para optimizar', { icon: 'ℹ️' }); return; }
         const conCoords = rutaActual.filter(v => v.clientes?.lat && v.clientes?.lng);
