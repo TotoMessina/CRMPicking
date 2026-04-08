@@ -1,10 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { WifiOff, ServerCrash } from 'lucide-react';
+import { WifiOff, ServerCrash, CloudOff, RefreshCw } from 'lucide-react';
+import { useOfflineSync } from '../../hooks/useOfflineSync';
 
 export function NetworkStatusHandler() {
+    const { isOnline, pendingCount, isSyncing } = useOfflineSync();
+    const [wasOffline, setWasOffline] = useState(false);
+
     useEffect(() => {
-        const showOffline = () => {
+        if (!isOnline) {
+            setWasOffline(true);
+            // Show persistent offline toast with pending count
             toast.custom((t) => (
                 <div
                     className={`${t.visible ? 'animate-enter' : 'animate-leave'}`}
@@ -25,20 +31,56 @@ export function NetworkStatusHandler() {
                         <WifiOff size={28} />
                     </div>
                     <div style={{ flex: 1 }}>
-                        <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text)' }}>Sin conexión a Internet</h4>
+                        <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text)' }}>
+                            Modo Offline
+                        </h4>
                         <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                            Revisá tu conexión Wi-Fi o datos móviles. Los cambios no se guardarán hasta que vuelvas a estar online.
+                            Estás usando datos en caché. Los cambios se sincronizarán al recuperar la señal.
                         </p>
+                        {pendingCount > 0 && (
+                            <div style={{
+                                marginTop: '8px',
+                                padding: '4px 10px',
+                                background: 'rgba(245,158,11,0.12)',
+                                border: '1px solid rgba(245,158,11,0.3)',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                color: '#d97706',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                            }}>
+                                <CloudOff size={13} />
+                                {pendingCount} cambio{pendingCount !== 1 ? 's' : ''} por sincronizar
+                            </div>
+                        )}
                     </div>
                 </div>
             ), { duration: Infinity, id: 'network-error' });
-        };
-
-        const showOnline = () => {
+        } else {
+            // Back online
             toast.dismiss('network-error');
-            toast.success('¡Conexión restaurada!', { id: 'network-restored' });
-        };
 
+            if (wasOffline) {
+                if (isSyncing) {
+                    toast.loading('Sincronizando cambios...', { id: 'syncing' });
+                } else {
+                    toast.success('¡Conexión restaurada!', { id: 'network-restored', duration: 3000 });
+                }
+                setWasOffline(false);
+            }
+        }
+    }, [isOnline, pendingCount, isSyncing, wasOffline]);
+
+    // Dismiss syncing toast when done
+    useEffect(() => {
+        if (!isSyncing) {
+            toast.dismiss('syncing');
+        }
+    }, [isSyncing]);
+
+    useEffect(() => {
         const showDbError = () => {
             toast.custom((t) => (
                 <div
@@ -75,27 +117,21 @@ export function NetworkStatusHandler() {
             ), { duration: 8000, id: 'db-error' });
         };
 
-        window.addEventListener('offline', showOffline);
-        window.addEventListener('online', showOnline);
         window.addEventListener('supabase-error', showDbError);
 
-        if (!navigator.onLine) showOffline();
-
-        // Patch global toast.error to silence annoying small DB errors when we are showing the big offline UI
+        // Patch global toast.error to silence annoying small DB errors when offline
         const originalError = toast.error;
         toast.error = (msg, opts) => {
-            if (!navigator.onLine) return; // Completely silence if offline
-            if (msg && msg.toLowerCase && msg.toLowerCase().includes('failed to fetch')) return; // Silence if it's the raw network error
+            if (!navigator.onLine) return;
+            if (msg && msg.toLowerCase && msg.toLowerCase().includes('failed to fetch')) return;
             return originalError(msg, opts);
         };
 
         return () => {
-            window.removeEventListener('offline', showOffline);
-            window.removeEventListener('online', showOnline);
             window.removeEventListener('supabase-error', showDbError);
-            toast.error = originalError; // Restore
+            toast.error = originalError;
         };
     }, []);
 
-    return null; // This is a headless component for the notification layer
+    return null;
 }

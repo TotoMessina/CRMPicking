@@ -1,7 +1,9 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { NetworkOnly } from 'workbox-strategies';
+import { NetworkOnly, CacheFirst } from 'workbox-strategies';
 import { BackgroundSyncPlugin } from 'workbox-background-sync';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 
 // Clean up old caches from previous SW versions automatically
 cleanupOutdatedCaches();
@@ -21,6 +23,30 @@ registerRoute(isSupabaseApi, new NetworkOnly({ plugins: [bgSyncPlugin] }), 'POST
 registerRoute(isSupabaseApi, new NetworkOnly({ plugins: [bgSyncPlugin] }), 'PATCH');
 registerRoute(isSupabaseApi, new NetworkOnly({ plugins: [bgSyncPlugin] }), 'PUT');
 registerRoute(isSupabaseApi, new NetworkOnly({ plugins: [bgSyncPlugin] }), 'DELETE');
+
+// ─── Map Tile Caching (OpenStreetMap) ───────────────────────────────────────
+// Strategy: CacheFirst — serve from local cache, only hit network if not cached.
+// Tiles are automatically saved as the user browses the map with signal.
+// Limit: 500 tiles max, expire after 30 days to keep maps up to date.
+const isMapTile = ({ url }) =>
+    url.hostname.endsWith('.tile.openstreetmap.org') ||
+    url.hostname.endsWith('.tile.opentopomap.org');
+
+registerRoute(
+    isMapTile,
+    new CacheFirst({
+        cacheName: 'map-tiles-v1',
+        plugins: [
+            new CacheableResponsePlugin({ statuses: [0, 200] }),
+            new ExpirationPlugin({
+                maxEntries: 500,            // Keep last 500 tiles
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days TTL
+                purgeOnQuotaError: true,    // Auto-clean if disk is full
+            }),
+        ],
+    }),
+    'GET'
+);
 
 // Take control immediately when a new SW is installed
 self.addEventListener('install', () => {

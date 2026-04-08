@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import toast from 'react-hot-toast';
 import { X, AlertCircle } from 'lucide-react';
+import { queueMutation } from '../../lib/offlineManager';
+
 import {
     ESTADO_DEFAULT, SITUACION_DEFAULT, ESTADO_RELEVADO,
     ESTADO_VISITADO_NO_ACTIVO, ESTADO_PRIMER_INGRESO, ESTADO_LOCAL_CREADO,
@@ -484,8 +486,51 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         if (err) {
             const isOfflineError = (err as any).message === 'Failed to fetch' || (err as any).message?.includes('fetch') || !navigator.onLine;
             if (isOfflineError) {
-                console.log('DEBUG: Guardado offline interceptado');
-                toast.success('Guardado sin conexión. Se sincronizará pronto.');
+                // Queue the mutation for later sync instead of losing the data
+                if (clienteId) {
+                    // Edit: queue an UPDATE for both tables
+                    await queueMutation('clientes', 'UPDATE', {
+                        id: clienteId,
+                        nombre_local: payload.nombre_local,
+                        nombre: payload.nombre,
+                        direccion: payload.direccion,
+                        lat: payload.lat,
+                        lng: payload.lng,
+                        telefono: payload.telefono,
+                        mail: payload.mail,
+                        cuit: payload.cuit,
+                        estado: payload.estado,
+                        rubro: payload.rubro,
+                        responsable: payload.responsable,
+                        situacion: payload.situacion,
+                        notas: payload.notas,
+                        fecha_proximo_contacto: payload.fecha_proximo_contacto,
+                    });
+                    await queueMutation('empresa_cliente', 'UPDATE', {
+                        id: clienteId, // Used to match by cliente_id in flushOutbox
+                        empresa_id: empresaActiva?.id,
+                        cliente_id: clienteId,
+                        estado: payload.estado,
+                        rubro: payload.rubro,
+                        responsable: payload.responsable,
+                        estilo_contacto: payload.estilo_contacto,
+                        interes: payload.interes,
+                        tipo_contacto: payload.tipo_contacto,
+                        venta_digital: payload.venta_digital,
+                        venta_digital_cual: payload.venta_digital_cual,
+                        situacion: payload.situacion,
+                        notas: payload.notas,
+                        fecha_proximo_contacto: payload.fecha_proximo_contacto,
+                        hora_proximo_contacto: payload.hora_proximo_contacto,
+                    });
+                } else {
+                    // New client: queue as INSERT — will call the same RPC when flushing
+                    await queueMutation('_rpc_crear_cliente', 'INSERT', {
+                        empresa_id: empresaActiva?.id,
+                        ...payload,
+                    });
+                }
+                toast.success('💾 Guardado sin conexión. Se sincronizará cuando vuelva la señal.', { duration: 5000 });
                 setIsDirty(false);
                 onSaved();
             } else {

@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { saveClientsLocally, getLocalClients } from '../lib/offlineManager';
+
 
 export function useClientesMapa(empresaId, filters = {}) {
     const {
@@ -52,6 +54,15 @@ export function useClientesMapa(empresaId, filters = {}) {
             });
 
             if (error) {
+                console.warn("useClientesMapa: network error, trying local cache...", error);
+                // Fallback: read from IndexedDB snapshot
+                if (!navigator.onLine) {
+                    const localData = await getLocalClients(empresaId);
+                    if (localData.length > 0) {
+                        toast('📶 Usando datos en caché (sin conexión)', { id: 'offline-cache', icon: '💾', duration: 4000 });
+                        return localData;
+                    }
+                }
                 toast.error("Error al cargar clientes del mapa");
                 console.error("useClientesMapa error:", error);
                 throw error;
@@ -85,7 +96,16 @@ export function useClientesMapa(empresaId, filters = {}) {
                 activador_cierre: row.activador_cierre,
                 creado_por: row.creado_por,
                 created_at: row.ec_created_at,
+                updated_at: row.updated_at,
+                empresa_id: empresaId, // needed for IndexedDB index
             })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+
+            // Persist snapshot to IndexedDB for offline use
+            // Only save the full unfiltered dataset
+            const isUnfiltered = !nombre && !telefono && !estado?.length;
+            if (isUnfiltered && mapped.length > 0) {
+                saveClientsLocally(mapped); // Fire and forget
+            }
 
             return mapped;
         },

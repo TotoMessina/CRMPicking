@@ -311,37 +311,53 @@ export default function AsignadorRutas() {
         const conCoords = rutaActual.filter(v => v.clientes?.lat && v.clientes?.lng);
         if (conCoords.length < 2) { toast.error('No hay suficientes locales con coordenadas'); return; }
 
-        // Heurística simple: Nearest Neighbor
-        const optimizada = [];
+        // Fase 1: Nearest Neighbor para generar una ruta inicial
+        let ruta = [];
         let pendientes = [...rutaActual];
-        
-        // Empezamos por el primero que ya existe (origen por defecto)
         let actual = pendientes.shift();
-        optimizada.push(actual);
-
+        ruta.push(actual);
         while (pendientes.length > 0) {
-            let indexCercano = -1;
-            let minDist = Infinity;
-
+            let idx = 0, minDist = Infinity;
             for (let i = 0; i < pendientes.length; i++) {
-                const dist = getDistance(
-                    actual.clientes?.lat, actual.clientes?.lng,
-                    pendientes[i].clientes?.lat, pendientes[i].clientes?.lng
-                );
-                if (dist < minDist) {
-                    minDist = dist;
-                    indexCercano = i;
-                }
+                const d = getDistance(actual.clientes?.lat, actual.clientes?.lng, pendientes[i].clientes?.lat, pendientes[i].clientes?.lng);
+                if (d < minDist) { minDist = d; idx = i; }
             }
-
-            actual = pendientes.splice(indexCercano, 1)[0];
-            optimizada.push(actual);
+            actual = pendientes.splice(idx, 1)[0];
+            ruta.push(actual);
         }
 
-        setRutaActual(optimizada);
+        // Fase 2: 2-opt — elimina cruces entre segmentos para reducir KM totales
+        const rutaDist = (r) => {
+            let d = 0;
+            for (let i = 0; i < r.length - 1; i++) {
+                d += getDistance(r[i].clientes?.lat, r[i].clientes?.lng, r[i+1].clientes?.lat, r[i+1].clientes?.lng);
+            }
+            return d;
+        };
+
+        let mejorado = true;
+        while (mejorado) {
+            mejorado = false;
+            for (let i = 1; i < ruta.length - 1; i++) {
+                for (let j = i + 1; j < ruta.length; j++) {
+                    // Generar ruta candidata invirtiendo el segmento [i..j]
+                    const nuevaRuta = [
+                        ...ruta.slice(0, i),
+                        ...ruta.slice(i, j + 1).reverse(),
+                        ...ruta.slice(j + 1)
+                    ];
+                    if (rutaDist(nuevaRuta) < rutaDist(ruta) - 0.001) {
+                        ruta = nuevaRuta;
+                        mejorado = true;
+                    }
+                }
+            }
+        }
+
+        setRutaActual(ruta);
         try {
-            await Promise.all(optimizada.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id)));
-            toast.success('Ruta optimizada por cercanía');
+            await Promise.all(ruta.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id)));
+            toast.success('Ruta optimizada (2-opt) — sin cruces 🎯');
         } catch {
             fetchRuta();
         }

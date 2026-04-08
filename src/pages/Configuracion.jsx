@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { Camera, Trash2 } from 'lucide-react';
+import { Camera, Trash2, Mail, Plus, X, Send, Info } from 'lucide-react';
+
 
 const BUCKET = 'avatares';
 const MAX_SIZE_MB = 2;
@@ -25,11 +26,133 @@ export default function Configuracion() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [savingPassword, setSavingPassword] = useState(false);
 
+    // Report recipients
+    const [reportRecipients, setReportRecipients] = useState([]);
+    const [newRecipientEmail, setNewRecipientEmail] = useState('');
+    const [loadingRecipients, setLoadingRecipients] = useState(false);
+    const [sendingTestReport, setSendingTestReport] = useState(false);
+    
+    // Dia Reporte Config
+    const [diaReporte, setDiaReporte] = useState(1);
+    const [savingDia, setSavingDia] = useState(false);
+
     useEffect(() => {
         if (user) {
             setProfileName(user.user_metadata?.display_name || '');
         }
     }, [user]);
+
+    // Load report recipients
+    useEffect(() => {
+        const { empresaActiva } = { empresaActiva: null }; // Pulled from auth below
+    }, []);
+
+    const { empresaActiva } = useAuth();
+
+    useEffect(() => {
+        if (!empresaActiva?.id) return;
+        setLoadingRecipients(true);
+        
+        supabase
+            .from('report_recipients')
+            .select('*')
+            .eq('empresa_id', empresaActiva.id)
+            .eq('activo', true)
+            .then(({ data }) => {
+                setReportRecipients(data || []);
+                setLoadingRecipients(false);
+            });
+            
+        // Load company designated report day
+        supabase
+            .from('empresas')
+            .select('dia_reporte')
+            .eq('id', empresaActiva.id)
+            .single()
+            .then(({ data }) => {
+                if (data?.dia_reporte !== undefined && data.dia_reporte !== null) {
+                    setDiaReporte(parseInt(data.dia_reporte));
+                }
+            });
+    }, [empresaActiva?.id]);
+
+    const handleSaveDiaReporte = async (nuevoDia) => {
+        setSavingDia(true);
+        try {
+            const { error } = await supabase.rpc('update_dia_reporte', {
+                p_empresa_id: empresaActiva.id,
+                p_dia: parseInt(nuevoDia)
+            });
+            if (error) throw error;
+            setDiaReporte(parseInt(nuevoDia));
+            toast.success('Día de envío actualizado');
+        } catch (err) {
+            console.error('Error updating report day:', err);
+            toast.error('Error al actualizar el día de reporte');
+        } finally {
+            setSavingDia(false);
+        }
+    };
+
+    const handleAddRecipient = async () => {
+        const email = newRecipientEmail.trim().toLowerCase();
+        if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+            toast.error('Ingresá un email válido');
+            return;
+        }
+        if (reportRecipients.some(r => r.email === email)) {
+            toast.error('Ese email ya está en la lista');
+            return;
+        }
+        const { data, error } = await supabase
+            .from('report_recipients')
+            .insert({ empresa_id: empresaActiva.id, email })
+            .select()
+            .single();
+        if (error) { toast.error('Error al agregar destinatario'); return; }
+        setReportRecipients(prev => [...prev, data]);
+        setNewRecipientEmail('');
+        toast.success(`${email} agregado como destinatario`);
+    };
+
+    const handleRemoveRecipient = async (id, email) => {
+        await supabase.from('report_recipients').delete().eq('id', id);
+        setReportRecipients(prev => prev.filter(r => r.id !== id));
+        toast.success(`${email} eliminado`);
+    };
+
+    const handleSendTestReport = async () => {
+        if (reportRecipients.length === 0) {
+            toast.error('Agrega al menos un destinatario primero');
+            return;
+        }
+        setSendingTestReport(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch(
+                `${SUPABASE_URL}/functions/v1/send-weekly-report`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session?.access_token}`,
+                    },
+                    body: JSON.stringify({ test: true }),
+                }
+            );
+            const result = await res.json();
+            if (res.ok) {
+                toast.success('✅ Reporte de prueba enviado. Revisá tu casilla de correo.');
+            } else {
+                toast.error('Error al enviar: ' + (result?.error || 'Error desconocido'));
+            }
+        } catch (err) {
+            toast.error('Error de conexión al enviar el reporte');
+        } finally {
+            setSendingTestReport(false);
+        }
+    };
+
 
     // ── Avatar handlers ────────────────────────────────────
     const handleAvatarClick = () => fileInputRef.current?.click();
@@ -368,6 +491,125 @@ export default function Configuracion() {
                                 </Button>
                             </div>
                         </form>
+                    </div>
+                </section>
+
+                {/* ── REPORTES AUTOMÁTICOS ──────────────────── */}
+                <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                    <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ background: 'rgba(37,99,235,0.1)', color: 'var(--accent)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
+                                <Mail size={20} />
+                            </div>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Reportes Automáticos</h2>
+                                <p className="muted" style={{ margin: '2px 0 0 0', fontSize: '0.85rem' }}>Reporte semanal de KPIs enviado cada lunes a las 08:00 AM.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+                        {/* Setup notice */}
+                        <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '12px', padding: '16px', display: 'flex', gap: '12px' }}>
+                            <Info size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                                <strong style={{ color: 'var(--text)' }}>Configuración requerida (una sola vez):</strong><br />
+                                1. Creá una cuenta gratuita en <strong>resend.com</strong> y obtené tu API Key.<br />
+                                2. En Supabase Dashboard → <em>Edge Functions → send-weekly-report → Secrets</em> → agrega <code style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>RESEND_API_KEY</code>.<br />
+                                3. Ejecutá <code style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>supabase/setup_weekly_report.sql</code> en el SQL Editor de Supabase.<br />
+                                4. Desplegá la función: <code style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>supabase functions deploy send-weekly-report</code>
+                            </div>
+                        </div>
+
+                        {/* Day Config */}
+                        <div style={{ background: 'var(--bg-body)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.95rem' }}>Día de envío (08:00 AM)</label>
+                                <p className="muted" style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Elegí qué día querés recibir tu reporte de los últimos 7 días.</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <select 
+                                    className="input" 
+                                    value={diaReporte} 
+                                    onChange={e => handleSaveDiaReporte(e.target.value)}
+                                    disabled={savingDia}
+                                    style={{ padding: '10px 16px', minWidth: '160px', fontWeight: 500 }}
+                                >
+                                    <option value={1}>Lunes</option>
+                                    <option value={2}>Martes</option>
+                                    <option value={3}>Miércoles</option>
+                                    <option value={4}>Jueves</option>
+                                    <option value={5}>Viernes</option>
+                                    <option value={6}>Sábado</option>
+                                    <option value={0}>Domingo</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Recipients list */}
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '12px', fontWeight: 600, fontSize: '0.9rem' }}>Destinatarios del Reporte</label>
+                            {loadingRecipients ? (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Cargando...</div>
+                            ) : reportRecipients.length === 0 ? (
+                                <div style={{ background: 'var(--bg-body)', borderRadius: '10px', padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', border: '1px dashed var(--border)' }}>
+                                    No hay destinatarios configurados todavía.
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {reportRecipients.map(r => (
+                                        <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-body)', borderRadius: '10px', padding: '10px 14px', border: '1px solid var(--border)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <Mail size={15} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                                                <span style={{ fontSize: '0.9rem' }}>{r.email}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRemoveRecipient(r.id, r.email)}
+                                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
+                                                title="Eliminar destinatario"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Add recipient */}
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <input
+                                type="email"
+                                placeholder="gerente@empresa.com"
+                                value={newRecipientEmail}
+                                onChange={e => setNewRecipientEmail(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleAddRecipient()}
+                                style={{ flex: 1, minWidth: '220px' }}
+                                id="report-recipient-email-input"
+                            />
+                            <Button variant="primary" onClick={handleAddRecipient} style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                                <Plus size={15} /> Agregar Destinatario
+                            </Button>
+                        </div>
+
+                        {/* Send test */}
+                        <div style={{ paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+                            <Button
+                                variant="secondary"
+                                onClick={handleSendTestReport}
+                                disabled={sendingTestReport || reportRecipients.length === 0}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                id="send-test-report-btn"
+                            >
+                                <Send size={15} />
+                                {sendingTestReport ? 'Enviando...' : 'Enviar Reporte de Prueba Ahora'}
+                            </Button>
+                            <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                Envía un reporte del último período semanal a todos los destinatarios configurados.
+                            </p>
+                        </div>
+
                     </div>
                 </section>
 

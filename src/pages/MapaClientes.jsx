@@ -54,6 +54,58 @@ const ESTILO_COLORS = {
     "Sin definir": "#64748b"
 };
 
+// ─── Churn Risk Scoring (0=bajo ... 10=alto riesgo) ───────────────────────────
+const CHURN_DAYS_THRESHOLD = 30; // días sin contacto para considerar en riesgo
+
+const CHURN_COLORS = {
+    bajo:  "#22c55e",  // 0–3
+    medio: "#f59e0b",  // 4–6
+    alto:  "#ef4444",  // 7–10
+};
+
+function getChurnScore(rec) {
+    // Solo aplica a clientes activos (estado 5)
+    if (!rec.estado || !rec.estado.includes('5')) return 0;
+
+    let score = 0;
+    const now = new Date();
+
+    // Factor 1: Días sin próximo contacto agendado (peso 5)
+    if (rec.fecha_proximo_contacto) {
+        const diasDesde = (now - new Date(rec.fecha_proximo_contacto)) / 86400000;
+        if (diasDesde > CHURN_DAYS_THRESHOLD) score += 5;
+        else if (diasDesde > CHURN_DAYS_THRESHOLD / 2) score += 2;
+    } else {
+        score += 3; // Sin fecha agenda = riesgo moderado
+    }
+
+    // Factor 2: Tiempo desde última actualización (peso 3)
+    if (rec.updated_at) {
+        const diasDesdeUpdate = (now - new Date(rec.updated_at)) / 86400000;
+        if (diasDesdeUpdate > CHURN_DAYS_THRESHOLD) score += 3;
+        else if (diasDesdeUpdate > CHURN_DAYS_THRESHOLD / 2) score += 1;
+    } else {
+        score += 2;
+    }
+
+    // Factor 3: Sin teléfono registrado (peso 2 — difícil de contactar)
+    if (!rec.telefono) score += 2;
+
+    return Math.min(10, score);
+}
+
+function getChurnColor(score) {
+    if (score <= 3) return CHURN_COLORS.bajo;
+    if (score <= 6) return CHURN_COLORS.medio;
+    return CHURN_COLORS.alto;
+}
+
+function getChurnLabel(score) {
+    if (score <= 3) return 'Riesgo Bajo';
+    if (score <= 6) return 'Riesgo Medio';
+    return 'Riesgo Alto ⚠️';
+}
+
 const timeSince = (date) => {
     if (!date) return 'Nunca';
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -429,7 +481,12 @@ export default function MapaClientes() {
 
             // Determine Color
             let color = "#94a3b8";
-            if (colorMode === "creador") color = getColorForCreator(rec.creado_por);
+            if (colorMode === "riesgo") {
+                const score = getChurnScore(rec);
+                // Solo mostrar clientes activos en modo riesgo
+                if (!rec.estado || !rec.estado.includes('5')) return;
+                color = getChurnColor(score);
+            } else if (colorMode === "creador") color = getColorForCreator(rec.creado_por);
             else if (colorMode === "rubro") color = getColorForRubro(rec.rubro);
             else if (colorMode === "interes") color = INTERES_COLORS[rec.interes || "Bajo"] || INTERES_COLORS["Sin interés"];
             else if (colorMode === "estilo") color = ESTILO_COLORS[rec.estilo_contacto || "Sin definir"] || ESTILO_COLORS["Sin definir"];
@@ -437,19 +494,31 @@ export default function MapaClientes() {
 
             // Marker interaction
             const isSelectedForRouting = routeStops.some(s => s.id === rec.id);
+            const churnScore = colorMode === 'riesgo' ? getChurnScore(rec) : null;
+            const isHighRisk = churnScore !== null && churnScore >= 7;
             const opacityStyle = isHeatmapMode ? 'opacity: 0.15;' : '';
+            const pulseStyle = isHighRisk ? 'animation: pulse-ring 1.5s cubic-bezier(0,0,0.2,1) infinite;' : '';
 
             const iconHtml = `
-                <div style="
-                    width: 14px; 
-                    height: 14px; 
-                    border-radius: 50%; 
-                    background: ${color}; 
-                    border: 2px solid ${isSelectedForRouting ? '#000' : '#fff'};
-                    box-shadow: 0 0 4px rgba(0,0,0,0.4);
-                    ${isSelectedForRouting ? 'transform: scale(1.3);' : ''}
-                    ${opacityStyle}
-                "></div>
+                <div style="position: relative;">
+                    ${isHighRisk ? `<div style="
+                        position: absolute; top: -3px; left: -3px;
+                        width: 20px; height: 20px; border-radius: 50%;
+                        background: rgba(239,68,68,0.3);
+                        animation: churn-pulse 1.5s ease-out infinite;
+                    "></div>` : ''}
+                    <div style="
+                        width: ${isHighRisk ? '16px' : '14px'};
+                        height: ${isHighRisk ? '16px' : '14px'};
+                        border-radius: 50%;
+                        background: ${color};
+                        border: 2px solid ${isSelectedForRouting ? '#000' : isHighRisk ? '#ff0000' : '#fff'};
+                        box-shadow: 0 0 ${isHighRisk ? '8px' : '4px'} ${isHighRisk ? 'rgba(239,68,68,0.6)' : 'rgba(0,0,0,0.4)'};
+                        ${isSelectedForRouting ? 'transform: scale(1.3);' : ''}
+                        ${opacityStyle}
+                        position: relative; z-index: 1;
+                    "></div>
+                </div>
             `;
 
             const icon = L.divIcon({ className: "", html: iconHtml, iconSize: [14, 14], iconAnchor: [7, 7] });
@@ -479,6 +548,12 @@ export default function MapaClientes() {
                         ${rec.notas ? `
                             <div style="margin-top: 10px; padding: 8px; background: #fffbeb; border: 1px dashed #f59e0b; border-radius: 8px; font-size: 0.9em; font-style: italic; color: #92400e;">
                                 "${rec.notas}"
+                            </div>
+                        ` : ''}
+
+                        ${churnScore !== null ? `
+                            <div style="margin-top: 8px; padding: 6px 10px; border-radius: 8px; font-size: 0.8em; font-weight: 700; background: ${churnScore >= 7 ? '#fef2f2' : churnScore >= 4 ? '#fffbeb' : '#f0fdf4'}; color: ${churnScore >= 7 ? '#991b1b' : churnScore >= 4 ? '#92400e' : '#166534'}; border: 1px solid ${churnScore >= 7 ? '#fecaca' : churnScore >= 4 ? '#fde68a' : '#bbf7d0'};">
+                                ${getChurnLabel(churnScore)} (Score: ${churnScore}/10)
                             </div>
                         ` : ''}
 
@@ -704,6 +779,11 @@ export default function MapaClientes() {
         if (colorMode === 'estado') return ESTADOS.map(e => ({ label: e, color: ESTADO_COLOR[e] }));
         if (colorMode === 'interes') return Object.keys(INTERES_COLORS).map(k => ({ label: k, color: INTERES_COLORS[k] }));
         if (colorMode === 'estilo') return Object.keys(ESTILO_COLORS).map(k => ({ label: k, color: ESTILO_COLORS[k] }));
+        if (colorMode === 'riesgo') return [
+            { label: 'Riesgo Bajo (0–3)', color: CHURN_COLORS.bajo },
+            { label: 'Riesgo Medio (4–6)', color: CHURN_COLORS.medio },
+            { label: 'Riesgo Alto ⚠️ (7–10)', color: CHURN_COLORS.alto },
+        ];
         if (colorMode === 'rubro') {
             const rubros = [...new Set(clientes.map(c => (c.rubro || 'Sin rubro').trim()))].sort();
             return rubros.map(r => ({ label: r, color: getColorForRubro(r) }));
@@ -715,6 +795,13 @@ export default function MapaClientes() {
 
     return (
         <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px' }}>
+            <style>{`
+                @keyframes churn-pulse {
+                    0% { transform: scale(0.8); opacity: 0.9; }
+                    70% { transform: scale(2.5); opacity: 0; }
+                    100% { transform: scale(2.5); opacity: 0; }
+                }
+            `}</style>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                     <h1 style={{ margin: 0 }}>Mapa de Clientes</h1>
@@ -731,6 +818,7 @@ export default function MapaClientes() {
                         <option value="creador">Ver por Creador</option>
                         <option value="interes">Ver por Interés</option>
                         <option value="estilo">Ver por Estilo Contacto</option>
+                        <option value="riesgo">⚠️ Ver por Riesgo de Abandono</option>
                     </select>
 
                     <Button variant={isRoutingMode ? 'primary' : 'secondary'} onClick={() => setIsRoutingMode(!isRoutingMode)}>
