@@ -97,6 +97,7 @@ export function useClientesMapa(empresaId, filters = {}) {
                 creado_por: row.creado_por,
                 created_at: row.ec_created_at,
                 updated_at: row.updated_at,
+                ultima_actividad: row.ultima_actividad,
                 empresa_id: empresaId, // needed for IndexedDB index
             })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
 

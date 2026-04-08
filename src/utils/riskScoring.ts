@@ -30,8 +30,10 @@ export function getChurnRisk(rec: any): RiskProfile {
     let score = 0;
     const now = new Date();
     
-    // Calcular principal métrica: Ultima actividad (historial real) o update
-    const lastDate = rec.ultima_actividad || rec.updated_at || rec.created_at;
+    // Calcular principal métrica: Ultima actividad (historial real)
+    // Evitamos usar updated_at porque cualquier edición de datos (p.ej. notas) 
+    // falsearía el riesgo de abandono como si hubiera habido contacto.
+    const lastDate = rec.ultima_actividad || rec.created_at;
     let diasSinContacto = 0;
     
     if (lastDate) {

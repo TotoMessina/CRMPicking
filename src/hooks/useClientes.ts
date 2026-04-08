@@ -178,6 +178,7 @@ export function useClientes(params: UseClientesParams) {
                     creado_por: row.creado_por,
                     created_at: row.ec_created_at,
                     updated_at: row.ec_updated_at,
+                    ultima_actividad: row.ultima_actividad,
                 }));
                 total = rpcData && rpcData.length > 0 ? Number(rpcData[0].total_count) : 0;
             } else {
