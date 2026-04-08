@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
@@ -167,6 +168,12 @@ export default function MapaClientes() {
     const [isRoutingMode, setIsRoutingMode] = useState(false);
     const [routeStops, setRouteStops] = useState([]);
     const routingControlRef = useRef(null);
+
+    // Historical Tracking
+    const [isHistoricalMode, setIsHistoricalMode] = useState(false);
+    const [historicalActivadorId, setHistoricalActivadorId] = useState('');
+    const [historicalDate, setHistoricalDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const historicalPathLayerRef = useRef(null);
 
     const bindZonePopup = (layer, zoneId) => {
         const popupContent = `
@@ -624,6 +631,185 @@ export default function MapaClientes() {
         });
     }, [activadores, showActivadores, mapReady]);
 
+    // Historical Path Effect
+    useEffect(() => {
+        if (!mapRef.current) return;
+
+        if (!isHistoricalMode || !historicalActivadorId) {
+            if (historicalPathLayerRef.current) {
+                mapRef.current.removeLayer(historicalPathLayerRef.current);
+                historicalPathLayerRef.current = null;
+            }
+            return;
+        }
+
+        const fetchPath = async () => {
+            const startDate = new Date(`${historicalDate}T00:00:00`).toISOString();
+            const endDate = new Date(`${historicalDate}T23:59:59.999`).toISOString();
+
+            const { data, error } = await supabase
+                .from('historial_ubicaciones')
+                .select('lat, lng, fecha')
+                .eq('empresa_id', empresaActiva?.id)
+                .eq('usuario_id', historicalActivadorId)
+                .gte('fecha', startDate)
+                .lte('fecha', endDate)
+                .order('fecha', { ascending: true });
+
+            if (error) {
+                console.error("Error fetching history:", error);
+                toast.error("Error al cargar historial");
+                return;
+            }
+
+            if (historicalPathLayerRef.current) {
+                mapRef.current.removeLayer(historicalPathLayerRef.current);
+            }
+
+            if (!data || data.length === 0) {
+                toast.error("No hay registros de recorrido para este día", { id: 'nohistory' });
+                return;
+            }
+
+            toast.success(`Cargados ${data.length} puntos de recorrido.`, { id: 'nohistory' });
+
+            const latlngs = data.map(p => [p.lat, p.lng]);
+            const layerGroup = L.layerGroup();
+
+            // Draw line
+            const polyline = L.polyline(latlngs, {
+                color: '#6366f1',
+                weight: 4,
+                opacity: 0.8,
+                dashArray: '10, 10'
+            });
+            layerGroup.addLayer(polyline);
+
+            // Add start and end markers
+            if (latlngs.length > 0) {
+                const startPoint = latlngs[0];
+                const endPoint = latlngs[latlngs.length - 1];
+
+                const createDotIcon = (color) => L.divIcon({
+                    html: `<div style="width: 14px; height: 14px; background-color: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.4);"></div>`,
+                    className: '',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                });
+
+                L.marker(startPoint, { icon: createDotIcon('#10b981') }).bindPopup('<b>Inicio de ruta</b><br/>' + new Date(data[0].fecha).toLocaleTimeString()).addTo(layerGroup);
+                
+                if (latlngs.length > 1) {
+                    L.marker(endPoint, { icon: createDotIcon('#ef4444') }).bindPopup('<b>Fin de ruta</b><br/>' + new Date(data[data.length - 1].fecha).toLocaleTimeString()).addTo(layerGroup);
+                }
+            }
+
+            historicalPathLayerRef.current = layerGroup;
+            mapRef.current.addLayer(layerGroup);
+            mapRef.current.fitBounds(L.polyline(latlngs).getBounds(), { padding: [50, 50] });
+        };
+
+        fetchPath();
+    }, [isHistoricalMode, historicalActivadorId, historicalDate, empresaActiva?.id, mapReady]);
+
+    const exportarReporteRecorrido = async () => {
+        if (!historicalActivadorId) return toast.error('Debe seleccionar un activador');
+        toast.loading('Generando reporte...', { id: 'export' });
+
+        const startDate = new Date(`${historicalDate}T00:00:00`).toISOString();
+        const endDate = new Date(`${historicalDate}T23:59:59.999`).toISOString();
+
+        // 1. Obtener Historial de Ubicaciones
+        const { data: historial, error: histErr } = await supabase
+            .from('historial_ubicaciones')
+            .select('lat, lng, fecha')
+            .eq('empresa_id', empresaActiva?.id)
+            .eq('usuario_id', historicalActivadorId)
+            .gte('fecha', startDate)
+            .lte('fecha', endDate)
+            .order('fecha', { ascending: true });
+
+        if (histErr) {
+            return toast.error('Error al obtener datos del recorrido', { id: 'export' });
+        }
+
+        // 2. Obtener Actividades/Visitas realizadas por este usuario ese día
+        const activador = activadores.find(a => a.id === historicalActivadorId);
+        const activadorEmail = activador?.email || '';
+        const activadorName = activador?.nombre || 'Activador';
+
+        const { data: actividades, error: actErr } = await supabase
+            .from('actividades')
+            .select('id, descripcion, fecha')
+            .eq('empresa_id', empresaActiva?.id)
+            .eq('usuario', activadorEmail)
+            .gte('fecha', startDate)
+            .lte('fecha', endDate);
+
+        // Calculate metrics
+        let totalDistanceKm = 0;
+        let diffMs = 0;
+        let startTime = 'N/A';
+        let endTime = 'N/A';
+
+        if (historial && historial.length > 0) {
+            startTime = new Date(historial[0].fecha).toLocaleTimeString();
+            endTime = new Date(historial[historial.length - 1].fecha).toLocaleTimeString();
+            diffMs = new Date(historial[historial.length - 1].fecha).getTime() - new Date(historial[0].fecha).getTime();
+
+            for (let i = 1; i < historial.length; i++) {
+                totalDistanceKm += haversineKm({ lat: historial[i-1].lat, lng: historial[i-1].lng }, { lat: historial[i].lat, lng: historial[i].lng });
+            }
+        }
+
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const durationStr = `${hours}h ${mins}m`;
+        const actCount = actividades ? actividades.length : 0;
+
+        // 3. Crear Workbooks
+        const wb = XLSX.utils.book_new();
+
+        // Hoja 1: Resumen
+        const resumenData = [
+            ["Reporte de Jornada - CRM PickingUp"],
+            [],
+            ["Activador", activadorName],
+            ["Fecha", historicalDate],
+            ["Hora Inicio", startTime],
+            ["Hora Fin", endTime],
+            ["Duración Total", durationStr],
+            ["Distancia Recorrida (Km)", totalDistanceKm.toFixed(2)],
+            ["Actividades Registradas", actCount],
+        ];
+
+        const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+        // Style adjustments could go here 
+        XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+
+        // Hoja 2: Puntos de Control GPS
+        const gpsData = (historial || []).map((p, index) => ({
+            "Punto N°": index + 1,
+            "Hora": new Date(p.fecha).toLocaleTimeString(),
+            "Latitud": p.lat,
+            "Longitud": p.lng
+        }));
+        const wsGps = gpsData.length > 0 ? XLSX.utils.json_to_sheet(gpsData) : XLSX.utils.aoa_to_sheet([["Sin puntos de GPS registrados"]]);
+        XLSX.utils.book_append_sheet(wb, wsGps, "Rastreo GPS");
+
+        // Hoja 3: Actividades
+        const actData = (actividades || []).map((a) => ({
+            "Descripción": a.descripcion,
+            "Hora": new Date(a.fecha).toLocaleTimeString()
+        }));
+        const wsAct = actData.length > 0 ? XLSX.utils.json_to_sheet(actData) : XLSX.utils.aoa_to_sheet([["Sin actividades registradas"]]);
+        XLSX.utils.book_append_sheet(wb, wsAct, "Actividades");
+
+        // Guardar archivo
+        XLSX.writeFile(wb, `Reporte_Ruta_${activadorName.replace(/\\s+/g, '_')}_${historicalDate}.xlsx`);
+        toast.success('Reporte exportado correctamente', { id: 'export' });
+    };
+
     const handleLocateMe = () => {
         if (!navigator.geolocation) return toast.error("Geolocalización no soportada");
 
@@ -781,6 +967,10 @@ export default function MapaClientes() {
                         🔥 {isHeatmapMode ? 'Ocultar Calor' : 'Mapa de Calor'}
                     </Button>
 
+                    <Button variant={isHistoricalMode ? 'primary' : 'secondary'} onClick={() => setIsHistoricalMode(!isHistoricalMode)}>
+                        🗺️ {isHistoricalMode ? 'Ocultar Historial' : 'Recorrido Histórico'}
+                    </Button>
+
                     <Button variant={showZones ? 'primary' : 'secondary'} onClick={() => setShowZones(!showZones)}>
                         <Layers size={16} /> {showZones ? 'Zonas: ON' : 'Zonas: OFF'}
                     </Button>
@@ -798,6 +988,47 @@ export default function MapaClientes() {
                     )}
                 </div>
             </div>
+
+            {/* Panel de Modo Histórico */}
+            {isHistoricalMode && (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '16px', background: 'var(--bg-elevated)', padding: '10px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                    <span style={{ fontWeight: 600 }}>Cargar recorrido de:</span>
+                    <select 
+                        className="input" 
+                        style={{ width: 'auto', minWidth: '200px' }} 
+                        value={historicalActivadorId} 
+                        onChange={(e) => setHistoricalActivadorId(e.target.value)}
+                    >
+                        <option value="" disabled>Seleccionar activador...</option>
+                        {activadores.map(a => (
+                            <option key={a.id} value={a.id}>{a.nombre}</option>
+                        ))}
+                    </select>
+                    
+                    <input 
+                        type="date" 
+                        className="input" 
+                        style={{ width: 'auto' }} 
+                        value={historicalDate} 
+                        max={new Date().toISOString().split('T')[0]} // No futuro
+                        min={new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // Max 7 dias
+                        onChange={(e) => setHistoricalDate(e.target.value)}
+                    />
+                    
+                    <span className="muted" style={{ fontSize: '0.85rem' }}>
+                        Nota: Solo se guardan los últimos 7 días.
+                    </span>
+
+                    <Button 
+                        variant="primary" 
+                        onClick={exportarReporteRecorrido} 
+                        style={{ marginLeft: 'auto', background: '#10b981', borderColor: '#10b981' }}
+                        disabled={!historicalActivadorId}
+                    >
+                        ⬇️ Exportar Excel
+                    </Button>
+                </div>
+            )}
             
             {/* Sidebar Filters Drawer */}
             <div style={{

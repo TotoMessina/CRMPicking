@@ -8,8 +8,9 @@ import toast from 'react-hot-toast';
  * e implementa el Wake Lock API para el "Modo Ruta".
  */
 export const LocationTracker = () => {
-    const { user } = useAuth();
+    const { user, empresaActiva } = useAuth();
     const lastReportedTime = useRef(0);
+    const lastHistoryTime = useRef(0);
     const watchId = useRef(null);
     const [isRutaActive, setIsRutaActive] = useState(() => {
         return localStorage.getItem('modo-ruta-active') === 'true';
@@ -59,6 +60,22 @@ export const LocationTracker = () => {
                 if (!error) {
                     lastReportedTime.current = now;
                     console.log(`📍 Ubicación [${isRutaActive ? 'RUTA' : 'NORMAL'}]:`, { lat, lng, acc: accuracy });
+                    
+                    // Guardar en historial con una frecuencia máxima de 1 minuto
+                    if (empresaActiva && now - lastHistoryTime.current >= 60000) {
+                        const { error: histErr } = await supabase.from('historial_ubicaciones').insert([{
+                            usuario_id: user.id,
+                            empresa_id: empresaActiva.id,
+                            lat,
+                            lng,
+                            fecha: new Date().toISOString()
+                        }]);
+                        if (!histErr) {
+                            lastHistoryTime.current = now;
+                        } else {
+                            console.warn('No se pudo guardar historial:', histErr);
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('❌ Exception in LocationTracker:', err);
