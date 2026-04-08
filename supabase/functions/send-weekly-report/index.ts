@@ -178,8 +178,8 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, // Service role for full DB access
         )
 
-        const resendApiKey = Deno.env.get('RESEND_API_KEY')
-        if (!resendApiKey) throw new Error('RESEND_API_KEY env variable is not set')
+        const brevoApiKey = Deno.env.get('BREVO_API_KEY')
+        if (!brevoApiKey) throw new Error('BREVO_API_KEY env variable is not set')
 
         // Fetch recipients and config (dia_reporte)
         const { data: recipients, error: recipError } = await supabase
@@ -310,26 +310,36 @@ serve(async (req) => {
                 ? `[TEST] Reporte Semanal · ${nombre} · ${fromLabel} – ${toLabel}`
                 : `📊 Reporte Semanal · ${nombre} · ${fromLabel} – ${toLabel}`
 
-            const emailRes = await fetch('https://api.resend.com/emails', {
+            // Transform emails to Brevo required array format [{ email: 'x' }]
+            const toArray = emails.map((e: string) => ({ email: e }))
+
+            const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${resendApiKey}`,
+                    'api-key': brevoApiKey,
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    from: 'PickingUp CRM <onboarding@resend.dev>',
-                    to: emails,
+                    sender: { name: 'PickingUp CRM', email: 'lucastotomessina@gmail.com' },
+                    to: toArray,
                     subject,
-                    html,
+                    htmlContent: html,
                 }),
             })
 
-            const emailResult = await emailRes.json()
+            let emailResult
+            try {
+                emailResult = await emailRes.json()
+            } catch {
+                emailResult = { message: 'Brevo request failed or empty body' }
+            }
+
             results.push({ empresaId, nombre, emails, emailResult, success: emailRes.ok })
 
             if (!emailRes.ok) {
                 console.error(`Failed to send email for empresa ${nombre}:`, emailResult)
-                throw new Error(`Error de Resend: ${emailResult.message || 'Error desconocido'}`)
+                throw new Error(`Error de Brevo: ${emailResult.message || 'Error desconocido'}`)
             }
         }
 

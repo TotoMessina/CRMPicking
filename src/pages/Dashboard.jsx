@@ -23,6 +23,8 @@ import { barValueLabelPlugin } from '../constants/statsConstants';
 // Register ChartJS
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
+import { getChurnRisk } from '../utils/riskScoring';
+
 export default function Dashboard() {
     const { empresaActiva, user, userName } = useAuth();
     const [loading, setLoading] = useState(true);
@@ -35,7 +37,8 @@ export default function Dashboard() {
         distribucionCartera: { labels: [], datasets: [] },
         ultimasVisitas: [],
         proximosContactos: [],
-        localesMapa: []
+        localesMapa: [],
+        topChurn: []
     });
 
     const loadDashboardData = async () => {
@@ -54,7 +57,8 @@ export default function Dashboard() {
                 { data: stateDist },
                 { data: recentVisits },
                 { data: pendingContacts },
-                { data: mapLocals }
+                { data: mapLocals },
+                { data: churnDataResult }
             ] = await Promise.all([
                 supabase.from('empresa_cliente').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('activo', true),
                 supabase.from('empresa_cliente').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).gte('created_at', today).eq('activo', true),
@@ -64,7 +68,8 @@ export default function Dashboard() {
                 supabase.from('empresa_cliente').select('estado').eq('empresa_id', empresaActiva.id).eq('activo', true),
                 supabase.from('actividades').select('id, fecha, clientes:cliente_id(nombre_local)').eq('empresa_id', empresaActiva.id).eq('descripcion', 'Visita realizada').order('fecha', { ascending: false }).limit(5),
                 supabase.from('empresa_cliente').select('id, fecha_proximo_contacto, clientes:cliente_id(nombre_local, responsable_id)').eq('empresa_id', empresaActiva.id).not('fecha_proximo_contacto', 'is', null).gte('fecha_proximo_contacto', today.split('T')[0]).order('fecha_proximo_contacto', { ascending: true }).limit(5),
-                supabase.from('empresa_cliente').select('id, estado, clientes!inner(id, nombre_local, lat, lng)').eq('empresa_id', empresaActiva.id).eq('estado', '5 - Local Visitado Activo').not('clientes.lat', 'is', null).limit(100)
+                supabase.from('empresa_cliente').select('id, estado, clientes!inner(id, nombre_local, lat, lng)').eq('empresa_id', empresaActiva.id).eq('estado', '5 - Local Visitado Activo').not('clientes.lat', 'is', null).limit(100),
+                supabase.from('empresa_cliente').select('id, fecha_proximo_contacto, ultima_actividad, updated_at, estado, telefono, clientes:cliente_id(nombre_local)').eq('empresa_id', empresaActiva.id).eq('activo', true).in('estado', ['1 - Cliente relevado', '5 - Local Visitado Activo']).limit(100)
             ]);
 
             // Process Growth Data
@@ -80,6 +85,14 @@ export default function Dashboard() {
             stateDist?.forEach(d => { states[d.estado] = (states[d.estado] || 0) + 1; });
             const stateLabels = Object.keys(states);
             const stateValues = Object.values(states);
+
+            // Process Churn
+            const churnData = churnDataResult || [];
+            const topChurn = churnData
+                .map(c => ({ ...c, risk: getChurnRisk(c) }))
+                .filter(c => c.risk.level === 'alto' || c.risk.level === 'medio')
+                .sort((a, b) => b.risk.score - a.risk.score)
+                .slice(0, 5);
 
             setStats({
                 clientesTotal: totalClientes || 0,
@@ -105,7 +118,8 @@ export default function Dashboard() {
                 },
                 ultimasVisitas: recentVisits || [],
                 proximosContactos: pendingContacts || [],
-                localesMapa: mapLocals || []
+                localesMapa: mapLocals || [],
+                topChurn
             });
 
         } catch (error) {
@@ -243,6 +257,35 @@ export default function Dashboard() {
                             ))}
                         </MapContainer>
                     </div>
+                </div>
+
+                {/* Last Visits */}
+                <div className="db-section-card">
+                    <div className="db-section-header">
+                        <h2>⚠️ Mayor Riesgo de Fuga</h2>
+                        <MoreVertical size={18} className="muted" />
+                    </div>
+                    <table className="db-table">
+                        <thead>
+                            <tr>
+                                <th>Local</th>
+                                <th>Días</th>
+                                <th>Riesgo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {stats.topChurn.map(c => (
+                                <tr key={c.id}>
+                                    <td><strong>{c.clientes?.nombre_local || 'Local'}</strong></td>
+                                    <td className="muted">{c.risk.diasSinContacto > 1000 ? 'Nunca' : c.risk.diasSinContacto + 'd'}</td>
+                                    <td><span style={{color: c.risk.color, fontSize: '11px', fontWeight: 'bold'}}>{c.risk.label.replace('⚠️', '')}</span></td>
+                                </tr>
+                            ))}
+                            {stats.topChurn.length === 0 && (
+                                <tr><td colSpan="3" className="text-center muted">Todos al día 🎉</td></tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
 
                 {/* Last Visits */}

@@ -22,6 +22,7 @@ import { formatToLocal } from '../utils/dateUtils';
 import { useCompanyUsers } from '../hooks/useCompanyUsers';
 import { useRubros } from '../hooks/useRubros';
 import { ClientFilters } from '../components/clients/ClientFilters';
+import { getChurnRisk, CHURN_COLORS } from '../utils/riskScoring';
 
 const ZONE_COLORS = {
     today: "#8b5cf6",
@@ -54,57 +55,7 @@ const ESTILO_COLORS = {
     "Sin definir": "#64748b"
 };
 
-// ─── Churn Risk Scoring (0=bajo ... 10=alto riesgo) ───────────────────────────
-const CHURN_DAYS_THRESHOLD = 30; // días sin contacto para considerar en riesgo
-
-const CHURN_COLORS = {
-    bajo:  "#22c55e",  // 0–3
-    medio: "#f59e0b",  // 4–6
-    alto:  "#ef4444",  // 7–10
-};
-
-function getChurnScore(rec) {
-    // Solo aplica a clientes activos (estado 5)
-    if (!rec.estado || !rec.estado.includes('5')) return 0;
-
-    let score = 0;
-    const now = new Date();
-
-    // Factor 1: Días sin próximo contacto agendado (peso 5)
-    if (rec.fecha_proximo_contacto) {
-        const diasDesde = (now - new Date(rec.fecha_proximo_contacto)) / 86400000;
-        if (diasDesde > CHURN_DAYS_THRESHOLD) score += 5;
-        else if (diasDesde > CHURN_DAYS_THRESHOLD / 2) score += 2;
-    } else {
-        score += 3; // Sin fecha agenda = riesgo moderado
-    }
-
-    // Factor 2: Tiempo desde última actualización (peso 3)
-    if (rec.updated_at) {
-        const diasDesdeUpdate = (now - new Date(rec.updated_at)) / 86400000;
-        if (diasDesdeUpdate > CHURN_DAYS_THRESHOLD) score += 3;
-        else if (diasDesdeUpdate > CHURN_DAYS_THRESHOLD / 2) score += 1;
-    } else {
-        score += 2;
-    }
-
-    // Factor 3: Sin teléfono registrado (peso 2 — difícil de contactar)
-    if (!rec.telefono) score += 2;
-
-    return Math.min(10, score);
-}
-
-function getChurnColor(score) {
-    if (score <= 3) return CHURN_COLORS.bajo;
-    if (score <= 6) return CHURN_COLORS.medio;
-    return CHURN_COLORS.alto;
-}
-
-function getChurnLabel(score) {
-    if (score <= 3) return 'Riesgo Bajo';
-    if (score <= 6) return 'Riesgo Medio';
-    return 'Riesgo Alto ⚠️';
-}
+// Remplazado por src/utils/riskScoring.ts
 
 const timeSince = (date) => {
     if (!date) return 'Nunca';
@@ -471,7 +422,10 @@ export default function MapaClientes() {
 
         clientes.forEach(rec => {
             // Apply filtering
-            if (hasFilters) {
+            if (filters.smartRoute) {
+                const rs = getChurnRisk(rec);
+                if (rs.level === 'bajo' && rs.diasSinContacto < 15) return; // Hide healthy clients
+            } else if (hasFilters) {
                 if (colorMode === "creador" && !activeFilters.has((rec.creado_por || "Desconocido").trim())) return;
                 else if (colorMode === "rubro" && !activeFilters.has((rec.rubro || "Sin rubro").trim())) return;
                 else if (colorMode === "interes" && !activeFilters.has(rec.interes || "Bajo")) return;
@@ -482,10 +436,8 @@ export default function MapaClientes() {
             // Determine Color
             let color = "#94a3b8";
             if (colorMode === "riesgo") {
-                const score = getChurnScore(rec);
-                // Solo mostrar clientes activos en modo riesgo
-                if (!rec.estado || !rec.estado.includes('5')) return;
-                color = getChurnColor(score);
+                const risk = getChurnRisk(rec);
+                color = risk.color;
             } else if (colorMode === "creador") color = getColorForCreator(rec.creado_por);
             else if (colorMode === "rubro") color = getColorForRubro(rec.rubro);
             else if (colorMode === "interes") color = INTERES_COLORS[rec.interes || "Bajo"] || INTERES_COLORS["Sin interés"];
@@ -494,8 +446,8 @@ export default function MapaClientes() {
 
             // Marker interaction
             const isSelectedForRouting = routeStops.some(s => s.id === rec.id);
-            const churnScore = colorMode === 'riesgo' ? getChurnScore(rec) : null;
-            const isHighRisk = churnScore !== null && churnScore >= 7;
+            const risk = getChurnRisk(rec);
+            const isHighRisk = colorMode === 'riesgo' && risk.level === 'alto';
             const opacityStyle = isHeatmapMode ? 'opacity: 0.15;' : '';
             const pulseStyle = isHighRisk ? 'animation: pulse-ring 1.5s cubic-bezier(0,0,0.2,1) infinite;' : '';
 
@@ -551,9 +503,9 @@ export default function MapaClientes() {
                             </div>
                         ` : ''}
 
-                        ${churnScore !== null ? `
-                            <div style="margin-top: 8px; padding: 6px 10px; border-radius: 8px; font-size: 0.8em; font-weight: 700; background: ${churnScore >= 7 ? '#fef2f2' : churnScore >= 4 ? '#fffbeb' : '#f0fdf4'}; color: ${churnScore >= 7 ? '#991b1b' : churnScore >= 4 ? '#92400e' : '#166534'}; border: 1px solid ${churnScore >= 7 ? '#fecaca' : churnScore >= 4 ? '#fde68a' : '#bbf7d0'};">
-                                ${getChurnLabel(churnScore)} (Score: ${churnScore}/10)
+                        ${colorMode === 'riesgo' ? `
+                            <div style="margin-top: 8px; padding: 6px 10px; border-radius: 8px; font-size: 0.8em; font-weight: 700; background: ${risk.level === 'alto' ? '#fef2f2' : risk.level === 'medio' ? '#fffbeb' : '#f0fdf4'}; color: ${risk.color}; border: 1px solid ${risk.color}50;">
+                                ${risk.label}
                             </div>
                         ` : ''}
 

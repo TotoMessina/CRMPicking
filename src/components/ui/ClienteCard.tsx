@@ -6,6 +6,7 @@ import { ActivityTimeline } from './ActivityTimeline';
 import { Client, ClientActivity } from '../../types/client';
 import { esEstadoFinal } from '../../constants/estados';
 import { formatToLocal } from '../../utils/dateUtils';
+import { getChurnRisk } from '../../utils/riskScoring';
 
 interface Props {
     cliente: Client;
@@ -41,6 +42,9 @@ export const ClienteCard = memo<Props>(({
         else if (c.situacion === 'en proceso') accentColor = '#f59e0b'; // Amber
         else accentColor = 'var(--text-muted)';
     }
+
+    const { level: churnLevel, color: churnColor, label: churnLabel, diasSinContacto } = getChurnRisk(c);
+    const showChurnWarning = churnLevel === 'alto' || churnLevel === 'medio';
 
     return (
         <div className="bento-card" style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
@@ -109,6 +113,20 @@ export const ClienteCard = memo<Props>(({
                 {c.responsable && (
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'var(--bg-elevated)', color: 'var(--text)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <User size={12} /> {c.responsable}
+                    </span>
+                )}
+                
+                {showChurnWarning && (
+                    <span 
+                        title={`No se registra actividad hace ${diasSinContacto > 1000 ? 'mucho' : diasSinContacto} días`}
+                        style={{ 
+                            fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '99px', 
+                            background: `${churnColor}15`, color: churnColor, border: `1px solid ${churnColor}50`, 
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            animation: churnLevel === 'alto' ? 'pulse 2s infinite' : 'none'
+                        }}
+                    >
+                        {churnLabel} ({diasSinContacto > 1000 ? 'Nunca' : `${diasSinContacto}d`})
                     </span>
                 )}
             </div>
