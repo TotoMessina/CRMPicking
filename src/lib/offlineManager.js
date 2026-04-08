@@ -165,7 +165,7 @@ export async function flushOutbox(supabaseClient) {
             // Special case: new client creation uses a Supabase RPC
             if (mutation.table === '_rpc_crear_cliente' && mutation.method === 'INSERT') {
                 const p = mutation.payload;
-                const { error: rpcErr } = await supabaseClient.rpc('crear_cliente_v5_final', {
+                const { data: resultId, error: rpcErr } = await supabaseClient.rpc('crear_cliente_v5_final', {
                     p_payload: {
                         p_nombre_local: p.nombre_local,
                         p_nombre: p.nombre,
@@ -181,18 +181,41 @@ export async function flushOutbox(supabaseClient) {
                         p_estado: p.estado,
                         p_responsable: p.responsable,
                         p_interes: p.interes,
+                        interes: p.interes,
                         p_estilo_contacto: p.estilo_contacto,
+                        estilo_contacto: p.estilo_contacto,
                         p_venta_digital: p.venta_digital,
                         p_venta_digital_cual: p.venta_digital_cual,
                         p_situacion: p.situacion,
+                        situacion: p.situacion,
                         p_notas: p.notas,
+                        notas: p.notas,
                         p_tipo_contacto: p.tipo_contacto,
+                        tipo_contacto: p.tipo_contacto,
                         p_fecha_proximo_contacto: p.fecha_proximo_contacto,
                         p_hora_proximo_contacto: p.hora_proximo_contacto,
                         p_creado_por: p.creado_por || null,
                     }
                 });
                 error = rpcErr;
+
+                // Log initial visit if requested
+                if (!error && resultId && p.registrar_visita === 'true') {
+                    try {
+                        const visitDesc = `🚚 Visita inicial realizada (Sync Offline) - Estado: ${p.estado}`;
+                        const now = new Date().toISOString();
+                        await supabaseClient.from('actividades').insert([{
+                            cliente_id: resultId,
+                            descripcion: visitDesc,
+                            usuario: p.creado_por || 'Sistema (Sync)',
+                            empresa_id: p.empresa_id,
+                            fecha: now
+                        }]);
+                        await supabaseClient.from('empresa_cliente').update({ ultima_actividad: now }).eq('cliente_id', resultId).eq('empresa_id', p.empresa_id);
+                    } catch (syncErr) {
+                        console.warn('[OfflineManager] Error recording initial visit during sync:', syncErr);
+                    }
+                }
             } else if (mutation.method === 'INSERT') {
                 ({ error } = await supabaseClient.from(mutation.table).insert(mutation.payload));
             } else if (mutation.method === 'UPDATE' && mutation.payload.id) {

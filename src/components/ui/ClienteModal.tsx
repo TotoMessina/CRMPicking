@@ -48,6 +48,7 @@ interface FormData {
     hora_proximo_contacto: string;
     lat: number | null | string;
     lng: number | null | string;
+    registrar_visita: string;
     [key: string]: any;
 }
 
@@ -102,6 +103,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         tipo_contacto: 'Visita Presencial',
         fecha_proximo_contacto: '', hora_proximo_contacto: '',
         lat: null, lng: null,
+        registrar_visita: 'true',
         ...overrides,
     });
 
@@ -321,9 +323,10 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
         // Override with map coordinates when creating from the map
         if (initialLocation && !clienteId) {
-            payload.lat = parseFloat(initialLocation.lat as any);
             payload.lng = parseFloat(initialLocation.lng as any);
         }
+
+        const shouldRecordVisit = payload.estado !== ESTADO_RELEVADO || formData.registrar_visita === 'true';
 
         console.log('DEBUG: Iniciando proceso de guardado...', {
             clienteId,
@@ -448,12 +451,17 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     p_estado: payload.estado,
                     p_responsable: payload.responsable,
                     p_interes: payload.interes,
+                    interes: payload.interes,
                     p_estilo_contacto: payload.estilo_contacto,
+                    estilo_contacto: payload.estilo_contacto,
                     p_venta_digital: payload.venta_digital,
                     p_venta_digital_cual: payload.venta_digital_cual,
                     p_situacion: payload.situacion,
+                    situacion: payload.situacion,
                     p_notas: payload.notas,
+                    notas: payload.notas,
                     p_tipo_contacto: payload.tipo_contacto,
+                    tipo_contacto: payload.tipo_contacto,
                     p_fecha_proximo_contacto: payload.fecha_proximo_contacto,
                     p_hora_proximo_contacto: payload.hora_proximo_contacto,
                     p_creado_por: creadoPor
@@ -480,7 +488,34 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     empresa_id: empresaActiva.id,
                     fecha: new Date().toISOString()
                 }]);
+                
                 if (actErr) console.warn('No se pudo guardar actividad inicial:', actErr.message);
+
+                // Check if should record initial visit
+                if (shouldRecordVisit) {
+                    const visitDesc = `🚚 Visita inicial realizada - Estado: ${payload.estado}`;
+                    const now = new Date().toISOString();
+                    
+                    // 1. Log visit activity
+                    const { error: visitErr } = await supabase.from('actividades').insert([{
+                        cliente_id: result,
+                        descripcion: visitDesc,
+                        usuario: creadoPor,
+                        empresa_id: empresaActiva.id,
+                        fecha: now
+                    }]);
+                    
+                    if (visitErr) {
+                        console.warn('No se pudo registrar la visita inicial:', visitErr.message);
+                    } else {
+                        // 2. Update last activity in company
+                        await supabase
+                            .from('empresa_cliente')
+                            .update({ ultima_actividad: now })
+                            .eq('cliente_id', result)
+                            .eq('empresa_id', empresaActiva.id);
+                    }
+                }
             }
         }
 
@@ -529,6 +564,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     await queueMutation('_rpc_crear_cliente', 'INSERT', {
                         empresa_id: empresaActiva?.id,
                         ...payload,
+                        registrar_visita: shouldRecordVisit,
                     });
                 }
                 toast.success('💾 Guardado sin conexión. Se sincronizará cuando vuelva la señal.', { duration: 5000 });
@@ -727,6 +763,32 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                         <option value={ESTADO_ACTIVO}>5 - Local Visitado Activo</option>
                                         <option value={ESTADO_NO_INTERESADO}>6 - Local No Interesado</option>
                                     </select>
+                                </div>
+
+                                {/* Conditional Visit Checkbox */}
+                                <div className="field" style={{ gridColumn: '1 / -1', marginTop: '4px' }}>
+                                    {formData.estado === ESTADO_RELEVADO ? (
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '10px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                name="registrar_visita" 
+                                                checked={formData.registrar_visita === 'true'} 
+                                                onChange={handleChange}
+                                                style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
+                                            />
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Registrar visita inicial</span>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Márcalo si ya estuviste físicamente en el local.</span>
+                                            </div>
+                                        </label>
+                                    ) : (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#059669' }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                                                <span style={{ fontSize: '1.2rem' }}>✅</span>
+                                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Se registrará una visita automáticamente por el estado seleccionado.</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Interés bar */}
