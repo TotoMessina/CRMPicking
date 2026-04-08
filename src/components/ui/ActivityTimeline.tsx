@@ -111,6 +111,17 @@ export const ActivityTimeline: React.FC<Props> = ({ activities, maxInitial = 5 }
                                             </div>
                                         )}
                                     </div>
+
+                                    {activity.foto_url && (
+                                        <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', maxWidth: '200px' }}>
+                                            <img 
+                                                src={activity.foto_url} 
+                                                alt="Actividad" 
+                                                style={{ width: '100%', height: 'auto', display: 'block', cursor: 'pointer' }}
+                                                onClick={() => window.open(activity.foto_url, '_blank')}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         );

@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from './Button';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, Camera, Image as ImageIcon, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { compressImage } from '../../lib/imageCompression';
+
 
 interface Props {
     isOpen: boolean;
@@ -30,6 +32,12 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
         fecha: '',
         usuario: ''
     });
+
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
 
     const handleClose = () => {
         if (isDirty) {
@@ -60,8 +68,31 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
                 }
             });
             setIsDirty(false);
+            setSelectedImage(null);
+            setImagePreview(null);
+            setUploadingImage(false);
         }
     }, [isOpen]);
+
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (!file.type.startsWith('image/')) {
+                toast.error('Por favor selecciona una imagen válida');
+                return;
+            }
+            setSelectedImage(file);
+            setImagePreview(URL.createObjectURL(file));
+            setIsDirty(true);
+        }
+    };
+
+    const removeImage = () => {
+        setSelectedImage(null);
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -78,6 +109,41 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
         setLoading(true);
 
         try {
+            let uploadedImageUrl = null;
+
+            // 1. Upload image if selected
+            if (selectedImage) {
+                setUploadingImage(true);
+                try {
+                    // Compress before upload
+                    const compressedBlob = await compressImage(selectedImage, { maxWidth: 1024, quality: 0.7 });
+                    
+                    const fileExt = 'jpg'; // Always jpg from compressor
+                    const fileName = `${clienteId}/${Date.now()}_actividad.${fileExt}`;
+                    const filePath = `actividades/${fileName}`;
+
+                    const { error: uploadError } = await supabase.storage
+                        .from('actividades_fotos')
+                        .upload(filePath, compressedBlob, {
+                            contentType: 'image/jpeg',
+                            upsert: true
+                        });
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('actividades_fotos')
+                        .getPublicUrl(filePath);
+                    
+                    uploadedImageUrl = publicUrl;
+                } catch (imgErr: any) {
+                    console.error("Error al subir imagen:", imgErr);
+                    toast.error("No se pudo subir la foto, pero intentaremos guardar la nota.");
+                } finally {
+                    setUploadingImage(false);
+                }
+            }
+
             const fechaISO = formData.fecha ? new Date(formData.fecha).toISOString() : new Date().toISOString();
 
             const payload = {
@@ -85,7 +151,8 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
                 descripcion: formData.descripcion.trim(),
                 fecha: fechaISO,
                 usuario: formData.usuario.trim() || null,
-                empresa_id: empresaActiva.id
+                empresa_id: empresaActiva.id,
+                foto_url: uploadedImageUrl
             };
 
             const { error } = await supabase.from("actividades").insert([payload]);
@@ -153,9 +220,67 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
                         </label>
                     </div>
 
+                    <div className="field" style={{ marginTop: '16px' }}>
+                        <span className="field-label">Adjuntar foto (opcional)</span>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginTop: '8px' }}>
+                            {!imagePreview ? (
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                        width: '100px', height: '100px', borderRadius: '12px', border: '2px dashed var(--border)',
+                                        background: 'rgba(255,255,255,0.03)', cursor: 'pointer', gap: '8px', color: 'var(--text-muted)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                                >
+                                    <Camera size={24} />
+                                    <span style={{ fontSize: '12px' }}>Añadir foto</span>
+                                </button>
+                            ) : (
+                                <div style={{ position: 'relative', width: '100px', height: '100px' }}>
+                                    <img 
+                                        src={imagePreview} 
+                                        alt="Preview" 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border)' }} 
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={removeImage}
+                                        style={{
+                                            position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: '#fff',
+                                            width: '24px', height: '24px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                        }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            )}
+                            
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={handleImageSelect}
+                                style={{ display: 'none' }}
+                            />
+                            
+                            {imagePreview && (
+                                <div style={{ flex: 1, fontSize: '13px', color: 'var(--text-muted)', paddingTop: '4px' }}>
+                                    <p style={{ margin: '0 0 4px' }}>Imagen seleccionada: <strong>{selectedImage?.name}</strong></p>
+                                    <p style={{ margin: '0' }}>Se comprimirá automáticamente antes de guardar.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="modal-actions" style={{ marginTop: '24px' }}>
                         <Button variant="secondary" type="button" onClick={handleClose}>Cancelar</Button>
-                        <Button variant="primary" type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</Button>
+                        <Button variant="primary" type="submit" disabled={loading || uploadingImage}>{loading ? 'Guardando...' : 'Guardar'}</Button>
                     </div>
                 </form>
             </div>
