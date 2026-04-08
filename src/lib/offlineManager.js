@@ -177,6 +177,7 @@ export async function flushOutbox(supabaseClient) {
                         p_lng: p.lng,
                         p_empresa_id: p.empresa_id,
                         p_rubro: p.rubro,
+                        rubro: p.rubro,
                         p_estado: p.estado,
                         p_responsable: p.responsable,
                         p_interes: p.interes,

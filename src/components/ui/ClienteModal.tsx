@@ -444,6 +444,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     p_lng: payload.lng,
                     p_empresa_id: empresaActiva.id,
                     p_rubro: payload.rubro,
+                    rubro: payload.rubro,
                     p_estado: payload.estado,
                     p_responsable: payload.responsable,
                     p_interes: payload.interes,
