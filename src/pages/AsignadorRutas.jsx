@@ -134,9 +134,18 @@ export default function AsignadorRutas() {
         }
         setLoadingRuta(true);
         try {
-            const { data: visitasRaw, error } = await supabase.from('visitas_diarias').select('*, clientes:cliente_id(id, nombre_local, direccion, lat, lng)').eq('empresa_id', empresaActiva.id).eq('usuario_asignado_email', usuarioSeleccionado).eq('fecha_asignada', fechaSeleccionada).order('orden', { ascending: true });
+            const { data: visitasRaw, error } = await supabase.from('visitas_diarias').select('*').eq('empresa_id', empresaActiva.id).eq('usuario_asignado_email', usuarioSeleccionado).eq('fecha_asignada', fechaSeleccionada).order('orden', { ascending: true });
             if (error) throw error;
-            setRutaActual(visitasRaw || []);
+            
+            let rutasArmadas = [];
+            if (visitasRaw && visitasRaw.length > 0) {
+                const clienteIds = [...new Set(visitasRaw.map(v => v.cliente_id))];
+                const { data: clientesRaw } = await supabase.from('clientes').select('id, nombre_local, direccion, lat, lng').in('id', clienteIds);
+                const clienteMap = {};
+                (clientesRaw || []).forEach(c => { clienteMap[c.id] = c; });
+                rutasArmadas = visitasRaw.map(v => ({ ...v, clientes: clienteMap[v.cliente_id] || null }));
+            }
+            setRutaActual(rutasArmadas);
             
             // Calc distance
             let dist = 0;
@@ -178,10 +187,11 @@ export default function AsignadorRutas() {
         const newOrder = rutaActual.length;
         const { data, error } = await supabase.from('visitas_diarias').insert([{
             empresa_id: empresaActiva.id, cliente_id: ec.clientes.id, usuario_asignado_email: usuarioSeleccionado, fecha_asignada: fechaSeleccionada, estado: 'Pendiente', orden: newOrder
-        }]).select('*, clientes:cliente_id(id, nombre_local, direccion, lat, lng)').single();
+        }]).select('*').single();
 
         if (error) return toast.error('Error al agregar');
-        setRutaActual([...rutaActual, data]);
+        const dataConClientes = { ...data, clientes: ec.clientes };
+        setRutaActual([...rutaActual, dataConClientes]);
         toast.success(`Agregado a ${usuarioSeleccionado.split('@')[0]}`);
     };
 
