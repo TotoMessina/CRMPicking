@@ -435,7 +435,10 @@ export default function AsignadorRutas() {
                                     <div style={{ marginTop: 12 }}>
                                         {searchResults.map(r => (
                                             <div key={r.id} className="suggestion-item" onClick={() => agregarAFila(r)}>
-                                                <div style={{ fontWeight: 600 }}>{r.clientes.nombre_local}</div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div style={{ fontWeight: 600 }}>{r.clientes.nombre_local}</div>
+                                                    <div style={{ fontSize: '0.7rem', background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>#{r.clientes.id}</div>
+                                                </div>
                                                 <div className="muted" style={{ fontSize: '0.7rem' }}>{r.clientes.direccion}</div>
                                             </div>
                                         ))}
