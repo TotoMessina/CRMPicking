@@ -124,10 +124,10 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="modal is-open">
+        <div className={`modal ${isOpen ? 'is-open' : ''}`} onClick={(e) => e.target.classList.contains('modal') && onClose()}>
             <div className="modal-content">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0 }}>{consumidorId ? 'Editar consumidor' : 'Nuevo consumidor'}</h3>
+                <div className="modal-header">
+                    <h3>{consumidorId ? 'Editar consumidor' : 'Nuevo consumidor'}</h3>
                     <button className="modal-close" type="button" onClick={onClose}><X size={20} /></button>
                 </div>
 

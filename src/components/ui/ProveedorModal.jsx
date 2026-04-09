@@ -103,10 +103,10 @@ export function ProveedorModal({ isOpen, onClose, proveedorId, onSaved }) {
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="modal is-open">
+        <div className={`modal ${isOpen ? 'is-open' : ''}`} onClick={(e) => e.target.classList.contains('modal') && onClose()}>
             <div className="modal-content" style={{ maxWidth: '500px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0 }}>{proveedorId ? 'Editar Proveedor' : 'Nuevo Proveedor'}</h3>
+                <div className="modal-header">
+                    <h3>{proveedorId ? 'Editar Proveedor' : 'Nuevo Proveedor'}</h3>
                     <button className="modal-close" type="button" onClick={onClose}><X size={20} /></button>
                 </div>
 

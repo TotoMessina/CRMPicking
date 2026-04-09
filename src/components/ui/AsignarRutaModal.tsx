@@ -72,36 +72,14 @@ export const AsignarRutaModal: React.FC<Props> = ({ isOpen, onClose, clienteId, 
     };
 
     return (
-        <div style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.4)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-            padding: '20px'
-        }} onClick={onClose}>
-            <div 
-                style={{
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '24px',
-                    width: '100%',
-                    maxWidth: '440px',
-                    padding: '24px',
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-                    animation: 'page-enter 0.3s ease-out forwards'
-                }} 
-                onClick={e => e.stopPropagation()}
-            >
-                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div className={`modal ${isOpen ? 'is-open' : ''}`} onClick={onClose}>
+            <div className="modal-content" style={{ maxWidth: '440px' }} onClick={e => e.stopPropagation()}>
+                <header className="modal-header">
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Asignar a Ruta</h2>
+                        <h3>Asignar a Ruta</h3>
                         <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{clienteNombre}</p>
                     </div>
-                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    <button onClick={onClose} className="modal-close">
                         <X size={20} />
                     </button>
                 </header>

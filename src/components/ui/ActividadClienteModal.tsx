@@ -192,10 +192,10 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="modal is-open" onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && handleClose()}>
+        <div className={`modal ${isOpen ? 'is-open' : ''}`} onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && handleClose()}>
             <div className="modal-content" style={{ maxWidth: '500px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0 }}>Agregar actividad</h3>
+                <div className="modal-header">
+                    <h3>Agregar actividad</h3>
                     <button className="modal-close" type="button" onClick={handleClose}><X size={20} /></button>
                 </div>
 

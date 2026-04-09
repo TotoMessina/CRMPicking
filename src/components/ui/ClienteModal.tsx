@@ -176,54 +176,67 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
     const loadCliente = async (id: string) => {
         setLoading(true);
-        const { data: ecData, error: ecError } = await supabase
-            .from('empresa_cliente')
-            .select('*, clientes(*)')
-            .eq('cliente_id', id)
-            .eq('empresa_id', empresaActiva?.id)
-            .single();
+        try {
+            const { data: ecData, error: ecError } = await supabase
+                .from('empresa_cliente')
+                .select('*, clientes(*)')
+                .eq('cliente_id', id)
+                .eq('empresa_id', empresaActiva?.id)
+                .maybeSingle();
 
-        if (ecError) {
-            // Fallback to just universal if not found in company (shouldn't happen if editing from directory)
-            const { data, error } = await supabase.from('clientes').select('*').eq('id', id).single();
-            if (error) {
-                toast.error('Error cargando cliente');
-                handleClose();
+            if (ecError) throw ecError;
+
+            let finalData: FormData;
+
+            if (ecData) {
+                // Merge both: fallback to universal if specific is null
+                finalData = {
+                    ...emptyForm(),
+                    ...ecData.clientes,
+                    ...ecData,
+                    estado: ecData.estado || ecData.clientes?.estado || ESTADO_DEFAULT,
+                    rubro: ecData.rubro || ecData.clientes?.rubro || '',
+                    responsable: ecData.responsable || ecData.clientes?.responsable || '',
+                    situacion: ecData.situacion || ecData.clientes?.situacion || SITUACION_DEFAULT,
+                    notas: ecData.notas || ecData.clientes?.notas || '',
+                    tipo_contacto: ecData.tipo_contacto || ecData.clientes?.tipo_contacto || 'Visita Presencial',
+                    fecha_proximo_contacto: ecData.fecha_proximo_contacto || ecData.clientes?.fecha_proximo_contacto || '',
+                    hora_proximo_contacto: ecData.hora_proximo_contacto || ecData.clientes?.hora_proximo_contacto || '',
+                    venta_digital: ecData.venta_digital ? 'true' : 'false'
+                };
+                // Remove the nested joined object to keep formData clean
+                delete (finalData as any).clientes;
             } else {
-                setFormData({ ...emptyForm(), ...data, venta_digital: data.venta_digital ? 'true' : 'false' });
-                setErrors({});
-                setIsDirty(false);
+                // Fallback to just universal if not found in company
+                const { data, error } = await supabase.from('clientes').select('*').eq('id', id).single();
+                if (error) throw error;
+                
+                finalData = { 
+                    ...emptyForm(), 
+                    ...data, 
+                    venta_digital: data.venta_digital ? 'true' : 'false' 
+                };
             }
-        } else if (ecData) {
-            // Merge both: fallback to universal if specific is null
-            const merged = {
-                ...emptyForm(),
-                ...ecData.clientes,
-                ...ecData,
-                estado: ecData.estado || ecData.clientes?.estado || ESTADO_DEFAULT,
-                rubro: ecData.rubro || ecData.clientes?.rubro || '',
-                responsable: ecData.responsable || ecData.clientes?.responsable || '',
-                situacion: ecData.situacion || ecData.clientes?.situacion || SITUACION_DEFAULT,
-                notas: ecData.notas || ecData.clientes?.notas || '',
-                tipo_contacto: ecData.tipo_contacto || ecData.clientes?.tipo_contacto || 'Visita Presencial',
-                fecha_proximo_contacto: ecData.fecha_proximo_contacto || ecData.clientes?.fecha_proximo_contacto || '',
-                hora_proximo_contacto: ecData.hora_proximo_contacto || ecData.clientes?.hora_proximo_contacto || '',
-                venta_digital: ecData.venta_digital ? 'true' : 'false'
-            };
-            
+
             // Auto-fill responsible if empty during edit
-            if (!merged.responsable && (userName || user?.email)) {
-                merged.responsable = userName || user?.email;
+            if (!finalData.responsable && (userName || user?.email)) {
+                finalData.responsable = userName || user?.email;
                 setIsDirty(true);
             }
 
-            setFormData(merged);
-            setOriginalData(merged);
+            setFormData(finalData);
+            setOriginalData(finalData);
             setErrors({});
+        } catch (error: any) {
+            console.error('Error cargando cliente:', error);
+            toast.error('Error cargando los datos del cliente');
+            handleClose();
+        } finally {
+            setLoading(false);
+            setIsDirty(false);
         }
-        setIsDirty(false);
-        setLoading(false);
     };
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
@@ -291,297 +304,218 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
         setLoading(true);
 
-        const rawPayload: any = {
-            nombre_local: formData.nombre_local || null,
-            direccion: formData.direccion || null,
-            nombre: formData.nombre || null,
-            telefono: formData.telefono || null,
-            mail: formData.mail || null,
-            cuit: formData.cuit || null,
-            rubro: formData.rubro || null,
-            estado: formData.estado || null,
-            responsable: formData.responsable || null,
-            estilo_contacto: formData.estilo_contacto || null,
-            interes: formData.interes || null,
-            venta_digital: formData.venta_digital === 'true',
-            venta_digital_cual: formData.venta_digital_cual || null,
-            situacion: formData.situacion || null,
-            tipo_contacto: formData.tipo_contacto || null,
-            notas: formData.notas || null,
-            fecha_proximo_contacto: formData.fecha_proximo_contacto?.trim() || null,
-            hora_proximo_contacto: formData.hora_proximo_contacto?.trim() || null,
-            lat: formData.lat != null && formData.lat !== '' ? parseFloat(formData.lat as string) : null,
-            lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng as string) : null,
-        };
+        try {
+            const rawPayload: any = {
+                nombre_local: formData.nombre_local || null,
+                direccion: formData.direccion || null,
+                nombre: formData.nombre || null,
+                telefono: formData.telefono || null,
+                mail: formData.mail || null,
+                cuit: formData.cuit || null,
+                rubro: formData.rubro || null,
+                estado: formData.estado || null,
+                responsable: formData.responsable || null,
+                estilo_contacto: formData.estilo_contacto || null,
+                interes: formData.interes || null,
+                venta_digital: formData.venta_digital === 'true',
+                venta_digital_cual: formData.venta_digital_cual || null,
+                situacion: formData.situacion || null,
+                tipo_contacto: formData.tipo_contacto || null,
+                notas: formData.notas || null,
+                fecha_proximo_contacto: formData.fecha_proximo_contacto?.trim() || null,
+                hora_proximo_contacto: formData.hora_proximo_contacto?.trim() || null,
+                lat: formData.lat != null && formData.lat !== '' ? parseFloat(formData.lat as string) : null,
+                lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng as string) : null,
+            };
 
-        // If the state implies activation/closure, mark the current user as the closer
-        if (esEstadoFinal(formData.estado)) {
-            rawPayload.activador_cierre = userName || user?.email || null;
-        }
+            // If the state implies activation/closure, mark the current user as the closer
+            if (esEstadoFinal(formData.estado)) {
+                rawPayload.activador_cierre = userName || user?.email || null;
+            }
 
-        const payload = { ...rawPayload };
+            const payload = { ...rawPayload };
 
-        // Override with map coordinates when creating from the map
-        if (initialLocation && !clienteId) {
-            payload.lng = parseFloat(initialLocation.lng as any);
-        }
+            // Override with map coordinates when creating from the map
+            if (initialLocation && !clienteId) {
+                payload.lng = parseFloat(initialLocation.lng as any);
+                payload.lat = parseFloat(initialLocation.lat as any);
+            }
 
-        const shouldRecordVisit = payload.estado !== ESTADO_RELEVADO || formData.registrar_visita === 'true';
+            const shouldRecordVisit = payload.estado !== ESTADO_RELEVADO || formData.registrar_visita === 'true';
 
-        console.log('DEBUG: Iniciando proceso de guardado...', {
-            clienteId,
-            empresaId: empresaActiva?.id,
-            nombre_local: payload.nombre_local,
-            isMapCreation: !!initialLocation
-        });
-
-        if (!empresaActiva?.id) {
-            console.error('ERROR: No hay empresa activa cargada en el contexto.');
-            toast.error('Error: No se detectó una empresa activa. Por favor, seleccioná una empresa antes de crear un cliente.');
-            setLoading(false);
-            return;
-        }
-
-        let err;
-        if (clienteId) {
-            // Split fields for update as well
-            const universalFields = {
+            console.log('DEBUG: Iniciando proceso de guardado...', {
+                clienteId,
+                empresaId: empresaActiva?.id,
                 nombre_local: payload.nombre_local,
-                nombre: payload.nombre,
-                direccion: payload.direccion,
-                lat: payload.lat,
-                lng: payload.lng,
-                telefono: payload.telefono,
-                mail: payload.mail,
-                cuit: payload.cuit,
-                // Business synchronization to prevent legacy trigger overwrites
-                estado: payload.estado,
-                rubro: payload.rubro,
-                responsable: payload.responsable,
-                situacion: payload.situacion,
-                notas: payload.notas,
-                fecha_proximo_contacto: payload.fecha_proximo_contacto,
-            };
-            const companyFields = {
-                estado: payload.estado,
-                rubro: payload.rubro,
-                responsable: payload.responsable,
-                estilo_contacto: payload.estilo_contacto,
-                interes: payload.interes,
-                tipo_contacto: payload.tipo_contacto,
-                venta_digital: payload.venta_digital,
-                venta_digital_cual: payload.venta_digital_cual,
-                situacion: payload.situacion,
-                notas: payload.notas,
-                fecha_proximo_contacto: payload.fecha_proximo_contacto,
-                hora_proximo_contacto: payload.hora_proximo_contacto,
-                activador_cierre: payload.activador_cierre,
-            };
-
-            // 1. Update universal client record
-            const { error: uErr } = await supabase.from('clientes').update(universalFields).eq('id', clienteId);
-
-            // 2. Upsert company-specific record to ensure it exists
-            const { error: cErr } = await supabase
-                .from('empresa_cliente')
-                .upsert({
-                    ...companyFields,
-                    cliente_id: clienteId,
-                    empresa_id: empresaActiva.id
-                }, { onConflict: 'empresa_id,cliente_id' });
-
-            err = uErr || cErr;
-
-            if (!err) {
-                const parts = [];
-                // Compare state change
-                if (originalData?.estado && payload.estado && originalData.estado !== payload.estado) {
-                    parts.push(`Cambio de Estado: ${originalData.estado} ➔ ${payload.estado}`);
-                } else if (payload.estado) {
-                    parts.push(`Estado: ${payload.estado}`);
-                }
-
-                if (payload.situacion && esEstadoFinal(payload.estado)) {
-                    if (originalData?.situacion !== payload.situacion) {
-                        parts.push(`Nueva Situación: ${payload.situacion}`);
-                    }
-                }
-
-                if (payload.notas && originalData?.notas !== payload.notas) {
-                    parts.push(`Nota actualizada: "${payload.notas}"`);
-                }
-
-                const desc = `✏️ Edición de cliente${parts.length ? ': ' + parts.join(' · ') : ''}`;
-                const { error: actErr } = await supabase.from('actividades').insert([{
-                    cliente_id: clienteId,
-                    descripcion: desc,
-                    usuario: userName || user?.email || 'Sistema',
-                    empresa_id: empresaActiva.id,
-                    fecha: new Date().toISOString()
-                }]);
-                if (actErr) console.warn('No se pudo guardar historial de edición:', actErr.message);
-            }
-        } else {
-            // Include creator name for analytics when creating a new client
-            let creadoPor = userName || null;
-            if (!creadoPor && user?.email) {
-                const { data: uData } = await supabase
-                    .from('usuarios')
-                    .select('nombre')
-                    .eq('email', user.email)
-                    .maybeSingle();
-                creadoPor = uData?.nombre || user.email;
-            }
-
-            // Use RPC for atomic creation to avoid RLS visibility gaps
-            // Final Version (v5): Sincronizada con tipos BIGINT para IDs de cliente.
-            const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_v5_final', {
-                p_payload: {
-                    p_nombre_local: payload.nombre_local,
-                    p_nombre: payload.nombre,
-                    p_direccion: payload.direccion,
-                    p_telefono: payload.telefono,
-                    p_mail: payload.mail,
-                    p_cuit: payload.cuit,
-                    p_lat: payload.lat,
-                    p_lng: payload.lng,
-                    p_empresa_id: empresaActiva.id,
-                    p_rubro: payload.rubro,
-                    rubro: payload.rubro,
-                    p_estado: payload.estado,
-                    p_responsable: payload.responsable,
-                    p_interes: payload.interes,
-                    interes: payload.interes,
-                    p_estilo_contacto: payload.estilo_contacto,
-                    estilo_contacto: payload.estilo_contacto,
-                    p_venta_digital: payload.venta_digital,
-                    p_venta_digital_cual: payload.venta_digital_cual,
-                    p_situacion: payload.situacion,
-                    situacion: payload.situacion,
-                    p_notas: payload.notas,
-                    notas: payload.notas,
-                    p_tipo_contacto: payload.tipo_contacto,
-                    tipo_contacto: payload.tipo_contacto,
-                    p_fecha_proximo_contacto: payload.fecha_proximo_contacto,
-                    p_hora_proximo_contacto: payload.hora_proximo_contacto,
-                    p_creado_por: creadoPor
-                }
             });
 
-            if (rpcErr) {
-                console.error('ERROR: Falla en RPC crear_cliente_v5_final:', rpcErr);
-                err = rpcErr;
-            } else if (result) {
-                console.log('DEBUG: Cliente creado exitosamente via RPC. ID:', result);
+            if (!empresaActiva?.id) {
+                toast.error('Error: No se detectó una empresa activa.');
+                setLoading(false);
+                return;
+            }
 
-                // Enhanced creation logging
-                const isMapCreation = !!initialLocation;
-                const icon = isMapCreation ? '📍' : '🆕';
-                const origin = isMapCreation ? 'Alta de local desde el mapa' : 'Alta de cliente';
-                const initialStatus = payload.estado || 'Sin estado';
-                const desc = `${icon} ${origin} - Estado inicial: ${initialStatus}`;
+            let finalErr;
+            if (clienteId) {
+                // EXCLUSIVELY universal fields for 'clientes' table
+                const universalFields = {
+                    nombre_local: payload.nombre_local,
+                    nombre: payload.nombre,
+                    direccion: payload.direccion,
+                    lat: payload.lat,
+                    lng: payload.lng,
+                    telefono: payload.telefono,
+                    mail: payload.mail,
+                    cuit: payload.cuit,
+                };
 
-                const { error: actErr } = await supabase.from('actividades').insert([{
-                    cliente_id: result,
-                    descripcion: desc,
-                    usuario: creadoPor,
-                    empresa_id: empresaActiva.id,
-                    fecha: new Date().toISOString()
-                }]);
-                
-                if (actErr) console.warn('No se pudo guardar actividad inicial:', actErr.message);
+                // Company-specific fields for 'empresa_cliente' table
+                const companyFields = {
+                    estado: payload.estado,
+                    rubro: payload.rubro,
+                    responsable: payload.responsable,
+                    estilo_contacto: payload.estilo_contacto,
+                    interes: payload.interes,
+                    tipo_contacto: payload.tipo_contacto,
+                    venta_digital: payload.venta_digital,
+                    venta_digital_cual: payload.venta_digital_cual,
+                    situacion: payload.situacion,
+                    notas: payload.notas,
+                    fecha_proximo_contacto: payload.fecha_proximo_contacto,
+                    hora_proximo_contacto: payload.hora_proximo_contacto,
+                    activador_cierre: payload.activador_cierre,
+                };
 
-                // Check if should record initial visit
-                if (shouldRecordVisit) {
-                    const visitDesc = `🚚 Visita inicial realizada - Estado: ${payload.estado}`;
-                    const now = new Date().toISOString();
-                    
-                    // 1. Log visit activity
-                    const { error: visitErr } = await supabase.from('actividades').insert([{
+                // 1. Update universal client record
+                const { error: uErr } = await supabase.from('clientes').update(universalFields).eq('id', clienteId);
+
+                // 2. Upsert company-specific record
+                const { error: cErr } = await supabase
+                    .from('empresa_cliente')
+                    .upsert({
+                        ...companyFields,
+                        cliente_id: clienteId,
+                        empresa_id: empresaActiva.id
+                    }, { onConflict: 'empresa_id,cliente_id' });
+
+                finalErr = uErr || cErr;
+
+                if (!finalErr) {
+                    const parts = [];
+                    if (originalData?.estado && payload.estado && originalData.estado !== payload.estado) {
+                        parts.push(`Cambio de Estado: ${originalData.estado} ➔ ${payload.estado}`);
+                    }
+                    if (payload.notas && originalData?.notas !== payload.notas) {
+                        parts.push(`Nota actualizada: "${payload.notas}"`);
+                    }
+
+                    const desc = `✏️ Edición de cliente${parts.length ? ': ' + parts.join(' · ') : ''}`;
+                    await supabase.from('actividades').insert([{
+                        cliente_id: clienteId,
+                        descripcion: desc,
+                        usuario: userName || user?.email || 'Sistema',
+                        empresa_id: empresaActiva.id,
+                        fecha: new Date().toISOString()
+                    }]);
+                }
+            } else {
+                // Creation logic (New Client) via RPC
+                let creadoPor = userName || null;
+                if (!creadoPor && user?.email) {
+                    const { data: uData } = await supabase.from('usuarios').select('nombre').eq('email', user.email).maybeSingle();
+                    creadoPor = uData?.nombre || user.email;
+                }
+
+                const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_v5_final', {
+                    p_payload: {
+                        ...payload,
+                        p_nombre_local: payload.nombre_local,
+                        p_nombre: payload.nombre,
+                        p_direccion: payload.direccion,
+                        p_telefono: payload.telefono,
+                        p_mail: payload.mail,
+                        p_cuit: payload.cuit,
+                        p_lat: payload.lat,
+                        p_lng: payload.lng,
+                        p_empresa_id: empresaActiva.id,
+                        p_rubro: payload.rubro,
+                        rubro: payload.rubro,
+                        p_estado: payload.estado,
+                        p_responsable: payload.responsable,
+                        p_interes: payload.interes,
+                        interes: payload.interes,
+                        p_estilo_contacto: payload.estilo_contacto,
+                        estilo_contacto: payload.estilo_contacto,
+                        p_venta_digital: payload.venta_digital,
+                        p_venta_digital_cual: payload.venta_digital_cual,
+                        p_situacion: payload.situacion,
+                        situacion: payload.situacion,
+                        p_notas: payload.notas,
+                        notas: payload.notas,
+                        p_tipo_contacto: payload.tipo_contacto,
+                        tipo_contacto: payload.tipo_contacto,
+                        p_fecha_proximo_contacto: payload.fecha_proximo_contacto,
+                        p_hora_proximo_contacto: payload.hora_proximo_contacto,
+                        p_creado_por: creadoPor
+                    }
+                });
+
+                if (rpcErr) {
+                    finalErr = rpcErr;
+                } else if (result) {
+                    // Log creation
+                    const desc = `${initialLocation ? '📍' : '🆕'} Alta de cliente - Estado: ${payload.estado || 'Sin estado'}`;
+                    await supabase.from('actividades').insert([{
                         cliente_id: result,
-                        descripcion: visitDesc,
+                        descripcion: desc,
                         usuario: creadoPor,
                         empresa_id: empresaActiva.id,
-                        fecha: now
+                        fecha: new Date().toISOString()
                     }]);
-                    
-                    if (visitErr) {
-                        console.warn('No se pudo registrar la visita inicial:', visitErr.message);
-                    } else {
-                        // 2. Update last activity in company
-                        await supabase
-                            .from('empresa_cliente')
-                            .update({ ultima_actividad: now })
-                            .eq('cliente_id', result)
-                            .eq('empresa_id', empresaActiva.id);
+
+                    if (shouldRecordVisit) {
+                        const now = new Date().toISOString();
+                        await supabase.from('actividades').insert([{
+                            cliente_id: result,
+                            descripcion: `🚚 Visita inicial realizada - Estado: ${payload.estado}`,
+                            fecha: now,
+                            usuario: creadoPor,
+                            empresa_id: empresaActiva.id
+                        }]);
+                        await supabase.from('empresa_cliente').update({ ultima_actividad: now }).eq('cliente_id', result).eq('empresa_id', empresaActiva.id);
                     }
                 }
             }
-        }
 
-        if (err) {
-            const isOfflineError = (err as any).message === 'Failed to fetch' || (err as any).message?.includes('fetch') || !navigator.onLine;
-            if (isOfflineError) {
-                // Queue the mutation for later sync instead of losing the data
-                if (clienteId) {
-                    // Edit: queue an UPDATE for both tables
-                    await queueMutation('clientes', 'UPDATE', {
-                        id: clienteId,
-                        nombre_local: payload.nombre_local,
-                        nombre: payload.nombre,
-                        direccion: payload.direccion,
-                        lat: payload.lat,
-                        lng: payload.lng,
-                        telefono: payload.telefono,
-                        mail: payload.mail,
-                        cuit: payload.cuit,
-                        estado: payload.estado,
-                        rubro: payload.rubro,
-                        responsable: payload.responsable,
-                        situacion: payload.situacion,
-                        notas: payload.notas,
-                        fecha_proximo_contacto: payload.fecha_proximo_contacto,
-                    });
-                    await queueMutation('empresa_cliente', 'UPDATE', {
-                        id: clienteId, // Used to match by cliente_id in flushOutbox
-                        empresa_id: empresaActiva?.id,
-                        cliente_id: clienteId,
-                        estado: payload.estado,
-                        rubro: payload.rubro,
-                        responsable: payload.responsable,
-                        estilo_contacto: payload.estilo_contacto,
-                        interes: payload.interes,
-                        tipo_contacto: payload.tipo_contacto,
-                        venta_digital: payload.venta_digital,
-                        venta_digital_cual: payload.venta_digital_cual,
-                        situacion: payload.situacion,
-                        notas: payload.notas,
-                        fecha_proximo_contacto: payload.fecha_proximo_contacto,
-                        hora_proximo_contacto: payload.hora_proximo_contacto,
-                    });
+            if (finalErr) {
+                const isOffline = finalErr.message === 'Failed to fetch' || finalErr.message?.includes('fetch') || !navigator.onLine;
+                if (isOffline) {
+                    // Queue for offline sync
+                    if (clienteId) {
+                        await queueMutation('clientes', 'UPDATE', { id: clienteId, ...payload });
+                        await queueMutation('empresa_cliente', 'UPDATE', { cliente_id: clienteId, empresa_id: empresaActiva.id, ...payload });
+                    } else {
+                        await queueMutation('_rpc_crear_cliente', 'INSERT', { empresa_id: empresaActiva.id, ...payload, registrar_visita: shouldRecordVisit });
+                    }
+                    toast.success('💾 Guardado sin conexión. Se sincronizará pronto.');
+                    setIsDirty(false);
+                    onSaved();
                 } else {
-                    // New client: queue as INSERT — will call the same RPC when flushing
-                    await queueMutation('_rpc_crear_cliente', 'INSERT', {
-                        empresa_id: empresaActiva?.id,
-                        ...payload,
-                        registrar_visita: shouldRecordVisit,
-                    });
+                    throw finalErr;
                 }
-                toast.success('💾 Guardado sin conexión. Se sincronizará cuando vuelva la señal.', { duration: 5000 });
+            } else {
+                toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
                 setIsDirty(false);
                 onSaved();
-            } else {
-                console.error('Error final guardando cliente:', err);
-                toast.error(`Error al guardar: ${(err as any).message || 'Ocurrió un error inesperado'}`);
             }
-        } else {
-            console.log('DEBUG: Cliente guardado con éxito. Datos enviados:', payload);
-            toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
-            setIsDirty(false);
-            onSaved();
+        } catch (error: any) {
+            console.error('Error final guardando cliente:', error);
+            toast.error(`Error al guardar: ${error.message || 'Ocurrió un error inesperado'}`);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
+
 
     const inp = (name: string, extra = {}) => ({
         name,
@@ -595,22 +529,21 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         <AnimatePresence>
             {isOpen && (
                 <motion.div 
-                    className="modal active" 
-                    style={{ background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', zIndex: 1000 }}
+                    className="modal is-open" 
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                     onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && handleClose()}
                 >
                     <motion.div 
-                        className="modal-content" style={{ maxWidth: '600px', width: '90%' }}
+                        className="modal-content" style={{ maxWidth: '750px', width: '95%' }}
                         initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }}
                         transition={{ type: "spring", stiffness: 350, damping: 25 }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h2 style={{ margin: 0 }}>{clienteId ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-                    <Button variant="secondary" onClick={handleClose} style={{ padding: '8px' }}>
-                        <X size={20} />
-                    </Button>
-                </div>
+                        <div className="modal-header">
+                            <h3>{clienteId ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
+                            <button className="modal-close" type="button" onClick={handleClose}>
+                                <X size={20} />
+                            </button>
+                        </div>
 
                 {/* Step indicators */}
                 {step > 0 && (

@@ -2293,70 +2293,90 @@ ul.lista li strong,
   color: var(--text);
 }
 
-/* Modal */
+/* ===========================
+   MODALES (SISTEMA GLOBAL)
+   =========================== */
 .modal {
   position: fixed;
   inset: 0;
   display: none;
+  align-items: center;
+  justify-content: center;
   z-index: 9999;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .modal.is-open {
-  display: block;
+  display: flex !important;
 }
 
-.modal__overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.58);
-  backdrop-filter: blur(6px);
-}
-
-.modal__dialog {
-  position: relative;
-  width: min(680px, calc(100% - 24px));
-  margin: 60px auto;
-  background: rgba(255, 255, 255, 0.96);
+.modal-content {
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 650px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  animation: modalEnter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 24px;
 }
 
-.modal__header,
-.modal__footer {
-  padding: 14px 16px;
+@keyframes modalEnter {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
 }
 
-.modal__footer {
-  border-bottom: none;
-  border-top: 1px solid var(--border);
-  justify-content: flex-end;
-}
-
-.modal__title {
+.modal-header h3 {
   margin: 0;
-  font-size: 1.05rem;
-  color: var(--text);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
-.modal__close {
+.modal-close {
+  background: var(--bg);
   border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
-  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.modal__body {
-  padding: 14px 16px;
+.modal-close:hover {
+  background: var(--bg-active);
+  color: var(--text);
+  transform: rotate(90deg);
 }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
 
 /* Tablas */
 table {
@@ -2379,26 +2399,11 @@ th {
   font-weight: 600;
 }
 
-/* =========================================================
-   FIX MODAL FORM CLIENTE (RESPONSIVE + SCROLL INTERNO)
-   Pegarlo al final de styles.css
-   ========================================================= */
+/* (ID-specific styles removed) */
 
-/* Overlay */
-#modalFormCliente.modal {
-  position: fixed;
-  inset: 0;
-  display: none;
-  /* JS lo pone en flex */
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.55);
-  z-index: 9999;
-}
 
 /* Caja del modal */
-#modalFormCliente .modal-content {
+.modal-wrapper-ignore .modal-content {
   width: min(920px, 100%);
   max-height: calc(100dvh - 32px);
   /* clave: no excede alto pantalla */
@@ -2412,7 +2417,7 @@ th {
 }
 
 /* Header fijo */
-#modalFormCliente .form-box-header {
+.modal-wrapper-ignore .form-box-header {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -2422,7 +2427,7 @@ th {
 }
 
 /* El formulario scrollea (no el modal completo) */
-#modalFormCliente #formCliente {
+.modal-wrapper-ignore #formCliente {
   padding: 14px 16px 16px;
   overflow: auto;
   max-height: calc(100dvh - 32px - 58px);
@@ -2430,18 +2435,18 @@ th {
 }
 
 /* Grid más compacto si tu CSS no lo limita */
-#modalFormCliente .grid {
+.modal-wrapper-ignore .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-#modalFormCliente .field-notas {
+.modal-wrapper-ignore .field-notas {
   grid-column: 1 / -1;
 }
 
 /* Acciones fijas abajo (opcional) */
-#modalFormCliente .form-actions {
+.modal-wrapper-ignore .form-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -2449,33 +2454,33 @@ th {
 }
 
 /* Inputs: que no se rompan */
-#modalFormCliente input,
-#modalFormCliente select,
-#modalFormCliente textarea {
+.modal-wrapper-ignore input,
+.modal-wrapper-ignore select,
+.modal-wrapper-ignore textarea {
   width: 100%;
   box-sizing: border-box;
 }
 
 /* Mobile */
 @media (max-width: 700px) {
-  #modalFormCliente.modal {
+  .modal-wrapper-ignore.modal {
     padding: 10px;
     align-items: flex-end;
     /* más cómodo en mobile */
   }
 
-  #modalFormCliente .modal-content {
+  .modal-wrapper-ignore .modal-content {
     width: 100%;
     max-height: calc(100dvh - 20px);
     border-radius: 14px 14px 0 0;
     /* estilo “sheet” */
   }
 
-  #modalFormCliente .grid {
+  .modal-wrapper-ignore .grid {
     grid-template-columns: 1fr;
   }
 
-  #modalFormCliente #formCliente {
+  .modal-wrapper-ignore #formCliente {
     max-height: calc(100dvh - 20px - 58px);
   }
 }
@@ -2485,12 +2490,12 @@ th {
    Pegarlo al final de styles.css (debajo del bloque anterior)
    ========================================================= */
 
-html[data-theme="dark"] #modalFormCliente.modal {
+html[data-theme="dark"] .modal-wrapper-ignore.modal {
   background: rgba(0, 0, 0, 0.72);
 }
 
 /* Fondo y texto del modal */
-html[data-theme="dark"] #modalFormCliente .modal-content {
+html[data-theme="dark"] .modal-wrapper-ignore .modal-content {
   background: #0f141b;
   /* panel */
   color: #e7edf6;
@@ -2499,59 +2504,59 @@ html[data-theme="dark"] #modalFormCliente .modal-content {
 }
 
 /* Header del modal */
-html[data-theme="dark"] #modalFormCliente .form-box-header {
+html[data-theme="dark"] .modal-wrapper-ignore .form-box-header {
   background: #0f141b;
   border-bottom: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 /* Labels */
-html[data-theme="dark"] #modalFormCliente label {
+html[data-theme="dark"] .modal-wrapper-ignore label {
   color: #cfd8e3;
 }
 
 /* Inputs/select/textarea */
-html[data-theme="dark"] #modalFormCliente input,
-html[data-theme="dark"] #modalFormCliente select,
-html[data-theme="dark"] #modalFormCliente textarea {
+html[data-theme="dark"] .modal-wrapper-ignore input,
+html[data-theme="dark"] .modal-wrapper-ignore select,
+html[data-theme="dark"] .modal-wrapper-ignore textarea {
   background: #0b0f15;
   color: #e7edf6;
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 /* Placeholder */
-html[data-theme="dark"] #modalFormCliente input::placeholder,
-html[data-theme="dark"] #modalFormCliente textarea::placeholder {
+html[data-theme="dark"] .modal-wrapper-ignore input::placeholder,
+html[data-theme="dark"] .modal-wrapper-ignore textarea::placeholder {
   color: rgba(231, 237, 246, 0.55);
 }
 
 /* Focus accesible */
-html[data-theme="dark"] #modalFormCliente input:focus,
-html[data-theme="dark"] #modalFormCliente select:focus,
-html[data-theme="dark"] #modalFormCliente textarea:focus {
+html[data-theme="dark"] .modal-wrapper-ignore input:focus,
+html[data-theme="dark"] .modal-wrapper-ignore select:focus,
+html[data-theme="dark"] .modal-wrapper-ignore textarea:focus {
   outline: none;
   border-color: rgba(120, 160, 255, 0.85);
   box-shadow: 0 0 0 3px rgba(120, 160, 255, 0.18);
 }
 
 /* Botón secundario en dark (Cerrar/Cancelar) */
-html[data-theme="dark"] #modalFormCliente .btn-secundario {
+html[data-theme="dark"] .modal-wrapper-ignore .btn-secundario {
   background: rgba(255, 255, 255, 0.06);
   color: #e7edf6;
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-html[data-theme="dark"] #modalFormCliente .btn-secundario:hover {
+html[data-theme="dark"] .modal-wrapper-ignore .btn-secundario:hover {
   background: rgba(255, 255, 255, 0.10);
 }
 
 /* Botón icono (📅) */
-html[data-theme="dark"] #modalFormCliente .btn-icon {
+html[data-theme="dark"] .modal-wrapper-ignore .btn-icon {
   background: rgba(255, 255, 255, 0.06);
   color: #e7edf6;
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-html[data-theme="dark"] #modalFormCliente .btn-icon:hover {
+html[data-theme="dark"] .modal-wrapper-ignore .btn-icon:hover {
   background: rgba(255, 255, 255, 0.10);
 }
 
@@ -4738,28 +4743,20 @@ fieldset legend:hover {
 @media (max-width: 768px) {
 
   /* 1. Modal as Bottom Sheet */
-  .modal,
-  #modalFormCliente {
-    align-items: flex-end !important;
-    /* Emula Bottom Sheet */
-    padding: 0 !important;
-  }
-
-  .modal-overlay {
+  .modal {
     align-items: flex-end !important;
     padding: 0 !important;
   }
 
-  .modal-content,
-  #modalFormCliente .modal-content {
+  .modal-content {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    /* overrides auto margin */
     border-radius: 24px 24px 0 0 !important;
     max-height: 92vh !important;
     animation: slideUpBottomSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   }
+
 
   /* 2. Bento Grid List padding improvements */
   .bento-grid {
