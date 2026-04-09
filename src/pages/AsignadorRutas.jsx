@@ -51,6 +51,17 @@ function FitBounds({ points }) {
     return null;
 }
 
+// Helper: Forzar refresco de mapa al cambiar layouts
+function MapResizer({ mobileTab, verMapa }) {
+    const map = useMap();
+    useEffect(() => {
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 400); // Dar margen para que las animaciones de CSS terminen
+    }, [map, mobileTab, verMapa]);
+    return null;
+}
+
 // Helper: Distancia Haversine
 const getDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
@@ -87,6 +98,7 @@ export default function AsignadorRutas() {
     // UI
     const [editingComentario, setEditingComentario] = useState(null);
     const [verMapa, setVerMapa] = useState(true);
+    const [mobileTab, setMobileTab] = useState('buscar'); // 'buscar' | 'ruta'
 
     // ─── EFFECTS ─────────────────────────────────────────────────────────────
 
@@ -350,11 +362,21 @@ export default function AsignadorRutas() {
                 </div>
             </div>
 
+            {/* Selector de Pestañas Mobile (Toggle) */}
+            <div className="mobile-tabs-switcher">
+                <button className={`m-tab-btn ${mobileTab === 'buscar' ? 'active' : ''}`} onClick={() => setMobileTab('buscar')}>
+                    <Plus size={18} /> <span>Añadir</span>
+                </button>
+                <button className={`m-tab-btn ${mobileTab === 'ruta' ? 'active' : ''}`} onClick={() => setMobileTab('ruta')}>
+                    <RouteIcon size={18} /> <span>Mi Ruta ({rutaActual.length})</span>
+                </button>
+            </div>
+
             {/* 2. Layout Principal */}
-            <div className="asign-main-grid">
+            <div className={`asign-main-grid view-${mobileTab}`}>
                 
                 {/* Panel Izquierdo: Controles y Sugerencias */}
-                <div className="side-panel">
+                <div className={`side-panel ${mobileTab === 'buscar' ? 'mobile-visible' : 'mobile-hidden'}`}>
                     <div className="glass-card sticky-mobile-config">
                         <h3 className="asign-section-title" style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
                             <User size={16} className="text-accent" /> 
@@ -411,7 +433,7 @@ export default function AsignadorRutas() {
                 </div>
 
                 {/* Panel Central: Ruta Drag & Drop */}
-                <div className="route-panel">
+                <div className={`route-panel ${mobileTab === 'ruta' ? 'mobile-visible' : 'mobile-hidden'}`}>
                     <div className="route-list-container">
                         <div className="route-header">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -443,21 +465,23 @@ export default function AsignadorRutas() {
                                                             <div {...provided.dragHandleProps} className="route-handle">
                                                                 <GripVertical size={18} />
                                                             </div>
-                                                            <div className="route-item-info">
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                                    <span style={{ background: 'var(--accent)', color: '#fff', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
-                                                                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{v.clientes?.nombre_local}</div>
-                                                                </div>
-                                                                <div className="muted" style={{ fontSize: '0.75rem', marginLeft: 28 }}>{v.clientes?.direccion}</div>
-                                                                {v.comentarios_admin && (
-                                                                    <div style={{ fontSize: '0.72rem', marginLeft: 28, color: 'var(--accent)', fontStyle: 'italic', marginTop: 1, background: 'rgba(124, 58, 237, 0.05)', padding: '1px 6px', borderRadius: '4px', borderLeft: '2px solid var(--accent)' }}>
-                                                                        💬 {v.comentarios_admin}
+                                                            <div className="route-item-content">
+                                                                <div className="route-item-info">
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                        <span style={{ background: 'var(--accent)', color: '#fff', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                                                                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{v.clientes?.nombre_local}</div>
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                            <div className="route-item-actions" style={{ display: 'flex', gap: 8 }}>
-                                                                <button onClick={() => setEditingComentario({ id: v.id, texto: v.comentarios_admin || '' })} className="btn-secundario" style={{ padding: 6 }}><MessageSquare size={14} /></button>
-                                                                <button onClick={() => quitarVisita(v.id)} className="btn-secundario" style={{ padding: 6, color: 'var(--danger)' }}><Trash2 size={14} /></button>
+                                                                    <div className="muted" style={{ fontSize: '0.75rem', marginLeft: 28 }}>{v.clientes?.direccion}</div>
+                                                                    {v.comentarios_admin && (
+                                                                        <div style={{ fontSize: '0.72rem', marginLeft: 28, color: 'var(--accent)', fontStyle: 'italic', marginTop: 1, background: 'rgba(124, 58, 237, 0.05)', padding: '1px 6px', borderRadius: '4px', borderLeft: '2px solid var(--accent)' }}>
+                                                                            💬 {v.comentarios_admin}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="route-item-actions">
+                                                                    <button onClick={() => setEditingComentario({ id: v.id, texto: v.comentarios_admin || '' })} className="btn-secundario-icon" title="Nota"><MessageSquare size={14} /></button>
+                                                                    <button onClick={() => quitarVisita(v.id)} className="btn-secundario-icon danger" title="Eliminar"><Trash2 size={14} /></button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )}
@@ -494,11 +518,12 @@ export default function AsignadorRutas() {
                 {/* Panel Derecha: Mapa (Opcional) */}
                 <AnimatePresence>
                     {verMapa && (
-                        <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: '400px' }} exit={{ opacity: 0, width: 0 }} className="map-panel">
-                            <div className="glass-card" style={{ height: '600px', padding: 0, overflow: 'hidden' }}>
+                        <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: window.innerWidth < 768 ? '100%' : '400px' }} exit={{ opacity: 0, width: 0 }} className="map-panel">
+                            <div className="glass-card" style={{ height: window.innerWidth < 768 ? '300px' : '600px', padding: 0, overflow: 'hidden' }}>
                                 <MapContainer center={[-34.6, -58.4]} zoom={12} style={{ height: '100%', width: '100%' }}>
                                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                     <FitBounds points={polylinePoints} />
+                                    <MapResizer mobileTab={mobileTab} verMapa={verMapa} />
                                     {polylinePoints.length > 1 && <Polyline positions={polylinePoints} pathOptions={{ color: 'var(--accent)', weight: 3, opacity: 0.6, dashArray: '5, 10' }} />}
                                     {rutaActual.map((v, idx) => {
                                         if (!v.clientes?.lat) return null;
@@ -525,7 +550,7 @@ export default function AsignadorRutas() {
                     <Zap size={16} /> <span className="hide-mobile">Optimizar</span>
                 </button>
                 <button className="btn-floating btn-primario" onClick={compartirWhatsApp} disabled={rutaActual.length === 0}>
-                    <Share2 size={16} /> <span>WhatsApp</span>
+                    <Share2 size={16} /> <span className="hide-mobile">WhatsApp</span>
                 </button>
             </div>
         </div>

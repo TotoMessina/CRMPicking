@@ -531,12 +531,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 <motion.div 
                     className="modal is-open" 
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
-                    onClick={(e) => (e.target as HTMLElement).classList.contains('modal') && handleClose()}
+                    onClick={handleClose}
                 >
                     <motion.div 
                         className="modal-content" style={{ maxWidth: '750px', width: '95%' }}
                         initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }}
                         transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                        onClick={e => e.stopPropagation()}
                     >
                         <div className="modal-header">
                             <h3>{clienteId ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>

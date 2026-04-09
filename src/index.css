@@ -2360,6 +2360,8 @@ ul.lista li strong,
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+  z-index: 100;
+  position: relative;
 }
 
 .modal-close:hover {
@@ -6286,13 +6288,35 @@ fieldset legend:hover {
     flex-direction: column;
     gap: 20px;
     padding: 10px;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
 }
 
 .asign-stats-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-bottom: 8px;
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    padding: 10px 4px;
+    margin-bottom: 2px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.asign-stats-bar::-webkit-scrollbar {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .asign-stats-bar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        overflow-x: visible;
+        padding: 0;
+        margin-bottom: 8px;
+    }
 }
 
 .stat-card.premium {
@@ -6300,17 +6324,25 @@ fieldset legend:hover {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 20px;
-    border-radius: 22px;
+    padding: 8px 14px;
+    border-radius: 100px; /* Pills para el móvil */
     display: flex;
     align-items: center;
-    gap: 16px;
-    flex: 1;
-    min-width: 180px;
+    gap: 8px;
+    flex-shrink: 0;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
-    overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+@media (min-width: 769px) {
+    .stat-card.premium {
+        padding: 20px;
+        border-radius: 22px;
+        gap: 16px;
+        flex: 1;
+        overflow: hidden;
+    }
 }
 
 [data-theme="dark"] .stat-card.premium {
@@ -6350,17 +6382,34 @@ fieldset legend:hover {
 
 /* Squircle Icon Style */
 .stat-squircle {
-    width: 48px;
-    height: 48px;
+    width: 28px;
+    height: 28px;
     position: relative;
     z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 14px; /* Squircle manual */
+    border-radius: 50%;
     background: var(--accent-soft);
     color: var(--accent);
-    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.stat-squircle svg {
+    width: 14px;
+    height: 14px;
+}
+
+@media (min-width: 769px) {
+    .stat-squircle {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+    }
+    .stat-squircle svg {
+        width: 22px;
+        height: 22px;
+    }
 }
 
 .stat-card.premium.blue .stat-squircle { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05)); color: #3b82f6; }
@@ -6374,18 +6423,28 @@ fieldset legend:hover {
 }
 
 .stat-info .stat-value {
-    font-size: 1.6rem;
+    font-size: 0.95rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
-    margin-bottom: 2px;
+    margin-bottom: -1px;
 }
 
 .stat-info .stat-label {
-    font-size: 0.72rem;
+    font-size: 0.6rem;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.2px;
+}
+
+@media (min-width: 769px) {
+    .stat-info .stat-value {
+        font-size: 1.6rem;
+        margin-bottom: 2px;
+    }
+    .stat-info .stat-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.8px;
+    }
 }
 
 .asign-main-grid {
@@ -6393,6 +6452,10 @@ fieldset legend:hover {
     grid-template-columns: 320px 1fr 400px;
     gap: 20px;
     align-items: start;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
 }
 
 @media (max-width: 1440px) {
@@ -6421,6 +6484,7 @@ fieldset legend:hover {
     gap: 16px;
     position: sticky;
     top: 20px;
+    min-width: 0; /* Permite que el contenido se encoja sin romper el grid */
 }
 
 .sticky-mobile-config {
@@ -6523,14 +6587,25 @@ fieldset legend:hover {
     margin-bottom: 4px;
 }
 
+.route-panel {
+    min-width: 0;
+}
+
 .route-list-container {
-    max-height: calc(100vh - 180px);
+    max-height: calc(100vh - 200px);
+    min-height: 300px;
     display: flex;
     flex-direction: column;
     background: var(--bg-elevated);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    .route-list-container {
+        max-height: calc(100vh - 280px); /* Más espacio ahora que stats es una fila */
+    }
 }
 
 .route-header {
@@ -6548,9 +6623,10 @@ fieldset legend:hover {
 
 .route-item {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--bg-card);
+    padding: 12px 14px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-elevated);
     transition: background var(--transition-fast);
@@ -6558,12 +6634,73 @@ fieldset legend:hover {
 
 .route-item:hover { background: var(--bg-active); }
 
-.route-handle {
-    cursor: grab;
-    color: var(--text-muted);
+.route-item-content {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
 }
 
-.route-item-info { flex: 1; }
+.route-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.route-item-info .muted {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.route-item-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-secundario-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--bg-active);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secundario-icon:hover {
+    background: var(--bg-elevated);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.btn-secundario-icon.danger:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+@media (max-width: 768px) {
+    .route-item-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .route-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+        padding-top: 8px;
+        border-top: 1px dashed var(--border);
+    }
+}
 
 .action-buttons-floating {
     position: fixed;
@@ -6572,20 +6709,21 @@ fieldset legend:hover {
     transform: translateX(-50%);
     display: flex;
     gap: 8px;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    z-index: 9999 !important;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     padding: 6px;
-    border-radius: var(--radius-pill);
+    border-radius: 100px;
     border: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    transition: all 0.3s ease;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    width: auto;
+    max-width: 95vw;
 }
 
 [data-theme="dark"] .action-buttons-floating {
-    background: rgba(15, 23, 42, 0.75);
-    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.82);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .action-buttons-floating:hover {
@@ -6610,6 +6748,52 @@ fieldset legend:hover {
     }
     .hide-mobile {
         display: none;
+    }
+}
+
+/* Selector de Pestañas Mobile (Switcher) */
+.mobile-tabs-switcher {
+    display: none;
+    background: var(--bg-active);
+    padding: 4px;
+    border-radius: 12px;
+    margin: 0 10px 16px;
+    gap: 4px;
+}
+
+.m-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: all 0.2s;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.m-tab-btn.active {
+    background: var(--bg-elevated);
+    color: var(--accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .mobile-tabs-switcher {
+        display: flex;
+    }
+    .mobile-hidden {
+        display: none !important;
+    }
+    .mobile-visible {
+        display: flex !important;
+        flex-direction: column;
     }
 }
 
