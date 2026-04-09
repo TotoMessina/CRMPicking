@@ -6,7 +6,7 @@ import { Plus, ChevronLeft, ChevronRight, Download, Upload, Search, MapPin, Phon
 import toast from 'react-hot-toast';
 import { RepartidorModal } from '../components/ui/RepartidorModal';
 import { ActividadRepartidorModal } from '../components/ui/ActividadRepartidorModal';
-import { importarRepartidoresExcel, descargarModeloRepartidores } from '../lib/excelExport';
+import { importarRepartidoresExcel, descargarModeloRepartidores, exportarRepartidoresExcel } from '../lib/excelExport';
 
 export default function Repartidores() {
     const { empresaActiva } = useAuth();
@@ -146,7 +146,12 @@ export default function Repartidores() {
                         Descargar Modelo
                     </Button>
                     <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: '99px', border: '1px solid var(--border)', padding: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                        <Button variant="secondary" style={{ borderRadius: '99px', border: 'none', background: 'transparent' }} title="Exportar a Excel">
+                        <Button 
+                            variant="secondary" 
+                            style={{ borderRadius: '99px', border: 'none', background: 'transparent' }} 
+                            title="Exportar a Excel"
+                            onClick={() => exportarRepartidoresExcel(empresaActiva, { search: fSearch, estado: fEstado, responsable: fResponsable })}
+                        >
                             <Download size={18} />
                         </Button>
                         <label className="" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '99px', border: 'none', background: 'transparent', padding: '8px 16px', color: 'var(--text-muted)' }} title="Importar desde Excel">
