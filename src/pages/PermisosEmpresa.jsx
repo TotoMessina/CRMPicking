@@ -20,6 +20,7 @@ const ALL_PAGES = [
     { to: '/asignador-rutas', label: 'Asignador de Rutas' },
     { to: '/mapa', label: 'Mapa de Clientes' },
     { to: '/mapa-repartidores', label: 'Mapa Repartidores' },
+    { to: '/mapa-consumidores', label: 'Mapa Consumidores' },
     { to: '/kiosco', label: 'Mapa Kiosco' },
     { to: '/estadisticas', label: 'Estadísticas' },
     { to: '/tickets', label: 'Tickets' },
