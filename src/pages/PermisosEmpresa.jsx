@@ -21,6 +21,7 @@ const ALL_PAGES = [
     { to: '/mapa', label: 'Mapa de Clientes' },
     { to: '/mapa-repartidores', label: 'Mapa Repartidores' },
     { to: '/mapa-consumidores', label: 'Mapa Consumidores' },
+    { to: '/mapa-global', label: 'Mapa Global' },
     { to: '/kiosco', label: 'Mapa Kiosco' },
     { to: '/estadisticas', label: 'Estadísticas' },
     { to: '/tickets', label: 'Tickets' },

@@ -197,6 +197,7 @@ export const useAppShell = () => {
             { to: '/mapa', icon: Map, label: 'Mapa Clientes', group: 'Mapas' },
             { to: '/mapa-repartidores', icon: Map, label: 'Mapa Repartidores', group: 'Mapas' },
             { to: '/mapa-consumidores', icon: Map, label: 'Mapa Consumidores', group: 'Mapas' },
+            { to: '/mapa-global', icon: Map, label: 'Mapa Global', group: 'Mapas' },
             { to: '/kiosco', icon: ShoppingCart, label: 'Mapa Kiosco', group: 'Mapas' },
             { to: '/estadisticas', icon: Activity, label: 'Estadísticas', group: 'Listados' },
             { to: '/tickets', icon: Ticket, label: 'Tickets', group: 'Listados' },
