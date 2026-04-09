@@ -144,7 +144,20 @@ export default function MapaClientes() {
     // Heatmap Mode
     const [isHeatmapMode, setIsHeatmapMode] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
+    const [totalAbsoluto, setTotalAbsoluto] = useState(0);
     const heatLayerRef = useRef(null);
+    
+    useEffect(() => {
+        const fetchTotal = async () => {
+            if (!empresaActiva?.id) return;
+            const { count } = await supabase
+                .from('clientes_empresa')
+                .select('*', { count: 'exact', head: true })
+                .eq('empresa_id', empresaActiva.id);
+            setTotalAbsoluto(count || 0);
+        };
+        fetchTotal();
+    }, [empresaActiva]);
 
     // Filters & Coloring
     const [colorMode, setColorMode] = useState('estado'); // estado, creador, interes, estilo
@@ -666,47 +679,142 @@ export default function MapaClientes() {
                 mapRef.current.removeLayer(historicalPathLayerRef.current);
             }
 
-            if (!data || data.length === 0) {
-                toast.error("No hay registros de recorrido para este día", { id: 'nohistory' });
+            if (data.length < 2) {
+                toast.error("Datos insuficientes para dibujar recorrido", { id: 'nohistory' });
                 return;
             }
 
-            toast.success(`Cargados ${data.length} puntos de recorrido.`, { id: 'nohistory' });
+            toast.loading("Procesando recorrido por calles...", { id: 'nohistory' });
 
-            const latlngs = data.map(p => [p.lat, p.lng]);
+            // 1. Simplificar puntos para OSRM (eliminar duplicados o muy cercanos < 5m)
+            const simplified = [];
+            data.forEach((p, i) => {
+                if (i === 0) { simplified.push(p); return; }
+                const dist = haversineKm({ lat: data[i-1].lat, lng: data[i-1].lng }, { lat: p.lat, lng: p.lng });
+                if (dist > 0.005) simplified.push(p); // mayor a 5 metros
+            });
+
+            // 2. Función para obtener trayecto real de OSRM en tramos (limite 100 pts)
+            const getMatchedPath = async (pts) => {
+                const chunks = [];
+                const SIZE = 80; // Bajamos a 80 para mayor seguridad
+                for (let i = 0; i < pts.length; i += SIZE) {
+                    chunks.push(pts.slice(i, i + SIZE + 1));
+                    if (i + SIZE + 1 >= pts.length) break;
+                }
+
+                let fullPath = [];
+                for (const chunk of chunks) {
+                    if (chunk.length < 2) continue;
+                    const coords = chunk.map(p => `${p.lng},${p.lat}`).join(';');
+                    // Generar radiuses de 50m para cada punto
+                    const radiuses = chunk.map(() => '50').join(';');
+                    
+                    try {
+                        const url = `https://router.project-osrm.org/match/v1/walking/${coords}?overview=full&geometries=geojson&radiuses=${radiuses}&tidy=true`;
+                        const resp = await fetch(url);
+                        const result = await resp.json();
+                        
+                        if (result.code === 'Ok' && result.matchings?.length > 0) {
+                            const matched = result.matchings[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                            // Evitar duplicar el punto de conexión entre chunks
+                            if (fullPath.length > 0 && matched.length > 0) {
+                                fullPath = [...fullPath, ...matched.slice(1)];
+                            } else {
+                                fullPath = [...fullPath, ...matched];
+                            }
+                        } else {
+                            console.warn("OSRM Match failed with code:", result.code, result);
+                            fullPath = [...fullPath, ...chunk.map(c => [c.lat, c.lng])];
+                        }
+                    } catch (e) {
+                        console.error("OSRM Fetch Error:", e);
+                        fullPath = [...fullPath, ...chunk.map(c => [c.lat, c.lng])];
+                    }
+                }
+                return fullPath;
+            };
+
+            const matchedLatlngs = await getMatchedPath(simplified);
             const layerGroup = L.layerGroup();
 
             // Draw line
-            const polyline = L.polyline(latlngs, {
+            const polyline = L.polyline(matchedLatlngs, {
                 color: '#6366f1',
-                weight: 4,
+                weight: 5,
                 opacity: 0.8,
-                dashArray: '10, 10'
+                lineJoin: 'round'
             });
             layerGroup.addLayer(polyline);
 
+            // Add dots at original coordinates
+            simplified.forEach(p => {
+                L.circleMarker([p.lat, p.lng], {
+                    radius: 3,
+                    fillColor: '#6366f1',
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 0.5,
+                    fillOpacity: 0.5
+                }).addTo(layerGroup);
+            });
+
+            const getBearing = (p1, p2) => {
+                const lat1 = p1[0] * Math.PI / 180;
+                const lat2 = p2[0] * Math.PI / 180;
+                const lon1 = p1[1] * Math.PI / 180;
+                const lon2 = p2[1] * Math.PI / 180;
+                const y = Math.sin(lon2 - lon1) * Math.cos(lat2);
+                const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+                const theta = Math.atan2(y, x);
+                return (theta * 180 / Math.PI + 360) % 360;
+            };
+
+            // Add arrows to show direction
+            const addArrows = (path, group) => {
+                if (path.length < 2) return;
+                // Add arrows every ~15 points to avoid clutter
+                const step = Math.max(Math.floor(path.length / 10), 10);
+                for (let i = 0; i < path.length - 1; i += step) {
+                    const p1 = path[i];
+                    const p2 = path[i + 1];
+                    const angle = getBearing(p1, p2);
+                    
+                    const arrowIcon = L.divIcon({
+                        html: `<div style="transform: rotate(${angle}deg); color: white; display:flex; align-items:center; justify-content:center;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                               </div>`,
+                        className: '',
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6]
+                    });
+                    L.marker(p1, { icon: arrowIcon, interactive: false }).addTo(group);
+                }
+            };
+
+            addArrows(matchedLatlngs, layerGroup);
+
             // Add start and end markers
-            if (latlngs.length > 0) {
-                const startPoint = latlngs[0];
-                const endPoint = latlngs[latlngs.length - 1];
-
+            if (simplified.length > 0) {
+                const startPoint = [simplified[0].lat, simplified[0].lng];
+                const endPoint = [simplified[simplified.length - 1].lat, simplified[simplified.length - 1].lng];
                 const createDotIcon = (color) => L.divIcon({
-                    html: `<div style="width: 14px; height: 14px; background-color: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.4);"></div>`,
-                    className: '',
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
+                    html: `<div style="width: 16px; height: 16px; background-color: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.4);"></div>`,
+                    className: '', iconSize: [16, 16], iconAnchor: [8, 8]
                 });
-
-                L.marker(startPoint, { icon: createDotIcon('#10b981') }).bindPopup('<b>Inicio de ruta</b><br/>' + new Date(data[0].fecha).toLocaleTimeString()).addTo(layerGroup);
-                
-                if (latlngs.length > 1) {
-                    L.marker(endPoint, { icon: createDotIcon('#ef4444') }).bindPopup('<b>Fin de ruta</b><br/>' + new Date(data[data.length - 1].fecha).toLocaleTimeString()).addTo(layerGroup);
+                L.marker(startPoint, { icon: createDotIcon('#10b981'), zIndexOffset: 1000 }).bindPopup('<b>Inicio de ruta</b><br/>' + new Date(simplified[0].fecha).toLocaleTimeString()).addTo(layerGroup);
+                if (simplified.length > 1) {
+                    L.marker(endPoint, { icon: createDotIcon('#ef4444'), zIndexOffset: 1000 }).bindPopup('<b>Fin de ruta</b><br/>' + new Date(simplified[simplified.length - 1].fecha).toLocaleTimeString()).addTo(layerGroup);
                 }
             }
 
             historicalPathLayerRef.current = layerGroup;
             mapRef.current.addLayer(layerGroup);
-            mapRef.current.fitBounds(L.polyline(latlngs).getBounds(), { padding: [50, 50] });
+            toast.success(`Recorrido real generado (${matchedLatlngs.length} puntos)`, { id: 'nohistory' });
+
+            if (matchedLatlngs.length > 0) {
+                mapRef.current.fitBounds(L.polyline(matchedLatlngs).getBounds(), { padding: [50, 50] });
+            }
         };
 
         fetchPath();
@@ -1179,6 +1287,11 @@ export default function MapaClientes() {
                 clienteId={selectedClienteForRuta?.id || null}
                 clienteNombre={selectedClienteForRuta?.nombre || null}
             />
+            {/* TOTAL BADGE */}
+            <div className="map-stats-badge">
+                <div className="map-stats-dot"></div>
+                <span>Total: {totalAbsoluto} Clientes</span>
+            </div>
         </div>
     );
 }

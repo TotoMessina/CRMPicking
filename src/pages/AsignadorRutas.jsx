@@ -110,18 +110,35 @@ export default function AsignadorRutas() {
             // Buscamos clientes activos o relevados
             const { data, error } = await supabase
                 .from('empresa_cliente')
-                .select('id, estado, fecha_proximo_contacto, ultima_actividad, updated_at, created_at, clientes(id, nombre_local, direccion, lat, lng)')
+                .select('id, cliente_id, estado, fecha_proximo_contacto, ultima_actividad, updated_at, created_at')
                 .eq('empresa_id', empresaActiva.id)
                 .eq('activo', true)
                 .limit(50);
             
-            if (data) {
-                const conRiesgo = data
+            if (data && data.length > 0) {
+                const clienteIds = [...new Set(data.filter(ec => ec.cliente_id).map(ec => ec.cliente_id))];
+                const { data: clientesRaw } = await supabase
+                    .from('clientes')
+                    .select('id, nombre_local, direccion, lat, lng')
+                    .in('id', clienteIds);
+                
+                const clienteMap = {};
+                (clientesRaw || []).forEach(c => { clienteMap[c.id] = c; });
+
+                const dataConClientes = data.map(ec => ({
+                    ...ec,
+                    clientes: clienteMap[ec.cliente_id] || null
+                }));
+
+                const conRiesgo = dataConClientes
+                    .filter(ec => ec.clientes)
                     .map(ec => ({ ...ec, risk: getChurnRisk(ec) }))
                     .filter(ec => ec.risk.level !== 'bajo')
                     .sort((a, b) => b.risk.score - a.risk.score)
                     .slice(0, 15);
                 setSugerenciasRiesgo(conRiesgo);
+            } else {
+                setSugerenciasRiesgo([]);
             }
         };
         fetchRiesgo();
@@ -303,31 +320,31 @@ export default function AsignadorRutas() {
         <div className="asign-pro-container">
             {/* 1. Header Pro */}
             <div className="asign-stats-bar">
-                <div className="stat-card">
-                    <div className="stat-icon"><MapPin size={20} /></div>
+                <div className="stat-card premium blue">
+                    <div className="stat-squircle"><MapPin size={22} /></div>
                     <div className="stat-info">
                         <div className="stat-value">{rutaActual.length}</div>
                         <div className="stat-label">Locales</div>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-icon"><TrendingDown size={20} /></div>
+                <div className="stat-card premium emerald">
+                    <div className="stat-squircle"><TrendingDown size={22} /></div>
                     <div className="stat-info">
                         <div className="stat-value">{distanciaTotal.toFixed(1)} KM</div>
-                        <div className="stat-label">Distancia Est.</div>
+                        <div className="stat-label">Distancia</div>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-icon"><Clock size={20} /></div>
+                <div className="stat-card premium amber">
+                    <div className="stat-squircle"><Clock size={22} /></div>
                     <div className="stat-info">
                         <div className="stat-value">~{rutaActual.length * 15} min</div>
-                        <div className="stat-label">Tiempo en Ruta</div>
+                        <div className="stat-label">Tiempo Est.</div>
                     </div>
                 </div>
-                <div className="stat-card" style={{ cursor: 'pointer', border: '1px dashed var(--accent)' }} onClick={() => setVerMapa(!verMapa)}>
-                    <div className="stat-icon"><MapIcon size={20} /></div>
+                <div className="stat-card premium violet interactive" style={{ cursor: 'pointer' }} onClick={() => setVerMapa(!verMapa)}>
+                    <div className="stat-squircle"><MapIcon size={22} /></div>
                     <div className="stat-info">
-                        <div className="stat-value">{verMapa ? 'ON' : 'OFF'}</div>
+                        <div className="stat-value" style={{ fontSize: '1.2rem' }}>{verMapa ? 'ACTIVO' : 'OCULTO'}</div>
                         <div className="stat-label">Mapa Visual</div>
                     </div>
                 </div>
@@ -338,14 +355,17 @@ export default function AsignadorRutas() {
                 
                 {/* Panel Izquierdo: Controles y Sugerencias */}
                 <div className="side-panel">
-                    <div className="glass-card">
-                        <h3 className="asign-section-title" style={{ display: 'flex', gap: 8, marginBottom: 12 }}><User size={16} /> Configuración</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <select className="input" value={usuarioSeleccionado} onChange={e => setUsuarioSeleccionado(e.target.value)}>
+                    <div className="glass-card sticky-mobile-config">
+                        <h3 className="asign-section-title" style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+                            <User size={16} className="text-accent" /> 
+                            <span>Configuración de Ruta</span>
+                        </h3>
+                        <div className="config-inputs-grid">
+                            <select className="input premium-select" value={usuarioSeleccionado} onChange={e => setUsuarioSeleccionado(e.target.value)}>
                                 <option value="">— Elegir Vendedor —</option>
                                 {usuarios.map(u => <option key={u.email} value={u.email}>{u.nombre}</option>)}
                             </select>
-                            <input type="date" className="input" value={fechaSeleccionada} onChange={e => setFechaSeleccionada(e.target.value)} />
+                            <input type="date" className="input premium-input" value={fechaSeleccionada} onChange={e => setFechaSeleccionada(e.target.value)} />
                         </div>
                     </div>
 
@@ -359,7 +379,7 @@ export default function AsignadorRutas() {
                             </button>
                         </div>
 
-                        <div style={{ overflowY: 'auto', flex: 1, maxHeight: '400px' }}>
+                        <div className="suggestions-list">
                             {tabActiva === 'riesgo' ? (
                                 sugerenciasRiesgo.length > 0 ? (
                                     sugerenciasRiesgo.map(s => (
@@ -408,7 +428,7 @@ export default function AsignadorRutas() {
                         <DragDropContext onDragEnd={onDragEnd}>
                             <Droppable droppableId="ruta">
                                 {(provided) => (
-                                    <div {...provided.droppableProps} ref={provided.innerRef} className="route-list" style={{ minHeight: '100px' }}>
+                                    <div {...provided.droppableProps} ref={provided.innerRef} className="route-list" style={{ ...provided.droppableProps.style, overflowY: 'auto', flex: 1, minHeight: '100px' }}>
                                         {loadingRuta ? <div className="p-8 text-center muted">Actualizando lista...</div> :
                                          rutaActual.length === 0 ? (
                                             <div className="p-12 text-center muted">
@@ -425,10 +445,15 @@ export default function AsignadorRutas() {
                                                             </div>
                                                             <div className="route-item-info">
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                                    <span style={{ background: 'var(--accent)', color: '#fff', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{i + 1}</span>
-                                                                    <div style={{ fontWeight: 600 }}>{v.clientes?.nombre_local}</div>
+                                                                    <span style={{ background: 'var(--accent)', color: '#fff', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                                                                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{v.clientes?.nombre_local}</div>
                                                                 </div>
-                                                                <div className="muted" style={{ fontSize: '0.8rem', marginLeft: 30 }}>{v.clientes?.direccion}</div>
+                                                                <div className="muted" style={{ fontSize: '0.75rem', marginLeft: 28 }}>{v.clientes?.direccion}</div>
+                                                                {v.comentarios_admin && (
+                                                                    <div style={{ fontSize: '0.72rem', marginLeft: 28, color: 'var(--accent)', fontStyle: 'italic', marginTop: 1, background: 'rgba(124, 58, 237, 0.05)', padding: '1px 6px', borderRadius: '4px', borderLeft: '2px solid var(--accent)' }}>
+                                                                        💬 {v.comentarios_admin}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div className="route-item-actions" style={{ display: 'flex', gap: 8 }}>
                                                                 <button onClick={() => setEditingComentario({ id: v.id, texto: v.comentarios_admin || '' })} className="btn-secundario" style={{ padding: 6 }}><MessageSquare size={14} /></button>

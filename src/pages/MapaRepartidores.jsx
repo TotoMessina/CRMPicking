@@ -31,6 +31,7 @@ export default function MapaRepartidores() {
     const heatLayerRef = useRef(null);
 
     const [repartidores, setRepartidores] = useState([]);
+    const [totalAbsoluto, setTotalAbsoluto] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // View modes
@@ -63,6 +64,14 @@ export default function MapaRepartidores() {
             const mapped = (data || []).map(r => ({ ...r, lat: Number(r.lat), lng: Number(r.lng) })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
             setRepartidores(mapped);
         }
+
+        // Fetch absolute total
+        const { count } = await supabase
+            .from("repartidores")
+            .select("*", { count: 'exact', head: true })
+            .eq("empresa_id", empresaActiva.id);
+        setTotalAbsoluto(count || 0);
+
         setLoading(false);
     };
 
@@ -282,6 +291,11 @@ export default function MapaRepartidores() {
                 initialLocation={selectedLatLng}
                 onSaved={() => { setModalOpen(false); fetchRepartidores(); setSelectedLatLng(null); }}
             />
+            {/* TOTAL BADGE */}
+            <div className="map-stats-badge">
+                <div className="map-stats-dot"></div>
+                <span>Total: {totalAbsoluto} Repartidores</span>
+            </div>
         </div>
     );
 }

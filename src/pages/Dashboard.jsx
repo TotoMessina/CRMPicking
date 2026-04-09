@@ -66,11 +66,31 @@ export default function Dashboard() {
                 supabase.from('consumidores').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaActiva.id).eq('activo', true),
                 supabase.from('empresa_cliente').select('created_at').eq('empresa_id', empresaActiva.id).gte('created_at', sevenDaysAgo).eq('activo', true),
                 supabase.from('empresa_cliente').select('estado').eq('empresa_id', empresaActiva.id).eq('activo', true),
-                supabase.from('actividades').select('id, fecha, clientes:cliente_id(nombre_local)').eq('empresa_id', empresaActiva.id).eq('descripcion', 'Visita realizada').order('fecha', { ascending: false }).limit(5),
-                supabase.from('empresa_cliente').select('id, fecha_proximo_contacto, clientes:cliente_id(nombre_local, responsable_id)').eq('empresa_id', empresaActiva.id).not('fecha_proximo_contacto', 'is', null).gte('fecha_proximo_contacto', today.split('T')[0]).order('fecha_proximo_contacto', { ascending: true }).limit(5),
-                supabase.from('empresa_cliente').select('id, estado, clientes!inner(id, nombre_local, lat, lng)').eq('empresa_id', empresaActiva.id).eq('estado', '5 - Local Visitado Activo').not('clientes.lat', 'is', null).limit(100),
-                supabase.from('empresa_cliente').select('id, fecha_proximo_contacto, ultima_actividad, updated_at, estado, telefono, clientes:cliente_id(nombre_local)').eq('empresa_id', empresaActiva.id).eq('activo', true).in('estado', ['1 - Cliente relevado', '5 - Local Visitado Activo']).limit(100)
+                supabase.from('actividades').select('id, fecha, cliente_id, descripcion').eq('empresa_id', empresaActiva.id).eq('descripcion', 'Visita realizada').order('fecha', { ascending: false }).limit(5),
+                supabase.from('empresa_cliente').select('id, cliente_id, fecha_proximo_contacto').eq('empresa_id', empresaActiva.id).not('fecha_proximo_contacto', 'is', null).gte('fecha_proximo_contacto', today.split('T')[0]).order('fecha_proximo_contacto', { ascending: true }).limit(5),
+                supabase.from('empresa_cliente').select('id, estado, cliente_id').eq('empresa_id', empresaActiva.id).eq('estado', '5 - Local Visitado Activo').limit(100),
+                supabase.from('empresa_cliente').select('id, cliente_id, fecha_proximo_contacto, ultima_actividad, updated_at, estado').eq('empresa_id', empresaActiva.id).eq('activo', true).in('estado', ['1 - Cliente relevado', '5 - Local Visitado Activo']).limit(100)
             ]);
+
+            // Manual Joins for Clients
+            const allClientIds = new Set([
+                ...(recentVisits?.map(v => v.cliente_id) || []),
+                ...(pendingContacts?.map(c => c.cliente_id) || []),
+                ...(mapLocals?.map(m => m.cliente_id) || []),
+                ...(churnDataResult?.map(ch => ch.cliente_id) || [])
+            ].filter(Boolean));
+
+            let clientMap = {};
+            if (allClientIds.size > 0) {
+                const { data: clientsRaw } = await supabase.from('clientes').select('id, nombre_local, lat, lng').in('id', Array.from(allClientIds));
+                clientsRaw?.forEach(c => { clientMap[c.id] = c; });
+            }
+
+            const recentVisitsFinal = (recentVisits || []).map(v => ({ ...v, clientes: clientMap[v.cliente_id] || { nombre_local: 'Desconocido' } }));
+            const pendingContactsFinal = (pendingContacts || []).map(c => ({ ...c, clientes: clientMap[c.cliente_id] || { nombre_local: 'Desconocido' } }));
+            const mapLocalsFinal = (mapLocals || []).map(m => ({ ...m, clientes: clientMap[m.cliente_id] || null })).filter(m => m.clientes?.lat);
+            const churnDataFinal = (churnDataResult || []).map(ch => ({ ...ch, clientes: clientMap[ch.cliente_id] || { nombre_local: 'Desconocido' } }));
+
 
             // Process Growth Data
             const labelsGrid = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), 6 - i), 'EEE', { locale: es }));
@@ -116,10 +136,14 @@ export default function Dashboard() {
                         borderWidth: 0
                     }]
                 },
-                ultimasVisitas: recentVisits || [],
-                proximosContactos: pendingContacts || [],
-                localesMapa: mapLocals || [],
-                topChurn
+                ultimasVisitas: recentVisitsFinal,
+                proximosContactos: pendingContactsFinal,
+                localesMapa: mapLocalsFinal,
+                topChurn: churnDataFinal
+                    .map(c => ({ ...c, risk: getChurnRisk(c) }))
+                    .filter(c => c.risk.level === 'alto' || c.risk.level === 'medio')
+                    .sort((a, b) => b.risk.score - a.risk.score)
+                    .slice(0, 5)
             });
 
         } catch (error) {

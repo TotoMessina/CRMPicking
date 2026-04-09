@@ -7,14 +7,15 @@ import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved }) {
+export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initialLatLng }) {
     const { empresaActiva } = useAuth();
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '', telefono: '', mail: '', localidad: '', barrio: '',
         edad: '', genero: '', estado: 'Lead', responsable: '',
-        fecha_proximo_contacto: '', hora_proximo_contacto: '', notas: ''
+        fecha_proximo_contacto: '', hora_proximo_contacto: '', notas: '',
+        lat: null, lng: null
     });
 
     useEffect(() => {
@@ -25,11 +26,13 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved }) {
                 setFormData({
                     nombre: '', telefono: '', mail: '', localidad: '', barrio: '',
                     edad: '', genero: '', estado: 'Lead', responsable: '',
-                    fecha_proximo_contacto: '', hora_proximo_contacto: '', notas: ''
+                    fecha_proximo_contacto: '', hora_proximo_contacto: '', notas: '',
+                    lat: initialLatLng?.lat || null,
+                    lng: initialLatLng?.lng || null
                 });
             }
         }
-    }, [isOpen, consumidorId]);
+    }, [isOpen, consumidorId, initialLatLng]);
 
     const loadConsumidor = async (id) => {
         setLoading(true);
@@ -47,7 +50,9 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved }) {
                 responsable: data.responsable || '',
                 fecha_proximo_contacto: data.fecha_proximo_contacto || '',
                 hora_proximo_contacto: data.hora_proximo_contacto ? data.hora_proximo_contacto.slice(0, 5) : '',
-                notas: data.notas || ''
+                notas: data.notas || '',
+                lat: data.lat || null,
+                lng: data.lng || null
             });
         }
         setLoading(false);
@@ -78,6 +83,8 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved }) {
             responsable: formData.responsable || null,
             fecha_proximo_contacto: formData.fecha_proximo_contacto || null,
             notas: formData.notas || null,
+            lat: formData.lat || null,
+            lng: formData.lng || null,
             empresa_id: empresaActiva?.id
         };
 
@@ -203,6 +210,17 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved }) {
                                 <input name="hora_proximo_contacto" type="time" className="input" value={formData.hora_proximo_contacto} onChange={handleChange} />
                             </label>
                             <div></div>
+                        </div>
+
+                        <div className="form-row-2">
+                            <label className="field">
+                                <span className="field-label">Latitud</span>
+                                <input name="lat" className="input" value={formData.lat || ''} readOnly style={{ background: 'var(--bg-active)' }} />
+                            </label>
+                            <label className="field">
+                                <span className="field-label">Longitud</span>
+                                <input name="lng" className="input" value={formData.lng || ''} readOnly style={{ background: 'var(--bg-active)' }} />
+                            </label>
                         </div>
 
                         <label className="field">

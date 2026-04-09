@@ -24,6 +24,7 @@ export default function MapaKiosco() {
     const drawnItemsRef = useRef(null);
 
     const [zoneType, setZoneType] = useState('today');
+    const [totalAbsoluto, setTotalAbsoluto] = useState(0);
 
     // Global helper strictly for Kiosco map popups
     useEffect(() => {
@@ -90,6 +91,12 @@ export default function MapaKiosco() {
             toast.error("Error cargando zonas");
             return;
         }
+
+        const { count } = await supabase
+            .from('zones')
+            .select('*', { count: 'exact', head: true })
+            .eq('scope', 'kiosco_map');
+        setTotalAbsoluto(count || 0);
 
         data.forEach(zone => {
             if (!zone.coordinates) return;
@@ -224,6 +231,12 @@ export default function MapaKiosco() {
 
             <div style={{ flex: 1, width: '100%', minHeight: '600px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', zIndex: 1 }}>
                 <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '600px' }}></div>
+            </div>
+
+            {/* TOTAL BADGE */}
+            <div className="map-stats-badge">
+                <div className="map-stats-dot"></div>
+                <span>Total: {totalAbsoluto} Zonas</span>
             </div>
         </div>
     );
