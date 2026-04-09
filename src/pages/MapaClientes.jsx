@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -145,6 +145,7 @@ export default function MapaClientes() {
     const [isHeatmapMode, setIsHeatmapMode] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [totalAbsoluto, setTotalAbsoluto] = useState(0);
+    const [clientesEnZona, setClientesEnZona] = useState(0);
     const heatLayerRef = useRef(null);
     
     useEffect(() => {
@@ -426,6 +427,28 @@ export default function MapaClientes() {
             }
         };
     }, [empresaActiva]);
+
+    const updateVisibleCount = useCallback(() => {
+        if (!mapRef.current) return;
+        const bounds = mapRef.current.getBounds();
+        const inView = (clientes || []).filter(c => {
+            const lat = parseFloat(c.lat);
+            const lng = parseFloat(c.lng);
+            if (isNaN(lat) || isNaN(lng)) return false;
+            return bounds.contains(L.latLng(lat, lng));
+        }).length;
+        setClientesEnZona(inView);
+    }, [clientes]);
+
+    useEffect(() => {
+        if (!mapRef.current) return;
+        const m = mapRef.current;
+        m.on('moveend zoomend', updateVisibleCount);
+        updateVisibleCount(); // Initial count
+        return () => {
+            m.off('moveend zoomend', updateVisibleCount);
+        };
+    }, [mapRef.current, updateVisibleCount]);
 
     // Reload zones when toggle changes
     useEffect(() => {
@@ -1290,7 +1313,10 @@ export default function MapaClientes() {
             {/* TOTAL BADGE */}
             <div className="map-stats-badge">
                 <div className="map-stats-dot"></div>
-                <span>Total: {totalAbsoluto} Clientes</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>En zona: {clientesEnZona}</span>
+                    <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Total: {totalAbsoluto} Clientes</span>
+                </div>
             </div>
         </div>
     );

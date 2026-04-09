@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
@@ -28,6 +28,7 @@ export default function MapaConsumidores() {
 
     const [consumidores, setConsumidores] = useState([]);
     const [totalAbsoluto, setTotalAbsoluto] = useState(0);
+    const [consumidoresEnZona, setConsumidoresEnZona] = useState(0);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -106,6 +107,28 @@ export default function MapaConsumidores() {
             }
         };
     }, []);
+
+    const updateVisibleCount = useCallback(() => {
+        if (!mapRef.current) return;
+        const bounds = mapRef.current.getBounds();
+        const inView = consumidores.filter(c => {
+            const lat = parseFloat(c.lat);
+            const lng = parseFloat(c.lng);
+            if (isNaN(lat) || isNaN(lng)) return false;
+            return bounds.contains(L.latLng(lat, lng));
+        }).length;
+        setConsumidoresEnZona(inView);
+    }, [consumidores]);
+
+    useEffect(() => {
+        if (!mapRef.current) return;
+        const m = mapRef.current;
+        m.on('moveend zoomend', updateVisibleCount);
+        updateVisibleCount();
+        return () => {
+            m.off('moveend zoomend', updateVisibleCount);
+        };
+    }, [mapRef.current, updateVisibleCount]);
 
     // Update markers
     useEffect(() => {
@@ -214,7 +237,10 @@ export default function MapaConsumidores() {
             {/* TOTAL BADGE */}
             <div className="map-stats-badge">
                 <div className="map-stats-dot"></div>
-                <span>Total: {totalAbsoluto} Consumidores</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>En zona: {consumidoresEnZona}</span>
+                    <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Total: {totalAbsoluto} Consumidores</span>
+                </div>
             </div>
 
             {/* Mapa Container */}
