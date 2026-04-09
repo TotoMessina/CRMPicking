@@ -233,6 +233,20 @@ export default function AsignadorRutas() {
         await supabase.all(nueva.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id)));
     };
 
+    const moverVisita = async (index, direccion) => {
+        const nuevoIndex = index + direccion;
+        if (nuevoIndex < 0 || nuevoIndex >= rutaActual.length) return;
+        
+        const items = [...rutaActual];
+        const [movedItem] = items.splice(index, 1);
+        items.splice(nuevoIndex, 0, movedItem);
+        setRutaActual(items);
+        
+        // Persistir cambios
+        const updates = items.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id));
+        await Promise.all(updates);
+    };
+
     const onDragEnd = async (result) => {
         if (!result.destination) return;
         const items = Array.from(rutaActual);
@@ -468,12 +482,16 @@ export default function AsignadorRutas() {
                                                             <div className="route-item-content">
                                                                 <div className="route-item-info">
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                        <div className="route-sorter-arrows" style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '4px' }}>
+                                                                            <button onClick={() => moverVisita(i, -1)} disabled={i === 0} className={`arrow-btn ${i === 0 ? 'disabled' : ''}`} title="Subir"><ChevronUp size={14} /></button>
+                                                                            <button onClick={() => moverVisita(i, 1)} disabled={i === rutaActual.length - 1} className={`arrow-btn ${i === rutaActual.length - 1 ? 'disabled' : ''}`} title="Bajar"><ChevronDown size={14} /></button>
+                                                                        </div>
                                                                         <span style={{ background: 'var(--accent)', color: '#fff', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
                                                                         <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{v.clientes?.nombre_local}</div>
                                                                     </div>
-                                                                    <div className="muted" style={{ fontSize: '0.75rem', marginLeft: 28 }}>{v.clientes?.direccion}</div>
+                                                                    <div className="muted" style={{ fontSize: '0.75rem', marginLeft: 52 }}>{v.clientes?.direccion}</div>
                                                                     {v.comentarios_admin && (
-                                                                        <div style={{ fontSize: '0.72rem', marginLeft: 28, color: 'var(--accent)', fontStyle: 'italic', marginTop: 1, background: 'rgba(124, 58, 237, 0.05)', padding: '1px 6px', borderRadius: '4px', borderLeft: '2px solid var(--accent)' }}>
+                                                                        <div style={{ fontSize: '0.72rem', marginLeft: 52, color: 'var(--accent)', fontStyle: 'italic', marginTop: 1, background: 'rgba(124, 58, 237, 0.05)', padding: '1px 6px', borderRadius: '4px', borderLeft: '2px solid var(--accent)' }}>
                                                                             💬 {v.comentarios_admin}
                                                                         </div>
                                                                     )}
@@ -552,7 +570,55 @@ export default function AsignadorRutas() {
                 <button className="btn-floating btn-primario" onClick={compartirWhatsApp} disabled={rutaActual.length === 0}>
                     <Share2 size={16} /> <span className="hide-mobile">WhatsApp</span>
                 </button>
-            </div>
+                <style>{`
+                .arrow-btn {
+                    border: none;
+                    background: transparent;
+                    color: var(--text-muted);
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .arrow-btn:hover:not(.disabled) {
+                    color: var(--accent);
+                    transform: scale(1.1);
+                }
+                .arrow-btn.disabled {
+                    opacity: 0.1;
+                    cursor: not-allowed;
+                }
+                .btn-secundario-icon {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(0, 0, 0, 0.05);
+                    color: var(--text-muted);
+                    border: none;
+                    cursor: pointer;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .btn-secundario-icon:hover {
+                    background: rgba(124, 58, 237, 0.1);
+                    color: var(--accent);
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
+                }
+                .btn-secundario-icon.danger:hover {
+                    background: rgba(239, 68, 68, 0.1);
+                    color: #ef4444;
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+                }
+                .btn-secundario-icon svg {
+                    stroke-width: 2.5px;
+                }
+            `}</style>
+        </div>
         </div>
     );
 }
