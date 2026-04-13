@@ -4,34 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Building2, Shield, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const ALL_PAGES = [
-    { to: '/', label: 'Inicio (Dashboard)' },
-    { to: '/chat', label: 'Chat Interno' },
-    { to: '/clientes', label: 'Clientes' },
-    { to: '/pipeline', label: 'Pipeline' },
-    { to: '/tablero', label: 'Tablero de Tareas' },
-    { to: '/consumidores', label: 'Consumidores' },
-    { to: '/repartidores', label: 'Repartidores' },
-    { to: '/proveedores', label: 'Proveedores' },
-    { to: '/calendario', label: 'Calendario' },
-    { to: '/horarios', label: 'Horarios' },
-    { to: '/historial', label: 'Historial de Clientes' },
-    { to: '/ruta', label: 'Ruta de Hoy' },
-    { to: '/asignador-rutas', label: 'Asignador de Rutas' },
-    { to: '/mapa', label: 'Mapa de Clientes' },
-    { to: '/mapa-repartidores', label: 'Mapa Repartidores' },
-    { to: '/mapa-consumidores', label: 'Mapa Consumidores' },
-    { to: '/mapa-global', label: 'Mapa Global' },
-    { to: '/kiosco', label: 'Mapa Kiosco' },
-    { to: '/estadisticas', label: 'Estadísticas' },
-    { to: '/tickets', label: 'Tickets' },
-    { to: '/calificaciones', label: 'Calificaciones' },
-    { to: '/usuarios', label: 'Usuarios' },
-    { to: '/empresas', label: 'Empresas' },
-    { to: '/configuracion', label: 'Configuración' },
-    { to: '/permisos-empresa', label: 'Permisos de Empresa' },
-    { to: '/actividad-sistema', label: 'Auditoría (Log del Sistema)' },
-];
+import { ALL_PAGES } from '../constants/pages';
 
 const ALL_ROLES = ['admin', 'supervisor', 'activador', 'empleado'];
 
@@ -153,6 +126,8 @@ export default function PermisosEmpresa() {
             toast.error('Error al guardar permisos');
         } else {
             toast.success('Permisos guardados correctamente');
+            // Dispatch event to refresh permissions in AuthContext and sidebar
+            window.dispatchEvent(new CustomEvent('permissions-updated'));
         }
 
         setSaving(false);

@@ -9,6 +9,11 @@ window.L = window.L || L;
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
 
+// Shared Map Components
+import { MapControlBar } from '../components/map/MapControlBar';
+import { MapStatsBadge } from '../components/map/MapStatsBadge';
+import { MapLegend } from '../components/map/MapLegend';
+
 import { ConsumidorModal } from '../components/ui/ConsumidorModal';
 
 const ESTADO_COLOR = {
@@ -39,6 +44,15 @@ export default function MapaConsumidores() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [selectedLatLng, setSelectedLatLng] = useState(null);
+
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [showLegendMobile, setShowLegendMobile] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const fetchConsumidores = async () => {
         if (!empresaActiva?.id) return;
@@ -201,50 +215,79 @@ export default function MapaConsumidores() {
     }, [consumidores, searchQuery, showHeatmap]);
 
     return (
-        <div className="page-container" style={{ padding: 0, height: 'calc(100vh - 64px)', position: 'relative', overflow: 'hidden' }}>
+        <div className="map-immersive-container">
             
-            {/* Header Flotante */}
-            <div style={{ position: 'absolute', top: '20px', left: '20px', right: '20px', zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
-                <div style={{ pointerEvents: 'auto', display: 'flex', gap: '10px' }}>
-                    <div className="glass-card" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '12px', minWidth: '300px' }}>
-                        <Users size={20} className="text-accent" />
-                        <div style={{ flex: 1 }}>
-                            <h2 style={{ fontSize: '1rem', margin: 0, fontWeight: 700 }}>Mapa de Consumidores</h2>
-                            <div style={{ position: 'relative', marginTop: '6px' }}>
-                                <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input 
-                                    className="input" 
-                                    placeholder="Buscar por nombre o localidad..." 
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                    style={{ width: '100%', padding: '6px 12px 6px 32px', fontSize: '0.85rem', borderRadius: '8px' }}
-                                />
-                            </div>
-                        </div>
+            {/* MAIN MAP VIEW */}
+            <div className="map-main-view">
+                <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
+
+                {/* OVERLAY: STATS BADGE */}
+                <MapStatsBadge 
+                    inView={consumidoresEnZona} 
+                    total={totalAbsoluto} 
+                    label="en zona" 
+                    totalLabel="Total Consumidores" 
+                />
+
+                {/* OVERLAY: LEGEND */}
+                <MapLegend 
+                    title="Estados"
+                    items={Object.entries(ESTADO_COLOR).map(([label, color]) => ({ label, color }))}
+                    isMobile={isMobile}
+                    showMobile={showLegendMobile}
+                    onCloseMobile={() => setShowLegendMobile(false)}
+                />
+
+                {/* MOBILE LEGEND TOGGLE */}
+                {isMobile && !showLegendMobile && (
+                    <button 
+                        onClick={() => setShowLegendMobile(true)}
+                        style={{
+                            position: 'absolute', bottom: '100px', left: '20px', zIndex: 1000,
+                            background: 'var(--bg-glass)', backdropFilter: 'blur(12px)',
+                            padding: '10px 15px', borderRadius: '12px', border: '1px solid var(--border)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontWeight: 600, fontSize: '0.8rem'
+                        }}
+                    >
+                        📋 Ver Leyenda
+                    </button>
+                )}
+            </div>
+
+            {/* BOTTOM CONTROL BAR */}
+            <MapControlBar isMobile={isMobile}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: isMobile ? '100%' : '300px' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                        <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input 
+                            className="input" 
+                            placeholder="Buscar consumidor..." 
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            style={{ width: '100%', padding: '8px 12px 8px 32px', fontSize: '0.85rem', borderRadius: '12px', background: 'var(--bg-glass)', border: '1px solid var(--border)' }}
+                        />
                     </div>
                 </div>
 
-                <div style={{ pointerEvents: 'auto', display: 'flex', gap: '10px' }}>
-                    <Button variant={showHeatmap ? 'primary' : 'secondary'} size="sm" onClick={() => setShowHeatmap(!showHeatmap)}>
-                        <Layers size={16} /> <span className="hide-mobile">{showHeatmap ? 'Ocultar Calor' : 'Mapa de Calor'}</span>
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={fetchConsumidores} disabled={loading}>
-                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    </Button>
-                </div>
-            </div>
+                <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0, margin: '0 8px' }}></div>
 
-            {/* TOTAL BADGE */}
-            <div className="map-stats-badge">
-                <div className="map-stats-dot"></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>En zona: {consumidoresEnZona}</span>
-                    <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Total: {totalAbsoluto} Consumidores</span>
-                </div>
-            </div>
+                <Button 
+                    variant={showHeatmap ? 'primary' : 'secondary'} 
+                    onClick={() => setShowHeatmap(!showHeatmap)}
+                    style={{ borderRadius: '14px', height: '42px', flexShrink: 0, padding: '0 16px' }}
+                >
+                    <Layers size={16} /> <span className="hide-mobile">{showHeatmap ? 'Ocultar Calor' : 'Mapa Calor'}</span>
+                </Button>
 
-            {/* Mapa Container */}
-            <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }}></div>
+                <Button 
+                    variant="secondary" 
+                    onClick={fetchConsumidores} 
+                    disabled={loading}
+                    style={{ borderRadius: '14px', height: '42px', width: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                >
+                    <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                </Button>
+            </MapControlBar>
 
             <ConsumidorModal 
                 isOpen={modalOpen}
@@ -254,7 +297,7 @@ export default function MapaConsumidores() {
                 onSaved={() => { setModalOpen(false); fetchConsumidores(); }}
             />
 
-            <style>{`
+            <style tabIndex="-1">{`
                 .leaflet-popup-content-wrapper { border-radius: 12px; padding: 4px; box-shadow: var(--shadow-lg); }
                 .leaflet-popup-tip { box-shadow: var(--shadow-md); }
                 .text-accent { color: var(--accent); }

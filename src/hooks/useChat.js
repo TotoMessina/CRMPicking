@@ -17,6 +17,7 @@ export const useChat = () => {
     const [limit, setLimit] = useState(25);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [selectedContext, setSelectedContext] = useState(null); // { type, id, label }
 
     const messagesEndRef = useRef(null);
     const topRef = useRef(null);
@@ -34,7 +35,7 @@ export const useChat = () => {
 
         const { data: empUsers, error: usersError } = await supabase
             .from('empresa_usuario')
-            .select('usuario:usuarios(email, nombre, role)')
+            .select('usuario:usuarios(email, nombre, role, avatar_url)')
             .eq('empresa_id', empresaActiva.id)
             .neq('usuario_email', user.email);
 
@@ -46,20 +47,25 @@ export const useChat = () => {
             return;
         }
 
-        const { data: receivedData, error: receivedError } = await supabase
+        // Fetch last interactions (received and sent) to determine order and unread count
+        const { data: interactionData, error: interactionError } = await supabase
             .from('mensajes_chat')
-            .select('de_usuario, leido, created_at')
-            .eq('para_usuario', user.email)
+            .select('de_usuario, para_usuario, leido, created_at')
+            .or(`para_usuario.eq.${user.email},de_usuario.eq.${user.email}`)
             .eq('empresa_id', empresaActiva.id)
             .order('created_at', { ascending: false });
 
         let userStats = {};
-        if (!receivedError && receivedData) {
-            receivedData.forEach(msg => {
-                if (!userStats[msg.de_usuario]) {
-                    userStats[msg.de_usuario] = { unreadCount: 0, lastMessageAt: msg.created_at };
+        if (!interactionError && interactionData) {
+            interactionData.forEach(msg => {
+                const partnerEmail = msg.de_usuario === user.email ? msg.para_usuario : msg.de_usuario;
+                if (!userStats[partnerEmail]) {
+                    userStats[partnerEmail] = { unreadCount: 0, lastMessageAt: msg.created_at };
                 }
-                if (!msg.leido) userStats[msg.de_usuario].unreadCount += 1;
+                // Only count as unread if it was sent to me and I haven't read it
+                if (msg.para_usuario === user.email && !msg.leido) {
+                    userStats[partnerEmail].unreadCount += 1;
+                }
             });
         }
 
@@ -70,9 +76,10 @@ export const useChat = () => {
         }));
 
         combined.sort((a, b) => {
-            if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
-            if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+            if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
             if (a.lastMessageAt && b.lastMessageAt) return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+            if (a.lastMessageAt) return -1;
+            if (b.lastMessageAt) return 1;
             return (a.nombre || a.email).toLowerCase().localeCompare((b.nombre || b.email).toLowerCase());
         });
 
@@ -105,8 +112,18 @@ export const useChat = () => {
                     setMensajes(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
                     if (msg.de_usuario !== user.email) {
                         setUsuarios(prev => {
-                            const updated = prev.map(u => u.email === msg.de_usuario ? { ...u, unreadCount: selectedUser?.email === u.email ? 0 : (u.unreadCount || 0) + 1, lastMessageAt: msg.created_at } : u);
-                            return updated.sort((a,b) => (a.unreadCount > 0 && b.unreadCount === 0) ? -1 : 1);
+                            const updated = prev.map(u => u.email === msg.de_usuario ? { 
+                                ...u, 
+                                unreadCount: selectedUser?.email === u.email ? 0 : (u.unreadCount || 0) + 1, 
+                                lastMessageAt: msg.created_at 
+                            } : u);
+                            return [...updated].sort((a, b) => {
+                                if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
+                                if (a.lastMessageAt && b.lastMessageAt) return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+                                if (a.lastMessageAt) return -1;
+                                if (b.lastMessageAt) return 1;
+                                return (a.nombre || '').localeCompare(b.nombre || '');
+                            });
                         });
                         if (selectedUser?.email === msg.de_usuario) marcarComoLeidos(msg.de_usuario);
                         else toast(`Nuevo mensaje de ${msg.de_usuario}`, { icon: '💬' });
@@ -168,15 +185,48 @@ export const useChat = () => {
         e?.preventDefault();
         if (!newMessage.trim() || !selectedUser || !user || !empresaActiva) return;
         const text = newMessage.trim();
+        let finalMessage = text;
+        if (selectedContext) {
+            finalMessage = `[CONTEXT:${selectedContext.type}:${selectedContext.id}:${selectedContext.label}]|${text}`;
+        }
+        
         setNewMessage('');
-        const tempMsg = { id: 'temp-'+Date.now(), created_at: new Date().toISOString(), de_usuario: user.email, para_usuario: selectedUser.email, mensaje: text, leido: false, isOptimistic: true };
+        setSelectedContext(null);
+        
+        const tempMsg = { 
+            id: 'temp-'+Date.now(), 
+            created_at: new Date().toISOString(), 
+            de_usuario: user.email, 
+            para_usuario: selectedUser.email, 
+            mensaje: finalMessage, 
+            leido: false, 
+            isOptimistic: true 
+        };
+        
         setMensajes(prev => [...prev, tempMsg]);
-        const { data, error } = await supabase.from('mensajes_chat').insert([{ de_usuario: user.email, para_usuario: selectedUser.email, mensaje: text, empresa_id: empresaActiva.id }]).select().single();
+        
+        const { data, error } = await supabase.from('mensajes_chat').insert([{ 
+            de_usuario: user.email, 
+            para_usuario: selectedUser.email, 
+            mensaje: finalMessage, 
+            empresa_id: empresaActiva.id 
+        }]).select().single();
         if (error) {
             toast.error('No se pudo enviar');
             setMensajes(prev => prev.filter(m => m.id !== tempMsg.id));
         } else {
             setMensajes(prev => prev.map(m => m.id === tempMsg.id ? data : m));
+            // Bring this contact to top
+            setUsuarios(prev => {
+                const updated = prev.map(u => u.email === selectedUser.email ? { ...u, lastMessageAt: data.created_at } : u);
+                return [...updated].sort((a, b) => {
+                    if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
+                    if (a.lastMessageAt && b.lastMessageAt) return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+                    if (a.lastMessageAt) return -1;
+                    if (b.lastMessageAt) return 1;
+                    return (a.nombre || '').localeCompare(b.nombre || '');
+                });
+            });
         }
     };
 
@@ -205,6 +255,7 @@ export const useChat = () => {
         user, usuarios, selectedUser, setSelectedUser, mensajes, newMessage, setNewMessage,
         loadingUsers, loadingMessages, isTaskModalOpen, setIsTaskModalOpen, taskForm, setTaskForm,
         sendingTask, hasMoreMessages, isMobile, messagesEndRef, topRef, scrollContainerRef,
-        handleSend, handleSendTask, loadMoreMessages
+        handleSend, handleSendTask, loadMoreMessages,
+        selectedContext, setSelectedContext
     };
 };

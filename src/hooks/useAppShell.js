@@ -8,6 +8,7 @@ import {
     MapPin, Users, Activity, Map, Settings, Calendar, Clock, 
     ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList 
 } from 'lucide-react';
+import { ALL_PAGES } from '../constants/pages';
 
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -180,34 +181,7 @@ export const useAppShell = () => {
         const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super-admin';
         const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial', '/ruta']);
 
-        const allItems = [
-            { to: '/', icon: MapPin, label: 'Inicio', group: 'Activaciones' },
-            { to: '/chat', icon: MessageCircle, label: 'Chat Interno', group: 'Activaciones' },
-            { to: '/clientes', icon: Activity, label: 'Clientes', group: 'Activaciones' },
-            { to: '/pipeline', icon: Activity, label: 'Pipeline', group: 'Activaciones' },
-            { to: '/ruta', icon: Route, label: 'Ruta de Hoy', group: 'Activaciones' },
-            { to: '/historial', icon: Clock, label: 'Buscador Historial', group: 'Activaciones' },
-            { to: '/asignador-rutas', icon: ClipboardList, label: 'Asignador de Rutas', group: 'Activaciones', adminOnly: true },
-            { to: '/consumidores', icon: Users, label: 'Consumidores', group: 'Operaciones' },
-            { to: '/repartidores', icon: Truck, label: 'Repartidores', group: 'Operaciones' },
-            { to: '/proveedores', icon: ShoppingCart, label: 'Proveedores', group: 'Operaciones' },
-            { to: '/calendario', icon: Calendar, label: 'Calendario', group: 'Planificación' },
-            { to: '/horarios', icon: Clock, label: 'Horarios', group: 'Planificación' },
-            { to: '/tablero', icon: LayoutDashboard, label: 'Tablero Tareas', group: 'Planificación' },
-            { to: '/mapa', icon: Map, label: 'Mapa Clientes', group: 'Mapas' },
-            { to: '/mapa-repartidores', icon: Map, label: 'Mapa Repartidores', group: 'Mapas' },
-            { to: '/mapa-consumidores', icon: Map, label: 'Mapa Consumidores', group: 'Mapas' },
-            { to: '/mapa-global', icon: Map, label: 'Mapa Global', group: 'Mapas' },
-            { to: '/kiosco', icon: ShoppingCart, label: 'Mapa Kiosco', group: 'Mapas' },
-            { to: '/estadisticas', icon: Activity, label: 'Estadísticas', group: 'Listados' },
-            { to: '/tickets', icon: Ticket, label: 'Tickets', group: 'Listados' },
-            { to: '/calificaciones', icon: Star, label: 'Calificaciones', group: 'Listados' },
-            { to: '/usuarios', icon: Users, label: 'Usuarios', group: 'Administrativo' },
-            { to: '/empresas', icon: Building2, label: 'Empresas', group: 'Administrativo', adminOnly: true },
-            { to: '/permisos-empresa', icon: Shield, label: 'Permisos', group: 'Administrativo' },
-            { to: '/actividad-sistema', icon: Database, label: 'Auditoría', group: 'Administrativo' },
-            { to: '/configuracion', icon: Settings, label: 'Configuración', group: 'Administrativo' },
-        ];
+        const allItems = ALL_PAGES;
 
         if (isSuperAdmin) return allItems;
         if (paginasPermitidas && Object.keys(paginasPermitidas).length > 0) {

@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatToLocal } from '../utils/dateUtils';
 import { Button } from '../components/ui/Button';
-import { Plus, ChevronLeft, ChevronRight, Download, Upload, Search, MapPin, Phone, Mail, Calendar, Clock, Store, Tag, User, Hash, Filter, Activity as ActivityIcon, Edit2, Trash2, Building, MessageSquare } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Download, Upload, Search, MapPin, Phone, Mail, Calendar, Clock, Store, Tag, User, Hash, Filter, Activity as ActivityIcon, Edit2, Trash2, Building, MessageSquare, MoreVertical, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConsumidorModal } from '../components/ui/ConsumidorModal';
 import { ActividadConsumidorModal } from '../components/ui/ActividadConsumidorModal';
 import { importarConsumidoresExcel, descargarModeloConsumidores, exportarConsumidoresExcel } from '../lib/excelExport';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ConsumerFilters } from '../components/consumidores/ConsumerFilters';
 
 export default function Consumidores() {
     const { empresaActiva } = useAuth();
@@ -35,6 +38,7 @@ export default function Consumidores() {
     // Activities
     const [activities, setActivities] = useState({});
     const [expandedActivities, setExpandedActivities] = useState({});
+    const [actionsOpen, setActionsOpen] = useState(false);
 
     const fetchConsumidores = async () => {
         if (!empresaActiva?.id) return;
@@ -131,107 +135,87 @@ export default function Consumidores() {
     };
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
     return (
-        <div className="page-container" style={{ padding: '0', maxWidth: '100%', margin: '0 auto', animation: 'page-enter 0.5s ease-out forwards' }}>
+        <div className="page-container" style={{ padding: '0', maxWidth: '100%', margin: '0 auto', position: 'relative' }}>
 
             {/* 1. HERO HEADER */}
-            <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', gap: '16px' }}>
+            <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                         Consumidores
                     </h1>
                     <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>
-                        CRM B2C con historial, agenda y responsables.
+                        Gestión B2C e historial de contactos.
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Button variant="secondary" style={{ borderRadius: '99px', fontSize: '0.95rem' }} title="Descargar Modelo Excel" onClick={descargarModeloConsumidores}>
-                        Descargar Modelo
-                    </Button>
-                    <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: '99px', border: '1px solid var(--border)', padding: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                        <Button 
-                            variant="secondary" 
-                            style={{ borderRadius: '99px', border: 'none', background: 'transparent' }} 
-                            title="Exportar a Excel"
-                            onClick={() => exportarConsumidoresExcel(empresaActiva, { nombre: fNombre, telefono: fTelefono, localidad: fLocalidad, estado: fEstado, responsable: fResponsable })}
-                        >
-                            <Download size={18} />
-                        </Button>
-                        <label className="" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '99px', border: 'none', background: 'transparent', padding: '8px 16px', color: 'var(--text-muted)' }} title="Importar desde Excel">
-                            <Upload size={18} />
-                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} />
-                        </label>
-                    </div>
 
-                    <Button variant="primary" onClick={handleCreate} className="btn-text-hide-mobile" style={{ padding: '10px 24px', fontSize: '1.05rem', fontWeight: 600, borderRadius: '99px', boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.5)' }}>
-                        <Plus size={20} /> <span>Nuevo consumidor</span>
+                {/* SECONDARY ACTIONS DROPDOWN */}
+                <div style={{ position: 'relative' }}>
+                    <Button 
+                        variant="secondary" 
+                        onClick={() => setActionsOpen(!actionsOpen)} 
+                        style={{ borderRadius: '14px', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)' }}
+                    >
+                        <MoreVertical size={18} />
+                        <span className="hide-mobile">Acciones</span>
                     </Button>
+
+                    <AnimatePresence>
+                        {actionsOpen && (
+                            <>
+                                <div 
+                                    style={{ position: 'fixed', inset: 0, zIndex: 998 }} 
+                                    onClick={() => setActionsOpen(false)} 
+                                />
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    style={{
+                                        position: 'absolute', top: '50px', right: 0, zIndex: 999,
+                                        minWidth: '220px', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                        borderRadius: '16px', boxShadow: 'var(--shadow-xl)', padding: '8px',
+                                        backdropFilter: 'blur(16px)'
+                                    }}
+                                >
+                                    <button 
+                                        className="dropdown-item" 
+                                        onClick={() => { descargarModeloConsumidores(); setActionsOpen(false); }}
+                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                    >
+                                        <FileText size={16} style={{ color: 'var(--accent)' }} /> Descargar Modelo Excel
+                                    </button>
+                                    <button 
+                                        className="dropdown-item" 
+                                        onClick={() => { exportarConsumidoresExcel(empresaActiva, { nombre: fNombre, telefono: fTelefono, localidad: fLocalidad, estado: fEstado, responsable: fResponsable }); setActionsOpen(false); }}
+                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                    >
+                                        <Download size={16} style={{ color: 'var(--accent)' }} /> Exportar Consumidores
+                                    </button>
+                                    <label 
+                                        className="dropdown-item" 
+                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
+                                    >
+                                        <Upload size={16} style={{ color: 'var(--accent)' }} /> Importar Excel
+                                        <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => { handleImportExcel(e); setActionsOpen(false); }} />
+                                    </label>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
                 </div>
             </header>
 
-            {/* 2. GLASSMORPHIC FILTERS */}
-            <section style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: '24px',
-                padding: '24px',
-                marginBottom: '32px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '20px',
-                boxShadow: '0 4px 24px -10px rgba(0, 0, 0, 0.08)',
-                position: 'relative',
-                overflow: 'hidden'
-            }}>
-                <div style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)', opacity: 0.5 }}></div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)', fontWeight: 700, fontSize: '1.1rem' }}>
-                    <Filter size={18} style={{ color: 'var(--accent)' }} /> Filtros de Búsqueda
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                    <div style={{ position: 'relative' }}>
-                        <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Nombre..." value={fNombre} onChange={e => { setFNombre(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Teléfono..." value={fTelefono} onChange={e => { setFTelefono(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="input" placeholder="Localidad..." value={fLocalidad} onChange={e => { setFLocalidad(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
-                    </div>
-
-                    <div style={{ position: 'relative' }}>
-                        <ActivityIcon size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                        <select className="input" value={fEstado} onChange={e => { setFEstado(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                            <option value="Todos">Todos los estados</option>
-                            <option value="Lead">Lead</option>
-                            <option value="Contactado">Contactado</option>
-                            <option value="Interesado">Interesado</option>
-                            <option value="Cliente">Cliente</option>
-                            <option value="No interesado">No interesado</option>
-                        </select>
-                    </div>
-
-                    <div style={{ position: 'relative' }}>
-                        <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                        <select className="input" value={fResponsable} onChange={e => { setFResponsable(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                            <option value="">Cualquier responsable</option>
-                            <option value="Toto">Toto</option>
-                            <option value="Ruben">Ruben</option>
-                            <option value="Tincho(B)">Tincho(B)</option>
-                            <option value="Fran">Fran</option>
-                            <option value="Ari">Ari</option>
-                            <option value="Nati">Nati</option>
-                            <option value="Dani">Dani</option>
-                            <option value="Otro">Otro</option>
-                        </select>
-                    </div>
-                </div>
-            </section>
+            {/* 2. FILTERS bar */}
+            <ConsumerFilters
+                fNombre={fNombre} setFNombre={setFNombre}
+                fTelefono={fTelefono} setFTelefono={setFTelefono}
+                fLocalidad={fLocalidad} setFLocalidad={setFLocalidad}
+                fEstado={fEstado} setFEstado={setFEstado}
+                fResponsable={fResponsable} setFResponsable={setFResponsable}
+                setPage={setPage}
+            />
 
             <section style={{ marginBottom: '32px' }}>
                 <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -395,6 +379,43 @@ export default function Consumidores() {
                 consumidorNombre={actTargetName}
                 onSaved={() => { setActModalOpen(false); fetchConsumidores(); }}
             />
+
+            {/* GLOBAL FLOATING ACTION BUTTON (FAB) - PORTAL */}
+            {createPortal(
+                <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999 }}>
+                    <motion.button
+                        whileHover={{ scale: 1.1, translateY: -5 }}
+                        whileTap={{ scale: 0.9 }}
+                        animate={{ 
+                            boxShadow: [
+                                '0 8px 20px -6px rgba(139, 92, 246, 0.5)',
+                                '0 8px 35px 5px rgba(139, 92, 246, 0.3)',
+                                '0 8px 20px -6px rgba(139, 92, 246, 0.5)'
+                            ]
+                        }}
+                        transition={{ 
+                            boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        onClick={handleCreate}
+                        style={{
+                            pointerEvents: 'auto',
+                            width: '64px', height: '64px', borderRadius: '32px',
+                            background: 'linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%)',
+                            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer',
+                            boxShadow: '0 8px 20px -6px rgba(139, 92, 246, 0.5)'
+                        }}
+                        title="Nuevo Consumidor"
+                    >
+                        <Plus size={32} />
+                    </motion.button>
+                </div>,
+                document.body
+            )}
+
+            <style tabIndex={-1}>{`
+                .dropdown-item:hover { background: var(--bg-elevated); color: var(--accent) !important; }
+            `}</style>
         </div>
     );
 }

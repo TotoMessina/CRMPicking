@@ -3,7 +3,10 @@ import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
-import { MapPin, RefreshCw, Route as RouteIcon, Navigation, Layers, Filter, X } from 'lucide-react';
+import { 
+    MapPin, RefreshCw, Route as RouteIcon, Navigation, Layers, Filter, X,
+    Clock, User, History, Map as MapIcon, Info, Users
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ESTADOS_LISTA, ESTADO_RELEVADO, esEstadoFinal } from '../constants/estados';
 import L from 'leaflet';
@@ -14,7 +17,11 @@ import 'leaflet-routing-machine';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
 import 'leaflet.heat';
-import { Clock, User } from 'lucide-react';
+
+// Shared Map UI Components
+import { MapControlBar } from '../components/map/MapControlBar';
+import { MapStatsBadge } from '../components/map/MapStatsBadge';
+import { MapLegend } from '../components/map/MapLegend';
 
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { AsignarRutaModal } from '../components/ui/AsignarRutaModal';
@@ -152,7 +159,7 @@ export default function MapaClientes() {
         const fetchTotal = async () => {
             if (!empresaActiva?.id) return;
             const { count } = await supabase
-                .from('clientes_empresa')
+                .from('empresa_cliente')
                 .select('*', { count: 'exact', head: true })
                 .eq('empresa_id', empresaActiva.id);
             setTotalAbsoluto(count || 0);
@@ -162,6 +169,14 @@ export default function MapaClientes() {
 
     // Filters & Coloring
     const [colorMode, setColorMode] = useState('estado'); // estado, creador, interes, estilo
+    const [showLegendMobile, setShowLegendMobile] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     const [activeFilters, setActiveFilters] = useState(new Set());
 
     // Modal state
@@ -1063,135 +1078,195 @@ export default function MapaClientes() {
     };
 
     return (
-        <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px' }}>
-            <style>{`
-                @keyframes churn-pulse {
-                    0% { transform: scale(0.8); opacity: 0.9; }
-                    70% { transform: scale(2.5); opacity: 0; }
-                    100% { transform: scale(2.5); opacity: 0; }
-                }
-            `}</style>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                    <h1 style={{ margin: 0 }}>Mapa de Clientes</h1>
-                    <p className="muted" style={{ margin: 0 }}>Distribución geográfica y optimización de rutas.</p>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <Button variant="secondary" onClick={handleLocateMe}><Navigation size={16} /> Ubicarme</Button>
-                    <Button variant="secondary" onClick={handleRegisterHere} disabled={!myLocation}><MapPin size={16} /> Registrar Aquí</Button>
-                    <Button variant="secondary" onClick={fetchClientes}><RefreshCw size={16} /> Refrescar</Button>
+        <div className="map-immersive-container">
+            {/* MAIN MAP CONTAINER - FULL DIMENSIONS */}
+            <div className="map-main-view">
+                <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
 
-                    <select className="input" style={{ width: 'auto' }} value={colorMode} onChange={(e) => { setColorMode(e.target.value); setActiveFilters(new Set()); }}>
-                        <option value="estado">Ver por Estado</option>
-                        <option value="rubro">Ver por Rubro</option>
-                        <option value="creador">Ver por Creador</option>
-                        <option value="interes">Ver por Interés</option>
-                        <option value="estilo">Ver por Estilo Contacto</option>
-                        <option value="riesgo">⚠️ Ver por Riesgo de Abandono</option>
-                    </select>
+                {/* OVERLAY: STATS BADGE (TOP RIGHT) */}
+                <MapStatsBadge 
+                    inView={clientesEnZona} 
+                    total={totalAbsoluto} 
+                    label="en zona" 
+                    totalLabel="Total locales" 
+                />
 
-                    <Button variant={isRoutingMode ? 'primary' : 'secondary'} onClick={() => setIsRoutingMode(!isRoutingMode)}>
-                        <RouteIcon size={16} /> {isRoutingMode ? 'Cancelar Ruta' : 'Modo Ruta'}
-                    </Button>
+                {/* OVERLAY: FLOATING FILTER BUTTON (LEFT) */}
+                <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    style={{
+                        position: 'absolute', left: '20px', top: '20px', zIndex: 1001,
+                        background: showFilters ? 'var(--accent)' : 'var(--bg-glass)',
+                        backdropFilter: 'blur(12px)',
+                        color: showFilters ? '#fff' : 'var(--text)',
+                        border: '1px solid var(--border)', borderRadius: '50%',
+                        width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.15)', cursor: 'pointer', transition: 'all 0.3s'
+                    }}
+                >
+                    {showFilters ? <X size={24} /> : <Filter size={24} />}
+                </button>
 
-                    <Button variant={isHeatmapMode ? 'primary' : 'secondary'} onClick={() => setIsHeatmapMode(!isHeatmapMode)}>
-                        🔥 {isHeatmapMode ? 'Ocultar Calor' : 'Mapa de Calor'}
-                    </Button>
+                {/* OVERLAY: LEGEND (ADAPTIVE) */}
+                <MapLegend 
+                    items={getLegendItems()}
+                    isMobile={isMobile}
+                    showMobile={showLegendMobile}
+                    onCloseMobile={() => setShowLegendMobile(false)}
+                />
 
-                    <Button variant={isHistoricalMode ? 'primary' : 'secondary'} onClick={() => setIsHistoricalMode(!isHistoricalMode)}>
-                        🗺️ {isHistoricalMode ? 'Ocultar Historial' : 'Recorrido Histórico'}
-                    </Button>
-
-                    <Button variant={showZones ? 'primary' : 'secondary'} onClick={() => setShowZones(!showZones)}>
-                        <Layers size={16} /> {showZones ? 'Zonas: ON' : 'Zonas: OFF'}
-                    </Button>
-
-                    <Button variant={showActivadores ? 'primary' : 'secondary'} onClick={() => setShowActivadores(!showActivadores)}>
-                        <User size={16} /> {showActivadores ? 'Activadores: ON' : 'Activadores: OFF'}
-                    </Button>
-
-                    {showZones && (
-                        <select id="zoneSelectorInputClientes" value={zoneType} onChange={(e) => setZoneType(e.target.value)} className="input" style={{ width: 'auto' }}>
-                            <option value="today">🔵 Hoy</option>
-                            <option value="done">🔴 Realizada</option>
-                            <option value="extra">🟠 Extra</option>
+                {/* OVERLAY: HISTORICAL PANEL (FLOATING ABOVE BOTTOM BAR) */}
+                {isHistoricalMode && (
+                    <div style={{
+                        position: 'absolute', bottom: '100px', left: '50%', transform: 'translateX(-50%)',
+                        zIndex: 1000, width: 'min(700px, 90vw)',
+                        background: 'var(--bg-glass)', backdropFilter: 'blur(16px)',
+                        padding: '16px 24px', borderRadius: '24px', border: '2px solid var(--accent)',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.2)', display: 'flex', gap: '15px', alignItems: 'center'
+                    }}>
+                        <select 
+                            className="input" 
+                            style={{ flex: 1, minWidth: '150px', background: 'var(--bg-elevated)' }} 
+                            value={historicalActivadorId} 
+                            onChange={(e) => setHistoricalActivadorId(e.target.value)}
+                        >
+                            <option value="">👤 Seleccionar activador...</option>
+                            {activadores.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
                         </select>
-                    )}
-                </div>
+                        
+                        <input 
+                            type="date" 
+                            className="input" 
+                            style={{ width: '150px', background: 'var(--bg-elevated)' }} 
+                            value={historicalDate} 
+                            onChange={(e) => setHistoricalDate(e.target.value)}
+                        />
+                        
+                        <Button 
+                            variant="primary" 
+                            onClick={exportarReporteRecorrido} 
+                            style={{ background: '#10b981', border: 'none', borderRadius: '12px' }}
+                            disabled={!historicalActivadorId}
+                        >
+                            Exportar Excel
+                        </Button>
+                    </div>
+                )}
             </div>
 
-            {/* Panel de Modo Histórico */}
-            {isHistoricalMode && (
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '16px', background: 'var(--bg-elevated)', padding: '10px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 600 }}>Cargar recorrido de:</span>
+            {/* FLOATING BOTTOM CONTROL BAR (WITH RESPONSIVE SCROLL) */}
+            <MapControlBar isMobile={isMobile}>
+                {/* SELECTOR DE CAPAS DE DATOS */}
+                <div style={{ 
+                    display: 'flex', alignItems: 'center', gap: '8px', 
+                    background: 'var(--bg-glass)', padding: '6px 12px', borderRadius: '16px', 
+                    border: '1px solid var(--border)', flexShrink: 0, width: 'auto'
+                }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.7 }}>🎨 Capas:</span>
                     <select 
                         className="input" 
-                        style={{ width: 'auto', minWidth: '200px' }} 
-                        value={historicalActivadorId} 
-                        onChange={(e) => setHistoricalActivadorId(e.target.value)}
+                        style={{ 
+                            width: isMobile ? '110px' : '150px', height: '32px', borderRadius: '10px', 
+                            border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 600,
+                            flexShrink: 0
+                        }} 
+                        value={colorMode} 
+                        onChange={(e) => { setColorMode(e.target.value); setActiveFilters(new Set()); }}
                     >
-                        <option value="" disabled>Seleccionar activador...</option>
-                        {activadores.map(a => (
-                            <option key={a.id} value={a.id}>{a.nombre}</option>
-                        ))}
+                        <option value="estado">Estado</option>
+                        <option value="rubro">Rubro</option>
+                        <option value="creador">Creador</option>
+                        <option value="interes">Interés</option>
+                        <option value="estilo">Estilo Contacto</option>
+                        <option value="riesgo">⚠️ Riesgo</option>
                     </select>
-                    
-                    <input 
-                        type="date" 
-                        className="input" 
-                        style={{ width: 'auto' }} 
-                        value={historicalDate} 
-                        max={new Date().toISOString().split('T')[0]} // No futuro
-                        min={new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // Max 7 dias
-                        onChange={(e) => setHistoricalDate(e.target.value)}
-                    />
-                    
-                    <span className="muted" style={{ fontSize: '0.85rem' }}>
-                        Nota: Solo se guardan los últimos 7 días.
-                    </span>
-
-                    <Button 
-                        variant="primary" 
-                        onClick={exportarReporteRecorrido} 
-                        style={{ marginLeft: 'auto', background: '#10b981', borderColor: '#10b981' }}
-                        disabled={!historicalActivadorId}
-                    >
-                        ⬇️ Exportar Excel
-                    </Button>
                 </div>
-            )}
-            
-            {/* Sidebar Filters Drawer */}
-            <div style={{
-                position: 'fixed',
-                top: '100px',
-                left: showFilters ? '20px' : '-450px',
-                width: 'min(400px, 90vw)',
-                height: 'calc(100vh - 140px)',
-                zIndex: 1000,
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                display: 'flex',
-                flexDirection: 'column',
-                pointerEvents: 'none'
-            }}>
+
+                <div style={{ width: '1px', height: '20px', background: 'var(--border)', flexShrink: 0 }}></div>
+
+                <Button 
+                    variant={isHistoricalMode ? 'primary' : 'secondary'} 
+                    onClick={() => setIsHistoricalMode(!isHistoricalMode)}
+                    style={{ borderRadius: '14px', height: '40px', flexShrink: 0, flexGrow: 0, width: 'auto', minWidth: 'fit-content', padding: '0 15px', fontSize: '0.85rem' }}
+                >
+                    🗺️ Historial
+                </Button>
+
+                <Button 
+                    variant={showZones ? 'primary' : 'secondary'} 
+                    onClick={() => setShowZones(!showZones)}
+                    style={{ borderRadius: '14px', height: '40px', flexShrink: 0, flexGrow: 0, width: 'auto', minWidth: 'fit-content', padding: '0 15px', fontSize: '0.85rem' }}
+                >
+                    <Layers size={16} /> {isMobile ? 'Zonas' : 'Zonas Diarias'}
+                </Button>
+
+                {showZones && (
+                    <select 
+                        id="zoneSelectorInputClientes" 
+                        value={zoneType} 
+                        onChange={(e) => setZoneType(e.target.value)} 
+                        className="input" 
+                        style={{ width: 'auto', minWidth: '100px', height: '40px', borderRadius: '12px', flexShrink: 0, flexGrow: 0 }}
+                    >
+                        <option value="today">🔵 Hoy</option>
+                        <option value="done">🔴 Realizada</option>
+                        <option value="extra">🟠 Extra</option>
+                    </select>
+                )}
+
+                <Button 
+                    variant={showActivadores ? 'primary' : 'secondary'} 
+                    onClick={() => setShowActivadores(!showActivadores)}
+                    style={{ borderRadius: '14px', height: '40px', flexShrink: 0, flexGrow: 0, width: 'auto', minWidth: 'fit-content', padding: '0 15px', fontSize: '0.85rem' }}
+                >
+                    <User size={16} /> {isMobile ? 'PDI' : 'Activadores'}
+                </Button>
+
+                <Button 
+                    variant={isHeatmapMode ? 'primary' : 'secondary'}
+                    onClick={() => setIsHeatmapMode(!isHeatmapMode)}
+                    style={{ borderRadius: '14px', height: '40px', flexShrink: 0, flexGrow: 0, width: 'auto', minWidth: 'fit-content', padding: '0 15px', fontSize: '0.85rem' }}
+                >
+                    🔥 {isMobile ? 'Calor' : 'Mapa Calor'}
+                </Button>
+
+                <Button 
+                    variant={isRoutingMode ? 'primary' : 'secondary'}
+                    onClick={() => {
+                        if (isRoutingMode) clearRoute();
+                        setIsRoutingMode(!isRoutingMode);
+                    }}
+                    style={{ borderRadius: '14px', height: '40px', flexShrink: 0, flexGrow: 0, width: 'auto', minWidth: 'fit-content', padding: '0 15px', fontSize: '0.85rem' }}
+                >
+                    <RouteIcon size={16} /> {isRoutingMode ? 'Saliendo...' : 'Ruta'}
+                </Button>
+
+                {isRoutingMode && routeStops.length > 0 && (
+                    <div style={{ marginLeft: '20px', animation: 'fadeIn 0.3s' }}>
+                        <Button 
+                            variant="primary" 
+                            onClick={optimizeRoute}
+                            style={{ background: 'var(--success)', border: 'none', borderRadius: '14px' }}
+                        >
+                            Calcular ({routeStops.length})
+                        </Button>
+                    </div>
+                )}
+            </MapControlBar>
+
+            {/* FLOATING SIDEBAR FILTERS (DRAWER) */}
+            {showFilters && (
                 <div style={{
-                    background: 'rgba(255, 255, 255, 0.7)',
-                    backdropFilter: 'blur(16px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    borderRadius: '24px',
-                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
-                    height: '100%',
-                    overflowY: 'auto',
-                    padding: '4px',
-                    pointerEvents: 'auto',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none'
+                    position: 'fixed', top: '100px', left: '20px',
+                    width: 'min(400px, 90vw)', maxHeight: 'calc(100vh - 200px)', zIndex: 1005,
+                    animation: 'fadeIn 0.3s ease'
                 }}>
-                    <style>{`
-                        .drawer-hide-scrollbar::-webkit-scrollbar { display: none; }
-                    `}</style>
-                    <div className="drawer-hide-scrollbar">
+                    <div style={{
+                        background: 'var(--bg-glass)', backdropFilter: 'blur(20px) saturate(180%)',
+                        border: '1px solid var(--border)', borderRadius: '28px',
+                        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.2)', height: '100%',
+                        overflowY: 'auto', padding: '10px'
+                    }}>
                         <ClientFilters 
                             filters={filters}
                             updateFilter={updateFilter}
@@ -1200,97 +1275,7 @@ export default function MapaClientes() {
                         />
                     </div>
                 </div>
-            </div>
-
-            {/* Toggle Button */}
-            <button 
-                onClick={() => setShowFilters(!showFilters)}
-                style={{
-                    position: 'fixed',
-                    left: showFilters ? '430px' : '20px',
-                    top: '120px',
-                    zIndex: 1001,
-                    background: showFilters ? 'var(--accent)' : 'var(--bg-elevated)',
-                    color: showFilters ? '#fff' : 'var(--text)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '50%',
-                    width: '48px',
-                    height: '48px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    cursor: 'pointer',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-                title={showFilters ? "Cerrar Filtros" : "Abrir Filtros"}
-            >
-                {showFilters ? <X size={20} /> : <Filter size={20} />}
-                {!showFilters && Object.values(filters).some(v => Array.isArray(v) ? v.length > 0 : v !== '' && v !== false) && (
-                    <span style={{
-                        position: 'absolute',
-                        top: '-4px',
-                        right: '-4px',
-                        width: '12px',
-                        height: '12px',
-                        background: '#ef4444',
-                        borderRadius: '50%',
-                        border: '2px solid #fff'
-                    }}></span>
-                )}
-            </button>
-
-            {isRoutingMode && (
-                <div style={{ background: 'var(--bg-elevated)', padding: '12px', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)' }}>
-                    <div>
-                        <strong>Modo Ruta Activo:</strong> Hacé click en los clientes que querés visitar (Seleccionados: {routeStops.length}).
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <Button variant="secondary" onClick={() => setRouteStops([])}>Limpiar</Button>
-                        <Button variant="primary" onClick={optimizeRoute}>Calcular Ruta Óptima</Button>
-                    </div>
-                </div>
             )}
-
-            {!isRoutingMode && routeStops.length > 0 && (
-                <div style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>Ruta generada visible.</div>
-                    <Button variant="secondary" onClick={clearRoute}>Limpiar Ruta</Button>
-                </div>
-            )}
-
-            <div style={{ 
-                flex: 1, 
-                width: '100%', 
-                minHeight: 'calc(100vh - 250px)', 
-                borderRadius: '24px', 
-                overflow: 'hidden', 
-                border: '1px solid var(--border)', 
-                position: 'relative', 
-                zIndex: 1,
-                boxShadow: '0 4px 24px rgba(0,0,0,0.05)'
-            }}>
-                <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: 'calc(100vh - 250px)' }}></div>
-            </div>
-
-            <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {getLegendItems().map(item => (
-                    <div
-                        key={item.label}
-                        onClick={() => toggleFilter(item.label)}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            padding: '6px 12px', borderRadius: '20px',
-                            background: activeFilters.size > 0 && !activeFilters.has(item.label) ? 'var(--bg-card)' : 'var(--bg-elevated)',
-                            opacity: activeFilters.size > 0 && !activeFilters.has(item.label) ? 0.5 : 1,
-                            border: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.85rem'
-                        }}
-                    >
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color }}></div>
-                        {item.label}
-                    </div>
-                ))}
-            </div>
 
             <ClienteModal
                 isOpen={modalOpen}
@@ -1310,14 +1295,11 @@ export default function MapaClientes() {
                 clienteId={selectedClienteForRuta?.id || null}
                 clienteNombre={selectedClienteForRuta?.nombre || null}
             />
-            {/* TOTAL BADGE */}
-            <div className="map-stats-badge">
-                <div className="map-stats-dot"></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>En zona: {clientesEnZona}</span>
-                    <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Total: {totalAbsoluto} Clientes</span>
-                </div>
-            </div>
+
+            <style tabIndex="-1">{`
+                @keyframes churn-pulse { 0% { transform: scale(0.95); opacity: 0.5; } 70% { transform: scale(2); opacity: 0; } 100% { transform: scale(0.95); opacity: 0; } }
+            `}</style>
         </div>
     );
 }
+

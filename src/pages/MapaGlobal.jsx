@@ -8,6 +8,11 @@ import L from 'leaflet';
 window.L = window.L || L;
 import 'leaflet/dist/leaflet.css';
 
+// Shared Map Components
+import { MapControlBar } from '../components/map/MapControlBar';
+import { MapStatsBadge } from '../components/map/MapStatsBadge';
+import { MapLegend } from '../components/map/MapLegend';
+
 const CATEGORY_COLORS = {
     clientes: "#3b82f6",     // Azul
     consumidores: "#ec4899", // Rosa
@@ -50,6 +55,15 @@ export default function MapaGlobal() {
 
     const [mapReady, setMapReady] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [showLegendMobile, setShowLegendMobile] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const applyJitter = (lat, lng, id = 0) => {
         // Use id/index to make jitter deterministic per marker if possible, 
@@ -311,71 +325,98 @@ export default function MapaGlobal() {
     };
 
     return (
-        <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px', alignItems: 'stretch' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                    <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <MapIcon size={24} /> Mapa Global
-                    </h1>
-                    <p className="muted" style={{ margin: 0 }}>Vista unificada de toda la red geográfica.</p>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <Button variant="secondary" onClick={fetchData} disabled={loading}>
-                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refrescar
+        <div className="map-immersive-container">
+            
+            {/* MAIN MAP VIEW */}
+            <div className="map-main-view">
+                <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
+
+                {/* OVERLAY: MULTI-STATS BADGE */}
+                <MapStatsBadge>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: isMobile ? '10px' : '20px', textAlign: 'center' }}>
+                        <div>
+                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.clientes, fontWeight: 800, textTransform: 'uppercase' }}>Clientes</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800 }}>{totals.clientes}</div>
+                        </div>
+                        <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: isMobile ? '10px' : '20px' }}>
+                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.consumidores, fontWeight: 800, textTransform: 'uppercase' }}>Consum.</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800 }}>{totals.consumidores}</div>
+                        </div>
+                        <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: isMobile ? '10px' : '20px' }}>
+                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.repartidores, fontWeight: 800, textTransform: 'uppercase' }}>Repart.</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800 }}>{totals.repartidores}</div>
+                        </div>
+                    </div>
+                </MapStatsBadge>
+
+                {/* OVERLAY: LEGEND */}
+                <MapLegend 
+                    title="Capas Activas"
+                    items={Object.entries(CATEGORY_COLORS).map(([key, color]) => ({ 
+                        label: `${key.charAt(0).toUpperCase() + key.slice(1)} (${countsInZone[key]})`, 
+                        color 
+                    }))}
+                    isMobile={isMobile}
+                    showMobile={showLegendMobile}
+                    onCloseMobile={() => setShowLegendMobile(false)}
+                />
+
+                {/* MOBILE LEGEND TOGGLE */}
+                {isMobile && !showLegendMobile && (
+                    <button 
+                        onClick={() => setShowLegendMobile(true)}
+                        style={{
+                            position: 'absolute', bottom: '100px', left: '20px', zIndex: 1000,
+                            background: 'var(--bg-glass)', backdropFilter: 'blur(12px)',
+                            padding: '10px 15px', borderRadius: '12px', border: '1px solid var(--border)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontWeight: 600, fontSize: '0.8rem'
+                        }}
+                    >
+                        📋 Capas ({Object.values(visibility).filter(v => v).length})
+                    </button>
+                )}
+            </div>
+
+            {/* BOTTOM CONTROL BAR */}
+            <MapControlBar isMobile={isMobile}>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                    <Button 
+                        variant={visibility.clientes ? 'primary' : 'secondary'} 
+                        size="sm" 
+                        onClick={() => toggleVisibility('clientes')}
+                        style={{ borderRadius: '12px', height: '40px', padding: '0 15px' }}
+                    >
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.clientes, marginRight: '8px' }}></div>
+                        Clientes
+                    </Button>
+                    <Button 
+                        variant={visibility.consumidores ? 'primary' : 'secondary'} 
+                        size="sm" 
+                        onClick={() => toggleVisibility('consumidores')}
+                        style={{ borderRadius: '12px', height: '40px', padding: '0 15px' }}
+                    >
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.consumidores, marginRight: '8px' }}></div>
+                        Consumidores
+                    </Button>
+                    <Button 
+                        variant={visibility.repartidores ? 'primary' : 'secondary'} 
+                        size="sm" 
+                        onClick={() => toggleVisibility('repartidores')}
+                        style={{ borderRadius: '12px', height: '40px', padding: '0 15px' }}
+                    >
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.repartidores, marginRight: '8px' }}></div>
+                        Repartidores
                     </Button>
                 </div>
-            </div>
 
-            <div style={{ flex: 1, position: 'relative', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}>
-                {/* Map */}
-                <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '600px' }}></div>
+                <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0, margin: '0 8px' }}></div>
 
-                {/* Overlays / Toggles */}
-                <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div className="glass-card" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '180px' }}>
-                        <h3 style={{ fontSize: '0.85rem', margin: '0 0 5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Capas</h3>
-                        
-                        <div onClick={() => toggleVisibility('clientes')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', opacity: visibility.clientes ? 1 : 0.5 }}>
-                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: CATEGORY_COLORS.clientes }}></div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Clientes</span>
-                            <span className="muted" style={{ marginLeft: 'auto', fontSize: '0.75rem' }}>{countsInZone.clientes}</span>
-                        </div>
+                <Button variant="secondary" onClick={fetchData} disabled={loading} style={{ borderRadius: '12px', height: '40px' }}>
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> {isMobile ? '' : 'Refrescar'}
+                </Button>
+            </MapControlBar>
 
-                        <div onClick={() => toggleVisibility('consumidores')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', opacity: visibility.consumidores ? 1 : 0.5 }}>
-                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: CATEGORY_COLORS.consumidores }}></div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Consumidores</span>
-                            <span className="muted" style={{ marginLeft: 'auto', fontSize: '0.75rem' }}>{countsInZone.consumidores}</span>
-                        </div>
-
-                        <div onClick={() => toggleVisibility('repartidores')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', opacity: visibility.repartidores ? 1 : 0.5 }}>
-                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: CATEGORY_COLORS.repartidores }}></div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Repartidores</span>
-                            <span className="muted" style={{ marginLeft: 'auto', fontSize: '0.75rem' }}>{countsInZone.repartidores}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Total floating badge */}
-                <div style={{ position: 'absolute', bottom: '20px', right: '20px', zIndex: 1000 }}>
-                    <div className="map-stats-badge" style={{ padding: '10px 16px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', textAlign: 'center' }}>
-                            <div>
-                                <div style={{ fontSize: '0.7rem', color: CATEGORY_COLORS.clientes, fontWeight: 700, textTransform: 'uppercase' }}>Clientes</div>
-                                <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{totals.clientes}</div>
-                            </div>
-                            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '15px' }}>
-                                <div style={{ fontSize: '0.7rem', color: CATEGORY_COLORS.consumidores, fontWeight: 700, textTransform: 'uppercase' }}>Consum.</div>
-                                <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{totals.consumidores}</div>
-                            </div>
-                            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '15px' }}>
-                                <div style={{ fontSize: '0.7rem', color: CATEGORY_COLORS.repartidores, fontWeight: 700, textTransform: 'uppercase' }}>Repart.</div>
-                                <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{totals.repartidores}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <style>{`
+            <style tabIndex="-1">{`
                 .glass-card {
                     background: rgba(var(--bg-card-rgb), 0.85);
                     backdrop-filter: blur(8px);

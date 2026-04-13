@@ -136,9 +136,15 @@ export function AuthProvider({ children }) {
         if (error) throw error;
     };
 
-    // Reload page permissions when empresaActiva changes
+    // Reload page permissions when empresaActiva changes or permissions are updated manually
     useEffect(() => {
         fetchPermisosPaginas(empresaActiva?.id, role);
+
+        const handleUpdate = () => {
+            fetchPermisosPaginas(empresaActiva?.id, role);
+        };
+        window.addEventListener('permissions-updated', handleUpdate);
+        return () => window.removeEventListener('permissions-updated', handleUpdate);
     }, [empresaActiva, role]);
 
     const updateProfile = async (metadata) => {

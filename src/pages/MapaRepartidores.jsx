@@ -9,6 +9,11 @@ window.L = window.L || L;
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
 
+// Shared Map Components
+import { MapControlBar } from '../components/map/MapControlBar';
+import { MapStatsBadge } from '../components/map/MapStatsBadge';
+import { MapLegend } from '../components/map/MapLegend';
+
 import { RepartidorModal } from '../components/ui/RepartidorModal';
 
 const ESTADOS = [
@@ -48,6 +53,15 @@ export default function MapaRepartidores() {
     const [myLocation, setMyLocation] = useState(null);
     const myMarkerRef = useRef(null);
     const myCircleRef = useRef(null);
+
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [showLegendMobile, setShowLegendMobile] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const fetchRepartidores = async () => {
         if (!empresaActiva?.id) return;
@@ -278,34 +292,77 @@ export default function MapaRepartidores() {
     };
 
     return (
-        <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                    <h1 style={{ margin: 0 }}>Mapa de Repartidores</h1>
-                    <p className="muted" style={{ margin: 0 }}>Distribución geográfica, cobertura radial (2KM) y mapas de calor.</p>
+        <div className="map-immersive-container">
+            
+            {/* MAIN MAP VIEW */}
+            <div className="map-main-view">
+                <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
+
+                {/* OVERLAY: STATS BADGE */}
+                <MapStatsBadge 
+                    inView={repartidoresEnZona} 
+                    total={totalAbsoluto} 
+                    label="en zona" 
+                    totalLabel="Total Repartidores" 
+                />
+
+                {/* OVERLAY: LEGEND */}
+                <MapLegend 
+                    title="Estados"
+                    items={ESTADOS.map(est => ({ label: est, color: ESTADO_COLOR[est] }))}
+                    isMobile={isMobile}
+                    showMobile={showLegendMobile}
+                    onCloseMobile={() => setShowLegendMobile(false)}
+                />
+
+                {/* MOBILE LEGEND TOGGLE */}
+                {isMobile && !showLegendMobile && (
+                    <button 
+                        onClick={() => setShowLegendMobile(true)}
+                        style={{
+                            position: 'absolute', bottom: '100px', left: '20px', zIndex: 1000,
+                            background: 'var(--bg-glass)', backdropFilter: 'blur(12px)',
+                            padding: '10px 15px', borderRadius: '12px', border: '1px solid var(--border)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontWeight: 600, fontSize: '0.8rem'
+                        }}
+                    >
+                        📋 Ver Leyenda
+                    </button>
+                )}
+            </div>
+
+            {/* BOTTOM CONTROL BAR */}
+            <MapControlBar isMobile={isMobile}>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                    <Button variant="secondary" onClick={handleLocateMe} style={{ borderRadius: '12px', height: '42px', padding: '0 15px' }}>
+                        <Navigation size={16} /> <span className="hide-mobile">Ubicarme</span>
+                    </Button>
+                    <Button variant="secondary" onClick={handleRegisterHere} disabled={!myLocation} style={{ borderRadius: '12px', height: '42px', padding: '0 15px' }}>
+                        <MapPin size={16} /> <span className="hide-mobile">Registrar Aquí</span>
+                    </Button>
+                    <Button variant="secondary" onClick={fetchRepartidores} disabled={loading} style={{ borderRadius: '12px', height: '42px', width: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                    </Button>
                 </div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <Button variant="secondary" onClick={handleLocateMe}><Navigation size={16} /> Ubicarme</Button>
-                    <Button variant="secondary" onClick={handleRegisterHere} disabled={!myLocation}><MapPin size={16} /> Registrar Aquí</Button>
-                    <Button variant="secondary" onClick={fetchRepartidores}><RefreshCw size={16} /> Refrescar</Button>
 
-                    <Button variant={showCoverage ? "primary" : "secondary"} onClick={handleToggleCoverage}>Ver Cobertura</Button>
-                    <Button variant={showHeatmap ? "primary" : "secondary"} onClick={handleToggleHeatmap}><Layers size={16} /> Mapa de Calor</Button>
-                </div>
-            </div>
+                <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0, margin: '0 8px' }}></div>
 
-            <div style={{ flex: 1, width: '100%', minHeight: '600px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', zIndex: 1 }}>
-                <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '600px' }}></div>
-            </div>
-
-            <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {ESTADOS.map(est => (
-                    <div key={est} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: ESTADO_COLOR[est] }}></div>
-                        {est}
-                    </div>
-                ))}
-            </div>
+                <Button 
+                    variant={showCoverage ? "primary" : "secondary"} 
+                    onClick={handleToggleCoverage}
+                    style={{ borderRadius: '14px', height: '42px', flexShrink: 0, padding: '0 16px' }}
+                >
+                    📍 Cobertura
+                </Button>
+                
+                <Button 
+                    variant={showHeatmap ? "primary" : "secondary"} 
+                    onClick={handleToggleHeatmap}
+                    style={{ borderRadius: '14px', height: '42px', flexShrink: 0, padding: '0 16px' }}
+                >
+                    <Layers size={16} /> <span className="hide-mobile">Calor</span>
+                </Button>
+            </MapControlBar>
 
             <RepartidorModal
                 isOpen={modalOpen}
@@ -314,14 +371,11 @@ export default function MapaRepartidores() {
                 initialLocation={selectedLatLng}
                 onSaved={() => { setModalOpen(false); fetchRepartidores(); setSelectedLatLng(null); }}
             />
-            {/* TOTAL BADGE */}
-            <div className="map-stats-badge">
-                <div className="map-stats-dot"></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>En zona: {repartidoresEnZona}</span>
-                    <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Total: {totalAbsoluto} Repartidores</span>
-                </div>
-            </div>
+            
+            <style tabIndex="-1">{`
+                .leaflet-popup-content-wrapper { border-radius: 12px; padding: 4px; box-shadow: var(--shadow-lg); }
+                .leaflet-popup-tip { box-shadow: var(--shadow-md); }
+            `}</style>
         </div>
     );
 }

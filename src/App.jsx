@@ -16,7 +16,6 @@ const MapaClientes = lazy(() => import('./pages/MapaClientes'));
 const MapaRepartidores = lazy(() => import('./pages/MapaRepartidores'));
 const MapaConsumidores = lazy(() => import('./pages/MapaConsumidores'));
 const MapaGlobal = lazy(() => import('./pages/MapaGlobal'));
-const MapaKiosco = lazy(() => import('./pages/MapaKiosco'));
 const Calendario = lazy(() => import('./pages/Calendario'));
 const Horarios = lazy(() => import('./pages/Horarios'));
 const Estadisticas = lazy(() => import('./pages/Estadisticas'));
@@ -28,6 +27,7 @@ const Chat = lazy(() => import('./pages/Chat'));
 const TableroTareas = lazy(() => import('./pages/TableroTareas'));
 const Empresas = lazy(() => import('./pages/Empresas'));
 const PermisosEmpresa = lazy(() => import('./pages/PermisosEmpresa'));
+const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
 const ActividadSistema = lazy(() => import('./pages/ActividadSistema'));
 const Historial = lazy(() => import('./pages/Historial'));
 const RutaDiaria = lazy(() => import('./pages/RutaDiaria'));
@@ -61,13 +61,13 @@ function App() {
             <Route path="/mapa-repartidores" element={<Suspense fallback={<GlobalLoader />}><MapaRepartidores /></Suspense>} />
             <Route path="/mapa-consumidores" element={<Suspense fallback={<GlobalLoader />}><MapaConsumidores /></Suspense>} />
             <Route path="/mapa-global" element={<Suspense fallback={<GlobalLoader />}><MapaGlobal /></Suspense>} />
-            <Route path="/kiosco" element={<Suspense fallback={<GlobalLoader />}><MapaKiosco /></Suspense>} />
             <Route path="/estadisticas" element={<Suspense fallback={<GlobalLoader />}><Estadisticas /></Suspense>} />
             <Route path="/tickets" element={<Suspense fallback={<GlobalLoader />}><Tickets /></Suspense>} />
             <Route path="/calificaciones" element={<Suspense fallback={<GlobalLoader />}><Calificaciones /></Suspense>} />
             <Route path="/usuarios" element={<Suspense fallback={<GlobalLoader />}><Usuarios /></Suspense>} />
             <Route path="/empresas" element={<Suspense fallback={<GlobalLoader />}><Empresas /></Suspense>} />
             <Route path="/permisos-empresa" element={<Suspense fallback={<GlobalLoader />}><PermisosEmpresa /></Suspense>} />
+            <Route path="/super-admin" element={<Suspense fallback={<GlobalLoader />}><SuperAdmin /></Suspense>} />
             <Route path="/actividad-sistema" element={<Suspense fallback={<GlobalLoader />}><ActividadSistema /></Suspense>} />
             <Route path="/configuracion" element={<Suspense fallback={<GlobalLoader />}><Configuracion /></Suspense>} />
           </Route>

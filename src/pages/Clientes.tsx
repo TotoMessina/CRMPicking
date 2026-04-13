@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '../components/ui/Button';
-import { Plus, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Download, Upload, MoreVertical, FileText } from 'lucide-react';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
 import { ClienteCard } from '../components/ui/ClienteCard';
 import { useClientsLogic } from '../hooks/useClientsLogic';
 import { ClientFilters } from '../components/clients/ClientFilters';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Clientes: React.FC = () => {
     const {
@@ -17,37 +18,77 @@ const Clientes: React.FC = () => {
         actModalOpen, setActModalOpen, actTargetId, actTargetName, handleOpenActivity,
         handleQuickDate, handleRegistrarVisita, queryClient
     } = useClientsLogic();
+    
+    const [actionsOpen, setActionsOpen] = useState(false);
 
     return (
-        <div className="page-container" style={{ padding: '0', maxWidth: '100%', margin: '0 auto', animation: 'page-enter 0.5s ease-out forwards' }}>
+        <div className="page-container" style={{ padding: '0', maxWidth: '100%', margin: '0 auto', position: 'relative' }}>
 
             {/* 1. HERO HEADER */}
-            <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', gap: '16px' }}>
+            <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        {isAgendaHoy ? "Agenda de Hoy" : "Directorio de Clientes"}
+                        {isAgendaHoy ? "Agenda de Hoy" : "Clientes"}
                     </h1>
                     <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>
-                        {isAgendaHoy ? "Clientes programados para contactar hoy." : "Gestión, historial y segmentación interactiva de comercios."}
+                        {isAgendaHoy ? "Contactos programados." : "Gestión y segmentación interactiva."}
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Button variant="secondary" onClick={handleDescargarModelo} style={{ borderRadius: '99px', fontSize: '0.95rem' }} title="Descargar Modelo Excel">
-                        Descargar Modelo
-                    </Button>
-                    <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: '99px', border: '1px solid var(--border)', padding: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                        <Button variant="secondary" onClick={handleDescargarExcel} disabled={exportLoading} style={{ borderRadius: '99px', border: 'none', background: 'transparent' }} title="Exportar Clientes a Excel">
-                            <Download size={18} />
-                        </Button>
-                        <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '99px', border: 'none', background: 'transparent', padding: '8px 16px', color: 'var(--text-muted)' }} title="Importar desde Excel">
-                            <Upload size={18} />
-                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel as any} />
-                        </label>
-                    </div>
 
-                    <Button variant="primary" onClick={handleCreate} className="btn-text-hide-mobile" style={{ padding: '10px 24px', fontSize: '1.05rem', fontWeight: 600, borderRadius: '99px', boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.5)' }}>
-                        <Plus size={20} /> <span>Nuevo Cliente</span>
+                {/* SECONDARY ACTIONS DROPDOWN */}
+                <div style={{ position: 'relative' }}>
+                    <Button 
+                        variant="secondary" 
+                        onClick={() => setActionsOpen(!actionsOpen)} 
+                        style={{ borderRadius: '14px', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)' }}
+                    >
+                        <MoreVertical size={18} />
+                        <span className="hide-mobile">Acciones</span>
                     </Button>
+
+                    <AnimatePresence>
+                        {actionsOpen && (
+                            <>
+                                <div 
+                                    style={{ position: 'fixed', inset: 0, zIndex: 998 }} 
+                                    onClick={() => setActionsOpen(false)} 
+                                />
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    style={{
+                                        position: 'absolute', top: '50px', right: 0, zIndex: 999,
+                                        minWidth: '220px', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                        borderRadius: '16px', boxShadow: 'var(--shadow-xl)', padding: '8px',
+                                        backdropFilter: 'blur(16px)'
+                                    }}
+                                >
+                                    <button 
+                                        className="dropdown-item" 
+                                        onClick={() => { handleDescargarModelo(); setActionsOpen(false); }}
+                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)' }}
+                                    >
+                                        <FileText size={16} className="text-accent" /> Descargar Modelo Excel
+                                    </button>
+                                    <button 
+                                        className="dropdown-item" 
+                                        onClick={() => { handleDescargarExcel(); setActionsOpen(false); }}
+                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)' }}
+                                    >
+                                        <Download size={16} className="text-accent" /> Exportar Clientes
+                                    </button>
+                                    <label 
+                                        className="dropdown-item" 
+                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
+                                    >
+                                        <Upload size={16} className="text-accent" /> Importar Excel
+                                        <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => { handleImportExcel(e as any); setActionsOpen(false); }} />
+                                    </label>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
                 </div>
             </header>
 
@@ -146,6 +187,44 @@ const Clientes: React.FC = () => {
                 clienteNombre={actTargetName}
                 onSaved={() => { setActModalOpen(false); queryClient.invalidateQueries({ queryKey: ['clientes'] }); }}
             />
+
+            {/* GLOBAL FLOATING ACTION BUTTON (FAB) - PORTAL */}
+            {createPortal(
+                <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999 }}>
+                    <motion.button
+                        whileHover={{ scale: 1.1, translateY: -5 }}
+                        whileTap={{ scale: 0.9 }}
+                        animate={{ 
+                            boxShadow: [
+                                '0 8px 20px -6px rgba(139, 92, 246, 0.5)',
+                                '0 8px 35px 5px rgba(139, 92, 246, 0.3)',
+                                '0 8px 20px -6px rgba(139, 92, 246, 0.5)'
+                            ]
+                        }}
+                        transition={{ 
+                            boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        onClick={handleCreate}
+                        style={{
+                            pointerEvents: 'auto',
+                            width: '64px', height: '64px', borderRadius: '32px',
+                            background: 'linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%)',
+                            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer',
+                            boxShadow: '0 8px 20px -6px rgba(139, 92, 246, 0.5)'
+                        }}
+                        title="Registrar Nuevo Cliente"
+                    >
+                        <Plus size={32} />
+                    </motion.button>
+                </div>,
+                document.body
+            )}
+
+            <style tabIndex={-1}>{`
+                .dropdown-item:hover { background: var(--bg-elevated); color: var(--primary) !important; }
+                .text-accent { color: var(--primary); }
+            `}</style>
         </div>
     );
 }
