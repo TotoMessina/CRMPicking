@@ -84,7 +84,11 @@ export default function AsignadorRutas() {
     // State principal
     const [usuarios, setUsuarios] = useState([]);
     const [usuarioSeleccionado, setUsuarioSeleccionado] = useState('');
-    const [fechaSeleccionada, setFechaSeleccionada] = useState(() => new Date().toISOString().split('T')[0]);
+    const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
+        const date = new Date();
+        const offset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - offset).toISOString().split('T')[0];
+    });
     const [rutaActual, setRutaActual] = useState([]);
     const [loadingRuta, setLoadingRuta] = useState(false);
 
@@ -230,7 +234,8 @@ export default function AsignadorRutas() {
         const nueva = rutaActual.filter(v => v.id !== id);
         setRutaActual(nueva);
         // Re-ordenar
-        await supabase.all(nueva.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id)));
+        const updates = nueva.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id));
+        await Promise.all(updates);
     };
 
     const moverVisita = async (index, direccion) => {
@@ -257,6 +262,22 @@ export default function AsignadorRutas() {
         // Persistir órdenes
         const updates = items.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id));
         await Promise.all(updates);
+    };
+
+    const vaciarRuta = async () => {
+        if (!usuarioSeleccionado || !fechaSeleccionada || rutaActual.length === 0) return;
+        if (!window.confirm('¿Estás seguro que deseas eliminar TODAS las visitas planificadas para este vendedor en esta fecha?')) return;
+        
+        const ids = rutaActual.map(v => v.id);
+        const { error } = await supabase.from('visitas_diarias').delete().in('id', ids);
+        
+        if (error) {
+            toast.error('Error al vaciar la ruta');
+            console.error(error);
+        } else {
+            setRutaActual([]);
+            toast.success('Ruta vaciada al 100%');
+        }
     };
 
     const clonarUltimaRuta = async () => {
@@ -458,7 +479,7 @@ export default function AsignadorRutas() {
                                 <strong>Ruta del Día</strong>
                             </div>
                             {rutaActual.length > 0 && (
-                                <button className="btn-link" onClick={() => setRutaActual([])} style={{ border: 'none', background: 'transparent', color: 'var(--danger)' }}>
+                                <button className="btn-link" onClick={vaciarRuta} style={{ border: 'none', background: 'transparent', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer' }}>
                                     Vaciar Todo
                                 </button>
                             )}
@@ -526,7 +547,11 @@ export default function AsignadorRutas() {
                                 </div>
                                 <textarea className="input" autoFocus value={editingComentario.texto} onChange={e => setEditingComentario({...editingComentario, texto: e.target.value})} rows={2} style={{ width: '100%', marginBottom: 10 }} placeholder="Escribe instrucciones aquí..." />
                                 <button className="btn-primario" onClick={async () => {
-                                    await supabase.from('visitas_diarias').update({ comentarios_admin: editingComentario.texto }).eq('id', editingComentario.id);
+                                    const { error } = await supabase.from('visitas_diarias').update({ comentarios_admin: editingComentario.texto }).eq('id', editingComentario.id);
+                                    if (error) {
+                                        toast.error('No se pudo guardar la nota');
+                                        return;
+                                    }
                                     setRutaActual(prev => prev.map(v => v.id === editingComentario.id ? { ...v, comentarios_admin: editingComentario.texto } : v));
                                     setEditingComentario(null);
                                     toast.success('Nota guardada');
