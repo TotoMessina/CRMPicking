@@ -33,19 +33,18 @@ export const useChat = () => {
         if (!user || !empresaActiva) return;
         setLoadingUsers(true);
 
-        const { data: empUsers, error: usersError } = await supabase
-            .from('empresa_usuario')
-            .select('usuario:usuarios(email, nombre, role, avatar_url)')
-            .eq('empresa_id', empresaActiva.id)
-            .neq('usuario_email', user.email);
-
-        const usersData = (empUsers || []).map(eu => eu.usuario).filter(Boolean);
+        const { data: usersData, error: usersError } = await supabase
+            .rpc('get_chat_users', { empresa_id_param: empresaActiva.id });
 
         if (usersError) {
             toast.error('Error al cargar contactos');
             setLoadingUsers(false);
             return;
         }
+
+        // Excluir al propio usuario logueado de la lista
+        const filteredUsers = (usersData || []).filter(u => u.email !== user.email);
+
 
         // Fetch last interactions (received and sent) to determine order and unread count
         const { data: interactionData, error: interactionError } = await supabase
@@ -69,7 +68,7 @@ export const useChat = () => {
             });
         }
 
-        let combined = usersData.map(u => ({
+        let combined = filteredUsers.map(u => ({
             ...u,
             unreadCount: userStats[u.email]?.unreadCount || 0,
             lastMessageAt: userStats[u.email]?.lastMessageAt || null
