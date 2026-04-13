@@ -20,7 +20,6 @@ const Calendario = lazy(() => import('./pages/Calendario'));
 const Horarios = lazy(() => import('./pages/Horarios'));
 const Estadisticas = lazy(() => import('./pages/Estadisticas'));
 const Tickets = lazy(() => import('./pages/Tickets'));
-const Calificaciones = lazy(() => import('./pages/Calificaciones'));
 const Usuarios = lazy(() => import('./pages/Usuarios'));
 const Configuracion = lazy(() => import('./pages/Configuracion'));
 const Chat = lazy(() => import('./pages/Chat'));
@@ -63,7 +62,6 @@ function App() {
             <Route path="/mapa-global" element={<Suspense fallback={<GlobalLoader />}><MapaGlobal /></Suspense>} />
             <Route path="/estadisticas" element={<Suspense fallback={<GlobalLoader />}><Estadisticas /></Suspense>} />
             <Route path="/tickets" element={<Suspense fallback={<GlobalLoader />}><Tickets /></Suspense>} />
-            <Route path="/calificaciones" element={<Suspense fallback={<GlobalLoader />}><Calificaciones /></Suspense>} />
             <Route path="/usuarios" element={<Suspense fallback={<GlobalLoader />}><Usuarios /></Suspense>} />
             <Route path="/empresas" element={<Suspense fallback={<GlobalLoader />}><Empresas /></Suspense>} />
             <Route path="/permisos-empresa" element={<Suspense fallback={<GlobalLoader />}><PermisosEmpresa /></Suspense>} />

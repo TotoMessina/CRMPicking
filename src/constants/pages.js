@@ -38,7 +38,6 @@ export const ALL_PAGES = [
     // --- Grupo: Listados ---
     { to: '/estadisticas', icon: Activity, label: 'Estadísticas', group: 'Listados' },
     { to: '/tickets', icon: Ticket, label: 'Tickets', group: 'Listados' },
-    { to: '/calificaciones', icon: Star, label: 'Calificaciones', group: 'Listados' },
 
     // --- Grupo: Administrativo ---
     { to: '/usuarios', icon: Users, label: 'Usuarios', group: 'Administrativo' },
