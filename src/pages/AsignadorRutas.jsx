@@ -520,9 +520,13 @@ export default function AsignadorRutas() {
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                <div className="route-item-actions">
-                                                                    <button onClick={() => setEditingComentario({ id: v.id, texto: v.comentarios_admin || '' })} className="btn-secundario-icon" title="Nota"><MessageSquare size={14} /></button>
-                                                                    <button onClick={() => quitarVisita(v.id)} className="btn-secundario-icon danger" title="Eliminar"><Trash2 size={14} /></button>
+                                                                <div className="route-item-actions" style={{ display: 'flex', gap: '8px', paddingRight: '4px' }}>
+                                                                    <button onClick={() => setEditingComentario({ id: v.id, texto: v.comentarios_admin || '' })} className={`premium-pill-btn ${v.comentarios_admin ? 'active' : ''}`} title={v.comentarios_admin ? 'Editar Nota' : 'Añadir Nota'}>
+                                                                        <MessageSquare size={14} /> <span>{v.comentarios_admin ? 'Ver Nota' : 'Añadir Nota'}</span>
+                                                                    </button>
+                                                                    <button onClick={() => { if(window.confirm(`¿Quitar ${v.clientes?.nombre_local || 'el local'} de la ruta?`)) quitarVisita(v.id) }} className="premium-pill-btn danger" title="Eliminar de la fila">
+                                                                        <Trash2 size={14} /> <span>Quitar</span>
+                                                                    </button>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -540,23 +544,31 @@ export default function AsignadorRutas() {
 
                     <AnimatePresence>
                         {editingComentario && (
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="glass-card" style={{ marginTop: 12 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><MessageSquare size={14} /> <strong>Nota para el Vendedor</strong></div>
-                                    <button onClick={() => setEditingComentario(null)}><X size={14} /></button>
-                                </div>
-                                <textarea className="input" autoFocus value={editingComentario.texto} onChange={e => setEditingComentario({...editingComentario, texto: e.target.value})} rows={2} style={{ width: '100%', marginBottom: 10 }} placeholder="Escribe instrucciones aquí..." />
-                                <button className="btn-primario" onClick={async () => {
-                                    const { error } = await supabase.from('visitas_diarias').update({ comentarios_admin: editingComentario.texto }).eq('id', editingComentario.id);
-                                    if (error) {
-                                        toast.error('No se pudo guardar la nota');
-                                        return;
-                                    }
-                                    setRutaActual(prev => prev.map(v => v.id === editingComentario.id ? { ...v, comentarios_admin: editingComentario.texto } : v));
-                                    setEditingComentario(null);
-                                    toast.success('Nota guardada');
-                                }} style={{ width: '100%' }}>Guardar Nota</button>
-                            </motion.div>
+                            <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)' }} onClick={() => setEditingComentario(null)}>
+                                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="glass-card" style={{ width: '90%', maxWidth: '420px', padding: '24px', background: 'var(--bg)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)' }} onClick={e => e.stopPropagation()}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                            <div style={{ background: 'rgba(124, 58, 237, 0.1)', padding: '8px', borderRadius: '10px', display: 'flex' }}><MessageSquare size={18} className="text-accent" /></div>
+                                            <strong style={{ fontSize: '1.1rem' }}>Mensaje al Vendedor</strong>
+                                        </div>
+                                        <button onClick={() => setEditingComentario(null)} className="premium-icon-btn" style={{ border: 'none' }}><X size={18} /></button>
+                                    </div>
+                                    <textarea className="input premium-input" autoFocus value={editingComentario.texto} onChange={e => setEditingComentario({...editingComentario, texto: e.target.value})} rows={4} style={{ width: '100%', marginBottom: 20, resize: 'none', fontSize: '0.95rem' }} placeholder="Escribe instrucciones especiales, horarios de atención, qué cobrar..." />
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <button className="btn-secundario" onClick={() => setEditingComentario(null)} style={{ flex: 1 }}>Cancelar</button>
+                                        <button className="btn-primario" onClick={async () => {
+                                            const { error } = await supabase.from('visitas_diarias').update({ comentarios_admin: editingComentario.texto }).eq('id', editingComentario.id);
+                                            if (error) {
+                                                toast.error('No se pudo guardar la nota');
+                                                return;
+                                            }
+                                            setRutaActual(prev => prev.map(v => v.id === editingComentario.id ? { ...v, comentarios_admin: editingComentario.texto } : v));
+                                            setEditingComentario(null);
+                                            toast.success('Nota guardada');
+                                        }} style={{ flex: 1.5 }}>Completar</button>
+                                    </div>
+                                </motion.div>
+                            </div>
                         )}
                     </AnimatePresence>
                 </div>
@@ -618,32 +630,40 @@ export default function AsignadorRutas() {
                     opacity: 0.1;
                     cursor: not-allowed;
                 }
-                .btn-secundario-icon {
-                    width: 30px;
-                    height: 30px;
-                    border-radius: 8px;
-                    display: flex;
+                .premium-pill-btn {
+                    padding: 6px 14px;
+                    border-radius: 20px;
+                    display: inline-flex;
                     align-items: center;
-                    justify-content: center;
-                    background: rgba(0, 0, 0, 0.05);
+                    gap: 6px;
+                    background: var(--bg-elevated);
                     color: var(--text-muted);
-                    border: none;
+                    border: 1px solid var(--border);
                     cursor: pointer;
+                    font-size: 0.75rem;
+                    font-weight: 600;
                     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                 }
-                .btn-secundario-icon:hover {
+                .premium-pill-btn.active {
                     background: rgba(124, 58, 237, 0.1);
                     color: var(--accent);
+                    border-color: rgba(124, 58, 237, 0.3);
+                }
+                .premium-pill-btn:hover {
+                    background: var(--bg-hover);
+                    color: var(--text);
                     transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
                 }
-                .btn-secundario-icon.danger:hover {
-                    background: rgba(239, 68, 68, 0.1);
+                .premium-pill-btn.danger {
                     color: #ef4444;
-                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+                    background: rgba(239, 68, 68, 0.05);
+                    border-color: rgba(239, 68, 68, 0.1);
                 }
-                .btn-secundario-icon svg {
-                    stroke-width: 2.5px;
+                .premium-pill-btn.danger:hover {
+                    background: #ef4444;
+                    color: white;
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
                 }
             `}</style>
         </div>
