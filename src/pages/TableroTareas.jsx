@@ -32,6 +32,8 @@ export default function TableroTareas() {
         titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: [], fecha_vencimiento: '', checklist: []
     });
     const [newChecklistText, setNewChecklistText] = useState('');
+    const [assigneeForNewItem, setAssigneeForNewItem] = useState([]); // Array of emails for the item being added
+    const [editingItemId, setEditingItemId] = useState(null);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -121,6 +123,9 @@ export default function TableroTareas() {
             setForm({ titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: [], fecha_vencimiento: '', checklist: [] });
         }
         setNewChecklistText('');
+        setAssigneeForNewItem([]);
+        setEditingItemId(null);
+        setIsModalOpen(true);
     };
 
     const saveTask = async (e) => {
@@ -172,15 +177,42 @@ export default function TableroTareas() {
         if (!newChecklistText.trim()) return;
         setForm(prev => ({
             ...prev,
-            checklist: [...prev.checklist, { id: Date.now().toString(), text: newChecklistText.trim(), completed: false }]
+            checklist: [...prev.checklist, { 
+                id: Date.now().toString(), 
+                text: newChecklistText.trim(), 
+                completed: false,
+                assigned_to: assigneeForNewItem || []
+            }]
         }));
         setNewChecklistText('');
+        setAssigneeForNewItem([]);
+    };
+
+    const updateChecklistItemAssignees = (itemId, email) => {
+        setForm(prev => ({
+            ...prev,
+            checklist: prev.checklist.map(i => {
+                if (i.id !== itemId) return i;
+                const current = i.assigned_to || [];
+                const next = current.includes(email) 
+                    ? current.filter(e => e !== email) 
+                    : [...current, email];
+                return { ...i, assigned_to: next };
+            })
+        }));
     };
 
     const toggleCheckitem = (itemId) => {
         setForm(prev => ({
             ...prev,
             checklist: prev.checklist.map(i => i.id === itemId ? { ...i, completed: !i.completed } : i)
+        }));
+    };
+
+    const updateChecklistText = (itemId, newText) => {
+        setForm(prev => ({
+            ...prev,
+            checklist: prev.checklist.map(i => i.id === itemId ? { ...i, text: newText } : i)
         }));
     };
 
@@ -201,8 +233,54 @@ export default function TableroTareas() {
         return u ? u.nombre || u.email.split('@')[0] : email;
     };
 
+    const getUserInitials = (email) => {
+        const u = usuarios.find(x => x.email === email);
+        if (!u) return email.substring(0, 2).toUpperCase();
+        return u.nombre ? u.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : email.substring(0, 2).toUpperCase();
+    };
+
     return (
-        <div style={{ padding: 'max(16px, 2vw)', height: '100%', display: 'flex', flexDirection: 'column', maxWidth: '1600px', margin: '0 auto', overflow: 'hidden' }}>
+        <div style={{ 
+            padding: 'max(16px, 2vw)', 
+            height: '100dvh', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            maxWidth: '1600px', 
+            margin: '0 auto', 
+            overflow: 'hidden',
+            position: 'relative'
+        }}>
+            <style>{`
+                .kanban-container::-webkit-scrollbar { height: 8px; }
+                .kanban-container::-webkit-scrollbar-track { background: transparent; }
+                .kanban-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+                .kanban-container::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+                
+                @media (max-width: 768px) {
+                    .kanban-container {
+                        scroll-snap-type: x mandatory;
+                    }
+                    .kanban-column {
+                        scroll-snap-align: center;
+                        min-width: calc(100vw - 40px) !important;
+                    }
+                }
+                
+                .progress-bar-container {
+                    width: 100%;
+                    height: 6px;
+                    background: var(--bg);
+                    border-radius: 10px;
+                    overflow: hidden;
+                    margin: 4px 0;
+                    border: 1px solid var(--border);
+                }
+                .progress-bar-fill {
+                    height: 100%;
+                    background: var(--accent);
+                    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+            `}</style>
             <header style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ flex: '1 1 min-content' }}>
                     <h1 style={{ margin: 0, fontSize: 'clamp(1.4rem, 4vw, 1.8rem)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -227,17 +305,15 @@ export default function TableroTareas() {
                 </div>
             ) : (
                 <DragDropContext onDragEnd={onDragEnd}>
-                    <div style={{
+                    <div className="kanban-container" style={{
                         display: 'flex',
-                        gap: '24px',
+                        gap: '20px',
                         flex: 1,
                         overflowX: 'auto',
                         overflowY: 'hidden',
-                        paddingBottom: '24px',
-                        // Optional scrollbar styling for a cleaner look
+                        paddingBottom: '20px',
                         scrollbarWidth: 'thin',
                         scrollbarColor: 'var(--border) transparent',
-                        // Mobile response: Ensure columns have space, but we still scroll horizontally like a true Kanban unless forced tightly
                     }}>
                         {COLUMNS.map(col => (
                             <Droppable droppableId={col.id} key={col.id}>
@@ -245,17 +321,18 @@ export default function TableroTareas() {
                                     <div
                                         ref={provided.innerRef}
                                         {...provided.droppableProps}
+                                        className="kanban-column"
                                         style={{
                                             background: snapshot.isDraggingOver ? 'var(--bg-active)' : 'var(--bg-glass)',
                                             borderRadius: '20px',
                                             padding: '16px',
-                                            minWidth: 'min(90vw, 320px)', // Fixed min-width for columns, responsive to very small phones
-                                            maxWidth: '380px', // Max width to prevent them from stretching too much on extra wide screens
-                                            flex: 1,
+                                            minWidth: '320px',
+                                            maxWidth: '400px',
+                                            flex: '0 0 auto', // Fixed flex for horizontal scroll reliability
                                             border: '1px solid var(--border)',
                                             display: 'flex', flexDirection: 'column', gap: '16px',
                                             transition: 'all 0.3s ease',
-                                            boxShadow: snapshot.isDraggingOver ? 'inset 0 0 0 2px var(--accent)' : 'var(--shadow-sm)'
+                                            boxShadow: snapshot.isDraggingOver ? 'var(--shadow-lg)' : 'var(--shadow-sm)'
                                         }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '2px dashed var(--border)' }}>
@@ -300,9 +377,18 @@ export default function TableroTareas() {
                                                                 zIndex: snapshot.isDragging ? 99 : 1
                                                             }}
                                                         >
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                                                                 <strong style={{ fontSize: '1.05rem', lineHeight: '1.4', color: 'var(--text)' }}>{task.titulo}</strong>
                                                             </div>
+
+                                                            {task.checklist?.length > 0 && (
+                                                                <div className="progress-bar-container">
+                                                                    <div className="progress-bar-fill" style={{ 
+                                                                        width: `${getProgress(task.checklist)}%`,
+                                                                        backgroundColor: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--accent)'
+                                                                    }} />
+                                                                </div>
+                                                            )}
 
                                                             {task.descripcion && (
                                                                 <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -311,16 +397,35 @@ export default function TableroTareas() {
                                                             )}
 
                                                             {task.checklist?.length > 0 && (
-                                                                <div style={{
-                                                                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem',
-                                                                    background: getProgress(task.checklist) === 100 ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg)',
-                                                                    border: '1px solid', borderColor: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--border)',
-                                                                    padding: '6px 10px', borderRadius: '8px', width: 'fit-content', fontWeight: 500
-                                                                }}>
-                                                                    <CheckSquare size={14} color={getProgress(task.checklist) === 100 ? '#10b981' : 'var(--text-muted)'} />
-                                                                    <span style={{ color: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--text-muted)' }}>
-                                                                        {task.checklist.filter(i => i.completed).length}/{task.checklist.length}
-                                                                    </span>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                                                                    <div style={{
+                                                                        display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem',
+                                                                        background: getProgress(task.checklist) === 100 ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg)',
+                                                                        border: '1px solid', borderColor: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--border)',
+                                                                        padding: '4px 8px', borderRadius: '8px', width: 'fit-content', fontWeight: 600
+                                                                    }}>
+                                                                        <CheckSquare size={12} color={getProgress(task.checklist) === 100 ? '#10b981' : 'var(--text-muted)'} />
+                                                                        <span style={{ color: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--text-muted)' }}>
+                                                                            {task.checklist.filter(i => i.completed).length}/{task.checklist.length}
+                                                                        </span>
+                                                                    </div>
+                                                                    
+                                                                    {/* Subtask Assignees */}
+                                                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                                        {[...new Set(task.checklist.flatMap(i => i.assigned_to || []))].slice(0, 3).map((email, idx) => (
+                                                                            <div key={email} title={`Subtarea: ${getUserName(email)}`} style={{
+                                                                                width: '20px', height: '20px', borderRadius: '50%', background: 'var(--bg-elevated)', color: 'var(--text-muted)',
+                                                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold',
+                                                                                boxShadow: 'var(--shadow-xs)', border: '1px solid var(--border)',
+                                                                                marginLeft: idx > 0 ? '-6px' : '0px', zIndex: 5 - idx
+                                                                            }}>
+                                                                                {getUserInitials(email)}
+                                                                            </div>
+                                                                        ))}
+                                                                        {[...new Set(task.checklist.flatMap(i => i.assigned_to || []))].length > 3 && (
+                                                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '4px' }}>+</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             )}
 
@@ -465,43 +570,118 @@ export default function TableroTareas() {
                                         <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                             {form.checklist.map(item => (
                                                 <div key={item.id} style={{
-                                                    display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-elevated)',
-                                                    padding: '10px 16px', borderRadius: '12px', border: '1px solid var(--border)',
+                                                    display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-elevated)',
+                                                    padding: '12px', borderRadius: '12px', border: '1px solid var(--border)',
                                                     opacity: item.completed ? 0.7 : 1, transition: 'all 0.2s'
                                                 }}>
-                                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                                        <input type="checkbox" checked={item.completed} onChange={() => toggleCheckitem(item.id)} style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: 'var(--accent)' }} />
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                            <input type="checkbox" checked={item.completed} onChange={() => toggleCheckitem(item.id)} style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: 'var(--accent)' }} />
+                                                        </div>
+                                                        
+                                                        {editingItemId === item.id ? (
+                                                            <input 
+                                                                type="text" 
+                                                                className="input" 
+                                                                autoFocus
+                                                                style={{ flex: 1, padding: '6px 12px', fontSize: '0.95rem', background: 'var(--bg)', border: '1px solid var(--accent)', borderRadius: '8px' }}
+                                                                value={item.text} 
+                                                                onChange={e => updateChecklistText(item.id, e.target.value)}
+                                                                onBlur={() => setEditingItemId(null)}
+                                                                onKeyDown={e => { if (e.key === 'Enter') setEditingItemId(null); }}
+                                                            />
+                                                        ) : (
+                                                            <span 
+                                                                style={{ flex: 1, textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? 'var(--text-muted)' : 'var(--text)', fontSize: '0.95rem', fontWeight: 500, cursor: 'text' }}
+                                                                onClick={() => setEditingItemId(item.id)}
+                                                            >
+                                                                {item.text}
+                                                            </span>
+                                                        )}
+
+                                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                                            <button 
+                                                                type="button" 
+                                                                title="Editar texto"
+                                                                onClick={() => setEditingItemId(editingItemId === item.id ? null : item.id)} 
+                                                                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                                                            >
+                                                                <Edit2 size={14} />
+                                                            </button>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => removeChecklist(item.id)} 
+                                                                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <span style={{ flex: 1, textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? 'var(--text-muted)' : 'var(--text)', fontSize: '0.95rem' }}>
-                                                        {item.text}
-                                                    </span>
-                                                    <button type="button" onClick={() => removeChecklist(item.id)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'} onMouseLeave={e => e.currentTarget.style.background = 'var(--bg)'}>
-                                                        <Trash2 size={16} />
-                                                    </button>
+
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingLeft: '32px' }}>
+                                                        {usuarios.map(u => (
+                                                            <button
+                                                                key={u.email}
+                                                                type="button"
+                                                                onClick={() => updateChecklistItemAssignees(item.id, u.email)}
+                                                                style={{
+                                                                    fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px',
+                                                                    background: (item.assigned_to || []).includes(u.email) ? 'var(--accent)' : 'var(--bg)',
+                                                                    color: (item.assigned_to || []).includes(u.email) ? '#fff' : 'var(--text-muted)',
+                                                                    border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.2s'
+                                                                }}
+                                                            >
+                                                                {u.nombre || u.email.split('@')[0]}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
 
-                                    {/* FIXED CHECKLIST INPUT VISIBILITY */}
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <input
-                                            type="text"
-                                            className="input"
-                                            style={{
-                                                flex: 1,
-                                                background: 'var(--bg-elevated)', // Ensure contrasting background inside modal
-                                                color: 'var(--text)',
-                                                padding: '12px',
-                                                borderRadius: '10px',
-                                                border: '1px solid var(--border)'
-                                            }}
-                                            placeholder="Agregar un ítem a la checklist..."
-                                            value={newChecklistText}
-                                            onChange={e => setNewChecklistText(e.target.value)}
-                                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChecklistItem(); } }}
-                                        />
-                                        <Button type="button" variant="secondary" onClick={addChecklistItem} style={{ borderRadius: '10px' }}>Agregar</Button>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <input
+                                                type="text"
+                                                className="input"
+                                                style={{ 
+                                                    flex: 1, 
+                                                    padding: '12px 16px', 
+                                                    fontSize: '1rem', 
+                                                    borderRadius: '12px',
+                                                    background: 'var(--bg-elevated)', 
+                                                    border: '1px solid var(--border)' 
+                                                }}
+                                                placeholder="Escribe el nombre de la subtarea..."
+                                                value={newChecklistText}
+                                                onChange={e => setNewChecklistText(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChecklistItem(); } }}
+                                            />
+                                            <Button type="button" variant="secondary" onClick={addChecklistItem}>Fijar Subtarea</Button>
+                                        </div>
+                                        
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Asignar a:</span>
+                                            {usuarios.map(u => (
+                                                <button
+                                                    key={u.email}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const current = assigneeForNewItem || [];
+                                                        setAssigneeForNewItem(current.includes(u.email) ? current.filter(e => e !== u.email) : [...current, u.email]);
+                                                    }}
+                                                    style={{
+                                                        fontSize: '0.75rem', padding: '4px 10px', borderRadius: '12px',
+                                                        background: (assigneeForNewItem || []).includes(u.email) ? 'var(--accent)' : 'var(--bg)',
+                                                        color: (assigneeForNewItem || []).includes(u.email) ? '#fff' : 'var(--text-muted)',
+                                                        border: '1px solid var(--border)', cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    {u.nombre || u.email.split('@')[0]}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </form>
