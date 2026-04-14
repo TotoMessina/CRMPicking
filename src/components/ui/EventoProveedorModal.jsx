@@ -22,7 +22,9 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
         fecha_fin: '',
         fecha_real_cierre: '',
         estado: 'pendiente',
-        descripcion: ''
+        descripcion: '',
+        prioridad: 'media',
+        depende_de_nosotros: true
     });
 
     useEffect(() => {
@@ -48,7 +50,9 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
                     fecha_fin: '',
                     fecha_real_cierre: '',
                     estado: 'pendiente',
-                    descripcion: ''
+                    descripcion: '',
+                    prioridad: 'media',
+                    depende_de_nosotros: true
                 });
             }
         }
@@ -67,7 +71,9 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
                 fecha_fin: toLocalInput(data.fecha_fin),
                 fecha_real_cierre: toLocalInput(data.fecha_real_cierre),
                 estado: data.estado || 'pendiente',
-                descripcion: data.descripcion || ''
+                descripcion: data.descripcion || '',
+                prioridad: data.prioridad || 'media',
+                depende_de_nosotros: data.depende_de_nosotros !== false
             });
         }
         setLoading(false);
@@ -120,6 +126,8 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
             fecha_real_cierre: toISO(formData.fecha_real_cierre),
             estado: formData.estado,
             descripcion: formData.descripcion.trim() || null,
+            prioridad: formData.prioridad,
+            depende_de_nosotros: formData.depende_de_nosotros,
             empresa_id: empresaActiva?.id
         };
 
@@ -222,9 +230,38 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
                                 </datalist>
                             </label>
 
+                            {formData.tipo === 'idea' && (
+                                <label className="field">
+                                    <span className="field-label">Prioridad</span>
+                                    <select name="prioridad" className="input" value={formData.prioridad} onChange={handleChange}>
+                                        <option value="alta">🔥 Alta</option>
+                                        <option value="media">⭐ Media</option>
+                                        <option value="baja">☕ Baja</option>
+                                    </select>
+                                </label>
+                            )}
+
+                            {formData.tipo === 'idea' && (
+                                <label className="field" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                    <span className="field-label">¿Depende de nosotros?</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            name="depende_de_nosotros"
+                                            checked={formData.depende_de_nosotros} 
+                                            onChange={(e) => setFormData(prev => ({ ...prev, depende_de_nosotros: e.target.checked }))} 
+                                            style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
+                                        />
+                                        <span style={{ fontSize: '0.9rem', color: formData.depende_de_nosotros ? 'var(--text)' : 'var(--text-muted)' }}>
+                                            {formData.depende_de_nosotros ? "Sí, está en nuestra cancha" : "No, esperando proveedor"}
+                                        </span>
+                                    </div>
+                                </label>
+                            )}
+
                             <label className="field">
-                                <span className="field-label">Inicio (Fecha Pedido)</span>
-                                <input name="fecha_inicio" type="datetime-local" className="input" value={formData.fecha_inicio} onChange={handleChange} />
+                                <span className="field-label">{formData.tipo === 'idea' ? 'Fecha de Lanzamiento (Aparecerá en el Calendario)' : 'Inicio (Fecha Pedido)'}</span>
+                                <input name="fecha_inicio" type="datetime-local" className="input premium-input" value={formData.fecha_inicio} onChange={handleChange} />
                             </label>
 
                             <label className="field">
