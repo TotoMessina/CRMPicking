@@ -10,7 +10,7 @@ export default function Login() {
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
 
-    const [formMode, setFormMode] = useState('login'); // 'login', 'signup', 'recovery'
+    const [formMode, setFormMode] = useState('login'); // 'login', 'signup'
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState({ text: '', type: 'info' });
 
@@ -19,7 +19,6 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [code, setCode] = useState('');
-    const [newPassword, setNewPassword] = useState('');
 
     // Check if we already have a session, if so, redirect
     useEffect(() => {
@@ -28,13 +27,7 @@ export default function Login() {
         }
     }, [user, navigate]);
 
-    // Listen for recovery state from URL hash (Supabase default behavior)
-    useEffect(() => {
-        if (window.location.hash && window.location.hash.includes("type=recovery")) {
-            setFormMode('recovery');
-            setMsg({ text: 'Modo recuperación de contraseña', type: 'info' });
-        }
-    }, []);
+    // Hash tracking for recovery handled by UpdatePassword.jsx now.
 
     const showMessage = (text, type = 'info') => {
         setMsg({ text, type });
@@ -115,7 +108,7 @@ export default function Login() {
         showMessage('Enviando email...');
 
         try {
-            const redirectUrl = window.location.href.split('?')[0].split('#')[0];
+            const redirectUrl = window.location.origin + '/update-password';
             const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
 
             if (error) throw error;
@@ -127,28 +120,7 @@ export default function Login() {
         }
     };
 
-    const handleSaveNewPassword = async (e) => {
-        e.preventDefault();
-        if (newPassword.length < 6) {
-            showMessage('La contraseña debe tener al menos 6 caracteres.', 'error');
-            return;
-        }
-
-        setLoading(true);
-        showMessage('Actualizando contraseña...');
-
-        try {
-            const { error } = await supabase.auth.updateUser({ password: newPassword });
-            if (error) throw error;
-
-            showMessage('¡Contraseña actualizada! Ingresando...', 'success');
-            setTimeout(() => navigate('/'), 1500);
-        } catch (error) {
-            showMessage('Error al actualizar: ' + error.message, 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Password mapping is now isolated in UpdatePassword.jsx
 
     return (
         <div className="login-page-wrapper" style={{ minHeight: '100dvh' }}>
@@ -164,8 +136,8 @@ export default function Login() {
                         onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
                     />
                     <div className="login-brand-logo" style={{ display: 'none' }}>PU</div>
-                    <h1>{formMode === 'login' ? 'Bienvenido' : formMode === 'signup' ? 'Nueva Cuenta' : 'Recuperar'}</h1>
-                    <p>{formMode === 'login' ? 'Ingresá tus credenciales para continuar' : formMode === 'signup' ? 'Completá tus datos de acceso' : 'Te enviaremos un link de acceso'}</p>
+                    <h1>{formMode === 'login' ? 'Bienvenido' : 'Nueva Cuenta'}</h1>
+                    <p>{formMode === 'login' ? 'Ingresá tus credenciales para continuar' : 'Completá tus datos de acceso'}</p>
                 </div>
 
                     {formMode === 'login' && (
@@ -237,18 +209,7 @@ export default function Login() {
                         </form>
                     )}
 
-                    {formMode === 'recovery' && (
-                        <form onSubmit={handleSaveNewPassword} className="form-stack">
-                            <div className="field">
-                                <label htmlFor="new_password">Nueva Contraseña</label>
-                                <input id="new_password" type="password" autoComplete="new-password" required placeholder="Mínimo 6 caracteres" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                            </div>
-
-                            <div className="form-actions-stack" style={{ marginTop: '12px' }}>
-                                <button className="btn-primario btn-block" type="submit" disabled={loading}>Guardar Contraseña</button>
-                            </div>
-                        </form>
-                    )}
+                    {/* Removed formMode === 'recovery' render code block */}
 
                     {msg.text && (
                         <p className="text-center" style={{ marginTop: '16px', minHeight: '20px', color: msg.type === 'error' ? 'var(--danger)' : 'var(--text-muted)' }}>

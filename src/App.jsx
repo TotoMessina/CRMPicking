@@ -6,6 +6,7 @@ import { UpdateNotifier } from './components/ui/UpdateNotifier';
 import { AppShell } from './components/layout/AppShell';
 import { GlobalLoader } from './components/ui/GlobalLoader';
 import Login from './pages/Login';
+import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
 const Clientes = lazy(() => import('./pages/Clientes'));
 const Pipeline = lazy(() => import('./pages/Pipeline'));
@@ -41,6 +42,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/update-password" element={<UpdatePassword />} />
 
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
