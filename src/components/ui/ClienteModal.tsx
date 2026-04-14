@@ -387,16 +387,14 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 };
 
                 // 1. Update universal client record
-                const { error: uErr } = await supabase.from('clientes').update(universalFields).eq('id', clienteId);
+                const { error: uErr } = await supabase.from('clientes').update(universalFields).eq('id', Number(clienteId));
 
                 // 2. Upsert company-specific record
                 const { error: cErr } = await supabase
                     .from('empresa_cliente')
-                    .upsert({
-                        ...companyFields,
-                        cliente_id: clienteId,
-                        empresa_id: empresaActiva.id
-                    }, { onConflict: 'empresa_id,cliente_id' });
+                    .update(companyFields)
+                    .eq('cliente_id', Number(clienteId))
+                    .eq('empresa_id', empresaActiva.id);
 
                 finalErr = uErr || cErr;
 
@@ -771,14 +769,15 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                 </div>
                             </div>
 
-                            {esEstadoFinal(formData.estado) && (
+                            {/* Situación: visible siempre al editar, o cuando el estado es final al crear */}
+                            {(clienteId || esEstadoFinal(formData.estado)) && (
                                 <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginTop: '16px' }}>
                                     <div className="field">
-                                        <label>Situación *</label>
-                                        <select name="situacion" value={formData.situacion || 'sin comunicacion nueva'} onChange={handleChange}>
-                                        <option value={SITUACION_SIN_COMUNICACION}>Sin comunicación nueva</option>
-                                        <option value={SITUACION_EN_PROCESO}>En proceso</option>
-                                        <option value={SITUACION_FUNCIONANDO}>En funcionamiento</option>
+                                        <label>Situación</label>
+                                        <select name="situacion" value={formData.situacion || SITUACION_SIN_COMUNICACION} onChange={handleChange}>
+                                            <option value={SITUACION_SIN_COMUNICACION}>Sin comunicación nueva</option>
+                                            <option value={SITUACION_EN_PROCESO}>En proceso</option>
+                                            <option value={SITUACION_FUNCIONANDO}>En funcionamiento</option>
                                         </select>
                                     </div>
                                 </div>
