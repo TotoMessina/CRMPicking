@@ -256,13 +256,57 @@ export default function TableroTareas() {
                 .kanban-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
                 .kanban-container::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
                 
+                .kanban-column {
+                    flex: 1 1 320px;
+                    min-width: 300px;
+                    max-width: 450px;
+                }
+
+                @media (max-width: 1024px) {
+                    .kanban-column {
+                        flex: 0 0 320px;
+                    }
+                }
+
                 @media (max-width: 768px) {
                     .kanban-container {
                         scroll-snap-type: x mandatory;
+                        gap: 12px !important;
+                        padding: 0 10px !important;
                     }
                     .kanban-column {
                         scroll-snap-align: center;
-                        min-width: calc(100vw - 40px) !important;
+                        min-width: calc(100vw - 32px) !important;
+                        max-width: calc(100vw - 32px) !important;
+                        padding: 12px !important;
+                    }
+                    .task-modal-overlay {
+                        padding: 0 !important;
+                        background: var(--bg) !important;
+                    }
+                    .task-modal-content {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        height: 100% !important;
+                        max-height: 100dvh !important;
+                        border-radius: 0 !important;
+                        border: none !important;
+                        margin: 0 !important;
+                    }
+                    .task-form-container {
+                        padding: 16px !important;
+                        overflow-x: hidden !important;
+                    }
+                    .responsive-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                    .subtask-input-row {
+                        flex-direction: column !important;
+                        align-items: stretch !important;
+                    }
+                    .subtask-assignees {
+                        padding-left: 0 !important;
+                        margin-top: 8px !important;
                     }
                 }
                 
@@ -326,9 +370,6 @@ export default function TableroTareas() {
                                             background: snapshot.isDraggingOver ? 'var(--bg-active)' : 'var(--bg-glass)',
                                             borderRadius: '20px',
                                             padding: '16px',
-                                            minWidth: '320px',
-                                            maxWidth: '400px',
-                                            flex: '0 0 auto', // Fixed flex for horizontal scroll reliability
                                             border: '1px solid var(--border)',
                                             display: 'flex', flexDirection: 'column', gap: '16px',
                                             transition: 'all 0.3s ease',
@@ -470,7 +511,7 @@ export default function TableroTareas() {
 
             {/* Modal Tarea - FIXED POSITIONING */}
             {isModalOpen && (
-                <div style={{
+                <div className="task-modal-overlay" style={{
                     position: 'fixed',
                     top: 0, left: 0, right: 0, bottom: 0,
                     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -481,16 +522,17 @@ export default function TableroTareas() {
                     justifyContent: 'center',
                     padding: '20px'
                 }}>
-                    <div style={{
+                    <div className="task-modal-content" style={{
                         background: 'var(--bg-elevated)',
-                        width: '100%',
-                        maxWidth: '650px',
-                        borderRadius: '20px',
+                        width: '95%',
+                        maxWidth: '700px',
+                        borderRadius: '24px',
                         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                         border: '1px solid var(--border)',
                         display: 'flex',
                         flexDirection: 'column',
-                        maxHeight: '90vh' // Prevent modal from being taller than screen
+                        maxHeight: '90vh',
+                        overflow: 'hidden'
                     }}>
                         <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass)', borderRadius: '20px 20px 0 0' }}>
                             <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -502,14 +544,14 @@ export default function TableroTareas() {
                             </button>
                         </div>
 
-                        <div style={{ overflowY: 'auto', padding: '24px' }}>
+                        <div className="task-form-container" style={{ overflowY: 'auto', padding: '24px' }}>
                             <form id="task-form" onSubmit={saveTask}>
                                 <div className="field" style={{ marginBottom: '20px' }}>
                                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text)' }}>Título de la tarea *</label>
                                     <input required type="text" className="input" style={{ width: '100%', padding: '12px', fontSize: '1rem', borderRadius: '12px' }} value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Ej: Realizar inventario del mes" />
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                                <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                                     <div className="field">
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.9rem' }}><Activity size={16} /> Estado</label>
                                         <select className="input" style={{ width: '100%', padding: '10px', borderRadius: '10px' }} value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })}>
@@ -618,7 +660,7 @@ export default function TableroTareas() {
                                                         </div>
                                                     </div>
 
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingLeft: '32px' }}>
+                                                    <div className="subtask-assignees" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingLeft: '32px' }}>
                                                         {usuarios.map(u => (
                                                             <button
                                                                 key={u.email}
@@ -641,7 +683,7 @@ export default function TableroTareas() {
                                     )}
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                        <div className="subtask-input-row" style={{ display: 'flex', gap: '10px' }}>
                                             <input
                                                 type="text"
                                                 className="input"
@@ -661,7 +703,7 @@ export default function TableroTareas() {
                                             <Button type="button" variant="secondary" onClick={addChecklistItem}>Fijar Subtarea</Button>
                                         </div>
                                         
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                        <div className="subtask-assignees" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Asignar a:</span>
                                             {usuarios.map(u => (
                                                 <button
@@ -687,8 +729,18 @@ export default function TableroTareas() {
                             </form>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', borderRadius: '0 0 20px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        {/* Modal Footer - STICKY ON MOBILE IF NEEDED */}
+                        <div style={{ 
+                            padding: '16px 24px', 
+                            borderTop: '1px solid var(--border)', 
+                            background: 'var(--bg-glass)', 
+                            display: 'flex', 
+                            flexWrap: 'wrap',
+                            gap: '12px',
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            marginTop: 'auto'
+                        }}>
                             <div>
                                 {editingTask && (
                                     <button type="button" onClick={() => deleteTask(editingTask.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600, padding: '10px 16px', borderRadius: '12px', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}>
