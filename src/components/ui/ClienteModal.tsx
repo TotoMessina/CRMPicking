@@ -343,11 +343,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
             const shouldRecordVisit = payload.estado !== ESTADO_RELEVADO || formData.registrar_visita === 'true';
 
-            console.log('DEBUG: Iniciando proceso de guardado...', {
-                clienteId,
-                empresaId: empresaActiva?.id,
-                nombre_local: payload.nombre_local,
-            });
+            console.log('Guardando cliente...', { clienteId, empresaId: empresaActiva?.id });
 
             if (!empresaActiva?.id) {
                 toast.error('Error: No se detectó una empresa activa.');
@@ -386,17 +382,27 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     activador_cierre: payload.activador_cierre,
                 };
 
-                // 1. Update universal client record
-                const { error: uErr } = await supabase.from('clientes').update(universalFields).eq('id', Number(clienteId));
-
-                // 2. Upsert company-specific record
+                // 1. First update company-specific record (stato/situacion - critical)
                 const { error: cErr } = await supabase
                     .from('empresa_cliente')
-                    .update(companyFields)
+                    .update({
+                        ...companyFields,
+                        updated_at: new Date().toISOString(),
+                    })
                     .eq('cliente_id', Number(clienteId))
                     .eq('empresa_id', empresaActiva.id);
 
-                finalErr = uErr || cErr;
+                if (cErr) console.error('Error actualizando empresa_cliente:', cErr);
+
+                // 2. Then update universal client record (name, address, coords)
+                const { error: uErr } = await supabase
+                    .from('clientes')
+                    .update(universalFields)
+                    .eq('id', Number(clienteId));
+
+                if (uErr) console.error('Error actualizando clientes:', uErr);
+
+                finalErr = cErr || uErr;
 
                 if (!finalErr) {
                     const parts = [];

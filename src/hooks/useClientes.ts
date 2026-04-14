@@ -245,7 +245,8 @@ export function useClientes(params: UseClientesParams) {
             return { clientes: mapped, total, activities: actsObj };
         },
         enabled: !!empresaId,
-        staleTime: 1000 * 30,
+        staleTime: 0,
+        gcTime: 1000 * 60 * 5,
         placeholderData: (previousData) => previousData,
     });
 }

@@ -177,6 +177,7 @@ const Clientes: React.FC = () => {
                 onSaved={() => {
                     setModalOpen(false);
                     queryClient.invalidateQueries({ queryKey: ['clientes'] });
+                    queryClient.refetchQueries({ queryKey: ['clientes'] });
                 }}
             />
 
