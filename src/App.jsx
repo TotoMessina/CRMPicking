@@ -34,6 +34,13 @@ const RutaDiaria = lazy(() => import('./pages/RutaDiaria'));
 const AsignadorRutas = lazy(() => import('./pages/AsignadorRutas'));
 
 function App() {
+  // Interceptar recuperación de contraseña si Supabase nos mandó a la raíz
+  React.useEffect(() => {
+    if (window.location.hash && window.location.hash.includes("type=recovery") && window.location.pathname !== '/update-password') {
+      window.location.replace('/update-password' + window.location.hash);
+    }
+  }, []);
+
   return (
     <>
       <Toaster position="top-right" />
