@@ -3,7 +3,8 @@ import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { Camera, Trash2, Mail, Plus, X, Send, Info } from 'lucide-react';
+import { Camera, Trash2, Mail, Plus, X, Send, Info, HardDrive } from 'lucide-react';
+import { clearLocalClients } from '../lib/offlineManager';
 
 
 const BUCKET = 'avatares';
@@ -425,7 +426,7 @@ export default function Configuracion() {
                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Nombre de usuario</label>
                                 <input
                                     type="text"
-                                    className="input"
+                                    className="input premium-input"
                                     placeholder="Tu nombre"
                                     value={profileName}
                                     onChange={(e) => setProfileName(e.target.value)}
@@ -437,7 +438,7 @@ export default function Configuracion() {
                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Email</label>
                                 <input
                                     type="text"
-                                    className="input"
+                                    className="input premium-input"
                                     disabled
                                     value={user?.email || ''}
                                     style={{ width: '100%', maxWidth: '400px', opacity: 0.7, cursor: 'not-allowed', backgroundColor: 'var(--bg-body)' }}
@@ -467,7 +468,7 @@ export default function Configuracion() {
                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Nueva contraseña</label>
                                 <input
                                     type="password"
-                                    className="input"
+                                    className="input premium-input"
                                     placeholder="Mínimo 6 caracteres"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
@@ -478,7 +479,7 @@ export default function Configuracion() {
                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Confirmar contraseña</label>
                                 <input
                                     type="password"
-                                    className="input"
+                                    className="input premium-input"
                                     placeholder="Repetí la contraseña"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -530,7 +531,7 @@ export default function Configuracion() {
                             </div>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <select 
-                                    className="input" 
+                                    className="input premium-input" 
                                     value={diaReporte} 
                                     onChange={e => handleSaveDiaReporte(e.target.value)}
                                     disabled={savingDia}
@@ -628,7 +629,7 @@ export default function Configuracion() {
                             <Button
                                 variant="danger"
                                 onClick={async () => {
-                                    if (window.confirm('Esto limpiará la caché del navegador y reiniciará la aplicación. ¿Continuar?')) {
+                                    if (window.confirm('Esto limpiará la caché estática del navegador y reiniciará la aplicación. ¿Continuar?')) {
                                         if ('serviceWorker' in navigator) {
                                             const regs = await navigator.serviceWorker.getRegistrations();
                                             for (let r of regs) await r.unregister();
@@ -639,6 +640,27 @@ export default function Configuracion() {
                                 }}
                             >
                                 Limpiar Caché y Reiniciar App
+                            </Button>
+                        </div>
+                        
+                        <div style={{ background: 'rgba(34, 197, 94, 0.05)', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                <HardDrive size={18} style={{ color: 'var(--success)' }} />
+                                <strong style={{ color: 'var(--success)' }}>Almacenamiento Offline-First Activo</strong>
+                            </div>
+                            <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>
+                                El catálogo y la bóveda de clientes se almacenan en la memoria local de tu dispositivo para cargar al instante sin internet. Si notás lentitud por acumulación de datos o clientes duplicados, podés forzar la re-descarga del servidor.
+                            </p>
+                            <Button
+                                variant="secondary"
+                                onClick={async () => {
+                                    if (window.confirm('¿Purgar y re-descargar base de datos local? Esto no afectará la nube.')) {
+                                        await clearLocalClients();
+                                        window.location.reload(true);
+                                    }
+                                }}
+                            >
+                                Re-sincronizar Catálogo Offline
                             </Button>
                         </div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
