@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ALL_PAGES, GROUPS } from '../constants/pages';
 
 export default function PermisosEmpresa() {
-    const { role, empresaActiva, paginasPermitidas, user: currentUser } = useAuth();
+    const { role, empresaActiva, paginasPermitidas, user: currentUser, isDemoMode } = useAuth();
     const [empresas, setEmpresas] = useState([]);
     const [selectedEmpresa, setSelectedEmpresa] = useState(null);
     const [permisos, setPermisos] = useState({});
@@ -105,7 +105,7 @@ export default function PermisosEmpresa() {
     }, [fetchCoreData]);
 
     const handleSavePermisos = async () => {
-        if (!selectedEmpresa) return;
+        if (!selectedEmpresa || isDemoMode) return;
         setSaving(true);
 
         const rows = ALL_PAGES.map(p => ({
@@ -132,7 +132,7 @@ export default function PermisosEmpresa() {
 
     const handleSaveUser = async (e) => {
         e.preventDefault();
-        if (!selectedUser) return;
+        if (!selectedUser || isDemoMode) return;
         setSaving(true);
         try {
             const { error } = await supabase
@@ -155,6 +155,7 @@ export default function PermisosEmpresa() {
 
     const handleCreateRole = async (e) => {
         e.preventDefault();
+        if (isDemoMode) return;
         setSaving(true);
         try {
             const { error } = await supabase.from('crm_roles').insert([{

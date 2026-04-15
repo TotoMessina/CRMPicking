@@ -36,6 +36,11 @@ export default function UpdatePassword() {
     const handleUpdate = async (e) => {
         e.preventDefault();
         
+        const { isDemoMode } = useAuth();
+        if (isDemoMode) {
+            showMessage('Modo Demostración: No se permite cambiar la contraseña.', 'error');
+            return;
+        }
         if (password.length < 6) {
             showMessage('La contraseña debe tener al menos 6 caracteres.', 'error');
             return;

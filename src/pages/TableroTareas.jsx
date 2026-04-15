@@ -42,8 +42,22 @@ export default function TableroTareas() {
     }, []);
 
     const fetchUsuarios = async () => {
-        const { data } = await supabase.from('usuarios').select('email, nombre').order('nombre');
-        if (data) setUsuarios(data);
+        if (!empresaActiva) return;
+        
+        // Filtramos para obtener solo los usuarios vinculados a esta empresa
+        const { data, error } = await supabase
+            .from('empresa_usuario')
+            .select('usuarios!inner(email, nombre)')
+            .eq('empresa_id', empresaActiva.id);
+            
+        if (error) {
+            console.error('Error cargando usuarios de la empresa:', error);
+            return;
+        }
+        
+        // Mapeamos el resultado del join para obtener la lista plana de usuarios
+        const mappedUsers = (data || []).map(item => item.usuarios);
+        setUsuarios(mappedUsers);
     };
 
     const fetchTasks = async () => {

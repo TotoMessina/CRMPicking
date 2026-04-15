@@ -74,7 +74,7 @@ const STEP_FIELDS: Record<number, string[]> = {
 const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
 
 export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: initialClienteId, initialLocation, onSaved }) => {
-    const { user, userName, empresaActiva }: any = useAuth();
+    const { user, userName, empresaActiva, isDemoMode }: any = useAuth();
     const { data: rubrosDB = [] } = useRubros();
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [step, setStep] = useState(1);
@@ -314,6 +314,12 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             for (const [s, fields] of Object.entries(STEP_FIELDS)) {
                 if (fields.some(f => errs[f])) { handleStepChange(Number(s)); break; }
             }
+            return;
+        }
+
+        if (clienteId && isDemoMode) {
+            toast.error('Modo Demostración: No se permite editar clientes existentes.');
+            setLoading(false);
             return;
         }
 

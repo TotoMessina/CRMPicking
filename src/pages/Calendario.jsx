@@ -59,8 +59,13 @@ export default function Calendario() {
         if (!empresaActiva?.id) return;
         try {
             const set = new Set();
-            const { data: usrs } = await supabase.from('usuarios').select('nombre, email');
-            if (usrs) usrs.forEach(u => u.nombre && set.add(u.nombre));
+            
+            // 1. Usuarios vinculados directamente a la empresa
+            const { data: usrs } = await supabase
+                .from('empresa_usuario')
+                .select('usuarios!inner(nombre, email)')
+                .eq('empresa_id', empresaActiva.id);
+            if (usrs) usrs.forEach(u => u.usuarios?.nombre && set.add(u.usuarios.nombre));
 
             const { data: cls } = await supabase.from('empresa_cliente')
                 .select('clientes(responsable)')

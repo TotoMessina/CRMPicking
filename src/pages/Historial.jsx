@@ -36,12 +36,23 @@ export default function Historial() {
         }
         setSearching(true);
         try {
+            // Buscamos a través de 'empresa_cliente' para segurar que el cliente pertenece a la empresa activa
             const { data } = await supabase
-                .from('clientes')
-                .select('id, nombre_local, direccion, telefono')
-                .ilike('nombre_local', `%${val}%`)
+                .from('empresa_cliente')
+                .select('cliente_id, clientes!inner(id, nombre_local, direccion, telefono)')
+                .eq('empresa_id', empresaActiva.id)
+                .ilike('clientes.nombre_local', `%${val}%`)
                 .limit(8);
-            setSearchResults(data || []);
+
+            // Mapeamos para mantener la estructura esperada por el UI
+            const mappedResults = (data || []).map(item => ({
+                id: item.clientes.id,
+                nombre_local: item.clientes.nombre_local,
+                direccion: item.clientes.direccion,
+                telefono: item.clientes.telefono
+            }));
+
+            setSearchResults(mappedResults);
         } catch (error) {
             console.error(error);
         } finally {

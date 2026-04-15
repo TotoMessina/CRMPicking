@@ -286,22 +286,43 @@ export default function MapaClientes() {
     }, [empresaActiva]);
 
     const fetchActivadores = async () => {
-        const { data, error } = await supabase
-            .from("usuarios")
-            .select("id, nombre, email, role, lat, lng, last_seen, avatar_emoji")
-            .not("lat", "is", null)
-            .not("lng", "is", null)
-            .eq("activo", true);
+        if (!empresaActiva?.id) return;
 
-        if (!error) {
-            const filtered = (data || []).filter(u =>
-                u.role?.toLowerCase().includes('activador') ||
-                u.role?.toLowerCase().includes('admin')
-            );
-            console.log('Activadores fetched:', filtered.length, filtered);
-            setActivadores(filtered);
-        } else {
-            console.error('Error fetching activadores for map:', error);
+        try {
+            // 1. Obtener los emails de los miembros de la empresa activa para filtrar ubicaciones
+            const { data: euData, error: euError } = await supabase
+                .from('empresa_usuario')
+                .select('usuario_email')
+                .eq('empresa_id', empresaActiva.id);
+
+            if (euError) throw euError;
+            if (!euData || euData.length === 0) {
+                setActivadores([]);
+                return;
+            }
+
+            const emails = euData.map(e => e.usuario_email);
+
+            // 2. Obtener posiciones solo de los miembros que ya filtramos
+            const { data, error } = await supabase
+                .from("usuarios")
+                .select("id, nombre, email, role, lat, lng, last_seen, avatar_emoji")
+                .in("email", emails)
+                .not("lat", "is", null)
+                .not("lng", "is", null)
+                .eq("activo", true);
+
+            if (!error) {
+                const filtered = (data || []).filter(u =>
+                    u.role?.toLowerCase().includes('activador') ||
+                    u.role?.toLowerCase().includes('admin')
+                );
+                setActivadores(filtered);
+            } else {
+                throw error;
+            }
+        } catch (err) {
+            console.error('Error fetching activadores for map:', err);
         }
     };
 

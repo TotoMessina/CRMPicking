@@ -179,8 +179,11 @@ export function AuthProvider({ children }) {
         setAvatarUrl(url);
     };
 
+    const isDemoMode = role === 'demo';
+
     const value = {
         signIn, signOut, user, role, userName, avatarUrl, loading,
+        isDemoMode,
         empresasDisponibles, empresaActiva, setEmpresaActiva,
         paginasPermitidas,
         updateProfile, updateAvatarUrl

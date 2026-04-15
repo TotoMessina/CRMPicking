@@ -12,7 +12,7 @@ const BUCKET = 'avatares';
 const MAX_SIZE_MB = 2;
 
 export default function Configuracion() {
-    const { user, avatarUrl, updateProfile, updateAvatarUrl } = useAuth();
+    const { user, avatarUrl, updateProfile, updateAvatarUrl, isDemoMode } = useAuth();
     const fileInputRef = useRef(null);
 
     // Avatar state
@@ -97,6 +97,7 @@ export default function Configuracion() {
     };
 
     const handleAddRecipient = async () => {
+        if (isDemoMode) return;
         const email = newRecipientEmail.trim().toLowerCase();
         if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
             toast.error('Ingresá un email válido');
