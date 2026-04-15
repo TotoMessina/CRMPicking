@@ -211,16 +211,19 @@ export default function Proveedores() {
                 // Include mandatory fields for upsert if any, but update() is better here or a multi-update
             }));
 
-            // For now, simpler: update only the moved idea, but to really support custom ordering, we need multiple updates.
-            // Let's use a batch update approach.
-            const { error } = await supabase.from('eventos_proveedores').upsert(
-                finalDestIdeas.map((idea, index) => ({
-                    ...idea, // Spread current data
+            // Persist to Supabase
+            // We MUST remove joined objects (proveedores) before upserting, 
+            // otherwise Supabase returns a 400 error thinking "proveedores" is a column.
+            const cleanUpdates = finalDestIdeas.map((idea, index) => {
+                const { proveedores, ...cleanIdea } = idea;
+                return {
+                    ...cleanIdea,
                     orden: index,
-                    sprint_id: destSprintId === '__backlog__' ? null : destSprintId,
-                    proveedores: undefined // Remove join data before upsert
-                }))
-            );
+                    sprint_id: destSprintId === '__backlog__' ? null : destSprintId
+                };
+            });
+
+            const { error } = await supabase.from('eventos_proveedores').upsert(cleanUpdates);
 
             if (error) { toast.error("Error al mover idea"); fetchData(); }
             else { toast.success("Idea reordenada"); fetchData(); }
