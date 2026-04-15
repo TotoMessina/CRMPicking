@@ -16,13 +16,13 @@ DECLARE
 BEGIN
     -- VALIDACIÓN: ¿Quién está ejecutando esto?
     -- Buscamos el rol del usuario autenticado (vía JWT) en la empresa objetivo
-    SELECT role INTO v_executor_role
-    FROM public.empresa_usuario
-    WHERE empresa_id = p_empresa_id
-      AND usuario_email = auth.jwt()->>'email';
+    SELECT eu.role INTO v_executor_role
+    FROM public.empresa_usuario eu
+    WHERE eu.empresa_id = p_empresa_id
+      AND eu.usuario_email = auth.jwt()->>'email';
 
     -- Solo permitimos si el executor es 'admin' o si es el super-admin definido en usuarios
-    IF v_executor_role <> 'admin' AND (SELECT role FROM public.usuarios WHERE email = auth.jwt()->>'email') <> 'super-admin' THEN
+    IF v_executor_role <> 'admin' AND (SELECT u.role FROM public.usuarios u WHERE u.email = auth.jwt()->>'email') <> 'super-admin' THEN
         RAISE EXCEPTION 'No tenés permisos de administrador en esta empresa para realizar esta acción.';
     END IF;
 
@@ -41,13 +41,14 @@ END;
 $$;
 
 -- 2. Asegurar PRIVILEGIOS en get_chat_users (Prevenir fuga de datos multi-tenant)
+-- Se renombran las columnas de salida para evitar ambigüedad con las columnas de las tablas base
 CREATE OR REPLACE FUNCTION get_chat_users(empresa_id_param UUID)
 RETURNS TABLE (
-    email TEXT,
-    nombre TEXT,
-    role TEXT,
-    avatar_url TEXT,
-    avatar_emoji TEXT
+    user_email TEXT,
+    user_nombre TEXT,
+    user_role TEXT,
+    user_avatar_url TEXT,
+    user_avatar_emoji TEXT
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -55,17 +56,17 @@ AS $$
 BEGIN
     -- VALIDACIÓN: El usuario solo puede listar gente de su propia empresa
     IF NOT EXISTS (
-        SELECT 1 FROM public.empresa_usuario
-        WHERE empresa_id = empresa_id_param
-          AND usuario_email = auth.jwt()->>'email'
-    ) AND (SELECT role FROM public.usuarios WHERE email = auth.jwt()->>'email') <> 'super-admin' THEN
+        SELECT 1 FROM public.empresa_usuario eu
+        WHERE eu.empresa_id = empresa_id_param
+          AND eu.usuario_email = auth.jwt()->>'email'
+    ) AND (SELECT u.role FROM public.usuarios u WHERE u.email = auth.jwt()->>'email') <> 'super-admin' THEN
         RAISE EXCEPTION 'Acceso denegado: No pertenecés a esta organización.';
     END IF;
 
     RETURN QUERY
     SELECT u.email, u.nombre, u.role, u.avatar_url, u.avatar_emoji
-    FROM empresa_usuario eu
-    JOIN usuarios u ON u.email = eu.usuario_email
+    FROM public.empresa_usuario eu
+    JOIN public.usuarios u ON u.email = eu.usuario_email
     WHERE eu.empresa_id = empresa_id_param;
 END;
 $$;

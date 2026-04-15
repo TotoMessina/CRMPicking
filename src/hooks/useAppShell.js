@@ -100,6 +100,7 @@ export const useAppShell = () => {
         if (!user) return;
 
         const fetchUnread = async () => {
+            if (!user?.email || !empresaActiva?.id) return;
             const { count, error } = await supabase
                 .from('mensajes_chat')
                 .select('*', { count: 'exact', head: true })

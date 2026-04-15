@@ -30,7 +30,7 @@ export const useChat = () => {
     }, []);
 
     const fetchUsers = useCallback(async () => {
-        if (!user || !empresaActiva) return;
+        if (!user || !empresaActiva?.id) return;
         setLoadingUsers(true);
 
         const { data: usersData, error: usersError } = await supabase
@@ -42,8 +42,17 @@ export const useChat = () => {
             return;
         }
 
+        // Mapear los nombres de columnas renombradas en el RPC a los nombres que espera el frontend
+        const mappedUsers = (usersData || []).map(u => ({
+            email: u.user_email,
+            nombre: u.user_nombre,
+            role: u.user_role,
+            avatar_url: u.user_avatar_url,
+            avatar_emoji: u.user_avatar_emoji
+        }));
+
         // Excluir al propio usuario logueado de la lista
-        const filteredUsers = (usersData || []).filter(u => u.email !== user.email);
+        const filteredUsers = mappedUsers.filter(u => u.email !== user.email);
 
 
         // Fetch last interactions (received and sent) to determine order and unread count
@@ -89,7 +98,7 @@ export const useChat = () => {
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
     const marcarComoLeidos = useCallback(async (remitenteEmail) => {
-        if (!user || !empresaActiva) return;
+        if (!user || !empresaActiva?.id) return;
         setUsuarios(prev => prev.map(u => u.email === remitenteEmail ? { ...u, unreadCount: 0 } : u));
         await supabase
             .from('mensajes_chat')
@@ -102,7 +111,7 @@ export const useChat = () => {
     }, [user, empresaActiva]);
 
     useEffect(() => {
-        if (!user || !empresaActiva) return;
+        if (!user || !empresaActiva?.id) return;
         const channel = supabase
             .channel('chat_updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes_chat', filter: `para_usuario=eq.${user.email}` },
@@ -134,7 +143,7 @@ export const useChat = () => {
     }, [user, selectedUser, empresaActiva, marcarComoLeidos]);
 
     useEffect(() => {
-        if (!selectedUser || !user || !empresaActiva) return;
+        if (!selectedUser || !user || !empresaActiva?.id) return;
         const fetchMsgs = async () => {
             setLoadingMessages(true);
             setLimit(25);
