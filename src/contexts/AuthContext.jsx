@@ -115,7 +115,23 @@ export function AuthProvider({ children }) {
             fetchRoleAndName(u);
         });
 
-        return () => subscription.unsubscribe();
+        // Sync empresaActiva across tabs
+        const handleStorage = (e) => {
+            if (e.key === EMPRESA_KEY && e.newValue) {
+                try {
+                    const newEmpresa = JSON.parse(e.newValue);
+                    setEmpresaActivaState(newEmpresa);
+                } catch (err) { console.error('Error syncing company across tabs:', err); }
+            } else if (e.key === EMPRESA_KEY && !e.newValue) {
+                setEmpresaActivaState(null);
+            }
+        };
+        window.addEventListener('storage', handleStorage);
+
+        return () => {
+            subscription.unsubscribe();
+            window.removeEventListener('storage', handleStorage);
+        };
     }, []);
 
     // Session Tracking logic

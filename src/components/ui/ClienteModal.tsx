@@ -358,6 +358,12 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
             const shouldRecordVisit = payload.estado !== ESTADO_RELEVADO || formData.registrar_visita === 'true';
 
+            console.log('--- AUDITORÍA DE GUARDADO ---');
+            console.log('Cliente:', formData.nombre_local || formData.nombre);
+            console.log('Empresa Destino ID:', empresaActiva?.id);
+            console.log('Empresa Destino Nombre:', empresaActiva?.nombre);
+            console.log('----------------------------');
+
             console.log('Guardando cliente...', { clienteId, empresaId: empresaActiva?.id });
 
             if (!empresaActiva?.id) {
@@ -367,6 +373,8 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             }
 
             let finalErr;
+            let resultId = clienteId;
+
             if (clienteId) {
                 // EXCLUSIVELY universal fields for 'clientes' table
                 const universalFields = {
@@ -445,7 +453,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     creadoPor = uData?.nombre || user.email;
                 }
 
-                const { data: result, error: rpcErr } = await supabase.rpc('crear_cliente_v5_final', {
+                const { data: createdId, error: rpcErr } = await supabase.rpc('crear_cliente_v5_final', {
                     p_payload: {
                         ...payload,
                         p_nombre_local: payload.nombre_local,
@@ -481,11 +489,12 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
                 if (rpcErr) {
                     finalErr = rpcErr;
-                } else if (result) {
+                } else if (createdId) {
+                    resultId = createdId;
                     // Log creation
                     const desc = `${initialLocation ? '📍' : '🆕'} Alta de cliente - Estado: ${payload.estado || 'Sin estado'}`;
                     await supabase.from('actividades').insert([{
-                        cliente_id: result,
+                        cliente_id: resultId,
                         descripcion: desc,
                         usuario: creadoPor,
                         empresa_id: empresaActiva.id,
@@ -495,13 +504,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     if (shouldRecordVisit) {
                         const now = new Date().toISOString();
                         await supabase.from('actividades').insert([{
-                            cliente_id: result,
+                            cliente_id: resultId,
                             descripcion: `🚚 Visita inicial realizada - Estado: ${payload.estado}`,
                             fecha: now,
                             usuario: creadoPor,
                             empresa_id: empresaActiva.id
                         }]);
-                        await supabase.from('empresa_cliente').update({ ultima_actividad: now }).eq('cliente_id', result).eq('empresa_id', empresaActiva.id);
+                        await supabase.from('empresa_cliente').update({ ultima_actividad: now }).eq('cliente_id', resultId).eq('empresa_id', empresaActiva.id);
                     }
                 }
             }
@@ -526,10 +535,9 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
                 
                 // 3. Update Groups (Many-to-Many)
-                const finalId = clienteId || result;
-                if (finalId) {
+                if (resultId) {
                     await updateGruposMutation.mutateAsync({
-                        clienteId: finalId.toString(),
+                        clienteId: resultId.toString(),
                         empresaId: empresaActiva.id,
                         grupoIds: selectedGrupos
                     });
