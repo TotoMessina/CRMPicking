@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.proveedor_sprints (
 -- Habilitar RLS
 ALTER TABLE public.proveedor_sprints ENABLE ROW LEVEL SECURITY;
 
--- Políticas de RLS (basadas en el patrón del proyecto: empresa_usuario)
+-- Políticas de RLS (corregidas para empresa_usuario)
 DROP POLICY IF EXISTS "Permitir lectura de sprints por empresa" ON public.proveedor_sprints;
 CREATE POLICY "Permitir lectura de sprints por empresa" ON public.proveedor_sprints
     FOR SELECT USING (
@@ -47,38 +47,51 @@ CREATE POLICY "Permitir borrado de sprints por empresa" ON public.proveedor_spri
         )
     );
 
--- 2. Añadir columna sprint_id a eventos_proveedores
+-- 2. Añadir columnas a eventos_proveedores
 ALTER TABLE public.eventos_proveedores 
-ADD COLUMN IF NOT EXISTS sprint_id uuid REFERENCES public.proveedor_sprints(id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS sprint_id uuid REFERENCES public.proveedor_sprints(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS orden integer DEFAULT 0;
 
 -- 3. Migración de datos existentes
 DO $$
 DECLARE
     rec RECORD;
     new_sprint_id uuid;
+    idea_rec RECORD;
+    idea_counter integer;
 BEGIN
-    -- Para cada sección única en eventos_proveedores que no esté en blanco
+    -- Migrar nombres de secciones a la nueva tabla
     FOR rec IN (
         SELECT DISTINCT seccion, empresa_id 
         FROM public.eventos_proveedores 
         WHERE seccion IS NOT NULL AND seccion <> ''
     ) LOOP
-        -- Crear el sprint si no existe uno con ese nombre para esa empresa
         INSERT INTO public.proveedor_sprints (empresa_id, nombre, orden)
         VALUES (rec.empresa_id, rec.seccion, 0)
         ON CONFLICT DO NOTHING
         RETURNING id INTO new_sprint_id;
         
-        -- Si no se insertó porque ya existía, buscarlo
         IF new_sprint_id IS NULL THEN
             SELECT id INTO new_sprint_id 
             FROM public.proveedor_sprints 
             WHERE empresa_id = rec.empresa_id AND nombre = rec.seccion;
         END IF;
 
-        -- Actualizar los eventos que tenían ese nombre
         UPDATE public.eventos_proveedores
         SET sprint_id = new_sprint_id
         WHERE empresa_id = rec.empresa_id AND seccion = rec.seccion;
+    END LOOP;
+
+    -- Inicializar el orden de las ideas existentes por sprint
+    FOR rec IN (SELECT id FROM public.proveedor_sprints) LOOP
+        idea_counter := 0;
+        FOR idea_rec IN (
+            SELECT id FROM public.eventos_proveedores 
+            WHERE sprint_id = rec.id 
+            ORDER BY created_at ASC
+        ) LOOP
+            UPDATE public.eventos_proveedores SET orden = idea_counter WHERE id = idea_rec.id;
+            idea_counter := idea_counter + 1;
+        END LOOP;
     END LOOP;
 END $$;

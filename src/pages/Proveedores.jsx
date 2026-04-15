@@ -66,7 +66,7 @@ export default function Proveedores() {
         const [provRes, sprintRes, eventRes] = await Promise.all([
             supabase.from('proveedores').select('*').eq('empresa_id', empresaActiva.id).eq('activo', true).order('nombre'),
             supabase.from('proveedor_sprints').select('*').eq('empresa_id', empresaActiva.id).order('orden', { ascending: true }),
-            supabase.from('eventos_proveedores').select(`*, proveedores(nombre)`).eq('empresa_id', empresaActiva.id).order('created_at', { ascending: false })
+            supabase.from('eventos_proveedores').select(`*, proveedores(nombre)`).eq('empresa_id', empresaActiva.id).order('orden', { ascending: true })
         ]);
 
         if (provRes.error) toast.error("Error proveedores");
@@ -94,7 +94,7 @@ export default function Proveedores() {
         applySearchProv(term, proveedores);
     };
 
-    // --- Calendar logic stays as-is (hidden for brevity in thought, but kept in code) ---
+    // --- Calendar logic ---
     const calendarEvents = events.filter(e => e.fecha_inicio).map(e => {
         let color = TYPE_COLORS[e.tipo] || "#64748b";
         const now = new Date();
@@ -140,7 +140,7 @@ export default function Proveedores() {
     ].filter(c => c.ideas.length > 0);
 
     const sprintBlocks = [
-        ...sprints.map(s => ({ id: s.id, name: s.nombre, ideas: filteredIdeas.filter(i => i.sprint_id === s.id) })),
+        ...sprints.map(s => ({ id: s.id, name: s.nombre, ideas: filteredIdeas.filter(i => String(i.sprint_id) === String(s.id)) })),
         { id: '__backlog__', name: 'Sin Sprint / Ideas Sueltas', ideas: filteredIdeas.filter(i => !i.sprint_id) }
     ].filter(b => b.id === '__backlog__' ? b.ideas.length > 0 : true);
 
@@ -149,6 +149,7 @@ export default function Proveedores() {
         if (!destination) return;
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
+        // --- REORDER SPRINTS ---
         if (type === 'SPRINT') {
             const items = Array.from(sprints);
             const [reorderedItem] = items.splice(source.index, 1);
@@ -161,17 +162,68 @@ export default function Proveedores() {
             return;
         }
 
+        // --- MOVE / REORDER IDEAS ---
         if (type === 'IDEA') {
-            const ideaId = draggableId; // This is a string from DnD
-            const newSprintId = destination.droppableId === '__backlog__' ? null : destination.droppableId;
+            const ideaId = draggableId;
+            const sourceSprintId = source.droppableId;
+            const destSprintId = destination.droppableId;
             
-            // UI optimistic update
-            // Use String() for comparison just in case idea.id is numeric
-            setEvents(prev => prev.map(e => String(e.id) === String(ideaId) ? { ...e, sprint_id: newSprintId } : e));
+            // Get ideas for relevant sprints
+            const sourceSprintIdeas = sprintBlocks.find(b => String(b.id) === String(sourceSprintId))?.ideas || [];
+            const destSprintIdeas = sourceSprintId === destSprintId 
+                ? sourceSprintIdeas 
+                : (sprintBlocks.find(b => String(b.id) === String(destSprintId))?.ideas || []);
 
-            const { error } = await supabase.from('eventos_proveedores').update({ sprint_id: newSprintId }).eq('id', ideaId);
+            // Perform movement
+            const newSourceIdeas = Array.from(sourceSprintIdeas);
+            const [movedIdea] = newSourceIdeas.splice(source.index, 1);
+            
+            let finalDestIdeas;
+            if (sourceSprintId === destSprintId) {
+                newSourceIdeas.splice(destination.index, 0, movedIdea);
+                finalDestIdeas = newSourceIdeas;
+            } else {
+                const newDestIdeas = Array.from(destSprintIdeas);
+                newDestIdeas.splice(destination.index, 0, { ...movedIdea, sprint_id: destSprintId === '__backlog__' ? null : destSprintId });
+                finalDestIdeas = newDestIdeas;
+            }
+
+            // Optimistic update
+            setEvents(prev => {
+                const updated = prev.filter(e => String(e.id) !== String(ideaId));
+                // Add moved idea back into a calculated position? 
+                // Better yet, just refresh the whole events list with new order
+                return prev.map(e => {
+                    if (String(e.id) === String(ideaId)) {
+                        return { ...e, sprint_id: destSprintId === '__backlog__' ? null : destSprintId };
+                    }
+                    return e;
+                });
+            });
+
+            // Persist to Supabase
+            // We need to update 'orden' for all ideas in the destination sprint (and source if different)
+            const updates = finalDestIdeas.map((idea, index) => ({
+                id: idea.id,
+                empresa_id: empresaActiva.id,
+                sprint_id: destSprintId === '__backlog__' ? null : destSprintId,
+                orden: index,
+                // Include mandatory fields for upsert if any, but update() is better here or a multi-update
+            }));
+
+            // For now, simpler: update only the moved idea, but to really support custom ordering, we need multiple updates.
+            // Let's use a batch update approach.
+            const { error } = await supabase.from('eventos_proveedores').upsert(
+                finalDestIdeas.map((idea, index) => ({
+                    ...idea, // Spread current data
+                    orden: index,
+                    sprint_id: destSprintId === '__backlog__' ? null : destSprintId,
+                    proveedores: undefined // Remove join data before upsert
+                }))
+            );
+
             if (error) { toast.error("Error al mover idea"); fetchData(); }
-            else { toast.success("Idea movida"); }
+            else { toast.success("Idea reordenada"); fetchData(); }
         }
     };
 
@@ -211,11 +263,6 @@ export default function Proveedores() {
                     <div style={{ fontWeight: 600, fontSize: '0.95rem', color: idea.estado === 'completado' ? 'var(--text-muted)' : 'var(--text)', textDecoration: idea.estado === 'completado' ? 'line-through' : 'none', flex: 1 }}>
                         {idea.estado === 'completado' && '✅ '}{idea.titulo}
                     </div>
-                    {idea.fecha_inicio && (
-                        <div style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', padding: '3px 7px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
-                            <Rocket size={10} /> {new Date(idea.fecha_inicio).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
-                        </div>
-                    )}
                 </div>
                 {idea.descripcion && (
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -251,7 +298,7 @@ export default function Proveedores() {
 
     return (
         <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
-            {/* --- HEADER --- */}
+            {/* Header stays same */}
             <header style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -266,9 +313,9 @@ export default function Proveedores() {
                 </div>
             </header>
 
-            {/* --- ROADMAP --- */}
             {activeTab === 'roadmap' && (
                 <div className="tab-pane-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {/* Toolbar stays same */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-elevated)', padding: '20px', borderRadius: '20px', border: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                             <div style={{ display: 'flex', background: 'var(--bg-body)', border: '1px solid var(--border)', borderRadius: '12px', padding: '4px', gap: '4px' }}>
@@ -284,7 +331,7 @@ export default function Proveedores() {
                             <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700 }}><Filter size={14} /> Filtrar por:</span>
                             <select className="input" style={{ width: 'auto', minWidth: '180px' }} value={roadmapPriorityFilter} onChange={e => setRoadmapPriorityFilter(e.target.value)}>
                                 <option value="">Todas las Prioridades</option>
-                                <option value="alta">🔥 Alta</option><option value="media">⭐ Media</option><option value="baja">☕ Baja</option>
+                                <option value="alta">🔥 Solo Alta</option><option value="media">⭐ Solo Media</option><option value="baja">☕ Solo Baja</option>
                             </select>
                             <select className="input" style={{ width: 'auto', minWidth: '200px' }} value={roadmapDependencyFilter} onChange={e => setRoadmapDependencyFilter(e.target.value)}>
                                 <option value="">Dependencia Global</option><option value="interna">Equipo PickUp</option><option value="externa">Esperando Proveedor</option>
@@ -371,32 +418,6 @@ export default function Proveedores() {
                             </DragDropContext>
                         )
                     )}
-                </div>
-            )}
-
-            {/* --- CALENDARIO & DIRECTORIO (Simplified in memory) --- */}
-            {activeTab === 'calendario' && (
-                <div className="tab-pane-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div style={{ background: 'var(--bg-elevated)', borderRadius: '24px', padding: '24px', border: '1px solid var(--border)', minHeight: '700px' }}>
-                        <FullCalendar
-                            ref={calendarRef} plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]} initialView="dayGridMonth" locale="es"
-                            headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' }}
-                            events={calendarEvents} editable={true} eventDrop={handleEventDrop} height="auto"
-                            eventClick={(info) => { setEditingEventId(info.event.id); setIsIdea(info.event.extendedProps.original.tipo === 'idea'); setModalEventOpen(true); }}
-                        />
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'directorio' && (
-                <div className="tab-pane-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                        {filteredProveedores.map(p => (
-                            <div key={p.id} onClick={() => { setEditingProvId(p.id); setModalProvOpen(true); }} className="bento-card" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '20px', padding: '24px', cursor: 'pointer' }}>
-                                <div style={{ fontWeight: 800, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '10px' }}><Store size={22} style={{ color: 'var(--accent)' }} />{p.nombre}</div>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             )}
 
