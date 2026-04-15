@@ -7,6 +7,7 @@ interface Props {
     updateFilter: (name: keyof ClientFiltersType, value: any) => void;
     rubrosValidos: string[];
     responsablesValidos: string[];
+    gruposValidos: { id: string, nombre: string, color: string }[];
 }
 
 const MultiSelectFilter: React.FC<{
@@ -202,7 +203,7 @@ const MultiSelectFilter: React.FC<{
     );
 };
 
-export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos, responsablesValidos }) => {
+export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos, responsablesValidos, gruposValidos }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     let activeCount = 0;
@@ -321,6 +322,23 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                                 <input className="input" placeholder="Dirección..." value={filters.direccion} onChange={e => updateFilter('direccion', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
                             </div>
                         </div>
+
+                        {gruposValidos.length > 0 && (
+                            <MultiSelectFilter 
+                                label="Grupos" 
+                                icon={<Tag size={14} />} 
+                                selected={filters.grupos} 
+                                options={gruposValidos.map(g => g.nombre)} 
+                                onChange={(nextNames) => {
+                                    // Map names back to IDs
+                                    const nextIds = nextNames.map(name => 
+                                        gruposValidos.find(g => g.nombre === name)?.id
+                                    ).filter(Boolean) as string[];
+                                    updateFilter('grupos', nextIds);
+                                }} 
+                                placeholder="Cualquier grupo"
+                            />
+                        )}
 
                         <MultiSelectFilter 
                             label="Rubros" 

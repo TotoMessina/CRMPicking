@@ -17,6 +17,7 @@ interface Props {
     onQuickDate: (id: string, days: number | null) => void;
     onToggleHistory: (id: string) => void;
     onRegistrarVisita: (id: string, nombre: string) => void;
+    onRegistrarLlamada: (id: string, nombre: string) => void;
     onOpenActivity: (id: string, nombre: string) => void;
 }
 
@@ -29,9 +30,11 @@ export const ClienteCard = memo<Props>(({
     onQuickDate,
     onToggleHistory,
     onRegistrarVisita,
+    onRegistrarLlamada,
     onOpenActivity
 }) => {
     const visitCount = acts.filter(a => a.descripcion === 'Visita realizada').length;
+    const callCount = acts.filter(a => a.descripcion === 'Llamada realizada').length;
     const hasPhone = Boolean(c.telefono);
     const hasEmail = Boolean(c.mail);
     const hasAddress = Boolean(c.direccion);
@@ -129,6 +132,17 @@ export const ClienteCard = memo<Props>(({
                         {churnLabel} ({diasSinContacto > 1000 ? 'Nunca' : `${diasSinContacto}d`})
                     </span>
                 )}
+
+                {/* Etiquetas de Grupos */}
+                {c.grupos && c.grupos.map(g => (
+                    <span key={g.id} style={{ 
+                        fontSize: '0.72rem', fontWeight: 700, padding: '3px 9px', borderRadius: '99px', 
+                        background: `${g.color}15`, color: g.color, border: `1px solid ${g.color}40`,
+                        display: 'flex', alignItems: 'center'
+                    }}>
+                        {g.nombre}
+                    </span>
+                ))}
             </div>
 
             {c.notas && (
@@ -162,6 +176,9 @@ export const ClienteCard = memo<Props>(({
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={() => onRegistrarVisita(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>
                             🏪 Visita {visitCount > 0 && <span>({visitCount})</span>}
+                        </button>
+                        <button onClick={() => onRegistrarLlamada(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(139, 92, 246, 0.35)', background: 'rgba(139, 92, 246, 0.08)', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
+                            📞 Llamada {callCount > 0 && <span>({callCount})</span>}
                         </button>
                         <Button variant="secondary" onClick={() => onOpenActivity(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
                             + Actividad
@@ -206,6 +223,7 @@ export const ClienteCard = memo<Props>(({
         prevProps.cliente.mail === nextProps.cliente.mail &&
         prevProps.cliente.direccion === nextProps.cliente.direccion &&
         prevProps.cliente.updated_at === nextProps.cliente.updated_at &&
-        prevProps.cliente.clientes?.created_at === nextProps.cliente.clientes?.created_at
+        prevProps.cliente.clientes?.created_at === nextProps.cliente.clientes?.created_at &&
+        prevProps.cliente.grupos?.length === nextProps.cliente.grupos?.length
     );
 });

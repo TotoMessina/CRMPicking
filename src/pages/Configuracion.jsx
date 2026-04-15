@@ -3,8 +3,9 @@ import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { Camera, Trash2, Mail, Plus, X, Send, Info, HardDrive } from 'lucide-react';
+import { Camera, Trash2, Mail, Plus, X, Send, Info, HardDrive, Tag, Edit2 } from 'lucide-react';
 import { clearLocalClients } from '../lib/offlineManager';
+import { useGrupos, useCreateGrupo, useUpdateGrupo, useDeleteGrupo } from '../hooks/useGrupos';
 
 
 const BUCKET = 'avatares';
@@ -276,6 +277,52 @@ export default function Configuracion() {
             setSavingPassword(false);
         }
     };
+
+    // ── Grupos handlers ───────────────────────────────────
+    const { data: grupos = [], isLoading: loadingGrupos } = useGrupos(empresaActiva?.id);
+    const createGrupoMutation = useCreateGrupo();
+    const updateGrupoMutation = useUpdateGrupo();
+    const deleteGrupoMutation = useDeleteGrupo();
+
+    const [editingGrupo, setEditingGrupo] = useState(null);
+    const [grupoForm, setGrupoForm] = useState({ nombre: '', color: '#3b82f6' });
+
+    const handleSaveGrupo = async (e) => {
+        e.preventDefault();
+        if (!grupoForm.nombre.trim()) return;
+        
+        if (editingGrupo) {
+            updateGrupoMutation.mutate({ 
+                id: editingGrupo.id, 
+                empresaId: empresaActiva.id, 
+                ...grupoForm 
+            }, {
+                onSuccess: () => {
+                    setEditingGrupo(null);
+                    setGrupoForm({ nombre: '', color: '#3b82f6' });
+                }
+            });
+        } else {
+            createGrupoMutation.mutate({ 
+                empresaId: empresaActiva.id, 
+                ...grupoForm 
+            }, {
+                onSuccess: () => {
+                    setGrupoForm({ nombre: '', color: '#3b82f6' });
+                }
+            });
+        }
+    };
+
+    const handleDeleteGrupo = (id) => {
+        if (!window.confirm('¿Eliminar este grupo? Los clientes ya no estarán asociados a él.')) return;
+        deleteGrupoMutation.mutate({ id, empresaId: empresaActiva.id });
+    };
+
+    const PRESET_COLORS = [
+        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
+        '#8b5cf6', '#ec4899', '#06b6d4', '#4b5563'
+    ];
 
     return (
         <div className="container" style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
@@ -611,6 +658,102 @@ export default function Configuracion() {
                             </p>
                         </div>
 
+                    </div>
+                </section>
+
+                {/* ── GRUPOS DE CLIENTES ─────────────────────── */}
+                <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                    <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--accent)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
+                                <Tag size={20} />
+                            </div>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Grupos de Clientes</h2>
+                                <p className="muted" style={{ margin: '2px 0 0 0', fontSize: '0.85rem' }}>Personalizá cómo segmentás a tus clientes.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        <form onSubmit={handleSaveGrupo} style={{ background: 'var(--bg-body)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                <div style={{ flex: 1, minWidth: '200px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Nombre del Grupo</label>
+                                    <input 
+                                        className="input" 
+                                        placeholder="Ej: Clientes VIP, Región Sur..." 
+                                        value={grupoForm.nombre}
+                                        onChange={e => setGrupoForm({ ...grupoForm, nombre: e.target.value })}
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
+                                <div style={{ width: '160px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Color</label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                                        {PRESET_COLORS.map(c => (
+                                            <button 
+                                                key={c}
+                                                type="button"
+                                                onClick={() => setGrupoForm({ ...grupoForm, color: c })}
+                                                style={{ 
+                                                    width: '28px', height: '28px', borderRadius: '6px', 
+                                                    background: c, border: grupoForm.color === c ? '2px solid #fff' : 'none',
+                                                    boxShadow: grupoForm.color === c ? '0 0 0 2px var(--accent)' : 'none',
+                                                    cursor: 'pointer'
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <Button type="submit" variant="primary" style={{ flex: 1 }}>
+                                    {editingGrupo ? 'Actualizar Grupo' : 'Crear Grupo'}
+                                </Button>
+                                {editingGrupo && (
+                                    <Button variant="secondary" onClick={() => { setEditingGrupo(null); setGrupoForm({ nombre: '', color: '#3b82f6' }); }}>
+                                        Cancelar
+                                    </Button>
+                                )}
+                            </div>
+                        </form>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                            {loadingGrupos ? (
+                                <p className="muted">Cargando grupos...</p>
+                            ) : grupos.length === 0 ? (
+                                <p className="muted" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', border: '1px dashed var(--border)', borderRadius: '12px' }}>
+                                    No has creado ningún grupo todavía.
+                                </p>
+                            ) : grupos.map(g => (
+                                <div key={g.id} style={{ 
+                                    padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)', 
+                                    background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    animation: 'page-enter 0.3s ease-out forwards'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: g.color }} />
+                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{g.nombre}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                        <button 
+                                            onClick={() => { setEditingGrupo(g); setGrupoForm({ nombre: g.nombre, color: g.color }); }}
+                                            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px' }}
+                                        >
+                                            <Edit2 size={14} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteGrupo(g.id)}
+                                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px' }}
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </section>
 

@@ -1,3 +1,11 @@
+export interface Group {
+    id: string;
+    empresa_id: string;
+    nombre: string;
+    color: string;
+    created_at?: string;
+}
+
 export interface Client {
     id: string;
     nombre?: string;
@@ -19,6 +27,7 @@ export interface Client {
     clientes?: {
         created_at: string;
     };
+    grupos?: Group[]; // Added for group support
 }
 
 export interface ClientActivity {

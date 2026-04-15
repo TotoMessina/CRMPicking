@@ -16,7 +16,9 @@ import {
 } from '../../constants/estados';
 import { useRubros } from '../../hooks/useRubros';
 import { useCompanyUsers } from '../../hooks/useCompanyUsers';
+import { useGrupos, useUpdateClienteGrupos } from '../../hooks/useGrupos';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Tag as TagIcon } from 'lucide-react';
 
 interface Props {
     isOpen: boolean;
@@ -83,6 +85,11 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const [showConfirm, setShowConfirm] = useState(false);
     const [clienteId, setClienteId] = useState<string | null>(initialClienteId);
     const [verifyingPhone, setVerifyingPhone] = useState(false);
+
+    // Grupos
+    const { data: gruposDB = [] } = useGrupos(empresaActiva?.id);
+    const [selectedGrupos, setSelectedGrupos] = useState<string[]>([]);
+    const updateGruposMutation = useUpdateClienteGrupos();
 
     const handleClose = () => {
         if (isDirty) {
@@ -163,6 +170,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     lng: initialLocation?.lng ?? null,
                 }));
                 setErrors({});
+                setSelectedGrupos([]);
                 handleStepChange(0);
             }
             setIsDirty(false);
@@ -179,7 +187,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         try {
             const { data: ecData, error: ecError } = await supabase
                 .from('empresa_cliente')
-                .select('*, clientes(*)')
+                .select('*, clientes(*, cliente_grupos(grupo_id))')
                 .eq('cliente_id', id)
                 .eq('empresa_id', empresaActiva?.id)
                 .maybeSingle();
@@ -206,6 +214,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 };
                 // Remove the nested joined object to keep formData clean
                 delete (finalData as any).clientes;
+                
+                // Set selected groups
+                if (ecData.clientes?.cliente_grupos) {
+                    setSelectedGrupos(ecData.clientes.cliente_grupos.map((cg: any) => cg.grupo_id.toString()));
+                } else {
+                    setSelectedGrupos([]);
+                }
             } else {
                 // Fallback to just universal if not found in company
                 const { data, error } = await supabase.from('clientes').select('*').eq('id', id).single();
@@ -509,6 +524,17 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 }
             } else {
                 toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
+                
+                // 3. Update Groups (Many-to-Many)
+                const finalId = clienteId || result;
+                if (finalId) {
+                    await updateGruposMutation.mutateAsync({
+                        clienteId: finalId.toString(),
+                        empresaId: empresaActiva.id,
+                        grupoIds: selectedGrupos
+                    });
+                }
+
                 setIsDirty(false);
                 onSaved();
             }
@@ -773,6 +799,49 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                         <input type="text" name="venta_digital_cual" placeholder="¿Cuál? Ej: Pedidos Ya, Rappi..." value={formData.venta_digital_cual || ''} onChange={handleChange} style={{ marginTop: '4px' }} />
                                     )}
                                 </div>
+
+                                {/* Grupos selection */}
+                                {gruposDB.length > 0 && (
+                                    <div className="field" style={{ gridColumn: '1 / -1' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <TagIcon size={14} /> Grupos / Etiquetas
+                                        </label>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                                            {gruposDB.map(g => {
+                                                const isSelected = selectedGrupos.includes(g.id.toString());
+                                                return (
+                                                    <button
+                                                        key={g.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedGrupos(prev => 
+                                                                isSelected 
+                                                                    ? prev.filter(id => id !== g.id.toString())
+                                                                    : [...prev, g.id.toString()]
+                                                            );
+                                                            setIsDirty(true);
+                                                        }}
+                                                        style={{
+                                                            padding: '6px 12px',
+                                                            borderRadius: '99px',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s ease',
+                                                            border: '2px solid',
+                                                            background: isSelected ? g.color : 'transparent',
+                                                            color: isSelected ? '#fff' : g.color,
+                                                            borderColor: g.color,
+                                                            opacity: isSelected ? 1 : 0.6
+                                                        }}
+                                                    >
+                                                        {g.nombre}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Situación: visible siempre al editar, o cuando el estado es final al crear */}

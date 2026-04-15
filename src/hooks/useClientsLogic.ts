@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useClientes, useDeleteCliente, useQuickDateCliente, useRegistrarVisitaCliente } from '../hooks/useClientes';
+import { useClientes, useDeleteCliente, useQuickDateCliente, useRegistrarVisitaCliente, useRegistrarLlamadaCliente } from '../hooks/useClientes';
 import { useCompanyUsers } from '../hooks/useCompanyUsers';
 import { useRubros } from '../hooks/useRubros';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { descargarModeloClientes, importarClientesExcel, exportarClientesExcel } from '../lib/excelExport';
 import { Client, ClientActivity } from '../types/client';
+import { useGrupos } from './useGrupos';
 
 export interface ClientFilters {
     nombre: string;
@@ -27,6 +28,7 @@ export interface ClientFilters {
     creadoHasta: string;
     contactoDesde: string;
     contactoHasta: string;
+    grupos: string[];
 }
 
 export const useClientsLogic = () => {
@@ -58,12 +60,14 @@ export const useClientsLogic = () => {
         creadoDesde: stateFilters?.creadoDesde || '',
         creadoHasta: stateFilters?.creadoHasta || '',
         contactoDesde: stateFilters?.contactoDesde || '',
-        contactoHasta: stateFilters?.contactoHasta || ''
+        contactoHasta: stateFilters?.contactoHasta || '',
+        grupos: stateFilters?.grupos || []
     });
 
     const [sortBy, setSortBy] = useState('updated');
     const { data: responsablesValidos = [] } = useCompanyUsers(empresaActiva?.id);
     const { data: rubrosValidos = [] } = useRubros();
+    const { data: gruposValidos = [] } = useGrupos(empresaActiva?.id);
     const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
 
     // Modals
@@ -81,7 +85,8 @@ export const useClientsLogic = () => {
         fEstilo: filters.estilo, fProximos7: filters.proximos7, fVencidos: filters.vencidos,
         fNombre: filters.nombre, fTelefono: filters.telefono, fDireccion: filters.direccion,
         fCreadoDesde: filters.creadoDesde, fCreadoHasta: filters.creadoHasta, 
-        fContactoDesde: filters.contactoDesde, fContactoHasta: filters.contactoHasta, sortBy
+        fContactoDesde: filters.contactoDesde, fContactoHasta: filters.contactoHasta, 
+        fGrupos: filters.grupos, sortBy
     });
 
     const { clientes = [] as Client[], total = 0, activities = {} as Record<string, ClientActivity[]> } = data || {};
@@ -91,6 +96,7 @@ export const useClientsLogic = () => {
     const deleteClienteMutation = useDeleteCliente();
     const quickDateMutation = useQuickDateCliente();
     const visitaMutation = useRegistrarVisitaCliente();
+    const llamadaMutation = useRegistrarLlamadaCliente();
 
 
 
@@ -132,6 +138,10 @@ export const useClientsLogic = () => {
         visitaMutation.mutate({ clienteId, nombre, empresaActiva, userName, user });
     }, [empresaActiva, userName, user, visitaMutation]);
 
+    const handleRegistrarLlamada = useCallback((clienteId: string, nombre: string) => {
+        llamadaMutation.mutate({ clienteId, nombre, empresaActiva, userName, user });
+    }, [empresaActiva, userName, user, llamadaMutation]);
+
     const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -146,10 +156,10 @@ export const useClientsLogic = () => {
 
     return {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
-        filters, updateFilter, rubrosValidos, responsablesValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
+        filters, updateFilter, rubrosValidos, responsablesValidos, gruposValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
         exportLoading, handleDescargarExcel, handleImportExcel, handleDescargarModelo: descargarModeloClientes,
         modalOpen, setModalOpen, editingId, handleCreate, handleEdit, handleDelete,
         actModalOpen, setActModalOpen, actTargetId, actTargetName, handleOpenActivity,
-        handleQuickDate, handleRegistrarVisita, queryClient
+        handleQuickDate, handleRegistrarVisita, handleRegistrarLlamada, queryClient
     };
 };

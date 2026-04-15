@@ -26,6 +26,7 @@ export interface UseClientesParams {
     fCreadoHasta: string;
     fContactoDesde: string;
     fContactoHasta: string;
+    fGrupos: string[];
     sortBy: string;
 }
 
@@ -35,7 +36,7 @@ export function useClientes(params: UseClientesParams) {
         fEstado, fSituacion, fTipoContacto, fResponsable, fCreadoPor,
         fRubro, fInteres, fEstilo, fProximos7, fVencidos,
         fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta,
-        fContactoDesde, fContactoHasta, sortBy
+        fContactoDesde, fContactoHasta, fGrupos, sortBy
     } = params;
 
     return useQuery({
@@ -46,7 +47,7 @@ export function useClientes(params: UseClientesParams) {
                 fEstado, fSituacion, fTipoContacto, fResponsable, fCreadoPor,
                 fRubro, fInteres, fEstilo, fProximos7, fVencidos,
                 fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta,
-                fContactoDesde, fContactoHasta, sortBy
+                fContactoDesde, fContactoHasta, fGrupos, sortBy
             }
         ],
         queryFn: async () => {
@@ -54,9 +55,16 @@ export function useClientes(params: UseClientesParams) {
 
             let request = supabase
                 .from('empresa_cliente')
-                .select('*, clientes!inner(*)', { count: 'exact' })
+                .select('*, clientes!inner(*, cliente_grupos(grupos(*)))', { count: 'exact' })
                 .eq('empresa_id', empresaId)
                 .eq('activo', true);
+
+            // If filtering by groups, we must force the join to be inner to restrict results
+            if (fGrupos && fGrupos.length > 0) {
+                // We re-apply select to override with !inner on the groups relation
+                request = request.select('*, clientes!inner(*, cliente_grupos!inner(grupos(*)))', { count: 'exact' });
+                request = request.in('clientes.cliente_grupos.grupo_id', fGrupos);
+            }
 
             // Apply sorting
             if (sortBy === 'updated') {
@@ -89,6 +97,7 @@ export function useClientes(params: UseClientesParams) {
             if (fRubro && fRubro.length > 0) request = request.in('rubro', fRubro);
             if (fInteres && fInteres.length > 0) request = request.in('interes', fInteres);
             if (fEstilo && fEstilo.length > 0) request = request.in('estilo_contacto', fEstilo);
+
 
             if (fCreadoDesde) {
                 request = request.gte('created_at', `${fCreadoDesde}T00:00:00.000Z`);
@@ -139,6 +148,7 @@ export function useClientes(params: UseClientesParams) {
                     p_creado_hasta: fCreadoHasta || null,
                     p_contacto_desde: fContactoDesde || null,
                     p_contacto_hasta: fContactoHasta || null,
+                    p_grupos: fGrupos,
                     p_offset: (page - 1) * pageSize,
                     p_limit: pageSize,
                     p_sort_by: sortBy || 'recent'
@@ -179,6 +189,7 @@ export function useClientes(params: UseClientesParams) {
                     created_at: row.ec_created_at,
                     updated_at: row.ec_updated_at,
                     ultima_actividad: row.ultima_actividad,
+                    grupos: row.grupos || [] // From RPC JSONB
                 }));
                 total = rpcData && rpcData.length > 0 ? Number(rpcData[0].total_count) : 0;
             } else {
@@ -216,9 +227,9 @@ export function useClientes(params: UseClientesParams) {
                         fecha_proximo_contacto: row.fecha_proximo_contacto,
                         hora_proximo_contacto: row.hora_proximo_contacto,
                         ultima_actividad: row.ultima_actividad,
-                        creado_por: row.creado_por,
                         created_at: row.created_at,
                         updated_at: row.updated_at,
+                        grupos: (c.cliente_grupos || []).map((cg: any) => cg.grupos).filter(Boolean)
                     };
                 });
                 total = count || 0;
@@ -381,6 +392,54 @@ export function useRegistrarVisitaCliente() {
         },
         onError: () => {
             toast.error('Error al registrar visita');
+        }
+    });
+}
+
+export function useRegistrarLlamadaCliente() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }: { clienteId: string; nombre: string; empresaActiva: any; userName: string; user: any }) => {
+            const now = new Date().toISOString();
+
+            const { error: logError } = await supabase.from('actividades').insert([{
+                cliente_id: clienteId,
+                descripcion: 'Llamada realizada',
+                fecha: now,
+                usuario: userName || user?.email || 'Sistema',
+                empresa_id: empresaActiva?.id
+            }]);
+
+            if (logError) {
+                const isOfflineError = logError.message === 'Failed to fetch' || logError.message?.includes('fetch') || !navigator.onLine;
+                if (!isOfflineError) throw new Error(logError.message);
+            }
+
+            const { error: updateError } = await supabase
+                .from('empresa_cliente')
+                .update({ ultima_actividad: now })
+                .eq('cliente_id', clienteId)
+                .eq('empresa_id', empresaActiva?.id);
+
+            if (updateError) {
+                const isOfflineError = updateError.message === 'Failed to fetch' || updateError.message?.includes('fetch') || !navigator.onLine;
+                if (!isOfflineError) throw new Error(updateError.message);
+                return { nombre, isOffline: true };
+            }
+
+            return { nombre, isOffline: false };
+        },
+        onSuccess: (data) => {
+            if (data?.isOffline) {
+                toast.success(`Llamada offline para ${data.nombre || 'cliente'}`);
+            } else {
+                toast.success(`Llamada registrada para ${data.nombre || 'cliente'}`);
+            }
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        },
+        onError: () => {
+            toast.error('Error al registrar llamada');
         }
     });
 }

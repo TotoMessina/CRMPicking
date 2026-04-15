@@ -12,11 +12,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 const Clientes: React.FC = () => {
     const {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
-        filters, updateFilter, rubrosValidos, responsablesValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
+        filters, updateFilter, rubrosValidos, responsablesValidos, gruposValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
         exportLoading, handleDescargarExcel, handleImportExcel, handleDescargarModelo,
         modalOpen, setModalOpen, editingId, handleCreate, handleEdit, handleDelete,
         actModalOpen, setActModalOpen, actTargetId, actTargetName, handleOpenActivity,
-        handleQuickDate, handleRegistrarVisita, queryClient
+        handleQuickDate, handleRegistrarVisita, handleRegistrarLlamada, queryClient
     } = useClientsLogic();
     
     const [actionsOpen, setActionsOpen] = useState(false);
@@ -98,6 +98,7 @@ const Clientes: React.FC = () => {
                 updateFilter={updateFilter}
                 rubrosValidos={rubrosValidos}
                 responsablesValidos={responsablesValidos}
+                gruposValidos={gruposValidos}
             />
 
             {/* 3. LIST SECTION */}
@@ -155,6 +156,7 @@ const Clientes: React.FC = () => {
                                 onQuickDate={handleQuickDate}
                                 onToggleHistory={toggleHistory}
                                 onRegistrarVisita={handleRegistrarVisita}
+                                onRegistrarLlamada={handleRegistrarLlamada}
                                 onOpenActivity={handleOpenActivity}
                             />
                         </motion.div>
