@@ -6,7 +6,7 @@ import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false, onSaved, proveedores = [], secciones = [] }) {
+export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false, onSaved, proveedores = [], sprints = [] }) {
     const { empresaActiva } = useAuth();
     const [loading, setLoading] = useState(false);
     const [historialLoading, setHistorialLoading] = useState(false);
@@ -17,7 +17,7 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
         proveedor_id: '',
         tipo: isIdea ? 'idea' : 'pedido',
         titulo: '',
-        seccion: '',
+        sprint_id: '',
         fecha_inicio: '',
         fecha_fin: '',
         fecha_real_cierre: '',
@@ -36,7 +36,6 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
                 setHistory([]);
                 setHistoryInput('');
 
-                // For new events, set default start date unless it's strictly an Idea
                 const now = new Date();
                 const pad = (n) => String(n).padStart(2, "0");
                 const localNow = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
@@ -45,7 +44,7 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
                     proveedor_id: '',
                     tipo: isIdea ? 'idea' : 'pedido',
                     titulo: '',
-                    seccion: '',
+                    sprint_id: '',
                     fecha_inicio: isIdea ? '' : localNow,
                     fecha_fin: '',
                     fecha_real_cierre: '',
@@ -66,7 +65,7 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
                 proveedor_id: data.proveedor_id || '',
                 tipo: data.tipo || 'pedido',
                 titulo: data.titulo || '',
-                seccion: data.seccion || '',
+                sprint_id: data.sprint_id || '',
                 fecha_inicio: toLocalInput(data.fecha_inicio),
                 fecha_fin: toLocalInput(data.fecha_fin),
                 fecha_real_cierre: toLocalInput(data.fecha_real_cierre),
@@ -116,10 +115,15 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
 
         setLoading(true);
 
+        // Find selected sprint name if any, to keep 'seccion' string in sync (legacy support)
+        const selectedSprint = sprints.find(s => s.id === formData.sprint_id);
+        const sprintName = selectedSprint ? selectedSprint.nombre : null;
+
         const payload = {
             proveedor_id: formData.proveedor_id,
             tipo: formData.tipo,
-            seccion: formData.seccion.trim() || null,
+            sprint_id: formData.sprint_id || null,
+            seccion: sprintName, // Keep name sync
             titulo: formData.titulo.trim(),
             fecha_inicio: toISO(formData.fecha_inicio),
             fecha_fin: toISO(formData.fecha_fin),
@@ -223,11 +227,13 @@ export function EventoProveedorModal({ isOpen, onClose, eventId, isIdea = false,
                             </label>
 
                             <label className="field">
-                                <span className="field-label">Título del Grupo / Sección (Ej: Tablero de Ideas)</span>
-                                <input name="seccion" className="input" list="seccionesList" placeholder="Ej: PickingUp Azul..." value={formData.seccion} onChange={handleChange} />
-                                <datalist id="seccionesList">
-                                    {secciones.map(s => <option key={s} value={s} />)}
-                                </datalist>
+                                <span className="field-label">Planificación (Sprint / Fase)</span>
+                                <select name="sprint_id" className="input" value={formData.sprint_id} onChange={handleChange}>
+                                    <option value="">Sin Sprint / Ideas Sueltas</option>
+                                    {sprints.map(s => (
+                                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                                    ))}
+                                </select>
                             </label>
 
                             {formData.tipo === 'idea' && (
