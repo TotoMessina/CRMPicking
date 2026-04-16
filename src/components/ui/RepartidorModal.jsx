@@ -212,8 +212,8 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
                                 </div>
                                 <div style={{ position: 'relative' }}>
                                     <input name="direccion" className="input" value={formData.direccion} onChange={handleChange} style={{ paddingRight: '25px' }} />
-                                    {formData.lat && formData.lng && (
-                                        <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                                    {formData.lat && formData.lng && !isGeocoding && (
+                                        <div title="Ubicación fijada" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.3)' }} />
                                     )}
                                 </div>
                             </label>

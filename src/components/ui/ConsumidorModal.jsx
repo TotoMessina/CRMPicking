@@ -198,7 +198,12 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
                                         Ubicar
                                     </button>
                                 </div>
-                                <input name="localidad" className="input" value={formData.localidad} onChange={handleChange} placeholder="Ej: Buenos Aires" />
+                                <div style={{ position: 'relative' }}>
+                                    <input name="localidad" className="input" value={formData.localidad} onChange={handleChange} placeholder="Ej: Buenos Aires" style={{ paddingRight: '25px' }} />
+                                    {formData.lat && formData.lng && !isGeocoding && (
+                                        <div title="Ubicación fijada" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.3)' }} />
+                                    )}
+                                </div>
                             </label>
                         </div>
 
