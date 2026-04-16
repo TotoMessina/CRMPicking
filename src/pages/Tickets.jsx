@@ -254,11 +254,9 @@ export default function Tickets() {
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <Button variant="secondary" onClick={handleCloseModal} disabled={saving}>Cerrar</Button>
-                                {!isDemoMode && (
-                                    <Button variant="primary" onClick={handleSaveStatus} disabled={saving}>
-                                        {saving ? 'Guardando...' : 'Guardar Cambios'}
-                                    </Button>
-                                )}
+                                <Button variant="primary" onClick={handleSaveStatus} disabled={saving}>
+                                    {saving ? 'Guardando...' : 'Guardar Cambios'}
+                                </Button>
                             </div>
                         </div>
                     </div>

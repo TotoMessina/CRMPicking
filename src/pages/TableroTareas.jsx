@@ -664,15 +664,13 @@ export default function TableroTareas() {
                                                             >
                                                                 <Edit2 size={14} />
                                                             </button>
-                                                            {!isDemoMode && (
-                                                                <button 
-                                                                    type="button" 
-                                                                    onClick={() => removeChecklist(item.id)} 
-                                                                    style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </button>
-                                                            )}
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => removeChecklist(item.id)} 
+                                                                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
                                                         </div>
                                                     </div>
 

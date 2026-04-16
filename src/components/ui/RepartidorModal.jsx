@@ -4,13 +4,15 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 import { Button } from './Button';
-import { X } from 'lucide-react';
+import { X, MapPin, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { geocodeAddress } from '../../lib/googleMaps';
 
 export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation, onSaved }) {
     const { empresaActiva } = useAuth();
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [loading, setLoading] = useState(false);
+    const [isGeocoding, setIsGeocoding] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '', telefono: '', email: '', localidad: '', direccion: '',
         estado: 'Documentación sin gestionar', responsable: '', notas: '', created_at: '',
@@ -61,6 +63,35 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleGeocode = async () => {
+        const fullAddress = `${formData.direccion || ''} ${formData.localidad || ''}`.trim();
+        if (!fullAddress) {
+            toast.error('Por favor, ingresá una dirección o localidad.');
+            return;
+        }
+
+        setIsGeocoding(true);
+        const toastId = toast.loading('Buscando ubicación...');
+
+        try {
+            const coords = await geocodeAddress(fullAddress);
+            if (coords) {
+                setFormData(prev => ({
+                    ...prev,
+                    lat: coords.lat,
+                    lng: coords.lng
+                }));
+                toast.success('Ubicación actualizada.', { id: toastId });
+            } else {
+                toast.error('No se encontró la dirección exacta.', { id: toastId });
+            }
+        } catch (error) {
+            toast.error('Error al conectar con el servicio de geolocalización.', { id: toastId });
+        } finally {
+            setIsGeocoding(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -162,8 +193,29 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
 
                         <div className="form-row-2">
                             <label className="field">
-                                <span className="field-label">Dirección</span>
-                                <input name="direccion" className="input" value={formData.direccion} onChange={handleChange} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <span className="field-label" style={{ margin: 0 }}>Dirección</span>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleGeocode}
+                                        disabled={isGeocoding}
+                                        style={{ 
+                                            display: 'flex', alignItems: 'center', gap: '4px',
+                                            fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent)',
+                                            background: 'none', border: 'none', cursor: 'pointer',
+                                            opacity: isGeocoding ? 0.6 : 1
+                                        }}
+                                    >
+                                        {isGeocoding ? <RefreshCw size={10} className="animate-spin" /> : <MapPin size={10} />}
+                                        Ubicar
+                                    </button>
+                                </div>
+                                <div style={{ position: 'relative' }}>
+                                    <input name="direccion" className="input" value={formData.direccion} onChange={handleChange} style={{ paddingRight: '25px' }} />
+                                    {formData.lat && formData.lng && (
+                                        <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                                    )}
+                                </div>
                             </label>
                             <label className="field">
                                 <span className="field-label">Estado</span>

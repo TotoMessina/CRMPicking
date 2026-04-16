@@ -32,7 +32,7 @@ const SPRINT_PALETTES = [
 ];
 
 export default function Proveedores() {
-    const { empresaActiva } = useAuth();
+    const { empresaActiva, isDemoMode } = useAuth();
     const [activeTab, setActiveTab] = useState('roadmap');
 
     // Data states

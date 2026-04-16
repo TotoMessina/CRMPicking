@@ -4,13 +4,15 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 import { Button } from './Button';
-import { X } from 'lucide-react';
+import { X, MapPin, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { geocodeAddress } from '../../lib/googleMaps';
 
 export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initialLatLng }) {
     const { empresaActiva } = useAuth();
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [loading, setLoading] = useState(false);
+    const [isGeocoding, setIsGeocoding] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '', telefono: '', mail: '', localidad: '', barrio: '',
         edad: '', genero: '', estado: 'Lead', responsable: '',
@@ -61,6 +63,35 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleGeocode = async () => {
+        const searchAddress = `${formData.barrio || ''} ${formData.localidad || ''}`.trim();
+        if (!searchAddress) {
+            toast.error('Ingresá localidad o barrio para buscar.');
+            return;
+        }
+
+        setIsGeocoding(true);
+        const toastId = toast.loading('Buscando ubicación...');
+
+        try {
+            const coords = await geocodeAddress(searchAddress);
+            if (coords) {
+                setFormData(prev => ({
+                    ...prev,
+                    lat: coords.lat,
+                    lng: coords.lng
+                }));
+                toast.success('Ubicación encontrada.', { id: toastId });
+            } else {
+                toast.error('No se pudo encontrar la ubicación exacta.', { id: toastId });
+            }
+        } catch (error) {
+            toast.error('Error al conectar con el servicio de mapas.', { id: toastId });
+        } finally {
+            setIsGeocoding(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -150,8 +181,24 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
                                 <input name="mail" type="email" className="input" value={formData.mail} onChange={handleChange} />
                             </label>
                             <label className="field">
-                                <span className="field-label">Localidad</span>
-                                <input name="localidad" className="input" value={formData.localidad} onChange={handleChange} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <span className="field-label" style={{ margin: 0 }}>Localidad</span>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleGeocode}
+                                        disabled={isGeocoding}
+                                        style={{ 
+                                            display: 'flex', alignItems: 'center', gap: '4px',
+                                            fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent)',
+                                            background: 'none', border: 'none', cursor: 'pointer',
+                                            opacity: isGeocoding ? 0.6 : 1
+                                        }}
+                                    >
+                                        {isGeocoding ? <RefreshCw size={10} className="animate-spin" /> : <MapPin size={10} />}
+                                        Ubicar
+                                    </button>
+                                </div>
+                                <input name="localidad" className="input" value={formData.localidad} onChange={handleChange} placeholder="Ej: Buenos Aires" />
                             </label>
                         </div>
 

@@ -4,7 +4,8 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
 import toast from 'react-hot-toast';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, MapPin, Search, RefreshCw } from 'lucide-react';
+import { geocodeAddress } from '../../lib/googleMaps';
 import { queueMutation } from '../../lib/offlineManager';
 
 import {
@@ -85,6 +86,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const [showConfirm, setShowConfirm] = useState(false);
     const [clienteId, setClienteId] = useState<string | null>(initialClienteId);
     const [verifyingPhone, setVerifyingPhone] = useState(false);
+    const [isGeocoding, setIsGeocoding] = useState(false);
 
     // Grupos
     const { data: gruposDB = [] } = useGrupos(empresaActiva?.id);
@@ -155,6 +157,35 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             toast.success('Teléfono nuevo, podés continuar con la carga.');
             setErrors(prev => { const n = { ...prev }; delete n.telefono; return n; });
             handleStepChange(1);
+        }
+    };
+    
+    const handleGeocode = async () => {
+        if (!formData.direccion?.trim()) {
+            toast.error('Por favor, ingresá una dirección primero.');
+            return;
+        }
+
+        setIsGeocoding(true);
+        const toastId = toast.loading('Buscando ubicación...');
+
+        try {
+            const coords = await geocodeAddress(formData.direccion);
+            if (coords) {
+                setFormData(prev => ({
+                    ...prev,
+                    lat: coords.lat,
+                    lng: coords.lng
+                }));
+                toast.success('Dirección ubicada correctamente.', { id: toastId });
+                setIsDirty(true);
+            } else {
+                toast.error('No pudimos encontrar esa dirección. Intentá agregar ciudad o país.', { id: toastId });
+            }
+        } catch (error) {
+            toast.error('Error al conectar con el servicio de mapas.', { id: toastId });
+        } finally {
+            setIsGeocoding(false);
         }
     };
 
@@ -314,12 +345,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             for (const [s, fields] of Object.entries(STEP_FIELDS)) {
                 if (fields.some(f => errs[f])) { handleStepChange(Number(s)); break; }
             }
-            return;
-        }
-
-        if (clienteId && isDemoMode) {
-            toast.error('Modo Demostración: No se permite editar clientes existentes.');
-            setLoading(false);
             return;
         }
 
@@ -656,8 +681,34 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                     <FieldError msg={errors.nombre_local} />
                                 </div>
                                 <div className="field">
-                                    <label>Dirección *</label>
-                                    <input type="text" {...inp('direccion')} />
+                                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Dirección *</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={handleGeocode}
+                                            disabled={isGeocoding}
+                                            style={{ 
+                                                display: 'flex', alignItems: 'center', gap: '4px',
+                                                fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent)',
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                padding: '2px 6px', borderRadius: '4px', transition: 'all 0.2s',
+                                                opacity: isGeocoding ? 0.6 : 1
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.1)'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                                        >
+                                            {isGeocoding ? <RefreshCw size={12} className="animate-spin" /> : <MapPin size={12} />}
+                                            {isGeocoding ? 'Buscando...' : 'Ubicar en mapa'}
+                                        </button>
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input type="text" {...inp('direccion')} style={{ ...inp('direccion').style, paddingRight: '35px' }} placeholder="Ej: Av. Rivadavia 1234, CABA" />
+                                        {formData.lat && formData.lng && !isGeocoding && (
+                                            <div title="Ubicación fijada" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}>
+                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.3)' }} />
+                                            </div>
+                                        )}
+                                    </div>
                                     <FieldError msg={errors.direccion} />
                                 </div>
                                 <div className="field">

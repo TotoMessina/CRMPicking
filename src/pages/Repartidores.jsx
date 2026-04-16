@@ -373,7 +373,7 @@ export default function Repartidores() {
             />
 
             {/* GLOBAL FLOATING ACTION BUTTON (FAB) - PORTAL */}
-            {!isDemoMode && createPortal(
+            {createPortal(
                 <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999 }}>
                     <motion.button
                         whileHover={{ scale: 1.1, translateY: -5 }}

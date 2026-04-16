@@ -67,8 +67,11 @@ BEGIN
         EXECUTE format('DROP POLICY IF EXISTS tenant_%I_insert ON public.%I', t, t);
         EXECUTE format('CREATE POLICY tenant_%I_insert ON public.%I FOR INSERT WITH CHECK (check_user_belongs_to_company(empresa_id))', t, t);
         
-        EXECUTE format('DROP POLICY IF EXISTS tenant_%I_modify ON public.%I', t, t);
-        EXECUTE format('CREATE POLICY tenant_%I_modify ON public.%I FOR ALL USING (check_user_belongs_to_company(empresa_id) AND NOT is_demo_user()) WITH CHECK (NOT is_demo_user())', t, t);
+        EXECUTE format('DROP POLICY IF EXISTS tenant_%I_update ON public.%I', t, t);
+        EXECUTE format('CREATE POLICY tenant_%I_update ON public.%I FOR UPDATE USING (check_user_belongs_to_company(empresa_id)) WITH CHECK (check_user_belongs_to_company(empresa_id))', t, t);
+
+        EXECUTE format('DROP POLICY IF EXISTS tenant_%I_delete ON public.%I', t, t);
+        EXECUTE format('CREATE POLICY tenant_%I_delete ON public.%I FOR DELETE USING (check_user_belongs_to_company(empresa_id) AND NOT is_demo_user())', t, t);
     END LOOP;
 END $$;
 
@@ -76,8 +79,14 @@ END $$;
 -- Tablas: empresa_usuario, empresa_permisos_pagina, empresas, crm_roles
 
 DROP POLICY IF EXISTS tenant_empresa_cliente_policy ON public.empresa_cliente;
+DROP POLICY IF EXISTS tenant_empresa_cliente_select ON public.empresa_cliente;
+DROP POLICY IF EXISTS tenant_empresa_cliente_insert ON public.empresa_cliente;
+DROP POLICY IF EXISTS tenant_empresa_cliente_update ON public.empresa_cliente;
+DROP POLICY IF EXISTS tenant_empresa_cliente_delete ON public.empresa_cliente;
 CREATE POLICY tenant_empresa_cliente_select ON public.empresa_cliente FOR SELECT USING (check_user_belongs_to_company(empresa_id));
-CREATE POLICY tenant_empresa_cliente_modify ON public.empresa_cliente FOR ALL USING (check_user_belongs_to_company(empresa_id) AND NOT is_demo_user()) WITH CHECK (NOT is_demo_user());
+CREATE POLICY tenant_empresa_cliente_insert ON public.empresa_cliente FOR INSERT WITH CHECK (check_user_belongs_to_company(empresa_id));
+CREATE POLICY tenant_empresa_cliente_update ON public.empresa_cliente FOR UPDATE USING (check_user_belongs_to_company(empresa_id)) WITH CHECK (check_user_belongs_to_company(empresa_id));
+CREATE POLICY tenant_empresa_cliente_delete ON public.empresa_cliente FOR DELETE USING (check_user_belongs_to_company(empresa_id) AND NOT is_demo_user());
 
 -- 4. CASO ESPECIAL: TABLA MAESTRA 'CLIENTES'
 -- No tiene empresa_id. Se protege verificando que exista en empresa_cliente para el usuario.
@@ -97,14 +106,25 @@ CREATE POLICY tenant_clientes_master_insert ON public.clientes
     FOR INSERT WITH CHECK (true); -- La validación de empresa se hace vía RPC o trigger en empresa_cliente
 
 DROP POLICY IF EXISTS tenant_clientes_master_modify ON public.clientes;
-CREATE POLICY tenant_clientes_master_modify ON public.clientes
-    FOR ALL USING (
+DROP POLICY IF EXISTS tenant_clientes_master_update ON public.clientes;
+DROP POLICY IF EXISTS tenant_clientes_master_delete ON public.clientes;
+CREATE POLICY tenant_clientes_master_update ON public.clientes
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM public.empresa_cliente ec
+            WHERE ec.cliente_id = public.clientes.id
+              AND check_user_belongs_to_company(ec.empresa_id)
+        )
+    ) WITH CHECK (true);
+
+CREATE POLICY tenant_clientes_master_delete ON public.clientes
+    FOR DELETE USING (
         NOT is_demo_user() AND EXISTS (
             SELECT 1 FROM public.empresa_cliente ec
             WHERE ec.cliente_id = public.clientes.id
               AND check_user_belongs_to_company(ec.empresa_id)
         )
-    ) WITH CHECK (NOT is_demo_user());
+    );
 
 -- 5. CASO ESPECIAL: AUDIT LOGS
 -- Solo permitir ver logs de registros que el usuario puede ver en sus tablas originales
@@ -172,12 +192,23 @@ CREATE POLICY tenant_calificaciones_insert ON public.calificaciones
     );
 
 DROP POLICY IF EXISTS tenant_calificaciones_modify ON public.calificaciones;
-CREATE POLICY tenant_calificaciones_modify ON public.calificaciones
-    FOR ALL USING (
+DROP POLICY IF EXISTS tenant_calificaciones_update ON public.calificaciones;
+DROP POLICY IF EXISTS tenant_calificaciones_delete ON public.calificaciones;
+CREATE POLICY tenant_calificaciones_update ON public.calificaciones
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM public.empresa_cliente ec
+            WHERE ec.cliente_id = public.calificaciones.cliente_id
+              AND check_user_belongs_to_company(ec.empresa_id)
+        )
+    ) WITH CHECK (true);
+
+CREATE POLICY tenant_calificaciones_delete ON public.calificaciones
+    FOR DELETE USING (
         EXISTS (
             SELECT 1 FROM public.empresa_cliente ec
             WHERE ec.cliente_id = public.calificaciones.cliente_id
               AND check_user_belongs_to_company(ec.empresa_id)
               AND NOT is_demo_user()
         )
-    ) WITH CHECK (NOT is_demo_user());
+    );

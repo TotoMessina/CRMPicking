@@ -5,11 +5,13 @@ import { Plus, ChevronLeft, ChevronRight, Download, Upload, MoreVertical, FileTe
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
 import { ClienteCard } from '../components/ui/ClienteCard';
+import { useAuth } from '../contexts/AuthContext';
 import { useClientsLogic } from '../hooks/useClientsLogic';
 import { ClientFilters } from '../components/clients/ClientFilters';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Clientes: React.FC = () => {
+    const { isDemoMode } = useAuth();
     const {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
         filters, updateFilter, rubrosValidos, responsablesValidos, gruposValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
