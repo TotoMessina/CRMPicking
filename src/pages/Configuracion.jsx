@@ -119,6 +119,7 @@ export default function Configuracion() {
     };
 
     const handleRemoveRecipient = async (id, email) => {
+        if (isDemoMode) return;
         await supabase.from('report_recipients').delete().eq('id', id);
         setReportRecipients(prev => prev.filter(r => r.id !== id));
         toast.success(`${email} eliminado`);
@@ -316,6 +317,7 @@ export default function Configuracion() {
     };
 
     const handleDeleteGrupo = (id) => {
+        if (isDemoMode) return;
         if (!window.confirm('¿Eliminar este grupo? Los clientes ya no estarán asociados a él.')) return;
         deleteGrupoMutation.mutate({ id, empresaId: empresaActiva.id });
     };
@@ -421,10 +423,9 @@ export default function Configuracion() {
                                     }}
                                 >
                                     <Camera size={15} />
-                                    {uploadingAvatar ? 'Subiendo...' : 'Cambiar foto'}
+                                    Cambiar foto
                                 </button>
-
-                                {(displayedAvatar) && (
+                                {!isDemoMode && displayedAvatar && (
                                     <button
                                         type="button"
                                         onClick={handleRemoveAvatar}
@@ -584,7 +585,7 @@ export default function Configuracion() {
                                     className="input premium-input" 
                                     value={diaReporte} 
                                     onChange={e => handleSaveDiaReporte(e.target.value)}
-                                    disabled={savingDia}
+                                    disabled={savingDia || isDemoMode}
                                     style={{ padding: '10px 16px', minWidth: '160px', fontWeight: 500 }}
                                 >
                                     <option value={1}>Lunes</option>
@@ -615,13 +616,15 @@ export default function Configuracion() {
                                                 <Mail size={15} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                                                 <span style={{ fontSize: '0.9rem' }}>{r.email}</span>
                                             </div>
-                                            <button
-                                                onClick={() => handleRemoveRecipient(r.id, r.email)}
-                                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
-                                                title="Eliminar destinatario"
-                                            >
-                                                <X size={16} />
-                                            </button>
+                                            {!isDemoMode && (
+                                                <button
+                                                    onClick={() => handleRemoveRecipient(r.id, r.email)}
+                                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
+                                                    title="Eliminar destinatario"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -639,9 +642,11 @@ export default function Configuracion() {
                                 style={{ flex: 1, minWidth: '220px' }}
                                 id="report-recipient-email-input"
                             />
-                            <Button variant="primary" onClick={handleAddRecipient} style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-                                <Plus size={15} /> Agregar Destinatario
-                            </Button>
+                            {!isDemoMode && (
+                                <Button variant="primary" onClick={handleAddRecipient} style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                                    <Plus size={15} /> Agregar Destinatario
+                                </Button>
+                            )}
                         </div>
 
                         {/* Send test */}
@@ -747,12 +752,14 @@ export default function Configuracion() {
                                         >
                                             <Edit2 size={14} />
                                         </button>
-                                        <button 
-                                            onClick={() => handleDeleteGrupo(g.id)}
-                                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px' }}
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        {!isDemoMode && (
+                                            <button 
+                                                onClick={() => handleDeleteGrupo(g.id)}
+                                                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px' }}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}

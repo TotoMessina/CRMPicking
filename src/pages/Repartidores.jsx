@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RepartidorFilters } from '../components/repartidores/RepartidorFilters';
 
 export default function Repartidores() {
-    const { empresaActiva } = useAuth();
+    const { empresaActiva, isDemoMode } = useAuth();
     const [repartidores, setRepartidores] = useState([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
@@ -189,13 +189,15 @@ export default function Repartidores() {
                                     >
                                         <Download size={16} style={{ color: 'var(--accent)' }} /> Exportar Repartidores
                                     </button>
-                                    <label 
-                                        className="dropdown-item" 
-                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
-                                    >
-                                        <Upload size={16} style={{ color: 'var(--accent)' }} /> Importar Excel
-                                        <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => { handleImportExcel(e); setActionsOpen(false); }} />
-                                    </label>
+                                    {!isDemoMode && (
+                                        <label 
+                                            className="dropdown-item" 
+                                            style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
+                                        >
+                                            <Upload size={16} style={{ color: 'var(--accent)' }} /> Importar Excel
+                                            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => { handleImportExcel(e); setActionsOpen(false); }} />
+                                        </label>
+                                    )}
                                 </motion.div>
                             </>
                         )}
@@ -263,9 +265,11 @@ export default function Repartidores() {
                                         <button onClick={() => handleEdit(r.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title="Editar">
                                             <Edit2 size={16} />
                                         </button>
-                                        <button onClick={() => handleDelete(r.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title="Eliminar">
-                                            <Trash2 size={16} />
-                                        </button>
+                                        {!isDemoMode && (
+                                            <button onClick={() => handleDelete(r.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title="Eliminar">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -369,7 +373,7 @@ export default function Repartidores() {
             />
 
             {/* GLOBAL FLOATING ACTION BUTTON (FAB) - PORTAL */}
-            {createPortal(
+            {!isDemoMode && createPortal(
                 <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999 }}>
                     <motion.button
                         whileHover={{ scale: 1.1, translateY: -5 }}

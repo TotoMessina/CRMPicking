@@ -8,6 +8,8 @@ import { esEstadoFinal } from '../../constants/estados';
 import { formatToLocal } from '../../utils/dateUtils';
 import { getChurnRisk } from '../../utils/riskScoring';
 
+import { useAuth } from '../../contexts/AuthContext';
+
 interface Props {
     cliente: Client;
     acts: ClientActivity[];
@@ -33,6 +35,7 @@ export const ClienteCard = memo<Props>(({
     onRegistrarLlamada,
     onOpenActivity
 }) => {
+    const { isDemoMode } = useAuth();
     const visitCount = acts.filter(a => a.descripcion === 'Visita realizada').length;
     const callCount = acts.filter(a => a.descripcion === 'Llamada realizada').length;
     const hasPhone = Boolean(c.telefono);
@@ -86,9 +89,11 @@ export const ClienteCard = memo<Props>(({
                     <button onClick={() => onEdit(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title="Editar">
                         <Edit2 size={16} />
                     </button>
-                    <button onClick={() => onDelete(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title="Eliminar">
-                        <Trash2 size={16} />
-                    </button>
+                    {!isDemoMode && (
+                        <button onClick={() => onDelete(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title="Eliminar">
+                            <Trash2 size={16} />
+                        </button>
+                    )}
                 </div>
             </div>
 

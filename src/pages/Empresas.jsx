@@ -6,7 +6,7 @@ import { Building2, Plus, Users, Trash2, UserPlus, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 
 export default function Empresas() {
-    const { user, role } = useAuth();
+    const { user, role, isDemoMode } = useAuth();
     const [empresas, setEmpresas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [usuarios, setUsuarios] = useState([]);
@@ -111,7 +111,7 @@ export default function Empresas() {
         }
     };
 
-    if (!isSuperAdmin) {
+    if (!isSuperAdmin || isDemoMode) {
         return (
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <Building2 size={48} style={{ marginBottom: '16px', opacity: 0.4 }} />

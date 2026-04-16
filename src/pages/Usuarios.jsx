@@ -6,7 +6,7 @@ import { Search, Edit2, X, Shield, MapPin, CheckCircle, XCircle } from 'lucide-r
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Usuarios() {
-    const { user: currentUser, empresaActiva } = useAuth();
+    const { user: currentUser, empresaActiva, isDemoMode } = useAuth();
     const [usuarios, setUsuarios] = useState([]);
     const [rolesDisponibles, setRolesDisponibles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -260,9 +260,11 @@ export default function Usuarios() {
                                         )}
                                     </td>
                                     <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                                        <Button variant="secondary" className="btn-sm" onClick={() => handleOpenModal(u)}>
-                                            <Edit2 size={13} style={{ marginRight: '6px' }} /> Editar Contrato
-                                        </Button>
+                                        {!isDemoMode && (
+                                            <Button variant="secondary" className="btn-sm" onClick={() => handleOpenModal(u)}>
+                                                <Edit2 size={13} style={{ marginRight: '6px' }} /> Editar Contrato
+                                            </Button>
+                                        )}
                                     </td>
                                 </tr>
                             ))
@@ -356,9 +358,11 @@ export default function Usuarios() {
                             {/* BOTONERA INF */}
                             <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
                                 <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} disabled={saving} style={{ flex: 1, padding: '12px' }}>Cancelar</Button>
-                                <Button type="submit" variant="primary" disabled={saving} style={{ flex: 1.5, padding: '12px' }}>
-                                    {saving ? 'Guardando Registro...' : 'Guardar Ficha Laboral'}
-                                </Button>
+                                {!isDemoMode && (
+                                    <Button type="submit" variant="primary" disabled={saving} style={{ flex: 1.5, padding: '12px' }}>
+                                        {saving ? 'Guardando Registro...' : 'Guardar Ficha Laboral'}
+                                    </Button>
+                                )}
                             </div>
                         </form>
                     </div>

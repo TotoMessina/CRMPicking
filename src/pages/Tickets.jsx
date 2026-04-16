@@ -2,13 +2,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
+import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import { Search, Filter, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function Tickets() {
-    const { empresaActiva } = useAuth();
+    const { empresaActiva, isDemoMode } = useAuth();
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -243,14 +245,20 @@ export default function Tickets() {
                         </div>
 
                         <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
-                            <Button variant="secondary" onClick={handleDelete} disabled={saving} style={{ color: '#ef4444', borderColor: '#ef4444' }}>
-                                <Trash2 size={16} style={{ marginRight: '8px' }} /> Eliminar
-                            </Button>
+                            <div>
+                                {!isDemoMode && (
+                                    <Button variant="secondary" onClick={handleDelete} disabled={saving} style={{ color: '#ef4444', borderColor: '#ef4444' }}>
+                                        <Trash2 size={16} style={{ marginRight: '8px' }} /> Eliminar
+                                    </Button>
+                                )}
+                            </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <Button variant="secondary" onClick={handleCloseModal} disabled={saving}>Cerrar</Button>
-                                <Button variant="primary" onClick={handleSaveStatus} disabled={saving}>
-                                    {saving ? 'Guardando...' : 'Guardar Cambios'}
-                                </Button>
+                                {!isDemoMode && (
+                                    <Button variant="primary" onClick={handleSaveStatus} disabled={saving}>
+                                        {saving ? 'Guardando...' : 'Guardar Cambios'}
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </div>

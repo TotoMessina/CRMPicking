@@ -14,7 +14,7 @@ const COLUMNS = [
 ];
 
 export default function TableroTareas() {
-    const { user, role, empresaActiva } = useAuth();
+    const { user, role, empresaActiva, isDemoMode } = useAuth();
     const isAdmin = role === 'Administrador';
 
     const [tasks, setTasks] = useState({
@@ -664,13 +664,15 @@ export default function TableroTareas() {
                                                             >
                                                                 <Edit2 size={14} />
                                                             </button>
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => removeChecklist(item.id)} 
-                                                                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
+                                                            {!isDemoMode && (
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={() => removeChecklist(item.id)} 
+                                                                    style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </div>
 
@@ -756,7 +758,7 @@ export default function TableroTareas() {
                             marginTop: 'auto'
                         }}>
                             <div>
-                                {editingTask && (
+                                {editingTask && !isDemoMode && (
                                     <button type="button" onClick={() => deleteTask(editingTask.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600, padding: '10px 16px', borderRadius: '12px', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}>
                                         <Trash2 size={18} /> Eliminar Tarea
                                     </button>
