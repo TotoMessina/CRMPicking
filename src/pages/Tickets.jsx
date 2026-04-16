@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
-import { useAuth } from '../contexts/AuthContext';
-import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import { Search, Filter, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
