@@ -423,6 +423,93 @@ export default function Proveedores() {
                     )}
                 </div>
             )}
+            {activeTab === 'calendario' && (
+                <div className="tab-pane-fade-in card-premium" style={{ padding: '24px' }}>
+                    <FullCalendar
+                        ref={calendarRef}
+                        plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+                        initialView="dayGridMonth"
+                        headerToolbar={{
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek,listWeek'
+                        }}
+                        events={calendarEvents}
+                        editable={true}
+                        selectable={true}
+                        eventClick={(info) => {
+                            setEditingEventId(info.event.id);
+                            setIsIdea(info.event.extendedProps.original.tipo === 'idea');
+                            setModalEventOpen(true);
+                        }}
+                        eventDrop={handleEventDrop}
+                        height="auto"
+                        locale="es"
+                    />
+                </div>
+            )}
+
+            {activeTab === 'directorio' && (
+                <div className="tab-pane-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', background: 'var(--bg-elevated)', padding: '20px', borderRadius: '20px', border: '1px solid var(--border)' }}>
+                        <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+                            <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                            <input
+                                type="text"
+                                className="input"
+                                placeholder="Buscar proveedor por nombre..."
+                                value={searchProv}
+                                onChange={handleSearchProvChange}
+                                style={{ paddingLeft: '44px', width: '100%', height: '46px', borderRadius: '14px' }}
+                            />
+                        </div>
+                        <Button variant="primary" onClick={() => { setEditingProvId(null); setModalProvOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Plus size={18} /> Nuevo Proveedor
+                        </Button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                        {filteredProveedores.length === 0 ? (
+                            <div className="muted" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px' }}>
+                                No se encontraron proveedores.
+                            </div>
+                        ) : (
+                            filteredProveedores.map(prov => (
+                                <div key={prov.id} className="card-premium" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px', position: 'relative' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: 'var(--text)' }}>{prov.nombre}</h3>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '3px 10px', borderRadius: '8px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>{prov.rubro || 'Sin rubro'}</span>
+                                        </div>
+                                        <button onClick={() => { setEditingProvId(prov.id); setModalProvOpen(true); }} className="btn-icon" style={{ background: 'var(--bg-body)', border: '1px solid var(--border)', padding: '8px', borderRadius: '10px', color: 'var(--text-muted)' }}>
+                                            <Settings2 size={16} />
+                                        </button>
+                                    </div>
+                                    
+                                    <div style={{ display: 'grid', gap: '8px', marginTop: '4px' }}>
+                                        {prov.contacto && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                                                <User size={15} /> {prov.contacto}
+                                            </div>
+                                        )}
+                                        {prov.telefono && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--accent)', fontWeight: 600 }}>
+                                                <Phone size={15} /> {prov.telefono}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {prov.notas && (
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--bg-body)', padding: '12px', borderRadius: '12px', marginTop: '4px', border: '1px solid var(--border)' }}>
+                                            {prov.notas}
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
 
             <ProveedorModal isOpen={modalProvOpen} onClose={() => setModalProvOpen(false)} proveedorId={editingProvId} onSaved={() => { setModalProvOpen(false); fetchData(); }} />
             <SprintModal isOpen={modalSprintOpen} onClose={() => setModalSprintOpen(false)} sprintId={editingSprintId} onSaved={() => { setModalSprintOpen(false); fetchData(); }} />

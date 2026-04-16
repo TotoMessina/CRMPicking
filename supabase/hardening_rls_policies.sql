@@ -58,7 +58,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DO $$ 
 DECLARE 
     t TEXT;
-    tables TEXT[] := ARRAY['actividades', 'consumidores', 'repartidores', 'tareas_tablero', 'eventos', 'mensajes_chat', 'historial_ubicaciones', 'proveedores', 'grupos', 'eventos_proveedores', 'eventos_historial', 'calificaciones'];
+    tables TEXT[] := ARRAY['actividades', 'consumidores', 'repartidores', 'tareas_tablero', 'eventos', 'mensajes_chat', 'historial_ubicaciones', 'proveedores', 'grupos', 'eventos_proveedores', 'eventos_historial', 'cliente_grupos', 'turnos', 'zones'];
 BEGIN
     FOREACH t IN ARRAY tables LOOP
         EXECUTE format('DROP POLICY IF EXISTS tenant_%I_select ON public.%I', t, t);
@@ -146,3 +146,38 @@ CREATE POLICY tenant_usuarios_self_modify ON public.usuarios
     WITH CHECK (email = auth.jwt()->>'email' AND NOT is_demo_user());
 
 SELECT 'Blindaje RLS aplicado exitosamente.' AS resultado;
+
+-- 5. CASO ESPECIAL: CALIFICACIONES
+-- No tiene empresa_id directa. Se protege vía cliente_id -> empresa_cliente
+ALTER TABLE public.calificaciones ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_calificaciones_select ON public.calificaciones;
+CREATE POLICY tenant_calificaciones_select ON public.calificaciones
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.empresa_cliente ec
+            WHERE ec.cliente_id = public.calificaciones.cliente_id
+              AND check_user_belongs_to_company(ec.empresa_id)
+        )
+    );
+
+DROP POLICY IF EXISTS tenant_calificaciones_insert ON public.calificaciones;
+CREATE POLICY tenant_calificaciones_insert ON public.calificaciones
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.empresa_cliente ec
+            WHERE ec.cliente_id = public.calificaciones.cliente_id
+              AND check_user_belongs_to_company(ec.empresa_id)
+        )
+    );
+
+DROP POLICY IF EXISTS tenant_calificaciones_modify ON public.calificaciones;
+CREATE POLICY tenant_calificaciones_modify ON public.calificaciones
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.empresa_cliente ec
+            WHERE ec.cliente_id = public.calificaciones.cliente_id
+              AND check_user_belongs_to_company(ec.empresa_id)
+              AND NOT is_demo_user()
+        )
+    ) WITH CHECK (NOT is_demo_user());

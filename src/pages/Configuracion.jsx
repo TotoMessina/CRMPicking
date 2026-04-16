@@ -504,6 +504,7 @@ export default function Configuracion() {
                 </section>
 
                 {/* ── CONTRASEÑA ──────────────────────────────── */}
+                {!isDemoMode && (
                 <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
                         <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Seguridad</h2>
@@ -542,6 +543,7 @@ export default function Configuracion() {
                         </form>
                     </div>
                 </section>
+                )}
 
                 {/* ── REPORTES AUTOMÁTICOS ──────────────────── */}
                 <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
