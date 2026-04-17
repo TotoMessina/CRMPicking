@@ -118,6 +118,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
     const [formData, setFormData] = useState<FormData>(emptyForm());
     const [stepEnteredAt, setStepEnteredAt] = useState(Date.now());
+    const [lastGeocodedAddress, setLastGeocodedAddress] = useState<string | null>(null);
 
     // Auto-fill responsable with the current user's name when creating a new client
     useEffect(() => {
@@ -161,8 +162,15 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     };
     
     const handleGeocode = async () => {
-        if (!formData.direccion?.trim()) {
+        const currentAddress = formData.direccion?.trim();
+        if (!currentAddress) {
             toast.error('Por favor, ingresá una dirección primero.');
+            return;
+        }
+
+        // Optimization: Skip if the address hasn't changed since the last successful geocode
+        if (lastGeocodedAddress === currentAddress) {
+            toast.success('Ubicación ya actualizada para esta dirección.');
             return;
         }
 
@@ -170,13 +178,14 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         const toastId = toast.loading('Buscando ubicación...');
 
         try {
-            const coords = await geocodeAddress(formData.direccion);
+            const coords = await geocodeAddress(currentAddress);
             if (coords) {
                 setFormData(prev => ({
                     ...prev,
                     lat: coords.lat,
                     lng: coords.lng
                 }));
+                setLastGeocodedAddress(currentAddress);
                 toast.success('Dirección ubicada correctamente.', { id: toastId });
                 setIsDirty(true);
             } else {
@@ -243,6 +252,12 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     hora_proximo_contacto: ecData.hora_proximo_contacto || ecData.clientes?.hora_proximo_contacto || '',
                     venta_digital: ecData.venta_digital ? 'true' : 'false'
                 };
+
+                // Track the initial address to avoid redundant geocoding if it doesn't change
+                if (finalData.direccion && finalData.lat && finalData.lng) {
+                    setLastGeocodedAddress(finalData.direccion.trim());
+                }
+
                 // Remove the nested joined object to keep formData clean
                 delete (finalData as any).clientes;
                 
@@ -689,8 +704,10 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                             disabled={isGeocoding}
                                             style={{ 
                                                 display: 'flex', alignItems: 'center', gap: '4px',
-                                                fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent)',
-                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                fontSize: '0.75rem', fontWeight: 600, 
+                                                color: lastGeocodedAddress === (formData.direccion?.trim()) ? 'var(--text-muted)' : 'var(--accent)',
+                                                background: 'none', border: 'none', 
+                                                cursor: lastGeocodedAddress === (formData.direccion?.trim()) ? 'default' : 'pointer',
                                                 padding: '2px 6px', borderRadius: '4px', transition: 'all 0.2s',
                                                 opacity: isGeocoding ? 0.6 : 1
                                             }}

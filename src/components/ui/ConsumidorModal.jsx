@@ -13,6 +13,7 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [loading, setLoading] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
+    const [lastGeocodedAddress, setLastGeocodedAddress] = useState(null);
     const [formData, setFormData] = useState({
         nombre: '', telefono: '', mail: '', localidad: '', barrio: '',
         edad: '', genero: '', estado: 'Lead', responsable: '',
@@ -53,9 +54,13 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
                 fecha_proximo_contacto: data.fecha_proximo_contacto || '',
                 hora_proximo_contacto: data.hora_proximo_contacto ? data.hora_proximo_contacto.slice(0, 5) : '',
                 notas: data.notas || '',
-                lat: data.lat || null,
                 lng: data.lng || null
             });
+
+            // Track the initial address to avoid redundant geocoding if it doesn't change
+            if ((data.barrio || data.localidad) && data.lat && data.lng) {
+                setLastGeocodedAddress(`${data.barrio || ''} ${data.localidad || ''}`.trim());
+            }
         }
         setLoading(false);
     };
@@ -72,6 +77,12 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
             return;
         }
 
+        // Optimization: Skip if the address hasn't changed since the last successful geocode
+        if (lastGeocodedAddress === searchAddress) {
+            toast.success('Ubicación ya actualizada para esta dirección.');
+            return;
+        }
+
         setIsGeocoding(true);
         const toastId = toast.loading('Buscando ubicación...');
 
@@ -83,6 +94,7 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
                     lat: coords.lat,
                     lng: coords.lng
                 }));
+                setLastGeocodedAddress(searchAddress);
                 toast.success('Ubicación encontrada.', { id: toastId });
             } else {
                 toast.error('No se pudo encontrar la ubicación exacta.', { id: toastId });
@@ -189,8 +201,10 @@ export function ConsumidorModal({ isOpen, onClose, consumidorId, onSaved, initia
                                         disabled={isGeocoding}
                                         style={{ 
                                             display: 'flex', alignItems: 'center', gap: '4px',
-                                            fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent)',
-                                            background: 'none', border: 'none', cursor: 'pointer',
+                                            fontSize: '0.7rem', fontWeight: 600, 
+                                            color: lastGeocodedAddress === `${formData.barrio || ''} ${formData.localidad || ''}`.trim() ? 'var(--text-muted)' : 'var(--accent)',
+                                            background: 'none', border: 'none', 
+                                            cursor: lastGeocodedAddress === `${formData.barrio || ''} ${formData.localidad || ''}`.trim() ? 'default' : 'pointer',
                                             opacity: isGeocoding ? 0.6 : 1
                                         }}
                                     >

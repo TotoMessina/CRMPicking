@@ -86,8 +86,8 @@ export function SprintModal({ isOpen, onClose, sprintId, onSaved }) {
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="modal is-open">
-            <div className="modal-content" style={{ maxWidth: '450px' }}>
+        <div className={`modal is-open`} onClick={onClose}>
+            <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h3 style={{ margin: 0 }}>{sprintId ? 'Editar Sprint' : 'Nuevo Sprint'}</h3>
                     <button className="modal-close" type="button" onClick={onClose}><X size={20} /></button>

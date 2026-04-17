@@ -13,6 +13,7 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [loading, setLoading] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
+    const [lastGeocodedAddress, setLastGeocodedAddress] = useState(null);
     const [formData, setFormData] = useState({
         nombre: '', telefono: '', email: '', localidad: '', direccion: '',
         estado: 'Documentación sin gestionar', responsable: '', notas: '', created_at: '',
@@ -54,8 +55,15 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
                 estado: data.estado || 'Documentación sin gestionar',
                 responsable: data.responsable || '',
                 notas: data.notas || '',
-                created_at: createdAtFmt
+                created_at: createdAtFmt,
+                lat: data.lat || null,
+                lng: data.lng || null
             });
+
+            // Track the initial address to avoid redundant geocoding if it doesn't change
+            if ((data.direccion || data.localidad) && data.lat && data.lng) {
+                setLastGeocodedAddress(`${data.direccion || ''} ${data.localidad || ''}`.trim());
+            }
         }
         setLoading(false);
     };
@@ -72,6 +80,12 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
             return;
         }
 
+        // Optimization: Skip if the address hasn't changed since the last successful geocode
+        if (lastGeocodedAddress === fullAddress) {
+            toast.success('Ubicación ya actualizada para esta dirección.');
+            return;
+        }
+
         setIsGeocoding(true);
         const toastId = toast.loading('Buscando ubicación...');
 
@@ -83,6 +97,7 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
                     lat: coords.lat,
                     lng: coords.lng
                 }));
+                setLastGeocodedAddress(fullAddress);
                 toast.success('Ubicación actualizada.', { id: toastId });
             } else {
                 toast.error('No se encontró la dirección exacta.', { id: toastId });
@@ -201,8 +216,10 @@ export function RepartidorModal({ isOpen, onClose, repartidorId, initialLocation
                                         disabled={isGeocoding}
                                         style={{ 
                                             display: 'flex', alignItems: 'center', gap: '4px',
-                                            fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent)',
-                                            background: 'none', border: 'none', cursor: 'pointer',
+                                            fontSize: '0.7rem', fontWeight: 600, 
+                                            color: lastGeocodedAddress === `${formData.direccion || ''} ${formData.localidad || ''}`.trim() ? 'var(--text-muted)' : 'var(--accent)',
+                                            background: 'none', border: 'none', 
+                                            cursor: lastGeocodedAddress === `${formData.direccion || ''} ${formData.localidad || ''}`.trim() ? 'default' : 'pointer',
                                             opacity: isGeocoding ? 0.6 : 1
                                         }}
                                     >
