@@ -5,45 +5,57 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Backend-green.svg)](https://supabase.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**PickingUp CRM** no es un CRM convencional; es una plataforma de gestión integral diseñada para resolver la brecha entre la gestión de relaciones con clientes y la logística de última milla. Nacida de una necesidad real de relevamiento de datos en campo, hoy es una solución robusta preparada para el mercado Enterprise.
+**PickingUp CRM** es una plataforma web moderna y escalable diseñada para resolver la brecha entre la gestión de relaciones con clientes y la logística de última milla. Adopta un ecosistema basado en **React 19**, **Vite** y **Supabase** para ofrecer una experiencia ultra-rápida y en tiempo real.
 
 ---
 
-## 🌟 Lo Nuevo (Highlight de Funcionalidades)
+## 🔥 Lo Nuevo (Highlights de Optimización)
 
-### 📍 Geocodificación & Control de Costos (Inteligencia Google Maps)
-- **Conversión Automática**: Integración con Google Geocoding API para transformar direcciones textuales en coordenadas precisas instantáneamente.
-- **Optimizador de Créditos**: Lógica inteligente de detección de cambios que evita peticiones redundantes a la API de Google, maximizando el uso del crédito gratuito mensual.
-- **Feedback Visual**: Botón "Ubicar" dinámico que reacciona a los cambios en la dirección.
+### 📍 Geocodificación & Control de Costos
+- **Integración con Google Maps API**: Conversión automática de direcciones a coordenadas para eliminar el error humano.
+- **Optimizador de Créditos**: Lógica de seguimiento de cambios que previene llamadas redundantes a la API de Google, protegiendo el crédito mensual gratuito de $200 USD.
 
-### 🧠 Inteligencia Logística (Business Intelligence)
-- **Asignador de Rutas Optimizado**: Implementación de algoritmos *Nearest Neighbor* y *2-opt* para planificar trayectos con el menor kilometraje posible.
-- **Geo-Scoring (Churn Risk)**: Mapa de calor dinámico que detecta clientes con riesgo de abandono basándose en la frecuencia de contacto y patrones de compra.
-- **PWA Ready**: Soporte offline completo con sincronización en segundo plano (Workbox).
+### 🧠 Inteligencia Logística Pro
+- **Asignador de Rutas**: Algoritmos de optimización de trayectos (*Nearest Neighbor* + *2-opt*) integrados.
+- **Geo-Scoring (Churn Risk)**: Mapa de calor dinámico que identifica clientes en riesgo de abandono según patrones de compra y frecuencia de contacto.
 
 ---
 
-## 📋 Módulos Principales
+## 🔐 Autenticación y Seguridad Multi-Empresa
+- **Sistema Enterprise**: Acceso seguro gestionado por Supabase Auth con soporte para registro por invitación.
+- **Contexto de Autenticación Centralizado**: Manejo de sesión global y persistencia en toda la SPA.
+- **Estructura Multi-tenant**: Arquitectura que permite la conmutación segura entre distintas empresas respetando la privacidad de datos mediante RLS (Row Level Security).
 
-| Módulo | Funcionalidad Clave |
-| :--- | :--- |
-| **Clientes (B2B)** | Gestión avanzada de cartera con filtros glassmorphic y registro de actividades en tiempo real. |
-| **Consumidores (B2C)** | Seguimiento del ciclo de vida del consumidor final y segmentación por zonas. |
-| **Repartidores** | Control de flota, seguimiento de estados y asignación de hojas de ruta. |
-| **Estadísticas 360°** | Dashboards ejecutivos con KPIs de efectividad, tasa de conversión y salud de la cartera. |
-| **Agenda & Kanban** | Calendario sincronizado y tablero Drag & Drop para gestión de tareas de equipo. |
+## 📋 Gestión Integral de Cartera
+
+### Clientes (B2B)
+- **Directorio Interactivo**: Gestión completa con filtros glassmorphic avanzados (situación, responsable, rubro).
+- **Importación/Exportación Inteligente**: Integración de SheetJS para carga masiva desde Excel y reportes personalizados.
+- **Validación Geográfica**: Normalización de direcciones en tiempo real durante la edición.
+
+### Consumidores (B2C) & Repartidores
+- **Control de Ciclo de Ventas**: Base de datos independiente para consumidores finales.
+- **Administración de Flota**: Seguimiento de estados de repartidores, desde el reclutamiento hasta la activación logística.
+
+## 📊 Business Intelligence (Estadísticas 360°)
+- **Dashboard en Tiempo Real**: Visualización de KPIs clave, tasas de conversión y efectividad de activadores.
+- **Gráficos Dinámicos**: Implementación de Chart.js para análisis de tendencias, distribución de estados y rendimiento de equipo.
+- **Historial de Actividad**: Seguimiento puntual de cada interacción, visita o comentario vinculado a usuarios específicos.
+
+## 📅 Agenda, Kanban y Comunicación
+- **Calendario Visual & Horarios**: Control de citas y gestión de turnos mediante FullCalendar.
+- **Tablero Kanban**: Gestión de tareas con interfaz Drag & Drop asincrónica (`@hello-pangea/dnd`).
+- **Chat Realtime**: Sistema de mensajería interna para comunicación instantánea entre el equipo y actualizaciones de logística.
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-- **Frontend**: React 19 + Vite (SWC) + TanStack React Query v5.
-- **Geolospatial**: Leaflet + OSRM + Google Geocoding API.
-- **UI/UX**: CSS Vanilla Premium (Glassmorphism, Dark Mode Nativo, Micro-animaciones).
-- **Backend & Seguridad**: 
-  - **Supabase**: PostgreSQL con Row Level Security (RLS) para arquitecturas multi-tenant.
-  - **Auth**: Sistema de autenticación seguro con control de invitaciones.
-- **Herramientas**: SheetJS (Excel), Chart.js (BI), Lucide (Icons), FullCalendar.
+- **Frontend Core**: React 19 + Vite (SWC) + TanStack React Query v5.
+- **Geospatial**: Leaflet + OSRM + Google Geocoding API.
+- **UI/UX**: CSS Vanilla Premium (Glassmorphism, Dark Mode, Micro-animaciones).
+- **Backend**: Supabase (Postgres advanced, RPCs, Storage, Realtime).
+- **Librerías**: Chart.js, FullCalendar, SheetJS, Lucide React, React Hot Toast.
 
 ---
 
@@ -51,52 +63,44 @@
 
 ```text
 src/
-├── components/      # Componentes UI (React Portal Modals, Buttons, etc.)
+├── components/      # Componentes UI (React Portals, Layout, Dumb Components)
 ├── contexts/        # Gestión de estado global (Auth, Theme)
-├── hooks/           # Lógica de negocio encapsulada y queries
-├── lib/             # Clientes de servicios (Supabase, Google Maps)
-├── pages/           # Vistas dinámicas (Pipeline, Mapas, Dashboard)
-└── index.css        # Sistema de diseño (Variables CSS & Modern UI)
+├── hooks/           # Custom Hooks para fetching asincrónico y lógica
+├── lib/             # Clientes de servicios (Supabase, Google Maps API)
+├── pages/           # Vistas dinámicas y ruteadas (Pipeline, Mapas, BI)
+└── index.css        # Sistema de Diseño Global y variables CSS
 ```
 
 ---
 
 ## 🚀 Acceso a la Demo
 
-Puedes probar la versión interactiva del sistema ahora mismo:
-
 🔗 **Demo Link**: [INSERTA_AQUI_TU_URL_DE_VERCEL]
 
-**Credenciales de Prueba:**
-- **Botón Directo**: Haz clic en **"Acceder a Demo"** en la pantalla de inicio.
-- **Manual**:
-  - `Usuario:` test1@crm.com
-  - `Contraseña:` Test1234
-
-> [!NOTE]
-> La versión de demo permite interactuar con todas las funcionalidades, pero los datos se comparten públicamente con otros testers y pueden reiniciarse periódicamente.
+**Instrucciones de Acceso:**
+1. Ve a la pantalla de Login.
+2. Haz clic en el botón especial **"Acceder a Demo"**.
+3. El sistema autocompletará las credenciales (`test1@crm.com` / `Test1234`).
 
 ---
 
 ## 🔧 Instalación Local
 
 ```bash
-# Clone
+# Sincroniza el repositorio
 git clone https://github.com/TotoMessina/CRMPickingUp.git
 
-# Install
+# Instala dependencias
 npm install
 
-# Environment
-# Crea un archivo .env con tus credenciales de Supabase y Google Maps:
-# VITE_SUPABASE_URL=...
-# VITE_SUPABASE_ANON_KEY=...
-# VITE_GOOGLE_MAPS_API_KEY=...
+# Configura variables de entorno (.env)
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_GOOGLE_MAPS_API_KEY=...
 
-# Dev
+# Inicia en modo desarrollo
 npm run dev
 ```
 
 ---
-
-Desarrollado con ❤️ para transformar la logística en datos inteligentes.
+Desarrollado para transformar la logística operativa en inteligencia de negocios.
