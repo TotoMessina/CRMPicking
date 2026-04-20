@@ -1,152 +1,106 @@
-# PickingUp CRM
+# PickingUp CRM (Logistics & CRM Hybrid) 🚀
 
-![PickingUp CRM](https://img.shields.io/badge/Status-Active_Development-success?style=for-the-badge)
-![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Vite](https://img.shields.io/badge/Vite_4-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
-![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+[![React](https://img.shields.io/badge/React-19-blue.svg)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-6-purple.svg)](https://vitejs.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-Backend-green.svg)](https://supabase.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**PickingUp CRM** es una plataforma integral de gestión comercial, logística y operativa diseñada específicamente para el ecosistema de PickingUp. El sistema permite administrar de forma centralizada la captación de locales (clientes), la flota logística (repartidores), los usuarios finales (consumidores) y el análisis de rendimiento del equipo comercial (activadores).
-
-Está construido con una arquitectura **Multi-Empresa (Multi-tenant)** y un **stack fuertemente tipado**, garantizando el aislamiento criptográfico de datos por entorno mediante Row Level Security (RLS) en base de datos.
+**PickingUp CRM** es una plataforma web moderna y escalable diseñada para resolver la brecha entre la gestión de relaciones con clientes y la logística de última milla. Adopta un ecosistema basado en **React 19**, **Vite** y **Supabase** para ofrecer una experiencia ultra-rápida y en tiempo real.
 
 ---
 
-## 🌟 Funcionalidades Core del Producto
+## 🔥 Lo Nuevo (Highlights de Optimización)
 
-El CRM se divide en módulos interconectados que cubren todo el ciclo de vida del negocio:
+### 📍 Geocodificación & Control de Costos
+- **Integración con Google Maps API**: Conversión automática de direcciones a coordenadas para eliminar el error humano.
+- **Optimizador de Créditos**: Lógica de seguimiento de cambios que previene llamadas redundantes a la API de Google, protegiendo el crédito mensual gratuito de $200 USD.
 
-### 1. 📋 Gestión de Clientes (Comercios/Locales)
-El corazón comercial del sistema. Rastrea a los comercios desde el primer contacto hasta su activación y operación diaria.
-- **Ciclo de Vida (Estados):** 
-  - `1 - Cliente relevado` (Prospecto inicial)
-  - `2 - Local Visitado No Activo`
-  - `3 - Primer Ingreso`
-  - `4 - Local Creado` (En onboarding)
-  - `5 - Local Visitado Activo` (Operando en la plataforma)
-  - `6 - Local No Interesado`
-- **Filtros Avanzados y Búsqueda:** Búsqueda en tiempo real por nombre, teléfono, rubro, estado, situación operativa, nivel de interés, y responsable.
-- **Seguimiento CRM (Agenda):** Botones de acción rápida para reprogramar el próximo contacto (+3 días, +7 días, +15 días, +1 mes). Filtro de "Próximos 7 días" para organizar la semana comercial.
-- **Acciones con 1 Click:** Registro inmediato de "Visitas Presenciales" directamente desde la tarjeta del cliente, retroalimentando las estadísticas de los activadores al instante.
-- **Trazabilidad Absoluta:** Cada edición (cambio de estado, adición de notas, cambio de responsable) genera una entrada automática en el historial de `actividades` para auditoría.
-- **Importación/Exportación Inteligente:** Motor de carga masiva vía Excel (.xlsx/.csv) que soporta mapeo de fechas históricas (`created_at`).
-
-### 2. 📊 Ecosistema de Estadísticas y KPIs
-Dashboards en tiempo real potenciados por `Chart.js`, divididos en dos visiones estratégicas:
-- **Dashboard Ecosistema Apps:**
-  - **Crecimiento Diario:** Gráfico de barras de altas por día.
-  - **Distribución de Cartera:** Gráficos Doughnut separando comercios por `Rubro`, `Estado` y `Creador`.
-  - **Situación Operativa:** Análisis de locales en Estado 5 (Activos) fragmentados por "En funcionamiento", "En proceso" o "Sin comunicación nueva", con cruce multi-filtro por rubros.
-  - **Evolución Consumidores/Repartidores:** Curvas de adopción diaria de nuevos usuarios y personal logístico.
-- **Dashboard Gestión Activadores (Equipo Comercial):**
-  - **Ranking de Efectividad:** Mide la tasa de conversión (Locales creados / Locales relevados) por cada activador.
-  - **Volumen de Visitas:** Total de visitas registradas en calle por vendedor en el rango de fechas seleccionado.
-  - **Desglose Diario (Stacked Bar):** Visualización apilada de qué estados logró generar cada activador en el día a día.
-
-### 3. 🗺️ Inteligencia Geoespacial (Mapas)
-Integración profunda con `Leaflet.js` para visualización geográfica táctica y operativa.
-- **Mapa de Clientes y Kioscos:** Mapeo de comercios con pines dinámicos que cambian de color según su estado, creador, rubro o interés.
-- **Filtros Avanzados (Side Drawer):** Panel lateral flotante con diseño *Glassmorphism* que permite filtrar la base de datos geográfica en tiempo real sin perder visibilidad del mapa.
-- **Asignación Directa a Rutas:** Capacidad de asignar un cliente a la hoja de ruta de un vendedor/activador directamente desde el marcador del mapa, seleccionando usuario y fecha en un modal integrado.
-- **Mapa de Repartidores:** Visualización en vivo de la ubicación y estado de la flota logística.
-- **Modo Capa de Cobertura:** Dibujado automático de radios de influencia para detectar zonas desatendidas.
-- **Mapas de Calor (Heatmaps):** Análisis de densidad comercial y logística para identificar clusters de oportunidad.
-- **Geolocalización en Campo:** Herramientas de "Ubicarme" y "Registrar Aquí" para el equipo de calle.
-
-### 4. 🛵 Logística y Operación de Calle
-El sistema cierra el círculo operativo con herramientas para el personal en campo.
-- **Ruta Diaria (Driver App):** Interfaz optimizada para móviles donde el repartidor o activador visualiza su hoja de ruta, marca visitas y registra evidencias.
-- **Mapa de Repartidores:** Seguimiento en tiempo real de la flota logística, permitiendo coordinar entregas basadas en la posición actual.
-- **Mapa de Kioscos y Puntos de Retiro:** Visualización de la red de entrega de PickingUp.
-- **Gestión de Flota:** Panel de control de repartidores con seguimiento de documentación y estado de cuenta.
-
-### 5. ⚙️ Herramientas de Productividad y Operaciones
-Módulos para la gestión diaria del equipo administrativo y de soporte.
-- **Pipeline de Ventas:** Tablero Kanban para la gestión visual del embudo de conversión de nuevos locales.
-- **Tablero de Tareas:** Sistema de gestión interna para el seguimiento de pendientes operativos.
-- **Calendario y Turnos:** Organización visual de compromisos, visitas programadas y horarios operativos.
-- **Módulo de Soporte (Tickets):** Centralización de reclamos y consultas de usuarios con sistema de prioridades.
-- **Calificaciones y Feedback:** Análisis del sentimiento de los usuarios finales y comercios sobre el servicio.
-
-### 6. 🛡️ Auditoría, Control y Gestión de Seguridad
-Garantiza la integridad de los datos y el control total sobre la plataforma.
-- **Actividad del Sistema (Audit Log):** Registro detallado de cada acción realizada en la plataforma (quién, qué y cuándo).
-- **Gestión Multi-Empresa:** Panel de administración de franquicias/empresas con aislamiento criptográfico de datos.
-- **Control de Permisos:** Gestión granular de accesos para administradores, activadores y operadores logísticos.
-- **Chat Interno:** Canal de comunicación integrado para el equipo.
-
-### 7. 🏢 Arquitectura Multi-Empresa & Seguridad (Multi-tenant)
-- **Aislamiento Total:** El sistema soporta múltiples empresas operando en paralelo. Absolutamente todas las consultas SQL y llamadas a APIs están filtradas por el `empresa_id` de la empresa activa del usuario.
-- **Row Level Security (RLS):** Las políticas en la base de datos limitan la manipulación de datos a nivel subyacente.
-- **Gestión de Permisos:** Los administradores globales pueden navegar entre empresas; los empleados locales solo interactúan con la información de su franquicia asignada.
+### 🧠 Inteligencia Logística Pro
+- **Asignador de Rutas**: Algoritmos de optimización de trayectos (*Nearest Neighbor* + *2-opt*) integrados.
+- **Geo-Scoring (Churn Risk)**: Mapa de calor dinámico que identifica clientes en riesgo de abandono según patrones de compra y frecuencia de contacto.
 
 ---
 
-## 💻 Arquitectura Técnica (Frontend)
+## 🔐 Autenticación y Seguridad Multi-Empresa
+- **Sistema Enterprise**: Acceso seguro gestionado por Supabase Auth con soporte para registro por invitación.
+- **Contexto de Autenticación Centralizado**: Manejo de sesión global y persistencia en toda la SPA.
+- **Estructura Multi-tenant**: Arquitectura que permite la conmutación segura entre distintas empresas respetando la privacidad de datos mediante RLS (Row Level Security).
 
-El proyecto utiliza un stack moderno optimizado para Progressive Web Apps (PWA) de alto rendimiento, con un enfoque en la robustez y escalabilidad.
+## 📋 Gestión Integral de Cartera
 
-- **Framework & Lenguaje:** `React 18` + `TypeScript`. El uso de TypeScript en los módulos de Clientes, Estadísticas y Utilidades garantiza un desarrollo seguro, con detección de errores en tiempo de compilación y autocompletado avanzado.
-- **Estado Asíncrono (Caching):** Utiliza `React Query (@tanstack/react-query)` v5. Minimiza las peticiones a la red mediante un caché agresivo (staleTime de 30s) permitiendo a múltiples activadores colaborar sin colisiones. Las ediciones locales invalidan inteligentemente (`queryClient.invalidateQueries`) solo las secciones afectadas.
-- **Backend-as-a-Service:** `Supabase`. Conexión directa a PostgreSQL mediante el sdk de supabase. Uso intensivo de RPCs (Remote Procedure Calls) y Triggers SQL para asegurar transacciones ACID durante cargas complejas.
-- **PWA Ready:** Configurado vía `vite-plugin-pwa` con service workers generados por `Workbox`. 
-  - Capacidad nativa de instalación (Add to Home Screen).
-  - Experiencia "app-like" en iOS y Android.
-  - Funcionamiento offline parcial y caching agresivo de assets.
-- **UI/UX:** Sistema de diseño propietario modularizado, escrito en `Vanilla CSS` puro, soportando de forma nativa variables CSS para Light/Dark Mode fluído.
+### Clientes (B2B)
+- **Directorio Interactivo**: Gestión completa con filtros glassmorphic avanzados (situación, responsable, rubro).
+- **Importación/Exportación Inteligente**: Integración de SheetJS para carga masiva desde Excel y reportes personalizados.
+- **Validación Geográfica**: Normalización de direcciones en tiempo real durante la edición.
 
-### 🛡️ Calidad y Robustez
+### Consumidores (B2C) & Repartidores
+- **Control de Ciclo de Ventas**: Base de datos independiente para consumidores finales.
+- **Administración de Flota**: Seguimiento de estados de repartidores, desde el reclutamiento hasta la activación logística.
 
-- **Unit Testing:** Integración de `Vitest` para pruebas unitarias de lógica de negocio pura (procesamiento de fechas, cálculos de KPIs), asegurando que el motor de la aplicación sea fiable.
-- **Resiliencia (Error Boundaries):** Implementación de límites de error de React en secciones críticas como gráficos. Si un componente falla individualmente, el resto de la aplicación permanece operativa.
-- **Modularización:** Lógica de datos separada de la vista mediante Custom Hooks (`useStatistics`, `useClientsLogic`), mejorando la mantenibilidad y legibilidad del código.
+## 📊 Business Intelligence (Estadísticas 360°)
+- **Dashboard en Tiempo Real**: Visualización de KPIs clave, tasas de conversión y efectividad de activadores.
+- **Gráficos Dinámicos**: Implementación de Chart.js para análisis de tendencias, distribución de estados y rendimiento de equipo.
+- **Historial de Actividad**: Seguimiento puntual de cada interacción, visita o comentario vinculado a usuarios específicos.
 
----
-
-## 📦 Instalación Local y Desarrollo
-
-### Prerrequisitos
-- Node.js versión 18+ (Recomendado 20 LTS)
-- NPM o Yarn
-
-### Pasos de despliegue local
-
-1. **Clonar el repositorio**
-   ```bash
-   git clone https://github.com/TotoMessina/CRMPicking.git
-   cd CRMPicking/crm-react
-   ```
-
-2. **Instalar las dependencias**
-   ```bash
-   npm install
-   ```
-
-3. **Variables de Entorno**
-   ```bash
-   cp .env.example .env
-   ```
-   Abre el archivo `.env` recién creado y completa las claves de tu proyecto de Supabase:
-   - `VITE_SUPABASE_URL`: La URL de tu instancia de Supabase.
-   - `VITE_SUPABASE_ANON_KEY`: La clave pública anónima de la API.
-
-4. **Levantar el entorno de desarrollo**
-   ```bash
-   npm run dev
-   ```
-   El proyecto estará disponible en `http://localhost:5173`.
-
-5. **Ejecutar Pruebas Unitarias**
-   ```bash
-   npm run test
-   ```
-   Lanza la suite de pruebas de Vitest para validar la lógica de utilidades y hooks.
+## 📅 Agenda, Kanban y Comunicación
+- **Calendario Visual & Horarios**: Control de citas y gestión de turnos mediante FullCalendar.
+- **Tablero Kanban**: Gestión de tareas con interfaz Drag & Drop asincrónica (`@hello-pangea/dnd`).
+- **Chat Realtime**: Sistema de mensajería interna para comunicación instantánea entre el equipo y actualizaciones de logística.
 
 ---
 
-## 🌐 Estructura de Despliegue (Producción)
+## 🛠️ Stack Tecnológico
 
-El proyecto cuenta con despliegue unificado y automático (CI/CD) a través de **Vercel**. Cualquier Pull Request o push directo a la rama principal (`main`) dispara un build de producción. 
+- **Frontend Core**: React 19 + Vite (SWC) + TanStack React Query v5.
+- **Geospatial**: Leaflet + OSRM + Google Geocoding API.
+- **UI/UX**: CSS Vanilla Premium (Glassmorphism, Dark Mode, Micro-animaciones).
+- **Backend**: Supabase (Postgres advanced, RPCs, Storage, Realtime).
+- **Librerías**: Chart.js, FullCalendar, SheetJS, Lucide React, React Hot Toast.
 
-El archivo `vercel.json` incluye reglas personalizadas para Single Page Applications (SPA), interceptando todos los endpoints y redirigiéndolos al `index.html` central, previniendo errores 404 de "Page Not Found" en navegaciones directas a rutas profundas.
+---
+
+## 📂 Estructura del Proyecto
+
+```text
+src/
+├── components/      # Componentes UI (React Portals, Layout, Dumb Components)
+├── contexts/        # Gestión de estado global (Auth, Theme)
+├── hooks/           # Custom Hooks para fetching asincrónico y lógica
+├── lib/             # Clientes de servicios (Supabase, Google Maps API)
+├── pages/           # Vistas dinámicas y ruteadas (Pipeline, Mapas, BI)
+└── index.css        # Sistema de Diseño Global y variables CSS
+```
+
+---
+
+## 🚀 Acceso a la Demo
+
+🔗 **Demo Link**: [INSERTA_AQUI_TU_URL_DE_VERCEL]
+
+**Instrucciones de Acceso:**
+1. Ve a la pantalla de Login.
+2. Haz clic en el botón especial **"Acceder a Demo"**.
+3. El sistema autocompletará las credenciales (`test1@crm.com` / `Test1234`).
+
+---
+
+## 🔧 Instalación Local
+
+```bash
+# Sincroniza el repositorio
+git clone https://github.com/TotoMessina/CRMPickingUp.git
+
+# Instala dependencias
+npm install
+
+# Configura variables de entorno (.env)
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_GOOGLE_MAPS_API_KEY=...
+
+# Inicia en modo desarrollo
+npm run dev
+```
+
+---
+Desarrollado para transformar la logística operativa en inteligencia de negocios.
