@@ -20,6 +20,7 @@ import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 import { useGrupos, useUpdateClienteGrupos } from '../../hooks/useGrupos';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tag as TagIcon } from 'lucide-react';
+import { usePipelineStates } from '../../hooks/usePipelineStates';
 
 interface Props {
     isOpen: boolean;
@@ -76,6 +77,7 @@ const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68
 
 export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: initialClienteId, initialLocation, onSaved }) => {
     const { user, userName, empresaActiva, isDemoMode }: any = useAuth();
+    const { states: COLUMNS, defaultState, loading: loadingStates } = usePipelineStates(empresaActiva?.id);
     const { data: rubrosDB = [] } = useRubros();
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [step, setStep] = useState(1);
@@ -105,7 +107,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const emptyForm = (overrides = {}): FormData => ({
         nombre_local: '', direccion: '', nombre: '', telefono: '',
         mail: '', cuit: '', horarios_atencion: '', rubro: '',
-        estado: ESTADO_DEFAULT, responsable: '',
+        estado: defaultState || ESTADO_DEFAULT, responsable: '',
         estilo_contacto: 'Sin definir', interes: 'Bajo',
         venta_digital: 'false', venta_digital_cual: '',
         situacion: SITUACION_DEFAULT, notas: '',
@@ -802,12 +804,11 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                 <div className="field">
                                     <label>Estado</label>
                                     <select name="estado" value={formData.estado || ''} onChange={handleChange}>
-                                        <option value={ESTADO_RELEVADO}>1 - Cliente relevado</option>
-                                        <option value={ESTADO_VISITADO_NO_ACTIVO}>2 - Local Visitado No Activo</option>
-                                        <option value={ESTADO_PRIMER_INGRESO}>3 - Primer Ingreso</option>
-                                        <option value={ESTADO_LOCAL_CREADO}>4 - Local Creado</option>
-                                        <option value={ESTADO_ACTIVO}>5 - Local Visitado Activo</option>
-                                        <option value={ESTADO_NO_INTERESADO}>6 - Local No Interesado</option>
+                                        {COLUMNS.map((col, idx) => (
+                                            <option key={col.id} value={col.id}>
+                                                {idx + 1} - {col.label}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 

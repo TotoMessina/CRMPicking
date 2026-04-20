@@ -12,7 +12,7 @@ const BUCKET = 'avatares';
 const MAX_SIZE_MB = 2;
 
 export default function Configuracion() {
-    const { user, avatarUrl, updateProfile, updateAvatarUrl, isDemoMode } = useAuth();
+    const { user, avatarUrl, updateProfile, updateAvatarUrl, isDemoMode, role, roleName } = useAuth();
     const fileInputRef = useRef(null);
 
     // Avatar state
@@ -335,6 +335,30 @@ export default function Configuracion() {
             </header>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+                {/* ── GESTIÓN DE PIPELINE ────────────────────── */}
+                {(role === 'super-admin' || roleName === 'admin' || role === 'admin') && (
+                    <section style={{ background: 'linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-card) 100%)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
+                        <div style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div style={{ background: 'var(--accent-soft)', color: 'var(--accent)', padding: '12px', borderRadius: '14px', display: 'flex' }}>
+                                    <Settings2 size={24} />
+                                </div>
+                                <div>
+                                    <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Misión y Pipeline</h2>
+                                    <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>Personalizá los estados y etapas de tus clientes.</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => window.location.hash = '#/configuracion/pipeline'}
+                                className="btn-primary"
+                                style={{ padding: '10px 20px', borderRadius: '12px', fontWeight: 700 }}
+                            >
+                                CONFIGURAR ETAPAS
+                            </button>
+                        </div>
+                    </section>
+                )}
 
                 {/* ── FOTO DE PERFIL ──────────────────────────── */}
                 <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>

@@ -32,6 +32,7 @@ const ActividadSistema = lazy(() => import('./pages/ActividadSistema'));
 const Historial = lazy(() => import('./pages/Historial'));
 const RutaDiaria = lazy(() => import('./pages/RutaDiaria'));
 const AsignadorRutas = lazy(() => import('./pages/AsignadorRutas'));
+const PipelineSettings = lazy(() => import('./pages/PipelineSettings'));
 
 function App() {
   // Interceptar recuperación de contraseña si Supabase nos mandó a la raíz
@@ -81,6 +82,7 @@ function App() {
             <Route path="/permisos-empresa" element={<Suspense fallback={<GlobalLoader />}><PermisosEmpresa /></Suspense>} />
             <Route path="/super-admin" element={<Suspense fallback={<GlobalLoader />}><SuperAdmin /></Suspense>} />
             <Route path="/actividad-sistema" element={<Suspense fallback={<GlobalLoader />}><ActividadSistema /></Suspense>} />
+            <Route path="/configuracion/pipeline" element={<Suspense fallback={<GlobalLoader />}><PipelineSettings /></Suspense>} />
             <Route path="/configuracion" element={<Suspense fallback={<GlobalLoader />}><Configuracion /></Suspense>} />
           </Route>
         </Routes>

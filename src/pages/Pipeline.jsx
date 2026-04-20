@@ -1,29 +1,19 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Search, User, Calendar, RefreshCcw, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
+import { Search, User, Calendar, RefreshCcw, ChevronLeft, ChevronRight, Maximize2, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { Edit2 } from 'lucide-react';
 import { formatToLocal } from '../utils/dateUtils';
-import {
-    ESTADO_RELEVADO, ESTADO_VISITADO_NO_ACTIVO, ESTADO_PRIMER_INGRESO,
-    ESTADO_LOCAL_CREADO, ESTADO_ACTIVO, ESTADO_NO_INTERESADO,
-    esEstadoFinal
-} from '../constants/estados';
-
-const COLUMNS = [
-    { id: ESTADO_RELEVADO,          label: 'Relevado',          color: '#64748b' },
-    { id: ESTADO_VISITADO_NO_ACTIVO, label: 'Visitado (No Act)', color: '#ef4444' },
-    { id: ESTADO_PRIMER_INGRESO,    label: 'Primer Ingreso',    color: '#f59e0b' },
-    { id: ESTADO_LOCAL_CREADO,      label: 'Creado',            color: '#8b5cf6' },
-    { id: ESTADO_ACTIVO,            label: 'Visitado (Activo)', color: '#10b981' },
-    { id: ESTADO_NO_INTERESADO,     label: 'No Interesado',     color: '#ef4444' }
-];
+import { usePipelineStates } from '../hooks/usePipelineStates';
+import { esEstadoFinal } from '../constants/estados';
 
 export default function Pipeline() {
-    const { user, userName, empresaActiva } = useAuth();
+    const { user, userName, empresaActiva, role, roleName } = useAuth();
+    const { states: COLUMNS, loading: loadingStates, refresh: refreshStates } = usePipelineStates(empresaActiva?.id);
+    
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -32,8 +22,16 @@ export default function Pipeline() {
 
     // Responsive State
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-    const [activeTab, setActiveTab] = useState(ESTADO_RELEVADO);
+    const [activeTab, setActiveTab] = useState(null);
     const [collapsedCols, setCollapsedCols] = useState(new Set());
+
+    const isAdmin = role === 'super-admin' || roleName === 'admin' || role === 'admin';
+
+    useEffect(() => {
+        if (COLUMNS && COLUMNS.length > 0 && !activeTab) {
+            setActiveTab(COLUMNS[0].id);
+        }
+    }, [COLUMNS]);
 
     const toggleCollapse = (id) => {
         const newSet = new Set(collapsedCols);
@@ -128,7 +126,8 @@ export default function Pipeline() {
 
     const getColumnClients = (colId) => {
         return filteredClients.filter(c => {
-            if (colId === ESTADO_RELEVADO && !c.estado) return true;
+            // Si el estado está vacío y es el primer ID de columna configurado, mostrarlo ahí
+            if (!c.estado && COLUMNS.length > 0 && colId === COLUMNS[0].id) return true;
             return c.estado === colId;
         });
     };
@@ -217,17 +216,30 @@ export default function Pipeline() {
         );
     };
 
+    if (loadingStates) return <div className="p-8 text-center muted">Sincronizando Pipeline...</div>;
+
     return (
         <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '1400px', width: '100%', margin: isMobile ? '0' : '24px auto', borderRadius: isMobile ? '0' : '24px', overflow: 'hidden', minHeight: '100vh', background: 'transparent', boxShadow: 'none', border: 'none' }}>
             <header style={{ padding: isMobile ? '20px' : '0 0 32px 0', background: isMobile ? 'var(--bg-elevated)' : 'transparent', borderBottom: isMobile ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div>
-                        <h1 style={{ fontSize: isMobile ? '1.75rem' : '2.8rem', fontWeight: 900, margin: '0 0 8px 0', letterSpacing: '-0.03em', color: 'var(--text)' }}>
-                            Pipeline <span style={{ color: 'var(--accent)' }}>PickUp</span>
-                        </h1>
-                        <p className="muted" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500 }}>
-                            Gestión comercial de locales.
-                        </p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                            <h1 style={{ fontSize: isMobile ? '1.75rem' : '2.8rem', fontWeight: 900, margin: '0 0 8px 0', letterSpacing: '-0.03em', color: 'var(--text)' }}>
+                                Pipeline <span style={{ color: 'var(--accent)' }}>PickUp</span>
+                            </h1>
+                            <p className="muted" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500 }}>
+                                Gestión comercial de locales.
+                            </p>
+                        </div>
+                        {isAdmin && !isMobile && (
+                            <button 
+                                onClick={() => window.location.hash = '#/configuracion/pipeline'}
+                                className="btn-link"
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 800, padding: '12px 16px', background: 'var(--bg-elevated)', borderRadius: '12px' }}
+                            >
+                                <Settings size={16} /> CONFIGURAR
+                            </button>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
