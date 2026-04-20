@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Search, User, Calendar, RefreshCcw, ChevronLeft, ChevronRight, Maximize2, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { Edit2 } from 'lucide-react';
 import { formatToLocal } from '../utils/dateUtils';
@@ -11,6 +12,7 @@ import { usePipelineStates } from '../hooks/usePipelineStates';
 import { esEstadoFinal } from '../constants/estados';
 
 export default function Pipeline() {
+    const navigate = useNavigate();
     const { user, userName, empresaActiva, role, roleName } = useAuth();
     const { states: COLUMNS, loading: loadingStates, refresh: refreshStates } = usePipelineStates(empresaActiva?.id);
     
@@ -233,7 +235,7 @@ export default function Pipeline() {
                         </div>
                         {isAdmin && !isMobile && (
                             <button 
-                                onClick={() => window.location.hash = '#/configuracion/pipeline'}
+                                onClick={() => navigate('/configuracion/pipeline')}
                                 className="btn-link"
                                 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 800, padding: '12px 16px', background: 'var(--bg-elevated)', borderRadius: '12px' }}
                             >

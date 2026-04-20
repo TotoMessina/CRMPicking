@@ -3,15 +3,17 @@ import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { Camera, Trash2, Mail, Plus, X, Send, Info, HardDrive, Tag, Edit2 } from 'lucide-react';
+import { Camera, Trash2, Mail, Plus, X, Send, Info, HardDrive, Tag, Edit2, Settings2 } from 'lucide-react';
 import { clearLocalClients } from '../lib/offlineManager';
 import { useGrupos, useCreateGrupo, useUpdateGrupo, useDeleteGrupo } from '../hooks/useGrupos';
+import { useNavigate } from 'react-router-dom';
 
 
 const BUCKET = 'avatares';
 const MAX_SIZE_MB = 2;
 
 export default function Configuracion() {
+    const navigate = useNavigate();
     const { user, avatarUrl, updateProfile, updateAvatarUrl, isDemoMode, role, roleName } = useAuth();
     const fileInputRef = useRef(null);
 
@@ -350,7 +352,7 @@ export default function Configuracion() {
                                 </div>
                             </div>
                             <button 
-                                onClick={() => window.location.hash = '#/configuracion/pipeline'}
+                                onClick={() => navigate('/configuracion/pipeline')}
                                 className="btn-primary"
                                 style={{ padding: '10px 20px', borderRadius: '12px', fontWeight: 700 }}
                             >

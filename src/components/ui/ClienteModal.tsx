@@ -21,6 +21,7 @@ import { useGrupos, useUpdateClienteGrupos } from '../../hooks/useGrupos';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tag as TagIcon } from 'lucide-react';
 import { usePipelineStates } from '../../hooks/usePipelineStates';
+import { usePipelineSituations } from '../../hooks/usePipelineSituations';
 
 interface Props {
     isOpen: boolean;
@@ -78,6 +79,7 @@ const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68
 export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: initialClienteId, initialLocation, onSaved }) => {
     const { user, userName, empresaActiva, isDemoMode }: any = useAuth();
     const { states: COLUMNS, defaultState, loading: loadingStates } = usePipelineStates(empresaActiva?.id);
+    const { situations: SITUACIONES, defaultSituation, loading: loadingSituations } = usePipelineSituations(empresaActiva?.id);
     const { data: rubrosDB = [] } = useRubros();
     const { data: responsablesDB = [] } = useCompanyUsers(empresaActiva?.id);
     const [step, setStep] = useState(1);
@@ -110,7 +112,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         estado: defaultState || ESTADO_DEFAULT, responsable: '',
         estilo_contacto: 'Sin definir', interes: 'Bajo',
         venta_digital: 'false', venta_digital_cual: '',
-        situacion: SITUACION_DEFAULT, notas: '',
+        situacion: defaultSituation || SITUACION_DEFAULT, notas: '',
         tipo_contacto: 'Visita Presencial',
         fecha_proximo_contacto: '', hora_proximo_contacto: '',
         lat: null, lng: null,
@@ -132,6 +134,18 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 }
             });
     }, [isOpen, clienteId, user]);
+
+    // Sync defaults when creating
+    useEffect(() => {
+        if (!isOpen || clienteId) return;
+        if (defaultState || defaultSituation) {
+            setFormData(prev => ({
+                ...prev,
+                estado: prev.estado || defaultState || ESTADO_DEFAULT,
+                situacion: prev.situacion || defaultSituation || SITUACION_DEFAULT
+            }));
+        }
+    }, [isOpen, clienteId, defaultState, defaultSituation]);
 
     const handleVerifyPhone = async (e?: React.MouseEvent | React.KeyboardEvent) => {
         if (e) e.preventDefault();
@@ -932,10 +946,14 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                 <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginTop: '16px' }}>
                                     <div className="field">
                                         <label>Situación</label>
-                                        <select name="situacion" value={formData.situacion || SITUACION_SIN_COMUNICACION} onChange={handleChange}>
-                                            <option value={SITUACION_SIN_COMUNICACION}>Sin comunicación nueva</option>
-                                            <option value={SITUACION_EN_PROCESO}>En proceso</option>
-                                            <option value={SITUACION_FUNCIONANDO}>En funcionamiento</option>
+                                        <select name="situacion" value={formData.situacion || defaultSituation || SITUACION_SIN_COMUNICACION} onChange={handleChange}>
+                                            {SITUACIONES
+                                                .filter(s => !s.estados_visibles || s.estados_visibles.length === 0 || s.estados_visibles.includes(formData.estado))
+                                                .map(s => (
+                                                    <option key={s.id} value={s.id}>
+                                                        {s.label}
+                                                    </option>
+                                                ))}
                                         </select>
                                     </div>
                                 </div>
