@@ -52,7 +52,7 @@ const formatVal = (val: any) => {
 };
 
 export const ActividadSistema: React.FC = () => {
-    const { role, paginasPermitidas }: any = useAuth();
+    const { role, paginasPermitidas, empresaActiva }: any = useAuth();
     const isSuperAdmin = role === 'super-admin';
     const hasAccess = isSuperAdmin || (paginasPermitidas && paginasPermitidas['/actividad-sistema']?.includes(role));
     
@@ -87,9 +87,12 @@ export const ActividadSistema: React.FC = () => {
 
     const fetchLogs = async () => {
         setLoading(true);
+        if (!empresaActiva?.id) { setLoading(false); return; }
+
         let query = supabase
             .from('audit_logs')
-            .select('*, usuarios(nombre)', { count: 'exact' });
+            .select('*, usuarios(nombre)', { count: 'exact' })
+            .eq('empresa_id', empresaActiva.id);
 
         if (filterTable !== 'Todos') query = query.eq('table_name', filterTable);
         if (filterAction !== 'Todas') query = query.eq('action_type', filterAction);
