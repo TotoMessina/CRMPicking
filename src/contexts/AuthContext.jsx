@@ -164,9 +164,20 @@ export function AuthProvider({ children }) {
     }, [empresaActiva, role]);
 
     const updateProfile = async (metadata) => {
-        const { error } = await supabase.auth.updateUser({ data: metadata });
-        if (error) throw error;
-        if (metadata.display_name) setUserName(metadata.display_name);
+        // 1. Actualizar metadata en Auth (para sesión actual)
+        const { error: authError } = await supabase.auth.updateUser({ data: metadata });
+        if (authError) throw authError;
+
+        // 2. Sincronizar con tabla 'usuarios' (para el resto de la app y auditoría)
+        if (metadata.display_name && user?.email) {
+            const { error: dbError } = await supabase
+                .from('usuarios')
+                .update({ nombre: metadata.display_name })
+                .eq('email', user.email);
+            
+            if (dbError) throw dbError;
+            setUserName(metadata.display_name);
+        }
     };
 
     const updateAvatarUrl = async (url) => {

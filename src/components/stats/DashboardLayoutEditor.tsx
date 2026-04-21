@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     X, GripVertical, Eye, EyeOff, RotateCcw, Save,
     Layout, BarChart2, PieChart, Hash, List,
@@ -82,7 +82,7 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
     customWidgets, savingCustom, onSaveCustom, onDeleteCustom, checkWidgetViability
 }) => {
     const [activeTab, setActiveTab] = useState<'layout' | 'create'>('layout');
-    const [draft, setDraft] = useState<WidgetLayout[]>([...layout].sort((a, b) => a.order - b.order));
+    const [draft, setDraft] = useState<WidgetLayout[]>([]);
     const [newWidget, setNewWidget] = useState<CustomWidgetConfig>({ ...BLANK_WIDGET, size: 'full' });
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [step, setStep] = useState(1);
@@ -91,6 +91,11 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
 
     const dragIndex = useRef<number | null>(null);
     const [dragOver, setDragOver] = useState<number | null>(null);
+
+    // Keep draft in sync with layout prop (important when new custom widgets are added/removed outside)
+    useEffect(() => {
+        setDraft([...layout].sort((a, b) => a.order - b.order));
+    }, [layout]);
 
     const handleDragStart = (index: number) => { dragIndex.current = index; };
     const handleDragEnter = (index: number) => {
@@ -129,7 +134,16 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
     const handleSaveWidget = async () => {
         if (!newWidget.title.trim()) return;
         const ok = await onSaveCustom(newWidget);
-        if (ok) { setNewWidget({ ...BLANK_WIDGET, size: 'full' }); setStep(1); setActiveTab('layout'); }
+        if (ok) {
+            setNewWidget({ ...BLANK_WIDGET, size: 'full' });
+            setStep(1);
+            setActiveTab('layout');
+        }
+    };
+
+    const handleUpdateSize = (id: string, size: 'full' | 'half' | 'third') => {
+        const cw = customWidgets.find(w => w.id === id);
+        if (cw) onSaveCustom({ ...cw, size });
     };
 
     const getLocalDef = (id: string) => {
@@ -239,9 +253,21 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{def.description}</div>
                                             </div>
                                             
-                                            <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: '99px', flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                                                {def.size === 'full' ? '1/1' : def.size === 'half' ? '1/2' : '1/3'}
-                                            </span>
+                                            {isCustom ? (
+                                                <select 
+                                                    value={def.size || 'full'} 
+                                                    onChange={(e) => handleUpdateSize(widget.id, e.target.value as any)}
+                                                    style={{ fontSize: '0.65rem', padding: '2px 4px', borderRadius: '6px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', outline: 'none' }}
+                                                >
+                                                    <option value="full">1/1</option>
+                                                    <option value="half">1/2</option>
+                                                    <option value="third">1/3</option>
+                                                </select>
+                                            ) : (
+                                                <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: '99px', flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                                                    {def.size === 'full' ? '1/1' : def.size === 'half' ? '1/2' : '1/3'}
+                                                </span>
+                                            )}
 
                                             <button onClick={() => toggleVisibility(widget.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: widget.visible ? '#10b981' : '#94a3b8' }}>
                                                 {widget.visible ? <Eye size={15} /> : <EyeOff size={15} />}
