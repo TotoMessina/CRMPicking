@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Users, ChevronDown, Check, Download, FileText, Printer } from 'lucide-react';
+import { Users, ChevronDown, Check, Download, FileText, Printer, Sliders } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/Button';
 import { Activator } from '../../hooks/useStatistics';
@@ -19,6 +19,7 @@ interface Props {
     onExportPdf: () => void;
     isExportingPdf?: boolean;
     loading: boolean;
+    onCustomize?: () => void;
 }
 
 export const StatsFilters: React.FC<Props> = ({ 
@@ -31,7 +32,8 @@ export const StatsFilters: React.FC<Props> = ({
     onExport,
     onExportPdf,
     isExportingPdf,
-    loading 
+    loading,
+    onCustomize 
 }) => {
     const [openActivators, setOpenActivators] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -200,6 +202,33 @@ export const StatsFilters: React.FC<Props> = ({
                         <Button variant="secondary" onClick={refreshStats} disabled={loading}>
                             {loading ? 'Cargando...' : 'Actualizar'}
                         </Button>
+                        {onCustomize && (
+                            <button
+                                onClick={onCustomize}
+                                title="Personalizar dashboard"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                    padding: '8px 14px', borderRadius: '10px',
+                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))',
+                                    border: '1px solid rgba(99,102,241,0.35)',
+                                    color: '#6366f1', cursor: 'pointer',
+                                    fontSize: '0.82rem', fontWeight: 700,
+                                    transition: 'all 0.2s ease',
+                                    whiteSpace: 'nowrap',
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25))';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))';
+                                    e.currentTarget.style.transform = 'none';
+                                }}
+                            >
+                                <Sliders size={15} />
+                                Personalizar
+                            </button>
+                        )}
                     </>
                 )}
             </div>

@@ -27,6 +27,9 @@ export interface UseClientesParams {
     fContactoDesde: string;
     fContactoHasta: string;
     fGrupos: string[];
+    fMissingCoords?: boolean;
+    fMissingContact?: boolean;
+    fMissingRubro?: boolean;
     sortBy: string;
 }
 
@@ -36,7 +39,8 @@ export function useClientes(params: UseClientesParams) {
         fEstado, fSituacion, fTipoContacto, fResponsable, fCreadoPor,
         fRubro, fInteres, fEstilo, fProximos7, fVencidos,
         fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta,
-        fContactoDesde, fContactoHasta, fGrupos, sortBy
+        fContactoDesde, fContactoHasta, fGrupos, 
+        fMissingCoords, fMissingContact, fMissingRubro, sortBy
     } = params;
 
     return useQuery({
@@ -47,7 +51,8 @@ export function useClientes(params: UseClientesParams) {
                 fEstado, fSituacion, fTipoContacto, fResponsable, fCreadoPor,
                 fRubro, fInteres, fEstilo, fProximos7, fVencidos,
                 fNombre, fTelefono, fDireccion, fCreadoDesde, fCreadoHasta,
-                fContactoDesde, fContactoHasta, fGrupos, sortBy
+                fContactoDesde, fContactoHasta, fGrupos,
+                fMissingCoords, fMissingContact, fMissingRubro, sortBy
             }
         ],
         queryFn: async () => {
@@ -125,7 +130,18 @@ export function useClientes(params: UseClientesParams) {
                 request = request.lt('fecha_proximo_contacto', hoy).not('fecha_proximo_contacto', 'is', null);
             }
 
-            const hasTextFilter = fNombre || fTelefono || fDireccion;
+            if (fMissingCoords) {
+                // Evaluated via RPC
+            }
+            if (fMissingContact) {
+                // Evaluated via RPC
+            }
+            if (fMissingRubro) {
+                // Evaluated via RPC
+            }
+
+            // Force RPC path if any advanced missing filters are applied
+            const hasTextFilter = fNombre || fTelefono || fDireccion || fMissingCoords || fMissingContact || fMissingRubro;
             let mapped: Client[] = [];
             let total = 0;
             let actsObj: Record<string, ClientActivity[]> = {};
@@ -148,14 +164,17 @@ export function useClientes(params: UseClientesParams) {
                     p_creado_hasta: fCreadoHasta || null,
                     p_contacto_desde: fContactoDesde || null,
                     p_contacto_hasta: fContactoHasta || null,
-                    p_grupos: fGrupos,
+                    p_grupos: fGrupos && fGrupos.length > 0 ? fGrupos : null,
+                    p_missing_coords: fMissingCoords || null,
+                    p_missing_contact: fMissingContact || null,
+                    p_missing_rubro: fMissingRubro || null,
                     p_offset: (page - 1) * pageSize,
                     p_limit: pageSize,
-                    p_sort_by: sortBy || 'recent'
+                    p_sort_by: sortBy || 'updated'
                 });
 
                 if (rpcError) {
-                    toast.error('Error al buscar clientes');
+                    toast.error('Error en búsqueda avanzada');
                     console.error(rpcError);
                     throw rpcError;
                 }
@@ -170,12 +189,11 @@ export function useClientes(params: UseClientesParams) {
                     cuit: row.cuit,
                     lat: row.lat,
                     lng: row.lng,
-                    clientes: { created_at: row.c_created_at },
+                    clientes: { created_at: row.c_created_at, lat: row.lat },
                     estado: row.estado,
                     rubro: row.rubro,
                     responsable: row.responsable,
                     situacion: row.situacion,
-                    notes: row.notas, // Fixed typo if occurred, but based on code it'snotas
                     notas: row.notas,
                     estilo_contacto: row.estilo_contacto,
                     interes: row.interes,
@@ -189,8 +207,9 @@ export function useClientes(params: UseClientesParams) {
                     created_at: row.ec_created_at,
                     updated_at: row.ec_updated_at,
                     ultima_actividad: row.ultima_actividad,
-                    grupos: row.grupos || [] // From RPC JSONB
+                    grupos: row.grupos || []
                 }));
+
                 total = rpcData && rpcData.length > 0 ? Number(rpcData[0].total_count) : 0;
             } else {
                 const { data, count, error } = await request;
@@ -213,7 +232,7 @@ export function useClientes(params: UseClientesParams) {
                         cuit: c.cuit,
                         lat: c.lat,
                         lng: c.lng,
-                        clientes: { created_at: c.created_at },
+                        clientes: { created_at: c.created_at, lat: c.lat },
                         estado: row.estado,
                         rubro: row.rubro,
                         responsable: row.responsable,

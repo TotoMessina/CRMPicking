@@ -1,7 +1,14 @@
--- PARCHE DEFINITIVO Y LIMPIEZA DE BÚSQUEDA UNIVERSAL
--- INSTRUCCIONES: Ejecuta TODO este bloque en el SQL Editor de Supabase.
+-- ==============================================================================
+-- RPC UNIFICADA: buscar_clientes_empresa (VERSIÓN DEFINITIVA)
+-- ==============================================================================
+-- Esta versión combina:
+-- 1. Búsqueda por texto (nombre, local, dirección, teléfono, cuit, id)
+-- 2. Filtros de Auditoría (p_missing_coords, p_missing_contact, p_missing_rubro)
+-- 3. Filtros de Grupos (p_grupos)
+-- 4. Filtros Avanzados (estados, rubros, responsables, fechas, etc.)
+-- ==============================================================================
 
--- 1. LIMPIEZA PROFUNDA: Borra todas las versiones duplicadas para evitar conflictos
+-- 1. LIMPIEZA PREVIA DE TODAS LAS VERSIONES
 DO $$
 DECLARE
     r RECORD;
@@ -16,12 +23,10 @@ BEGIN
     END LOOP;
 END $$;
 
--- 2. CREACIÓN REFORZADA: Con casteos explícitos para evitar errores de tipo
+-- 2. CREACIÓN DE LA VERSIÓN UNIFICADA
 CREATE OR REPLACE FUNCTION public.buscar_clientes_empresa(
     p_empresa_id uuid,
     p_nombre text DEFAULT NULL,
-    p_limit integer DEFAULT 50,
-    p_offset integer DEFAULT 0,
     p_telefono text DEFAULT NULL,
     p_direccion text DEFAULT NULL,
     p_estados text[] DEFAULT NULL,
@@ -36,14 +41,17 @@ CREATE OR REPLACE FUNCTION public.buscar_clientes_empresa(
     p_creado_hasta text DEFAULT NULL,
     p_contacto_desde text DEFAULT NULL,
     p_contacto_hasta text DEFAULT NULL,
-    p_sort_by text DEFAULT 'recent',
+    p_grupos bigint[] DEFAULT NULL,
     p_missing_coords boolean DEFAULT NULL,
     p_missing_contact boolean DEFAULT NULL,
-    p_missing_rubro boolean DEFAULT NULL
+    p_missing_rubro boolean DEFAULT NULL,
+    p_offset integer DEFAULT 0,
+    p_limit integer DEFAULT 50,
+    p_sort_by text DEFAULT 'updated'
 )
 RETURNS TABLE (
     ec_id uuid,
-    cliente_id integer,
+    cliente_id bigint,
     nombre text,
     nombre_local text,
     direccion text,
@@ -63,14 +71,15 @@ RETURNS TABLE (
     tipo_contacto text,
     venta_digital boolean,
     venta_digital_cual text,
-    fecha_proximo_contacto date,
-    hora_proximo_contacto time,
+    fecha_proximo_contacto text,
+    hora_proximo_contacto text,
     activador_cierre text,
     creado_por text,
     ec_created_at timestamptz,
     ec_updated_at timestamptz,
     ultima_actividad timestamptz,
     visitas integer,
+    grupos jsonb,
     total_count bigint
 ) AS $$
 BEGIN
@@ -105,7 +114,13 @@ BEGIN
             ec.created_at as ec_created_at,
             ec.updated_at as ec_updated_at,
             ec.ultima_actividad,
-            ec.visitas
+            ec.visitas,
+            (
+                SELECT jsonb_agg(jsonb_build_object('id', g.id, 'nombre', g.nombre, 'color', g.color))
+                FROM public.cliente_grupos cg 
+                JOIN public.grupos g ON cg.grupo_id = g.id
+                WHERE cg.cliente_id = c.id
+            ) as grupos_json
         FROM empresa_cliente ec
         JOIN clientes c ON ec.cliente_id = c.id
         WHERE ec.empresa_id = p_empresa_id
@@ -114,8 +129,8 @@ BEGIN
             p_nombre IS NULL OR 
             c.nombre_local ILIKE '%' || p_nombre || '%' OR 
             c.nombre ILIKE '%' || p_nombre || '%' OR
-            c.id::text = p_nombre OR -- Búsqueda exacta por ID
-            c.id::text ILIKE p_nombre || '%' OR -- Búsqueda parcial por ID
+            c.id::text = p_nombre OR 
+            c.id::text ILIKE p_nombre || '%' OR
             c.telefono ILIKE '%' || p_nombre || '%' OR
             c.cuit ILIKE p_nombre || '%' OR
             c.direccion ILIKE '%' || p_nombre || '%'
@@ -132,22 +147,35 @@ BEGIN
           AND (p_estilos IS NULL OR ec.estilo_contacto = ANY(p_estilos))
           AND (p_creado_desde IS NULL OR ec.created_at::DATE >= p_creado_desde::DATE)
           AND (p_creado_hasta IS NULL OR ec.created_at::DATE <= p_creado_hasta::DATE)
-          AND (p_contacto_desde IS NULL OR ec.fecha_proximo_contacto::DATE >= p_contacto_desde::DATE)
-          AND (p_contacto_hasta IS NULL OR ec.fecha_proximo_contacto::DATE <= p_contacto_hasta::DATE)
+          AND (p_contacto_desde IS NULL OR (NULLIF(ec.fecha_proximo_contacto::text, '')::DATE) >= p_contacto_desde::DATE)
+          AND (p_contacto_hasta IS NULL OR (NULLIF(ec.fecha_proximo_contacto::text, '')::DATE) <= p_contacto_hasta::DATE)
           AND (p_missing_coords IS NULL OR p_missing_coords = false OR (c.lat IS NULL OR c.lng IS NULL OR c.lat = 0))
           AND (p_missing_contact IS NULL OR p_missing_contact = false OR ((c.telefono IS NULL OR c.telefono = '') AND (c.mail IS NULL OR c.mail = '')))
           AND (p_missing_rubro IS NULL OR p_missing_rubro = false OR (ec.rubro IS NULL OR ec.rubro = 'Sin rubro' OR ec.rubro = ''))
+          AND (p_grupos IS NULL OR EXISTS (
+              SELECT 1 FROM public.cliente_grupos cg 
+              WHERE cg.cliente_id = c.id 
+                AND cg.grupo_id = ANY(p_grupos)
+          ))
     )
-    SELECT *, COUNT(*) OVER() as total_count
-    FROM filtered
+    SELECT 
+        f.ec_id, f.cliente_id, f.nombre, f.nombre_local, f.direccion, 
+        f.telefono, f.mail, f.cuit, f.lat, f.lng, f.c_created_at, 
+        f.estado, f.rubro, f.responsable, f.situacion, f.notas, 
+        f.estilo_contacto, f.interes, f.tipo_contacto, f.venta_digital, 
+        f.venta_digital_cual, f.fecha_proximo_contacto, f.hora_proximo_contacto, 
+        f.activador_cierre, f.creado_por, f.ec_created_at, f.ec_updated_at, 
+        f.ultima_actividad, f.visitas, f.grupos_json,
+        COUNT(*) OVER() as total_count
+    FROM filtered f
     ORDER BY
-        CASE WHEN p_sort_by = 'recent' THEN ec_created_at END DESC,
-        CASE WHEN p_sort_by = 'oldest' THEN ec_created_at END ASC,
-        CASE WHEN p_sort_by = 'updated' THEN ec_updated_at END DESC,
-        CASE WHEN p_sort_by = 'az' THEN nombre_local END ASC,
-        CASE WHEN p_sort_by = 'za' THEN nombre_local END DESC,
-        CASE WHEN p_sort_by = 'activity_desc' THEN ultima_actividad END DESC NULLS LAST,
-        CASE WHEN p_sort_by = 'activity_asc' THEN ultima_actividad END ASC NULLS FIRST
+        CASE WHEN p_sort_by = 'recent' THEN f.ec_created_at END DESC,
+        CASE WHEN p_sort_by = 'oldest' THEN f.ec_created_at END ASC,
+        CASE WHEN p_sort_by = 'updated' THEN f.ec_updated_at END DESC,
+        CASE WHEN p_sort_by = 'az' THEN f.nombre_local END ASC,
+        CASE WHEN p_sort_by = 'za' THEN f.nombre_local END DESC,
+        CASE WHEN p_sort_by = 'activity_desc' THEN f.ultima_actividad END DESC NULLS LAST,
+        CASE WHEN p_sort_by = 'activity_asc' THEN f.ultima_actividad END ASC NULLS FIRST
     LIMIT p_limit
     OFFSET p_offset;
 END;

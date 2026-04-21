@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Target, Users, TrendingUp, Download } from 'lucide-react';
+import { Trophy, Medal, Target, Users, TrendingUp, Download, Info, AlertCircle } from 'lucide-react';
 import { STATS_THEME, COMMON_CHART_OPTIONS } from '../../constants/statsConstants';
 import { ChartsData } from '../../hooks/useStatistics';
 import { CircularProgress } from '../ui/CircularProgress';
@@ -137,6 +137,7 @@ export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsD
                         const medal = getMedal(index);
                         const effectColor = a.rate >= 50 ? '#10b981' : a.rate >= 25 ? '#f59e0b' : '#ef4444';
                         
+                        const isUnknown = a.name === "Desconocido";
                         return (
                             <motion.div 
                                 key={a.name}
@@ -150,11 +151,16 @@ export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsD
                                     flexDirection: 'column', 
                                     gap: '20px',
                                     position: 'relative',
-                                    border: index < 3 ? `1px solid ${index === 0 ? '#fbbf2440' : index === 1 ? '#94a3b840' : '#b4530940'}` : '1px solid var(--border)',
-                                    background: index === 0 ? 'linear-gradient(135deg, var(--bg-card) 0%, rgba(251, 191, 36, 0.03) 100%)' : 'var(--bg-card)',
+                                    border: isUnknown ? '1px dashed var(--danger)' : index < 3 ? `1px solid ${index === 0 ? '#fbbf2440' : index === 1 ? '#94a3b840' : '#b4530940'}` : '1px solid var(--border)',
+                                    background: isUnknown ? 'rgba(239, 68, 68, 0.02)' : index === 0 ? 'linear-gradient(135deg, var(--bg-card) 0%, rgba(251, 191, 36, 0.03) 100%)' : 'var(--bg-card)',
                                     overflow: 'hidden'
                                 }}
                             >
+                                {isUnknown && (
+                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'var(--danger)', color: '#fff', fontSize: '0.65rem', padding: '2px 8px', textAlign: 'center', fontWeight: 700 }}>
+                                        ACTIVIDAD SIN USUARIO VINCULADO
+                                    </div>
+                                )}
                                 {index < 3 && (
                                     <div style={{ 
                                         position: 'absolute', top: '12px', right: '12px', 
@@ -178,16 +184,25 @@ export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsD
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text)' }}>{a.total}</div>
+                                    <div style={{ textAlign: 'center' }} title="Locales creados en sistema por este usuario en el periodo seleccionado">
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                            {a.total}
+                                            <Info size={10} style={{ opacity: 0.5 }} />
+                                        </div>
                                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Relevos</div>
                                     </div>
-                                    <div style={{ textAlign: 'center', padding: '0 8px', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
-                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: effectColor }}>{a.efectivo}</div>
+                                    <div style={{ textAlign: 'center', padding: '0 8px', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }} title="Locales que el usuario logró pasar exitosamente a estado de Local Creado (4) o Local Activo (5) en este periodo">
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: effectColor, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                            {a.efectivo}
+                                            <Info size={10} style={{ opacity: 0.5 }} />
+                                        </div>
                                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cierres</div>
                                     </div>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text)' }}>{a.visitas}</div>
+                                    <div style={{ textAlign: 'center' }} title="Cantidad total de fotos de visitas registradas en locales">
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                            {a.visitas}
+                                            <Info size={10} style={{ opacity: 0.5 }} />
+                                        </div>
                                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Visitas</div>
                                     </div>
                                 </div>

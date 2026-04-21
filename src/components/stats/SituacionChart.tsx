@@ -145,18 +145,19 @@ export const SituacionChart: React.FC<Props> = ({ data, total }) => {
                 />
             </div>
 
-            <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 18px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+            <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 18px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total locales (Estado 5)</span>
                 <strong style={{ fontSize: '1.5rem', color: 'var(--text)', marginLeft: 'auto' }}>{total}</strong>
-                {[
-                    { label: 'Sin comunicación', color: '#94a3b8' },
-                    { label: 'En proceso', color: '#f59e0b' },
-                    { label: 'En funcionamiento', color: '#10b981' },
-                ].map((s, i) => (
-                    <span key={s.label} style={{ fontSize: '0.78rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: `${s.color}20`, color: s.color, border: `1px solid ${s.color}40` }}>
-                        {s.label}: {data.datasets[0].data[i]}
-                    </span>
-                ))}
+                {data.labels?.map((label: string, i: number) => {
+                    const value = data.datasets[0].data[i];
+                    if (!value) return null;
+                    const color = i === 0 ? '#94a3b8' : i === 1 ? '#f59e0b' : '#10b981'; // Simplified fallback colors
+                    return (
+                        <span key={label} style={{ fontSize: '0.78rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: `${color}20`, color: color, border: `1px solid ${color}40` }}>
+                            {label}: {value}
+                        </span>
+                    );
+                })}
             </div>
         </div>
     );

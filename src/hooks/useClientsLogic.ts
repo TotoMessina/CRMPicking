@@ -29,6 +29,9 @@ export interface ClientFilters {
     contactoDesde: string;
     contactoHasta: string;
     grupos: string[];
+    fMissingCoords?: boolean;
+    fMissingContact?: boolean;
+    fMissingRubro?: boolean;
 }
 
 export const useClientsLogic = () => {
@@ -61,7 +64,10 @@ export const useClientsLogic = () => {
         creadoHasta: stateFilters?.creadoHasta || '',
         contactoDesde: stateFilters?.contactoDesde || '',
         contactoHasta: stateFilters?.contactoHasta || '',
-        grupos: stateFilters?.grupos || []
+        grupos: stateFilters?.grupos || [],
+        fMissingCoords: stateFilters?.fMissingCoords || false,
+        fMissingContact: stateFilters?.fMissingContact || false,
+        fMissingRubro: stateFilters?.fMissingRubro || false,
     });
 
     const [sortBy, setSortBy] = useState('updated');
@@ -86,7 +92,9 @@ export const useClientsLogic = () => {
         fNombre: filters.nombre, fTelefono: filters.telefono, fDireccion: filters.direccion,
         fCreadoDesde: filters.creadoDesde, fCreadoHasta: filters.creadoHasta, 
         fContactoDesde: filters.contactoDesde, fContactoHasta: filters.contactoHasta, 
-        fGrupos: filters.grupos, sortBy
+        fGrupos: filters.grupos, 
+        fMissingCoords: filters.fMissingCoords, fMissingContact: filters.fMissingContact, fMissingRubro: filters.fMissingRubro,
+        sortBy
     });
 
     const { clientes = [] as Client[], total = 0, activities = {} as Record<string, ClientActivity[]> } = data || {};

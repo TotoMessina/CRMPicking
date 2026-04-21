@@ -1,19 +1,28 @@
 import React from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { useStatistics } from '../hooks/useStatistics';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import { StatsFilters } from '../components/stats/StatsFilters';
 import { StatKpiCards } from '../components/stats/StatKpiCards';
-import { ChartsSection } from '../components/stats/ChartsSection';
+import { getWidgetDef } from '../constants/statsWidgets';
+import { ChartWidget } from '../components/stats/ChartWidget';
 import { SituacionChart } from '../components/stats/SituacionChart';
 import { RubrosSituacionChart } from '../components/stats/RubrosSituacionChart';
 import { ActivadoresPerformance } from '../components/stats/ActivadoresPerformance';
+import { DashboardLayoutEditor } from '../components/stats/DashboardLayoutEditor';
+import { CustomWidgetRenderer } from '../components/stats/CustomWidgetRenderer';
+import IntegrityAuditCards from '../components/stats/IntegrityAuditCards';
+import GeoHeatmap from '../components/stats/GeoHeatmap';
+import PredictiveInsights from '../components/stats/PredictiveInsights';
 import { STATS_THEME } from '../constants/statsConstants';
+import { ShieldCheck, Map as MapIcon } from 'lucide-react';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import toast from 'react-hot-toast';
 import { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { useAuth } from '../contexts/AuthContext';
 import { jsPDF } from 'jspdf';
+import { useCustomWidgets } from '../hooks/useCustomWidgets';
 import * as XLSX from 'xlsx';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
@@ -28,7 +37,7 @@ const Estadisticas: React.FC = () => {
         filterActivator, setFilterActivator,
         loading, lastUpdate,
         activators, rubrosEstado5Data,
-        kpis, chartsData, listsData,
+        kpis, chartsData, listsData, extraData,
         totalSituacion, refreshStats,
         filtroSituacionRubros, setFiltroSituacionRubros
     } = useStatistics();
@@ -36,6 +45,10 @@ const Estadisticas: React.FC = () => {
     const dashboardRef = useRef<HTMLDivElement>(null);
     const { empresaActiva, user, userName }: any = useAuth();
     const [isExportingPdf, setIsExportingPdf] = useState(false);
+    const [showEditor, setShowEditor] = useState(false);
+
+    const { widgets: customWidgets, saving: savingCustom, saveWidget, deleteWidget, checkWidgetViability } = useCustomWidgets();
+    const { layout, visibleWidgets, saving, saveLayout, resetLayout } = useDashboardLayout(customWidgets);
 
     const handleExportPdf = async () => {
         if (!dashboardRef.current) return;
@@ -253,7 +266,24 @@ const Estadisticas: React.FC = () => {
                 onExportPdf={handleExportPdf}
                 isExportingPdf={isExportingPdf}
                 loading={loading}
+                onCustomize={() => setShowEditor(true)}
             />
+
+            {/* Dashboard Layout Editor Drawer */}
+            {showEditor && (
+                <DashboardLayoutEditor
+                    layout={layout}
+                    saving={saving}
+                    onSave={saveLayout}
+                    onReset={resetLayout}
+                    onClose={() => setShowEditor(false)}
+                    customWidgets={customWidgets}
+                    savingCustom={savingCustom}
+                    onSaveCustom={saveWidget}
+                    onDeleteCustom={deleteWidget}
+                    checkWidgetViability={checkWidgetViability}
+                />
+            )}
 
             <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                 <div
@@ -271,22 +301,77 @@ const Estadisticas: React.FC = () => {
             </div>
 
             {currentTab === 'tabApps' && (
-                <div className="tab-content active">
-                    <ErrorBoundary>
-                        <StatKpiCards kpis={kpis} />
-                    </ErrorBoundary>
-                    
-                    <ErrorBoundary>
-                        <ChartsSection chartsData={chartsData} listsData={listsData} />
-                    </ErrorBoundary>
-                    
-                    <ErrorBoundary>
-                        <SituacionChart data={chartsData.situacionLocales} total={totalSituacion} />
-                    </ErrorBoundary>
-                    
-                    <ErrorBoundary>
-                        <RubrosSituacionChart data={rubrosEstado5Data} filter={filtroSituacionRubros} setFilter={setFiltroSituacionRubros} />
-                    </ErrorBoundary>
+                <div className="tab-content active" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
+                    {visibleWidgets.map(widgetId => {
+                        let sizeClass = 12;
+                        const def = getWidgetDef(widgetId);
+                        if (def) {
+                            sizeClass = def.size === 'third' ? 4 : def.size === 'half' ? 6 : 12;
+                        } else {
+                            const cw = customWidgets.find(w => w.id === widgetId);
+                            if (cw) {
+                                sizeClass = cw.size === 'third' ? 4 : cw.size === 'half' ? 6 : 12;
+                            }
+                        }
+
+                        let widgetContent = null;
+                        switch (widgetId) {
+                            case 'predictive_insights':
+                                widgetContent = <PredictiveInsights data={extraData.predictives} />; break;
+                            case 'kpi_cards':
+                                widgetContent = <StatKpiCards kpis={kpis} />; break;
+                            case 'growth_chart':
+                                widgetContent = <ChartWidget id={widgetId} title="Crecimiento diario (Altas)" chartType="bar" data={chartsData.crecimientoDiario} />; break;
+                            case 'consumidores_chart':
+                                widgetContent = <ChartWidget id={widgetId} title="Evolución Consumidores" chartType="bar" data={chartsData.consumidoresEvolucion} />; break;
+                            case 'repartidores_chart':
+                                widgetContent = <ChartWidget id={widgetId} title="Evolución Repartidores" chartType="bar" data={chartsData.repartidoresEvolucion} />; break;
+                            case 'rubros_donut':
+                                widgetContent = <ChartWidget id={widgetId} title="Rubros (Clientes)" chartType="donut" data={chartsData.rubros} list={listsData.rubros} />; break;
+                            case 'estados_donut':
+                                widgetContent = <ChartWidget id={widgetId} title="Estados (Clientes)" chartType="donut" data={chartsData.estados} list={listsData.estados} />; break;
+                            case 'creadores_donut':
+                                widgetContent = <ChartWidget id={widgetId} title="Creadores (Altas)" chartType="donut" data={chartsData.creados} list={listsData.creados} />; break;
+                            case 'integrity_audit':
+                                widgetContent = (
+                                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <ShieldCheck size={18} /> Auditoría de Integridad
+                                        </h3>
+                                        <IntegrityAuditCards integrityData={extraData.integrity} />
+                                    </div>
+                                ); break;
+                            case 'geo_heatmap':
+                                widgetContent = (
+                                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-elevated)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                        <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <MapIcon size={18} /> Densidad Geográfica
+                                        </h3>
+                                        <div style={{ flex: 1, minHeight: '300px' }}>
+                                            <GeoHeatmap points={extraData.geoPoints} />
+                                        </div>
+                                    </div>
+                                ); break;
+                            case 'situacion_chart':
+                                widgetContent = <SituacionChart data={chartsData.situacionLocales} total={totalSituacion} />; break;
+                            case 'rubros_estado5':
+                                widgetContent = <RubrosSituacionChart data={rubrosEstado5Data} filter={filtroSituacionRubros} setFilter={setFiltroSituacionRubros} />; break;
+                            default:
+                                const cw = customWidgets.find(w => w.id === widgetId);
+                                if (cw) widgetContent = <CustomWidgetRenderer config={cw} onDelete={deleteWidget} />;
+                                break;
+                        }
+
+                        if (!widgetContent) return null;
+
+                        return (
+                            <ErrorBoundary key={widgetId}>
+                                <div style={{ gridColumn: `span ${sizeClass}`, display: 'flex', flexDirection: 'column' }}>
+                                    {widgetContent}
+                                </div>
+                            </ErrorBoundary>
+                        );
+                    })}
                 </div>
             )}
 
