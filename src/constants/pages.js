@@ -1,6 +1,6 @@
 import { 
     MapPin, Users, Activity, Map, Settings, Calendar, Clock, 
-    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList 
+    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain 
 } from 'lucide-react';
 
 /**
@@ -44,6 +44,7 @@ export const ALL_PAGES = [
     { to: '/super-admin', icon: Shield, label: 'Panel Súper-Admin', group: 'Administrativo', superAdminOnly: true },
     { to: '/permisos-empresa', icon: Shield, label: 'Permisos', group: 'Administrativo' },
     { to: '/actividad-sistema', icon: Database, label: 'Auditoría', group: 'Administrativo' },
+    { to: '/ia-interna', icon: Brain, label: 'IA Interna', group: 'Administrativo' },
     { to: '/configuracion', icon: Settings, label: 'Configuración', group: 'Administrativo' },
 ];
 
