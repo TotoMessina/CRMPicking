@@ -1,3 +1,4 @@
+import { supabase } from './supabase';
 /**
  * offlineManager.js
  * Motor de sincronización Offline-First para PickingUp CRM.
@@ -9,11 +10,12 @@
  */
 
 const DB_NAME = 'pickingup-offline-v1';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
     CLIENTES: 'clientes_snapshot',
     OUTBOX: 'outbox_mutations',
+    TRACKING: 'user_tracking_points',
 };
 
 // ─── Inicialización de IndexedDB ────────────────────────────────────────────
@@ -42,6 +44,15 @@ function openDB() {
                     autoIncrement: true,
                 });
                 outbox.createIndex('created_at', 'created_at', { unique: false });
+            }
+
+            // Store para trackeo GPS (clave = auto increment)
+            if (!db.objectStoreNames.contains(STORES.TRACKING)) {
+                const tracking = db.createObjectStore(STORES.TRACKING, {
+                    keyPath: 'id',
+                    autoIncrement: true,
+                });
+                tracking.createIndex('created_at', 'created_at', { unique: false });
             }
         };
 
@@ -120,6 +131,21 @@ export async function queueMutation(table, method, payload) {
         console.warn('[OfflineManager] Error queuing mutation:', err);
     }
 }
+/**
+ * Guarda un punto de trackeo GPS localmente.
+ * @param {object} point - { usuario_id, empresa_id, lat, lng }
+ */
+export async function saveTrackingPoint(point) {
+    try {
+        const store = await tx(STORES.TRACKING, 'readwrite');
+        store.add({
+            ...point,
+            created_at: new Date().toISOString()
+        });
+    } catch (err) {
+        console.warn('[OfflineManager] Error saving tracking point:', err);
+    }
+}
 
 /**
  * Retorna cuántas mutaciones hay en la bandeja de salida.
@@ -145,99 +171,90 @@ export async function getPendingCount() {
  * @returns {Promise<{synced: number, failed: number}>}
  */
 export async function flushOutbox(supabaseClient) {
-    const store = await tx(STORES.OUTBOX, 'readwrite');
-
-    const mutations = await new Promise((resolve) => {
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => resolve([]);
-    });
-
-    if (mutations.length === 0) return { synced: 0, failed: 0 };
-
     let synced = 0;
     let failed = 0;
 
-    for (const mutation of mutations) {
-        try {
-            let error = null;
+    // 1. Sincronizar Mutaciones Generales
+    try {
+        const store = await tx(STORES.OUTBOX, 'readwrite');
+        const mutations = await new Promise((resolve) => {
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        });
 
-            // Special case: new client creation uses a Supabase RPC
-            if (mutation.table === '_rpc_crear_cliente' && mutation.method === 'INSERT') {
-                const p = mutation.payload;
-                const { data: resultId, error: rpcErr } = await supabaseClient.rpc('crear_cliente_v5_final', {
-                    p_payload: {
-                        p_nombre_local: p.nombre_local,
-                        p_nombre: p.nombre,
-                        p_direccion: p.direccion,
-                        p_telefono: p.telefono,
-                        p_mail: p.mail,
-                        p_cuit: p.cuit,
-                        p_lat: p.lat,
-                        p_lng: p.lng,
-                        p_empresa_id: p.empresa_id,
-                        p_rubro: p.rubro,
-                        rubro: p.rubro,
-                        p_estado: p.estado,
-                        p_responsable: p.responsable,
-                        p_interes: p.interes,
-                        interes: p.interes,
-                        p_estilo_contacto: p.estilo_contacto,
-                        estilo_contacto: p.estilo_contacto,
-                        p_venta_digital: p.venta_digital,
-                        p_venta_digital_cual: p.venta_digital_cual,
-                        p_situacion: p.situacion,
-                        situacion: p.situacion,
-                        p_notas: p.notas,
-                        notas: p.notas,
-                        p_tipo_contacto: p.tipo_contacto,
-                        tipo_contacto: p.tipo_contacto,
-                        p_fecha_proximo_contacto: p.fecha_proximo_contacto,
-                        p_hora_proximo_contacto: p.hora_proximo_contacto,
-                        p_creado_por: p.creado_por || null,
-                    }
-                });
-                error = rpcErr;
+        for (const mutation of mutations) {
+            try {
+                let error = null;
 
-                // Log initial visit if requested
-                if (!error && resultId && p.registrar_visita === 'true') {
-                    try {
-                        const visitDesc = `🚚 Visita inicial realizada (Sync Offline) - Estado: ${p.estado}`;
-                        const now = new Date().toISOString();
-                        await supabaseClient.from('actividades').insert([{
-                            cliente_id: resultId,
-                            descripcion: visitDesc,
-                            usuario: p.creado_por || 'Sistema (Sync)',
-                            empresa_id: p.empresa_id,
-                            fecha: now
-                        }]);
-                        await supabaseClient.from('empresa_cliente').update({ ultima_actividad: now }).eq('cliente_id', resultId).eq('empresa_id', p.empresa_id);
-                    } catch (syncErr) {
-                        console.warn('[OfflineManager] Error recording initial visit during sync:', syncErr);
-                    }
+                if (mutation.table === '_rpc_crear_cliente' && mutation.method === 'INSERT') {
+                    const p = mutation.payload;
+                    const { error: rpcErr } = await supabaseClient.rpc('crear_cliente_v5_final', {
+                        p_payload: { ...p }
+                    });
+                    error = rpcErr;
+                } else if (mutation.method === 'INSERT') {
+                    ({ error } = await supabaseClient.from(mutation.table).insert(mutation.payload));
+                } else if (mutation.method === 'UPDATE' && mutation.payload.id) {
+                    const { id, ...data } = mutation.payload;
+                    ({ error } = await supabaseClient.from(mutation.table).update(data).eq('id', id));
+                } else if (mutation.method === 'DELETE' && mutation.payload.id) {
+                    ({ error } = await supabaseClient.from(mutation.table).delete().eq('id', mutation.payload.id));
                 }
-            } else if (mutation.method === 'INSERT') {
-                ({ error } = await supabaseClient.from(mutation.table).insert(mutation.payload));
-            } else if (mutation.method === 'UPDATE' && mutation.payload.id) {
-                const { id, ...data } = mutation.payload;
-                ({ error } = await supabaseClient.from(mutation.table).update(data).eq('id', id));
-            } else if (mutation.method === 'DELETE' && mutation.payload.id) {
-                ({ error } = await supabaseClient.from(mutation.table).delete().eq('id', mutation.payload.id));
-            }
 
-            if (!error) {
-                // Remove from outbox on success
-                const deleteStore = await tx(STORES.OUTBOX, 'readwrite');
-                deleteStore.delete(mutation.id);
-                synced++;
-            } else {
-                console.warn('[OfflineManager] Mutation failed:', error.message, mutation);
+                if (!error) {
+                    const delStore = await tx(STORES.OUTBOX, 'readwrite');
+                    delStore.delete(mutation.id);
+                    synced++;
+                } else {
+                    failed++;
+                }
+            } catch (err) {
+                console.warn('[OfflineManager] Mutation error:', err);
                 failed++;
             }
-        } catch (err) {
-            console.warn('[OfflineManager] Unexpected error flushing mutation:', err);
-            failed++;
         }
+    } catch (err) {
+        console.warn('[OfflineManager] Outbox flush error:', err);
+    }
+
+    // 2. Sincronizar Puntos de Tracking (Batch)
+    try {
+        const tStore = await tx(STORES.TRACKING, 'readwrite');
+        const points = await new Promise((resolve) => {
+            const req = tStore.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        });
+
+        if (points.length > 0) {
+            // Adaptamos los puntos al esquema de 'historial_ubicaciones'
+            const cleanPoints = points.map(({ id, ...p }) => ({
+                usuario_id: p.usuario_id,
+                empresa_id: p.empresa_id,
+                lat: p.lat,
+                lng: p.lng,
+                fecha: p.created_at // Usamos la fecha de creación local
+            }));
+
+            console.log('[OfflineManager] Iniciando sincronización de tracking...');
+            console.table(cleanPoints);
+
+            const { error: tErr } = await supabaseClient
+                .from('historial_ubicaciones')
+                .insert(cleanPoints);
+
+            if (!tErr) {
+                const clearStore = await tx(STORES.TRACKING, 'readwrite');
+                clearStore.clear();
+                synced += points.length;
+                console.log(`[OfflineManager] ✅ Sincronizados ${points.length} puntos de GPS.`);
+            } else {
+                console.error('[OfflineManager] ❌ Fallo al sincronizar puntos GPS:', tErr.message, tErr.details);
+            }
+        }
+    } catch (err) {
+        console.error('[OfflineManager] ❌ Error inesperado en sincronización de tracking:', err);
     }
 
     return { synced, failed };
@@ -254,3 +271,6 @@ export async function clearLocalClients() {
         console.warn('[OfflineManager] Error clearing local clients:', err);
     }
 }
+
+
+

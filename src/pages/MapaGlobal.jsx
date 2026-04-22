@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
-import { Map as MapIcon, Users, Truck, Activity, RefreshCw, Navigation, Layers, Filter, X } from 'lucide-react';
+import { Map as MapIcon, Users, Truck, Activity, RefreshCw, Navigation, Layers, Filter, X, History, Calendar, User } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 import L from 'leaflet';
 window.L = window.L || L;
 import 'leaflet/dist/leaflet.css';
@@ -56,6 +58,15 @@ export default function MapaGlobal() {
     const [mapReady, setMapReady] = useState(false);
     const [loading, setLoading] = useState(true);
 
+    // History Tracking Mode
+    const [historyMode, setHistoryMode] = useState(false);
+    const [historyUser, setHistoryUser] = useState('');
+    const [historyDate, setHistoryDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [historyData, setHistoryData] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [availableUsers, setAvailableUsers] = useState([]);
+    const historyLayerRef = useRef(L.layerGroup());
+
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [showLegendMobile, setShowLegendMobile] = useState(false);
 
@@ -77,6 +88,13 @@ export default function MapaGlobal() {
 
     const fetchData = async () => {
         if (!empresaActiva?.id) return;
+
+        // No intentar cargar si no hay internet
+        if (!navigator.onLine) {
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         const toastId = toast.loading("Cargando datos globales...");
 
@@ -187,6 +205,14 @@ export default function MapaGlobal() {
             });
 
             toast.success("Mapa global actualizado", { id: toastId });
+            
+            // Load users for history selection
+            const { data: usersInfo } = await supabase
+                .from('usuarios')
+                .select('id, nombre, email')
+                .eq('role', 'vendedor'); // Or just get all if needed
+            setAvailableUsers(usersInfo || []);
+
         } catch (error) {
             console.error("fetchData Global Error:", error);
             toast.error("Error al cargar datos", { id: toastId });
@@ -212,6 +238,43 @@ export default function MapaGlobal() {
         fetchData();
     }, [empresaActiva]);
 
+    const fetchHistory = async () => {
+        if (!historyUser || !historyDate || !empresaActiva?.id) return;
+        setHistoryLoading(true);
+        const tId = toast.loading("Cargando recorrido...");
+        
+        try {
+            const { data: hist, error } = await supabase
+                .from('historial_ubicaciones')
+                .select('*')
+                .eq('usuario_id', historyUser)
+                .eq('empresa_id', empresaActiva.id)
+                .gte('fecha', `${historyDate}T00:00:00Z`)
+                .lte('fecha', `${historyDate}T23:59:59Z`)
+                .order('fecha', { ascending: true });
+
+            if (error) throw error;
+            setHistoryData(hist || []);
+            
+            if (!hist?.length) {
+                toast.error("No se encontraron movimientos para esta fecha", { id: tId });
+            } else {
+                toast.success(`Se encontraron ${hist.length} puntos`, { id: tId });
+            }
+        } catch (err) {
+            console.error("Error fetching history:", err);
+            toast.error("Error al cargar historial", { id: tId });
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (historyMode && historyUser && historyDate) {
+            fetchHistory();
+        }
+    }, [historyMode, historyUser, historyDate]);
+
     // Initialize Map
     useEffect(() => {
         if (!mapContainerRef.current) return;
@@ -233,6 +296,7 @@ export default function MapaGlobal() {
         }).addTo(m);
 
         Object.values(layersRef.current).forEach(layer => layer.addTo(m));
+        historyLayerRef.current.addTo(m);
 
         m.on('moveend zoomend', updateVisibleCounts);
         mapRef.current = m;
@@ -317,6 +381,37 @@ export default function MapaGlobal() {
             });
         }
 
+        // 4. Historial (Polyline)
+        const histLayer = historyLayerRef.current;
+        histLayer.clearLayers();
+        if (historyMode && historyData.length > 1) {
+            const latlngs = historyData.map(p => [p.lat, p.lng]);
+            const polyline = L.polyline(latlngs, {
+                color: '#7c3aed',
+                weight: 4,
+                opacity: 0.8,
+                dashArray: '5, 10'
+            }).addTo(histLayer);
+
+            // Add arrows or flow indicators
+            // (Simple version: add a marker for start and end)
+            const start = historyData[0];
+            const end = historyData[historyData.length - 1];
+
+            L.circleMarker([start.lat, start.lng], { radius: 8, fillColor: '#22c55e', color: '#fff', weight: 3, fillOpacity: 1 })
+                .bindPopup(`<b>Inicio Jornada</b><br>${format(parseISO(start.fecha), 'HH:mm')}`)
+                .addTo(histLayer);
+
+            L.circleMarker([end.lat, end.lng], { radius: 8, fillColor: '#ef4444', color: '#fff', weight: 3, fillOpacity: 1 })
+                .bindPopup(`<b>Última Posición</b><br>${format(parseISO(end.fecha), 'HH:mm')}`)
+                .addTo(histLayer);
+
+            // Center map on path if newly loaded
+            if (mapRef.current && historyData.length > 0) {
+                mapRef.current.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+            }
+        }
+
         updateVisibleCounts();
     }, [data, visibility, updateVisibleCounts, mapReady]);
 
@@ -375,7 +470,69 @@ export default function MapaGlobal() {
                         📋 Capas ({Object.values(visibility).filter(v => v).length})
                     </button>
                 )}
+
+                {/* OVERLAY: HISTORY PANEL */}
+                {historyMode && (
+                    <div style={{
+                        position: 'absolute', top: isMobile ? '80px' : '20px', right: '20px', zIndex: 1000,
+                        width: isMobile ? 'calc(100% - 40px)' : '320px',
+                        background: 'var(--bg-glass)', backdropFilter: 'blur(16px)',
+                        padding: '20px', borderRadius: '16px', border: '1px solid var(--border)',
+                        boxShadow: 'var(--shadow-xl)', animation: 'slide-up 0.3s ease'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <History size={18} className="text-accent" />
+                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Historial de Ruta</h3>
+                            </div>
+                            <button onClick={() => setHistoryMode(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)' }}><X size={20} /></button>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-muted)' }}>ACTIVADOR</label>
+                                <select 
+                                    className="input premium-input" 
+                                    style={{ width: '100%' }}
+                                    value={historyUser}
+                                    onChange={e => setHistoryUser(e.target.value)}
+                                >
+                                    <option value="">Seleccionar usuario...</option>
+                                    {availableUsers.map(u => (
+                                        <option key={u.id} value={u.id}>{u.nombre || u.email}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-muted)' }}>FECHA</label>
+                                <input 
+                                    type="date" 
+                                    className="input premium-input" 
+                                    style={{ width: '100%' }}
+                                    value={historyDate}
+                                    onChange={e => setHistoryDate(e.target.value)}
+                                />
+                            </div>
+
+                            {historyData.length > 0 && (
+                                <div style={{ background: 'var(--bg-body)', padding: '12px', borderRadius: '12px', marginTop: '4px' }}>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Distancia aprox:</span>
+                                        <span className="text-accent">
+                                            {(historyData.length * 0.15).toFixed(1)} km
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                        {historyData.length} puntos registrados cada 1 min.
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
+
 
             {/* BOTTOM CONTROL BAR */}
             <MapControlBar isMobile={isMobile}>
@@ -413,6 +570,17 @@ export default function MapaGlobal() {
 
                 <Button variant="secondary" onClick={fetchData} disabled={loading} style={{ borderRadius: '12px', height: '40px' }}>
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> {isMobile ? '' : 'Refrescar'}
+                </Button>
+
+                <div style={{ borderLeft: '1px solid var(--border)', height: '24px', margin: '0 8px' }}></div>
+
+                <Button 
+                    variant={historyMode ? "primary" : "secondary"} 
+                    onClick={() => setHistoryMode(!historyMode)}
+                    style={{ borderRadius: '12px', height: '40px', padding: '0 16px', gap: '8px' }}
+                >
+                    <History size={16} />
+                    <span className="hide-mobile">Historial Ruta</span>
                 </Button>
             </MapControlBar>
 

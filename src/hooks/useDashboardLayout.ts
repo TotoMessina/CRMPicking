@@ -33,13 +33,13 @@ export const useDashboardLayout = (customWidgets: any[] = []) => {
                 [...missingDefaults, ...missingCustoms].forEach((w) => {
                     const id = (w as any).id;
                     if (!savedIds.has(id)) {
-                        merged.push({ id, visible: true, order: merged.length });
+                        merged.push({ id, visible: true, order: merged.length, size: (w as any).size });
                     }
                 });
 
                 setLayout(merged.sort((a, b) => a.order - b.order));
             } else {
-                const initial = [...DEFAULT_LAYOUT, ...customWidgets.map(cw => ({ id: cw.id!, visible: true, order: 0 }))];
+                const initial = [...DEFAULT_LAYOUT, ...customWidgets.map(cw => ({ id: cw.id!, visible: true, order: 0, size: cw.size || 'full' }))];
                 setLayout(initial.map((w, i) => ({ ...w, order: i })));
             }
         } catch (err) {
@@ -73,7 +73,7 @@ export const useDashboardLayout = (customWidgets: any[] = []) => {
                 const layoutIds = new Set(newLayout.map(l => l.id));
                 customWidgets.forEach((cw) => {
                     if (cw.id && !layoutIds.has(cw.id)) {
-                        newLayout.push({ id: cw.id, visible: true, order: newLayout.length });
+                        newLayout.push({ id: cw.id, visible: true, order: newLayout.length, size: cw.size || 'full' });
                         changed = true;
                     }
                 });
@@ -109,11 +109,12 @@ export const useDashboardLayout = (customWidgets: any[] = []) => {
         await saveLayout(DEFAULT_LAYOUT);
     }, [saveLayout]);
 
-    /** Returns only visible widgets sorted by order */
-    const visibleWidgets = layout
+    /** Returns only visible widgets sorted by order (full objects) */
+    const visibleLayout = layout
         .filter(w => w.visible)
-        .sort((a, b) => a.order - b.order)
-        .map(w => w.id);
+        .sort((a, b) => a.order - b.order);
 
-    return { layout, visibleWidgets, loading, saving, saveLayout, resetLayout };
+    const visibleWidgets = visibleLayout.map(w => w.id);
+
+    return { layout, visibleLayout, visibleWidgets, loading, saving, saveLayout, resetLayout };
 };

@@ -65,6 +65,10 @@ export default function MapaRepartidores() {
 
     const fetchRepartidores = async () => {
         if (!empresaActiva?.id) return;
+        
+        // No intentar cargar si no hay internet (evita errores en consola y toast rojos)
+        if (!navigator.onLine) return;
+
         setLoading(true);
         const { data, error } = await supabase
             .from("repartidores")

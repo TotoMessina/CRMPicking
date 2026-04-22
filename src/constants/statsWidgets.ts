@@ -18,6 +18,7 @@ export interface WidgetLayout {
     id: string;
     visible: boolean;
     order: number;
+    size?: 'full' | 'half' | 'third';
 }
 
 export const WIDGET_CATALOG: WidgetDefinition[] = [
@@ -136,6 +137,7 @@ export const DEFAULT_LAYOUT: WidgetLayout[] = WIDGET_CATALOG.map(w => ({
     id: w.id,
     visible: w.defaultVisible,
     order: w.defaultOrder,
+    size: w.size,
 }));
 
 /** Obtiene la definición de un widget por su id */

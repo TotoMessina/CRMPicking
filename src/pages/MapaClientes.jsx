@@ -289,6 +289,9 @@ export default function MapaClientes() {
         if (!empresaActiva?.id) return;
 
         try {
+            // No intentar buscar activadores si estamos offline
+            if (!navigator.onLine) return;
+
             // 1. Obtener los emails de los miembros de la empresa activa para filtrar ubicaciones
             const { data: euData, error: euError } = await supabase
                 .from('empresa_usuario')
@@ -322,7 +325,10 @@ export default function MapaClientes() {
                 throw error;
             }
         } catch (err) {
-            console.error('Error fetching activadores for map:', err);
+            // Solo logueamos si estamos online, para no llenar la consola de errores esperados
+            if (navigator.onLine) {
+                console.error('Error fetching activadores for map:', err);
+            }
         }
     };
 

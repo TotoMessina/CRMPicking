@@ -1,5 +1,5 @@
 import React from 'react';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { useStatistics } from '../hooks/useStatistics';
 import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import { StatsFilters } from '../components/stats/StatsFilters';
@@ -25,7 +25,7 @@ import { jsPDF } from 'jspdf';
 import { useCustomWidgets } from '../hooks/useCustomWidgets';
 import * as XLSX from 'xlsx';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip, Legend, Filler);
 ChartJS.defaults.devicePixelRatio = typeof window !== 'undefined' ? Math.max(window.devicePixelRatio || 1, 3) : 3;
 
 const Estadisticas: React.FC = () => {
@@ -48,7 +48,7 @@ const Estadisticas: React.FC = () => {
     const [showEditor, setShowEditor] = useState(false);
 
     const { widgets: customWidgets, saving: savingCustom, saveWidget, deleteWidget, checkWidgetViability } = useCustomWidgets();
-    const { layout, visibleWidgets, saving, saveLayout, resetLayout } = useDashboardLayout(customWidgets);
+    const { layout, visibleLayout, saving, saveLayout, resetLayout } = useDashboardLayout(customWidgets);
 
     const handleExportPdf = async () => {
         if (!dashboardRef.current) return;
@@ -302,17 +302,26 @@ const Estadisticas: React.FC = () => {
 
             {currentTab === 'tabApps' && (
                 <div className="tab-content active" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
-                    {visibleWidgets.map(widgetId => {
-                        let sizeClass = 12;
+                    {visibleLayout.map(widget => {
+                        const widgetId = widget.id;
                         const def = getWidgetDef(widgetId);
-                        if (def) {
-                            sizeClass = def.size === 'third' ? 4 : def.size === 'half' ? 6 : 12;
-                        } else {
-                            const cw = customWidgets.find(w => w.id === widgetId);
-                            if (cw) {
-                                sizeClass = cw.size === 'third' ? 4 : cw.size === 'half' ? 6 : 12;
-                            }
+                        
+                        // PRIORIDAD: 
+                        // 1. Tamaño definido en el layout guardado (usuario)
+                        // 2. Tamaño definido en el catálogo base
+                        // 3. Tamaño en definición custom (si aplica)
+                        let currentSize = widget.size;
+                        
+                        if (!currentSize && def) {
+                            currentSize = def.size;
                         }
+
+                        if (!currentSize) {
+                            const cw = customWidgets.find(w => w.id === widgetId);
+                            currentSize = cw?.size || 'full';
+                        }
+
+                        const sizeClass = currentSize === 'third' ? 4 : currentSize === 'half' ? 6 : 12;
 
                         let widgetContent = null;
                         switch (widgetId) {

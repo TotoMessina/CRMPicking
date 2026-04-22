@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { saveTrackingPoint, flushOutbox } from '../../lib/offlineManager';
 import toast from 'react-hot-toast';
 
 /**
@@ -48,37 +49,47 @@ export const LocationTracker = () => {
             const { latitude: lat, longitude: lng, accuracy } = position.coords;
 
             try {
-                const { error } = await supabase
-                    .from('usuarios')
-                    .update({
-                        lat,
-                        lng,
-                        last_seen: new Date().toISOString()
-                    })
-                    .eq('id', user.id);
+                // Actualizar posición "en vivo" SOLO si hay internet
+                if (navigator.onLine) {
+                    await supabase
+                        .from('usuarios')
+                        .update({
+                            lat,
+                            lng,
+                            last_seen: new Date().toISOString()
+                        })
+                        .eq('id', user.id);
+                }
+                
+                // Marcamos que ya procesamos este "tick" de ubicación
+                lastReportedTime.current = now;
 
-                if (!error) {
-                    lastReportedTime.current = now;
-                    console.log(`📍 Ubicación [${isRutaActive ? 'RUTA' : 'NORMAL'}]:`, { lat, lng, acc: accuracy });
-                    
-                    // Guardar en historial con una frecuencia máxima de 1 minuto
-                    if (empresaActiva && now - lastHistoryTime.current >= 60000) {
-                        const { error: histErr } = await supabase.from('historial_ubicaciones').insert([{
+                // Guardar en historial (OFFLINE-FIRST) con frecuencia de ~1 minuto
+                // Usamos 55s en vez de 60s para evitar que pequeños retrasos de ejecución se salten un ciclo
+                if (empresaActiva && now - lastHistoryTime.current >= 55000) {
+                    try {
+                        await saveTrackingPoint({
                             usuario_id: user.id,
                             empresa_id: empresaActiva.id,
                             lat,
-                            lng,
-                            fecha: new Date().toISOString()
-                        }]);
-                        if (!histErr) {
-                            lastHistoryTime.current = now;
-                        } else {
-                            console.warn('No se pudo guardar historial:', histErr);
+                            lng
+                        });
+                        lastHistoryTime.current = now;
+                        console.log(`📍 Punto de historial guardado [${navigator.onLine ? 'ONLINE' : 'OFFLINE'}]`);
+
+                        // Intentar sincronizar si recuperamos internet en este tick
+                        if (navigator.onLine) {
+                            flushOutbox(supabase);
                         }
+                    } catch (err) {
+                        console.warn('Error guardando punto de trackeo local:', err);
                     }
                 }
             } catch (err) {
-                console.error('❌ Exception in LocationTracker:', err);
+                // Solo logueamos si estamos online para evitar ruido de red
+                if (navigator.onLine) {
+                    console.error('❌ Exception in LocationTracker:', err);
+                }
             }
         };
 
@@ -120,7 +131,7 @@ export const LocationTracker = () => {
             if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
             clearInterval(interval);
         };
-    }, [user, isRutaActive, REPORT_INTERVAL]);
+    }, [user, empresaActiva, isRutaActive, REPORT_INTERVAL]);
 
     return null;
 };

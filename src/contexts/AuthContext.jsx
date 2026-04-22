@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { flushOutbox } from '../lib/offlineManager';
 
 const AuthContext = createContext();
 
@@ -33,6 +34,18 @@ export function AuthProvider({ children }) {
             setUserName(null);
             setEmpresasDisponibles([]);
             setEmpresaActivaState(null);
+            return;
+        }
+
+        // Si estamos offline, recuperamos al menos la empresa activa del cache para que el tracking funcione
+        if (!navigator.onLine) {
+            const stored = localStorage.getItem(EMPRESA_KEY);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    setEmpresaActivaState(parsed);
+                } catch { /* ignore */ }
+            }
             return;
         }
 
@@ -89,6 +102,10 @@ export function AuthProvider({ children }) {
             setPaginasPermitidas({});
             return;
         }
+
+        // Si estamos offline, no intentamos fetchear permisos
+        if (!navigator.onLine) return;
+
         const { data } = await supabase
             .from('empresa_permisos_pagina')
             .select('pagina, habilitada, roles_permitidos')
@@ -134,11 +151,24 @@ export function AuthProvider({ children }) {
         };
     }, []);
 
-    // Session Tracking logic
+    // Sincronización Offline periódica y por evento
     useEffect(() => {
-        // Feature disabled temporarily to avoid 404 network errors 
-        // since 'sesiones_usuario' table does not exist in the database.
-    }, [user]);
+        if (!user || !empresaActiva || !navigator.onLine) return;
+
+        // Intentar sincronizar cuando cambia el usuario o empresa
+        flushOutbox(supabase);
+
+        // También escuchar cuando vuelve el internet estando ya logueado
+        const handleOnline = () => {
+            console.log('[AuthContext] Red recuperada. Sincronizando pendientes...');
+            flushOutbox(supabase);
+        };
+        window.addEventListener('online', handleOnline);
+        
+        return () => window.removeEventListener('online', handleOnline);
+    }, [user, empresaActiva]);
+
+    // Session Tracking logic
 
     const signIn = async (email, password) => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });

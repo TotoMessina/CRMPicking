@@ -7,7 +7,7 @@ export interface CustomWidgetConfig {
     id?: string;
     title: string;
     icon: string;
-    chart_type: 'kpi' | 'bar' | 'pie' | 'list';
+    chart_type: 'kpi' | 'bar' | 'bar_horizontal' | 'line' | 'area' | 'pie' | 'doughnut' | 'radar' | 'list';
     data_source: 'empresa_cliente' | 'repartidores' | 'consumidores' | 'actividades';
     group_by?: string;
     filter_field?: string;
@@ -15,6 +15,12 @@ export interface CustomWidgetConfig {
     color: string;
     size?: 'full' | 'half' | 'third';
     sort_order?: number;
+    // Advanced options
+    metric?: 'count' | 'sum' | 'avg';
+    metric_field?: string;        // Field to sum/average (numeric)
+    time_group?: 'day' | 'week' | 'month'; // For line/area time-series
+    top_n?: number;               // Limit results (default 12)
+    sort_dir?: 'asc' | 'desc';   // Sort direction (default desc)
 }
 
 export const useCustomWidgets = () => {
