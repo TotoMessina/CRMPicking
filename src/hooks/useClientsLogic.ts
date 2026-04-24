@@ -159,7 +159,7 @@ export const useClientsLogic = () => {
 
     const handleDescargarExcel = async () => {
         setExportLoading(true);
-        await exportarClientesExcel(empresaActiva, filters, () => setExportLoading(false));
+        await exportarClientesExcel(empresaActiva, { ...filters, isAgendaHoy }, () => setExportLoading(false));
     };
 
     return {

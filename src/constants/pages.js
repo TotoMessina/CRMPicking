@@ -44,7 +44,8 @@ export const ALL_PAGES = [
     { to: '/super-admin', icon: Shield, label: 'Panel Súper-Admin', group: 'Administrativo', superAdminOnly: true },
     { to: '/permisos-empresa', icon: Shield, label: 'Permisos', group: 'Administrativo' },
     { to: '/actividad-sistema', icon: Database, label: 'Auditoría', group: 'Administrativo' },
-    { to: '/ia-interna', icon: Brain, label: 'IA Interna', group: 'Administrativo' },
+    { to: '/ia-interna', icon: Brain, label: 'Radar Predictivo (IA)', group: 'Activaciones' },
+    { to: '/swipe-prospecting', icon: Star, label: 'Prospecteo Tinder', group: 'Activaciones' },
     { to: '/configuracion', icon: Settings, label: 'Configuración', group: 'Administrativo' },
 ];
 

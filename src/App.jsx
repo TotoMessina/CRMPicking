@@ -8,6 +8,7 @@ import { GlobalLoader } from './components/ui/GlobalLoader';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
+import InternalAI from './pages/InternalAI';
 const Clientes = lazy(() => import('./pages/Clientes'));
 const Pipeline = lazy(() => import('./pages/Pipeline'));
 const Consumidores = lazy(() => import('./pages/Consumidores'));
@@ -32,8 +33,10 @@ const ActividadSistema = lazy(() => import('./pages/ActividadSistema'));
 const Historial = lazy(() => import('./pages/Historial'));
 const RutaDiaria = lazy(() => import('./pages/RutaDiaria'));
 const AsignadorRutas = lazy(() => import('./pages/AsignadorRutas'));
+const TinderClientes = lazy(() => import('./pages/TinderClientes'));
 const PipelineSettings = lazy(() => import('./pages/PipelineSettings'));
-const InternalAI = lazy(() => import('./pages/InternalAI'));
+// IA cargada directamente para forzar actualización
+// const InternalAI = lazy(() => import('./pages/InternalAI'));
 
 function App() {
   // Interceptar recuperación de contraseña si Supabase nos mandó a la raíz
@@ -84,7 +87,8 @@ function App() {
             <Route path="/super-admin" element={<Suspense fallback={<GlobalLoader />}><SuperAdmin /></Suspense>} />
             <Route path="/actividad-sistema" element={<Suspense fallback={<GlobalLoader />}><ActividadSistema /></Suspense>} />
             <Route path="/configuracion/pipeline" element={<Suspense fallback={<GlobalLoader />}><PipelineSettings /></Suspense>} />
-            <Route path="/ia-interna" element={<Suspense fallback={<GlobalLoader />}><InternalAI /></Suspense>} />
+            <Route path="/ia-interna" element={<InternalAI />} />
+            <Route path="/swipe-prospecting" element={<Suspense fallback={<GlobalLoader />}><TinderClientes /></Suspense>} />
             <Route path="/configuracion" element={<Suspense fallback={<GlobalLoader />}><Configuracion /></Suspense>} />
           </Route>
         </Routes>

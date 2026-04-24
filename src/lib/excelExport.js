@@ -204,9 +204,14 @@ export const exportarClientesExcel = async (empresaActiva, filters = {}, onFinal
 
         while (hasMore) {
             toast.loading(`Descargando registros ${allRows.length}...`, { id: toastId });
+            let selectStr = "*, clientes!inner(*)";
+            if (filters.grupos && filters.grupos.length > 0) {
+                selectStr = "*, clientes!inner(*, cliente_grupos!inner(grupos(*)))";
+            }
+
             let query = supabase
                 .from("empresa_cliente")
-                .select("*, clientes!inner(*)")
+                .select(selectStr)
                 .eq("empresa_id", empresaActiva?.id)
                 .eq("activo", true)
                 .order('created_at', { ascending: false })
@@ -217,12 +222,36 @@ export const exportarClientesExcel = async (empresaActiva, filters = {}, onFinal
             if (filters.situacion && filters.situacion.length > 0) query = query.in('situacion', filters.situacion);
             if (filters.tipoContacto && filters.tipoContacto.length > 0) query = query.in('tipo_contacto', filters.tipoContacto);
             if (filters.responsable && filters.responsable.length > 0) query = query.in('responsable', filters.responsable);
+            if (filters.creadoPor && filters.creadoPor.length > 0) query = query.in('creado_por', filters.creadoPor);
             if (filters.rubro && filters.rubro.length > 0) query = query.in('rubro', filters.rubro);
             if (filters.interes && filters.interes.length > 0) query = query.in('interes', filters.interes);
             if (filters.estilo && filters.estilo.length > 0) query = query.in('estilo_contacto', filters.estilo);
             
             if (filters.creadoDesde) query = query.gte('created_at', `${filters.creadoDesde}T00:00:00.000Z`);
             if (filters.creadoHasta) query = query.lte('created_at', `${filters.creadoHasta}T23:59:59.999Z`);
+
+            if (filters.contactoDesde) query = query.gte('fecha_proximo_contacto', filters.contactoDesde);
+            if (filters.contactoHasta) query = query.lte('fecha_proximo_contacto', filters.contactoHasta);
+
+            if (filters.isAgendaHoy) {
+                query = query.eq('fecha_proximo_contacto', new Date().toISOString().split('T')[0]);
+            }
+
+            if (filters.proximos7) {
+                const hoy = new Date();
+                const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
+                const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                query = query.gte('fecha_proximo_contacto', fmt(hoy)).lte('fecha_proximo_contacto', fmt(en7));
+            }
+
+            if (filters.vencidos) {
+                const hoy = new Date().toISOString().split('T')[0];
+                query = query.lt('fecha_proximo_contacto', hoy).not('fecha_proximo_contacto', 'is', null);
+            }
+
+            if (filters.grupos && filters.grupos.length > 0) {
+                query = query.in('clientes.cliente_grupos.grupo_id', filters.grupos);
+            }
 
             if (filters.nombre) query = query.ilike('clientes.nombre_local', `%${filters.nombre}%`);
             if (filters.telefono) query = query.ilike('clientes.telefono', `%${filters.telefono}%`);

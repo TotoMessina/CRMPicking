@@ -1,44 +1,59 @@
-import { useState, useEffect } from 'react';
+// v3.0.0 - RADAR TOTAL & ESTÉTICA DE PRECISIÓN
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInternalAI } from '../hooks/useInternalAI';
+import { sentimentAnalyzer } from '../lib/ai/SentimentAnalyzer';
 import { supabase } from '../lib/supabase';
-import { ShieldAlert, AlertTriangle, CheckCircle2, Phone, Search, RefreshCw, Activity, Mail, Target, ArrowRight, XCircle } from 'lucide-react';
+import { 
+    ShieldAlert, AlertTriangle, CheckCircle2, Phone, Search, RefreshCw, 
+    Activity, Mail, Target, ArrowRight, Zap, Cpu, Sparkles, 
+    History, TrendingDown, MessageSquareMore, Layers
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function InternalAI() {
     const navigate = useNavigate();
     const { trainFromHistory, getAIChurnRisk, isTrained } = useInternalAI();
+    
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [analyzing, setAnalyzing] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [logs, setLogs] = useState([]);
+    const [filter, setFilter] = useState('riesgo'); // 'riesgo', 'todos'
 
-    useEffect(() => {
-        fetchTopClients();
-    }, []);
+    const addLog = (msg) => {
+        setLogs(prev => [msg, ...prev].slice(0, 4));
+    };
 
-    useEffect(() => {
-        if (isTrained && clients.length > 0 && !clients[0].prob) {
-            analyzeClients();
-        }
-    }, [isTrained, clients]);
-
-    const fetchTopClients = async () => {
+    const fetchAllClients = useCallback(async () => {
         setLoading(true);
-        // Traemos más clientes para que el radar tenga sentido
-        const { data, error } = await supabase
-            .from('empresa_cliente')
-            .select('cliente_id, ultima_actividad, created_at, estado, notas, clientes(id, nombre, telefono, mail)')
-            .limit(30);
+        addLog("Extrayendo base de datos completa...");
         
-        if (!error && data) {
-            const ids = data.map(d => d.cliente_id);
-            const { data: actData } = await supabase
-                .from('actividades')
-                .select('cliente_id, fecha')
-                .in('cliente_id', ids)
-                .order('fecha', { ascending: false });
+        let allData = [];
+        let from = 0;
+        let to = 999;
+        let hasMore = true;
 
-            const flattened = data.map(item => ({
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('empresa_cliente')
+                .select('cliente_id, ultima_actividad, created_at, estado, notas, clientes(id, nombre, telefono, mail)')
+                .order('ultima_actividad', { ascending: false })
+                .range(from, to);
+
+            if (error || !data || data.length === 0) {
+                hasMore = false;
+            } else {
+                allData = [...allData, ...data];
+                from += 1000;
+                to += 1000;
+                if (data.length < 1000) hasMore = false;
+            }
+        }
+        
+        if (allData.length > 0) {
+            const flattened = allData.map(item => ({
                 id: item.clientes?.id,
                 nombre: item.clientes?.nombre || 'Sin Nombre',
                 telefono: item.clientes?.telefono,
@@ -47,270 +62,290 @@ export default function InternalAI() {
                 created_at: item.created_at,
                 estado: item.estado,
                 notas: item.notas,
-                history: actData?.filter(a => a.cliente_id === item.cliente_id) || []
+                riskLevel: 'pendiente',
+                prob: 0,
+                history: []
             }));
             setClients(flattened);
+            addLog(`Base de datos cargada: ${flattened.length} clientes.`);
         }
         setLoading(false);
-    };
+    }, []);
 
-    const handleAnalyze = async () => {
+    useEffect(() => {
+        fetchAllClients();
+        sentimentAnalyzer.warmup();
+    }, [fetchAllClients]);
+
+    const handleStartRadar = async () => {
         setAnalyzing(true);
-        await trainFromHistory();
-        setAnalyzing(false);
-        analyzeClients();
-    };
-
-    const analyzeClients = () => {
-        const analyzed = clients.map(c => {
-            // Pasamos el historial real de actividades a la función de riesgo
-            const prob = getAIChurnRisk(c, c.history);
-            let riskLevel = 'bajo';
-            if (prob > 0.7) riskLevel = 'alto';
-            else if (prob > 0.4) riskLevel = 'medio';
-            
-            return { ...c, prob, riskLevel };
-        });
+        setProgress(0);
+        addLog("Iniciando Red Neuronal Profunda...");
         
-        // Ordenamos para que los de riesgo alto salgan primero
-        analyzed.sort((a, b) => (b.prob || 0) - (a.prob || 0));
-        setClients(analyzed);
-    };
+        await trainFromHistory();
+        
+        const total = clients.length;
+        const batchSize = 10;
+        const analyzedResults = [...clients];
 
-    const atRiskClients = clients.filter(c => c.riskLevel === 'alto' || c.riskLevel === 'medio');
-    const safeClients = clients.filter(c => c.riskLevel === 'bajo');
+        for (let i = 0; i < total; i += batchSize) {
+            const batch = analyzedResults.slice(i, i + batchSize);
+            
+            const promises = batch.map(async (c, idx) => {
+                const result = await getAIChurnRisk(c, []); // En esta versión simplificamos historia para velocidad masiva
+                if (!result) return c;
 
-    // Animaciones
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 }
+                const { probability: prob, sentiment } = result;
+                let riskLevel = 'bajo';
+                if (prob > 0.75) riskLevel = 'alto';
+                else if (prob > 0.45) riskLevel = 'medio';
+
+                return { ...c, prob, riskLevel, sentiment };
+            });
+
+            const results = await Promise.all(promises);
+            
+            // Actualizamos el array principal
+            for (let j = 0; j < results.length; j++) {
+                analyzedResults[i + j] = results[j];
+            }
+
+            setProgress(Math.round(((i + batchSize) / total) * 100));
+            if (i % 30 === 0) addLog(`Procesados ${i + results.length} de ${total} clientes...`);
         }
+
+        addLog("Radar completado con éxito.");
+        analyzedResults.sort((a, b) => (b.prob || 0) - (a.prob || 0));
+        setClients(analyzedResults);
+        setAnalyzing(false);
     };
-    
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 }
-    };
+
+    const stats = useMemo(() => {
+        const alto = clients.filter(c => c.riskLevel === 'alto').length;
+        const medio = clients.filter(c => c.riskLevel === 'medio').length;
+        return { alto, medio, total: clients.length };
+    }, [clients]);
+
+    const displayClients = useMemo(() => {
+        if (filter === 'riesgo') return clients.filter(c => c.riskLevel === 'alto' || c.riskLevel === 'medio');
+        return clients;
+    }, [clients, filter]);
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a] p-4 md:p-8">
-            <motion.div 
-                initial="hidden"
-                animate="visible"
-                variants={containerVariants}
-                className="max-w-6xl mx-auto space-y-8"
-            >
-                
-                {/* ── HERO HEADER PREMIUM ──────────────────────────── */}
-                <motion.header variants={itemVariants} className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-12 text-white shadow-2xl">
-                    {/* Efectos de fondo */}
-                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-blue-500/30 to-violet-500/30 rounded-full -mr-48 -mt-48 blur-3xl" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/20 rounded-full -ml-24 -mb-24 blur-3xl" />
-                    
-                    <div className="relative z-10 flex flex-col lg:flex-row justify-between items-center gap-10">
-                        <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase mb-6 border border-white/10">
-                                <Target size={14} className="text-emerald-400" />
-                                Inteligencia Predictiva
-                            </div>
-                            <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4 leading-tight">
-                                Radar de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Retención</span>
-                            </h1>
-                            <p className="text-slate-300 text-lg max-w-xl font-medium leading-relaxed mx-auto lg:mx-0">
-                                La IA analiza silenciosamente el comportamiento de tu cartera para avisarte quién necesita atención inmediata antes de que deje de comprarte.
-                            </p>
-                        </div>
+        <div className="min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 transition-colors duration-500">
+            
+            {/* RADAR BACKGROUND EFFECT */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-indigo-500/10 via-transparent to-transparent blur-[120px] rounded-full" />
+            </div>
 
-                        <div className="flex flex-col items-center gap-4 shrink-0">
-                            <div className="relative group">
-                                <div className={`absolute -inset-1 rounded-2xl blur-lg opacity-70 group-hover:opacity-100 transition duration-500 ${analyzing ? 'bg-blue-500' : isTrained ? 'bg-emerald-500' : 'bg-violet-500'}`}></div>
-                                <button 
-                                    onClick={handleAnalyze}
-                                    disabled={analyzing}
-                                    className={`relative flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-black text-lg transition-all shadow-xl w-full sm:w-auto ${
-                                        analyzing 
-                                        ? 'bg-slate-800 text-slate-400 cursor-not-allowed' 
-                                        : 'bg-white text-slate-900 hover:scale-[1.02]'
-                                    }`}
-                                >
-                                    <RefreshCw className={analyzing ? 'animate-spin text-blue-500' : isTrained ? 'text-emerald-500' : 'text-violet-500'} size={24} />
-                                    {analyzing ? 'ANALIZANDO PATRONES...' : isTrained ? 'ACTUALIZAR RADAR' : 'ENCENDER RADAR AHORA'}
-                                </button>
+            <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
+                
+                {/* HEADER MINIMALISTA & POTENTE */}
+                <header className="flex flex-col lg:flex-row items-center justify-between gap-8 pt-8">
+                    <div className="space-y-4 text-center lg:text-left">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/20">
+                            <Cpu size={14} className="text-indigo-500" />
+                            <span className="text-[10px] font-black tracking-[0.2em] uppercase">Intelligence Engine v3</span>
+                        </div>
+                        <h1 className="text-5xl md:text-8xl font-black tracking-tighter leading-none">
+                            RADAR<span className="text-indigo-500">.</span>
+                        </h1>
+                        <p className="text-slate-500 dark:text-slate-400 text-lg font-medium max-w-xl">
+                            Escaneo profundo de {stats.total} clientes en tiempo real.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-6">
+                        <button 
+                            onClick={handleStartRadar}
+                            disabled={analyzing}
+                            className={`group relative h-24 w-64 rounded-2xl overflow-hidden transition-all active:scale-95 shadow-2xl ${
+                                analyzing ? 'bg-slate-800' : 'bg-slate-900 dark:bg-white'
+                            }`}
+                        >
+                            <div className="relative z-10 flex items-center justify-center gap-3 text-white dark:text-slate-900">
+                                {analyzing ? (
+                                    <>
+                                        <RefreshCw size={20} className="animate-spin" />
+                                        <span className="text-sm font-black uppercase tracking-widest">{progress}% ANALIZANDO</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Zap size={20} fill="currentColor" />
+                                        <span className="text-sm font-black uppercase tracking-widest">{isTrained ? 'RE-ESCANEAR TODO' : 'INICIAR RADAR'}</span>
+                                    </>
+                                )}
                             </div>
-                            <span className="text-slate-400 text-xs font-bold flex items-center gap-2">
-                                <Activity size={14} /> 100% Privado. Los datos no salen del CRM.
-                            </span>
+                            {analyzing && (
+                                <motion.div 
+                                    className="absolute inset-0 bg-indigo-600 origin-left"
+                                    initial={{ scaleX: 0 }}
+                                    animate={{ scaleX: progress / 100 }}
+                                />
+                            )}
+                        </button>
+                        
+                        <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span className="flex items-center gap-1.5"><Layers size={12} /> Local Processing</span>
+                            <span className="flex items-center gap-1.5"><Target size={12} /> {stats.total} Nodes</span>
                         </div>
                     </div>
-                </motion.header>
+                </header>
 
-                {/* ── ESTADO INICIAL (RADAR APAGADO) ────────────────── */}
-                <AnimatePresence mode="wait">
-                    {!isTrained && !analyzing && (
+                {/* CONSOLA DE LOGS ESTILO HUD */}
+                <AnimatePresence>
+                    {logs.length > 0 && (
                         <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-slate-200 dark:border-slate-700/50 rounded-[2.5rem] p-16 text-center shadow-lg relative overflow-hidden"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="max-w-2xl mx-auto lg:mx-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-4 font-mono text-[10px] text-slate-500"
                         >
-                            {/* Animación CSS de Radar */}
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-slate-200 dark:border-slate-700 rounded-full opacity-20" />
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-slate-200 dark:border-slate-700 rounded-full opacity-40" />
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-slate-200 dark:border-slate-700 rounded-full opacity-60" />
-                            
-                            <div className="relative z-10 flex flex-col items-center">
-                                <div className="w-24 h-24 bg-slate-100 dark:bg-slate-700/50 rounded-full flex items-center justify-center mb-6">
-                                    <Search size={40} className="text-slate-400" />
-                                </div>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3">El Radar está inactivo</h3>
-                                <p className="text-slate-500 dark:text-slate-400 max-w-md">Enciende el radar para descubrir oportunidades ocultas y evitar la pérdida de clientes en tu base de datos actual.</p>
+                            <div className="space-y-1">
+                                {logs.map((log, i) => (
+                                    <div key={i} className="flex gap-4">
+                                        <span className="opacity-50"># {i}</span>
+                                        <span className={log.includes('completado') ? 'text-emerald-500 font-bold' : ''}>{log}</span>
+                                    </div>
+                                ))}
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* ── RESULTADOS DEL ANÁLISIS ────────────────── */}
-                {isTrained && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-8"
-                    >
-                        {/* KPI CARDS CON GLASSMORPHISM */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <motion.div variants={itemVariants} className="relative overflow-hidden bg-white dark:bg-slate-800 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-700 shadow-lg group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl group-hover:bg-rose-500/20 transition-all" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                                            <ShieldAlert size={24} />
-                                        </div>
-                                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Requieren Rescate</h2>
-                                    </div>
-                                    <div className="flex items-baseline gap-3 mb-2">
-                                        <span className="text-5xl font-black text-slate-900 dark:text-white">{atRiskClients.length}</span>
-                                        <span className="text-slate-500 font-medium text-lg">clientes</span>
-                                    </div>
-                                    <p className="text-slate-500 dark:text-slate-400 text-sm">Alta inactividad detectada. Contáctalos para evitar que se vayan a la competencia.</p>
-                                </div>
-                            </motion.div>
+                {/* DASHBOARD DE RESULTADOS */}
+                <main className="space-y-8">
+                    {/* KPI SUMMARY BAR */}
+                    {isTrained && (
+                        <div className="flex flex-wrap gap-4 items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-8">
+                            <div className="flex items-center gap-4">
+                                <button 
+                                    onClick={() => setFilter('riesgo')}
+                                    className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                                        filter === 'riesgo' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                    }`}
+                                >
+                                    Riesgo ({stats.alto + stats.medio})
+                                </button>
+                                <button 
+                                    onClick={() => setFilter('todos')}
+                                    className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                                        filter === 'todos' ? 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                    }`}
+                                >
+                                    Todos ({stats.total})
+                                </button>
+                            </div>
 
-                            <motion.div variants={itemVariants} className="relative overflow-hidden bg-white dark:bg-slate-800 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-700 shadow-lg group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                            <CheckCircle2 size={24} />
-                                        </div>
-                                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Base Saludable</h2>
-                                    </div>
-                                    <div className="flex items-baseline gap-3 mb-2">
-                                        <span className="text-5xl font-black text-slate-900 dark:text-white">{safeClients.length}</span>
-                                        <span className="text-slate-500 font-medium text-lg">clientes</span>
-                                    </div>
-                                    <p className="text-slate-500 dark:text-slate-400 text-sm">Mantienen un comportamiento de interacción y compra dentro de lo esperado.</p>
+                            <div className="flex gap-8">
+                                <div className="text-center">
+                                    <div className="text-[10px] font-black text-slate-400 uppercase mb-1">Riesgo Crítico</div>
+                                    <div className="text-2xl font-black text-rose-500">{stats.alto}</div>
                                 </div>
-                            </motion.div>
+                                <div className="text-center">
+                                    <div className="text-[10px] font-black text-slate-400 uppercase mb-1">En Seguimiento</div>
+                                    <div className="text-2xl font-black text-amber-500">{stats.medio}</div>
+                                </div>
+                            </div>
                         </div>
+                    )}
 
-                        {/* LISTA DE ACCIÓN: TARJETAS VISUALES */}
-                        {atRiskClients.length > 0 && (
-                            <motion.div variants={itemVariants} className="pt-4">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-                                        <Phone className="text-violet-500" />
-                                        Tu plan de llamadas para hoy
-                                    </h3>
-                                    <span className="bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
-                                        {atRiskClients.length} urgentes
-                                    </span>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {atRiskClients.map((cliente, index) => {
-                                        const isHigh = cliente.riskLevel === 'alto';
-                                        const now = new Date();
-                                        const lastDate = cliente.ultima_actividad || cliente.created_at;
-                                        const diasInactivo = lastDate ? Math.floor((now.getTime() - new Date(lastDate).getTime()) / 86400000) : '?';
+                    {/* GRID DE CLIENTES */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <AnimatePresence>
+                            {displayClients.map((cliente, i) => (
+                                <motion.div
+                                    key={cliente.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: (i % 12) * 0.05 }}
+                                    className="group relative bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-[2rem] p-7 border border-slate-200 dark:border-slate-800 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-2xl overflow-hidden"
+                                >
+                                    {/* HEATMAP INDICATOR */}
+                                    <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] opacity-10 transition-opacity group-hover:opacity-30 ${
+                                        cliente.riskLevel === 'alto' ? 'bg-rose-500' : 'bg-amber-500'
+                                    }`} />
 
-                                        return (
-                                            <motion.div 
-                                                key={cliente.id}
-                                                initial={{ opacity: 0, x: -20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: index * 0.1 }}
-                                                className={`bg-white dark:bg-slate-800 rounded-2xl p-6 border-2 transition-all hover:shadow-xl ${
-                                                    isHigh 
-                                                    ? 'border-rose-200 dark:border-rose-900/50 hover:border-rose-400' 
-                                                    : 'border-amber-200 dark:border-amber-900/50 hover:border-amber-400'
-                                                }`}
+                                    <div className="relative z-10 space-y-6">
+                                        <div className="flex justify-between items-start">
+                                            <div className="space-y-1">
+                                                <div className={`text-[10px] font-black uppercase tracking-tighter ${
+                                                    cliente.riskLevel === 'alto' ? 'text-rose-500' : 'text-amber-500'
+                                                }`}>
+                                                    {cliente.riskLevel === 'alto' ? 'Critical Alert' : 'Attention Needed'}
+                                                </div>
+                                                <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight uppercase line-clamp-1">{cliente.nombre}</h3>
+                                            </div>
+                                            <div className="text-2xl font-black text-slate-200 dark:text-slate-800">
+                                                {Math.round(cliente.prob * 100)}%
+                                            </div>
+                                        </div>
+
+                                        {/* VISUAL METRICS (SIN TEXTO PESADO) */}
+                                        <div className="flex gap-2">
+                                            <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                                <motion.div 
+                                                    className={`h-full ${cliente.riskLevel === 'alto' ? 'bg-rose-500' : 'bg-amber-500'}`}
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${cliente.prob * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase">
+                                                    <History size={10} /> Silence
+                                                </div>
+                                                <div className="text-sm font-bold">{Math.floor((new Date() - new Date(cliente.ultima_actividad || cliente.created_at)) / 86400000)} days</div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase">
+                                                    <MessageSquareMore size={10} /> Sentiment
+                                                </div>
+                                                <div className={`text-sm font-bold uppercase ${
+                                                    cliente.sentiment === 'NEGATIVO' ? 'text-rose-500' : 
+                                                    cliente.sentiment === 'POSITIVO' ? 'text-emerald-500' : 'text-slate-500'
+                                                }`}>
+                                                    {cliente.sentiment || 'Neutral'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* QUICK ACTIONS */}
+                                        <div className="flex items-center gap-3 pt-2">
+                                            <a 
+                                                href={`tel:${cliente.telefono}`}
+                                                className="flex-1 h-12 flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-lg"
                                             >
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div>
-                                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider mb-3 ${
-                                                            isHigh ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
-                                                        }`}>
-                                                            {isHigh ? <AlertTriangle size={12} /> : <Search size={12} />}
-                                                            {isHigh ? 'Riesgo Crítico' : 'Atención Requerida'}
-                                                        </div>
-                                                        <h4 className="text-xl font-bold text-slate-900 dark:text-white line-clamp-1">{cliente.nombre}</h4>
-                                                    </div>
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 shrink-0">
-                                                        {cliente.nombre[0]}
-                                                    </div>
-                                                </div>
+                                                <Phone size={14} /> Call Now
+                                            </a>
+                                            <button 
+                                                onClick={() => navigate('/clientes', { state: { nombre: cliente.nombre } })}
+                                                className="h-12 w-12 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-500 hover:text-white transition-all"
+                                            >
+                                                <ArrowRight size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
 
-                                                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 mb-6">
-                                                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                                                        <strong className="text-slate-900 dark:text-white">{diasInactivo} días</strong> de silencio. La IA detectó una interrupción en su patrón habitual. Sugerimos contacto reactivador.
-                                                    </p>
-                                                </div>
+                    {/* EMPTY STATE */}
+                    {isTrained && displayClients.length === 0 && (
+                        <div className="py-20 text-center">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-black uppercase mb-4">
+                                <CheckCircle2 size={14} /> Base Segura
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white">No hay riesgos detectados</h3>
+                            <p className="text-slate-500 dark:text-slate-400 mt-2">Todos tus clientes están operando dentro de sus rangos normales.</p>
+                        </div>
+                    )}
+                </main>
 
-                                                <div className="flex flex-wrap gap-2">
-                                                    {cliente.telefono ? (
-                                                        <a href={`tel:${cliente.telefono}`} className="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 dark:text-slate-900 text-white rounded-xl font-bold transition-colors shadow-sm">
-                                                            <Phone size={18} /> Llamar
-                                                        </a>
-                                                    ) : (
-                                                        <button disabled className="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl font-bold cursor-not-allowed">
-                                                            <Phone size={18} /> Sin Teléfono
-                                                        </button>
-                                                    )}
-                                                    
-                                                    {cliente.mail && (
-                                                        <a href={`mailto:${cliente.mail}`} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-colors">
-                                                            <Mail size={18} />
-                                                        </a>
-                                                    )}
-                                                    
-                                                    <button 
-                                                        onClick={() => navigate('/clientes', { state: { nombre: cliente.nombre } })}
-                                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 rounded-xl font-bold transition-colors ml-auto group"
-                                                    >
-                                                        Ficha <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                                                    </button>
-                                                </div>
-                                            </motion.div>
-                                        );
-                                    })}
-                                </div>
-                            </motion.div>
-                        )}
-                        
-                        {atRiskClients.length === 0 && (
-                            <motion.div variants={itemVariants} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/50 rounded-[2rem] p-12 text-center">
-                                <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500">
-                                    <CheckCircle2 size={40} />
-                                </div>
-                                <h3 className="text-2xl font-black text-emerald-900 dark:text-emerald-100 mb-2">¡Todo bajo control!</h3>
-                                <p className="text-emerald-700 dark:text-emerald-300">La IA no ha detectado ningún cliente con riesgo alto de abandono en este momento.</p>
-                            </motion.div>
-                        )}
-                    </motion.div>
-                )}
-            </motion.div>
+            </div>
         </div>
     );
 }

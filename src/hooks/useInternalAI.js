@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import NeuralNetwork, { normalizeData } from '../lib/ai/NeuralEngine';
+import { sentimentAnalyzer } from '../lib/ai/SentimentAnalyzer';
 import { supabase } from '../lib/supabase';
 
 /**
@@ -7,7 +8,8 @@ import { supabase } from '../lib/supabase';
  * Hook para gestionar el entrenamiento y predicción de la IA local.
  */
 export function useInternalAI() {
-    const [brain] = useState(() => new NeuralNetwork(3, 4, 1));
+    // 4 entradas: diasInactivo, frecuencia, largoNotas, sentimiento
+    const [brain] = useState(() => new NeuralNetwork(4, 5, 1));
     const [isTrained, setIsTrained] = useState(false);
 
     // Cargar modelo guardado al iniciar
@@ -60,23 +62,29 @@ export function useInternalAI() {
 
         // 3. Entrenamiento (1000 epochs)
         for (let i = 0; i < 1000; i++) {
-            ecData.forEach(c => {
+            ecData.forEach(async c => {
                 const clientActs = actMap[c.cliente_id] || [];
                 
-                // Métrica 1: Días de inactividad real (basado en última actividad o creación)
+                // Métrica 1: Días de inactividad real
                 const lastDate = clientActs.length > 0 ? clientActs[0] : (c.ultima_actividad ? new Date(c.ultima_actividad) : new Date(c.created_at));
                 const diasInactivo = Math.floor((now.getTime() - lastDate.getTime()) / 86400000);
                 
-                // Métrica 2: Frecuencia Real (cuántas interacciones tuvo en los últimos 30 días)
+                // Métrica 2: Frecuencia Real
                 const freq30 = clientActs.filter(d => d >= thirtyDaysAgo).length;
                 
                 // Métrica 3: Calidad de historial (basado en notas)
                 const notesLength = (c.notas || '').length;
 
+                // Métrica 4: Sentimiento (Análisis local NLP)
+                // En el entrenamiento masivo usamos una aproximación rápida o lo pre-procesamos
+                // Para simplificar aquí, si el estado es 'perdio' asumimos sentimiento negativo
+                const sentimentValue = c.estado?.toLowerCase().includes('perdio') ? 0 : 0.5;
+
                 const inputs = normalizeData({
-                    diasInactivo: Math.min(diasInactivo, 180), // Capeamos a 6 meses
+                    diasInactivo: Math.min(diasInactivo, 180),
                     frecuenciaMensual: freq30,
-                    largoPromedioNotas: notesLength
+                    largoPromedioNotas: notesLength,
+                    sentiment: sentimentValue
                 });
 
                 // Target: 1 si el cliente está perdido o no tiene actividad en > 60 días
@@ -92,28 +100,38 @@ export function useInternalAI() {
         console.log('[AI] Entrenamiento con datos históricos reales completado.');
     }, [brain]);
 
-    // Función para obtener una predicción de riesgo basada en historial REAL
-    const getAIChurnRisk = useCallback((clientData, history = []) => {
+    // Función para obtener una predicción de riesgo basada en historial REAL y SENTIMIENTO
+    const getAIChurnRisk = useCallback(async (clientData, history = []) => {
         if (!isTrained) return null;
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
         
-        // Métrica 1: Días de inactividad real (basado en el historial proporcionado)
+        // Métrica 1: Días de inactividad real
         const lastDate = history.length > 0 ? new Date(history[0].fecha) : (clientData.ultima_actividad ? new Date(clientData.ultima_actividad) : new Date(clientData.created_at));
         const diasInactivo = Math.floor((now.getTime() - lastDate.getTime()) / 86400000);
 
-        // Métrica 2: Frecuencia Real (interacciones en los últimos 30 días)
+        // Métrica 2: Frecuencia Real
         const freq30 = history.filter(a => new Date(a.fecha) >= thirtyDaysAgo).length;
+
+        // Métrica 3: Análisis de Sentimiento Real (Transformers.js)
+        const sentimentResult = await sentimentAnalyzer.analyze(clientData.notas);
+        let sentimentScore = 0.5; // Neutral
+        if (sentimentResult.label === 'NEGATIVO') sentimentScore = 0;
+        else if (sentimentResult.label === 'POSITIVO') sentimentScore = 1;
 
         const inputs = normalizeData({
             diasInactivo: Math.min(diasInactivo, 180),
             frecuenciaMensual: freq30,
-            largoPromedioNotas: (clientData.notas || '').length
+            largoPromedioNotas: (clientData.notas || '').length,
+            sentiment: sentimentScore
         });
 
         const [probability] = brain.predict(inputs);
-        return probability;
+        return {
+            probability,
+            sentiment: sentimentResult.label
+        };
     }, [brain, isTrained]);
 
     return {
