@@ -99,7 +99,7 @@ export const ClienteCard = memo<Props>(({
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {c.estado && (
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--border)' }}>
                         {c.estado}
                     </span>
                 )}
@@ -182,7 +182,7 @@ export const ClienteCard = memo<Props>(({
                         <button onClick={() => onRegistrarVisita(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>
                             🏪 Visita {visitCount > 0 && <span>({visitCount})</span>}
                         </button>
-                        <button onClick={() => onRegistrarLlamada(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(139, 92, 246, 0.35)', background: 'rgba(139, 92, 246, 0.08)', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
+                        <button onClick={() => onRegistrarLlamada(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-active)', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
                             📞 Llamada {callCount > 0 && <span>({callCount})</span>}
                         </button>
                         <Button variant="secondary" onClick={() => onOpenActivity(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>

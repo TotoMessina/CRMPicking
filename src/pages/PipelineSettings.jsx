@@ -44,7 +44,7 @@ export default function PipelineSettings() {
         const newItem = {
             id: `temp-${Date.now()}`,
             label: activeTab === 'states' ? `Nueva Etapa ${newOrder}` : `Nueva Situación ${newOrder}`,
-            color: activeTab === 'states' ? '#8b5cf6' : '#94a3b8',
+            color: activeTab === 'states' ? '#0c0c0c' : '#94a3b8',
             orden: newOrder,
             is_default: items.length === 0,
             estados_visibles: [],

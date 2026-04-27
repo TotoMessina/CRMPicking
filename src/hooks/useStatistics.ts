@@ -10,12 +10,12 @@ const STATUS_COLORS: Record<string, string> = {
     '2 - Local Visitado No Activo': '#ef4444',
     '3 - Primer Ingreso': '#f59e0b',
     [ESTADO_LOCAL_CREADO]: '#10b981',
-    [ESTADO_ACTIVO]: '#8b5cf6',
+    [ESTADO_ACTIVO]: '#0c0c0c',
     '6 - Local No Interesado': '#ef4444',
     'Sin estado': '#cbd5e1'
 };
 
-const DOUGHNUT_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#a78bfa', '#ec4899', '#6366f1'];
+const DOUGHNUT_COLORS = ['#0c0c0c', '#10b981', '#f59e0b', '#262626', '#ef4444', '#64748b', '#ec4899', '#334155'];
 
 export interface KpiState {
     totalClientesActivos: number;
@@ -328,7 +328,7 @@ export const useStatistics = () => {
             setChartsData({
                 crecimientoDiario: {
                     labels: buckets.map(b => b.label),
-                    datasets: [{ label: 'Nuevos Locales', data: buckets.map(b => creationsMap.get(b.key) || 0), backgroundColor: '#4f46e5', borderRadius: 4 }]
+                    datasets: [{ label: 'Nuevos Locales', data: buckets.map(b => creationsMap.get(b.key) || 0), backgroundColor: '#0c0c0c', borderRadius: 4 }]
                 },
                 consumidoresEvolucion: {
                     labels: buckets.map(b => b.label),
@@ -344,7 +344,7 @@ export const useStatistics = () => {
                 },
                 activadoresConversion: statBreakdown.length > 0 ? {
                     labels: statBreakdown.map(s => s.name),
-                    datasets: [{ label: '% de Efectividad (Top)', data: statBreakdown.map(s => s.rate), backgroundColor: '#8b5cf6', borderRadius: 4 }]
+                    datasets: [{ label: '% de Efectividad (Top)', data: statBreakdown.map(s => s.rate), backgroundColor: '#0c0c0c', borderRadius: 4 }]
                 } : null,
                 activadoresDia: null,
                 rubros: {

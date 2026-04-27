@@ -128,7 +128,7 @@ export default function Dashboard() {
                     datasets: [{
                         label: 'Nuevos Locales',
                         data: growthCounts,
-                        backgroundColor: '#8b5cf6',
+                        backgroundColor: '#0c0c0c',
                         borderRadius: 8,
                         barThickness: 12
                     }]

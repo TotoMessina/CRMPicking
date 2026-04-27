@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">crm-react</string>
+    <string name="title_activity_main">crm-react</string>
+    <string name="package_name">com.crmpickingup.app</string>
+    <string name="custom_url_scheme">com.crmpickingup.app</string>
+</resources>

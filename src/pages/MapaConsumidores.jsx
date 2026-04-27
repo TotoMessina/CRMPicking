@@ -17,7 +17,7 @@ import { MapLegend } from '../components/map/MapLegend';
 import { ConsumidorModal } from '../components/ui/ConsumidorModal';
 
 const ESTADO_COLOR = {
-    "Lead": "#6366f1",
+    "Lead": "#0c0c0c",
     "Contactado": "#3b82f6",
     "Interesado": "#f59e0b",
     "Cliente": "#10b981",

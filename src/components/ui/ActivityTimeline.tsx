@@ -14,8 +14,8 @@ interface Props {
 const getActivityConfig = (description: string) => {
     const desc = description.toLowerCase();
     if (desc.includes('visita realizada')) return { icon: Store, color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
-    if (desc.includes('cambio de estado')) return { icon: RefreshCcw, color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' };
-    if (desc.includes('edición') || desc.includes('creado')) return { icon: Edit2, color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' };
+    if (desc.includes('cambio de estado')) return { icon: RefreshCcw, color: '#0c0c0c', bg: 'var(--accent-soft)' };
+    if (desc.includes('edición') || desc.includes('creado')) return { icon: Edit2, color: '#333', bg: 'rgba(0, 0, 0, 0.05)' };
     if (desc.includes('próximo contacto')) return { icon: Calendar, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' };
     if (desc.includes('error') || desc.includes('fallo')) return { icon: AlertCircle, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
     return { icon: Clock, color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)' };

@@ -226,7 +226,7 @@ export default function RutaDiaria() {
                                         <Polyline
                                             positions={polylinePoints}
                                             pathOptions={{
-                                                color: '#8b5cf6',
+                                                color: '#0c0c0c',
                                                 weight: 3,
                                                 opacity: 0.7,
                                                 dashArray: '8, 6'

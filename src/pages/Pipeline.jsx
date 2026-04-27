@@ -204,7 +204,7 @@ export default function Pipeline() {
                                 <span style={{ fontSize: '0.65rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px', background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)' }}>🔥 HOT</span>
                             )}
                             {client.venta_digital && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 10px rgba(139, 92, 246, 0.2)' }}>🌐 Digital</span>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--accent) 0%, #333 100%)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>🌐 Digital</span>
                             )}
                         </div>
                         {client.notas && (

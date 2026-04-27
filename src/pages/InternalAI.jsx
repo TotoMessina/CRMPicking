@@ -132,11 +132,11 @@ export default function InternalAI() {
     }, [clients, filter]);
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 transition-colors duration-500">
+        <div className="min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans selection:bg-slate-900/30 transition-colors duration-500">
             
             {/* RADAR BACKGROUND EFFECT */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-indigo-500/10 via-transparent to-transparent blur-[120px] rounded-full" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-slate-900/10 via-transparent to-transparent blur-[120px] rounded-full" />
             </div>
 
             <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
@@ -144,12 +144,12 @@ export default function InternalAI() {
                 {/* HEADER MINIMALISTA & POTENTE */}
                 <header className="flex flex-col lg:flex-row items-center justify-between gap-8 pt-8">
                     <div className="space-y-4 text-center lg:text-left">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/20">
-                            <Cpu size={14} className="text-indigo-500" />
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/10 dark:bg-slate-900/20 border border-slate-900/20">
+                            <Cpu size={14} className="text-slate-900 dark:text-white" />
                             <span className="text-[10px] font-black tracking-[0.2em] uppercase">Intelligence Engine v3</span>
                         </div>
                         <h1 className="text-5xl md:text-8xl font-black tracking-tighter leading-none">
-                            RADAR<span className="text-indigo-500">.</span>
+                            RADAR<span className="text-slate-900 dark:text-white">.</span>
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-lg font-medium max-w-xl">
                             Escaneo profundo de {stats.total} clientes en tiempo real.
@@ -179,7 +179,7 @@ export default function InternalAI() {
                             </div>
                             {analyzing && (
                                 <motion.div 
-                                    className="absolute inset-0 bg-indigo-600 origin-left"
+                                    className="absolute inset-0 bg-[#0c0c0c] origin-left"
                                     initial={{ scaleX: 0 }}
                                     animate={{ scaleX: progress / 100 }}
                                 />
@@ -259,7 +259,7 @@ export default function InternalAI() {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: (i % 12) * 0.05 }}
-                                    className="group relative bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-[2rem] p-7 border border-slate-200 dark:border-slate-800 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-2xl overflow-hidden"
+                                    className="group relative bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-[2rem] p-7 border border-slate-200 dark:border-slate-800 hover:border-slate-900/50 dark:hover:border-white/50 transition-all shadow-sm hover:shadow-2xl overflow-hidden"
                                 >
                                     {/* HEATMAP INDICATOR */}
                                     <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] opacity-10 transition-opacity group-hover:opacity-30 ${
@@ -316,13 +316,13 @@ export default function InternalAI() {
                                         <div className="flex items-center gap-3 pt-2">
                                             <a 
                                                 href={`tel:${cliente.telefono}`}
-                                                className="flex-1 h-12 flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-lg"
+                                                className="flex-1 h-12 flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-lg"
                                             >
                                                 <Phone size={14} /> Call Now
                                             </a>
                                             <button 
                                                 onClick={() => navigate('/clientes', { state: { nombre: cliente.nombre } })}
-                                                className="h-12 w-12 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-500 hover:text-white transition-all"
+                                                className="h-12 w-12 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-900 dark:hover:bg-white hover:text-white dark:hover:text-slate-900 transition-all"
                                             >
                                                 <ArrowRight size={18} />
                                             </button>

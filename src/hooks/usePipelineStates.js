@@ -27,7 +27,7 @@ export function usePipelineStates(empresaId) {
         { id: ESTADO_RELEVADO,           label: 'Relevado',          color: '#64748b', orden: 1, is_default: true },
         { id: ESTADO_VISITADO_NO_ACTIVO,  label: 'Visitado (No Act)', color: '#ef4444', orden: 2, is_default: false },
         { id: ESTADO_PRIMER_INGRESO,     label: 'Primer Ingreso',    color: '#f59e0b', orden: 3, is_default: false },
-        { id: ESTADO_LOCAL_CREADO,       label: 'Creado',            color: '#8b5cf6', orden: 4, is_default: false },
+        { id: ESTADO_LOCAL_CREADO,       label: 'Creado',            color: '#0c0c0c', orden: 4, is_default: false },
         { id: ESTADO_ACTIVO,             label: 'Visitado (Activo)', color: '#10b981', orden: 5, is_default: false },
         { id: ESTADO_NO_INTERESADO,      label: 'No Interesado',     color: '#ef4444', orden: 6, is_default: false }
     ];

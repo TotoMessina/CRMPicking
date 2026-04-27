@@ -43,7 +43,7 @@ export function UpdateNotifier() {
                             updateServiceWorker(true);
                         }}
                         style={{
-                            background: 'var(--accent, #6366f1)',
+                            background: 'var(--accent, #0c0c0c)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '8px',

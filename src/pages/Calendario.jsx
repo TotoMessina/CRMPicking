@@ -13,7 +13,7 @@ import esLocale from '@fullcalendar/core/locales/es';
 import { EventoCalendarioModal } from '../components/ui/EventoCalendarioModal';
 
 const THEME_COLORS = {
-    contactoLight: "#8b5cf6",
+    contactoLight: "#0c0c0c",
     contactoDark: "#00E5FF",
     internoDefault: "#FF2BD6"
 };

@@ -86,7 +86,7 @@ export function LiveOperationStream() {
                     title = "Cambio de Estado";
                     desc = `Local pasó a: ${newStatus}`;
                     icon = <TrendingUp size={16} />;
-                    color = "#8b5cf6";
+                    color = "#0c0c0c";
                 } else {
                     title = "Datos Actualizados";
                     desc = "Se editaron detalles del local.";

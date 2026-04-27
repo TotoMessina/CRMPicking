@@ -79,7 +79,7 @@ const SIZE_OPTIONS = [
     { value: 'third', label: 'Tercio', sub: '4 cols', icon: <LayoutGrid size={14} /> },
 ];
 
-const COLOR_OPTIONS = ['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#64748b'];
+const COLOR_OPTIONS = ['#0c0c0c','#10b981','#f59e0b','#ef4444','#3b82f6','#1a1a1a','#ec4899','#14b8a6','#f97316','#64748b'];
 
 const BLANK_WIDGET: CustomWidgetConfig = {
     title: '',
@@ -89,7 +89,7 @@ const BLANK_WIDGET: CustomWidgetConfig = {
     group_by: '',
     filter_field: '',
     filter_value: '',
-    color: '#6366f1',
+    color: '#0c0c0c',
     metric: 'count',
     top_n: 10,
     sort_dir: 'desc',
@@ -540,10 +540,10 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                 callback={handleJoyrideCallback}
                 styles={{
                     options: {
-                        primaryColor: 'var(--accent, #8b5cf6)',
-                        textColor: '#4c1d95',
+                        primaryColor: 'var(--accent, #0c0c0c)',
+                        textColor: '#000',
                         backgroundColor: '#ffffff',
-                        overlayColor: 'rgba(15, 23, 42, 0.65)',
+                        overlayColor: 'rgba(0, 0, 0, 0.65)',
                         arrowColor: '#ffffff',
                         zIndex: 10000,
                     },
@@ -551,8 +551,8 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                         borderRadius: '20px',
                         padding: '16px',
                         backgroundColor: '#ffffff',
-                        border: '2px solid var(--accent, #8b5cf6)',
-                        boxShadow: '0 20px 40px rgba(139, 92, 246, 0.15)',
+                        border: '2px solid var(--accent, #0c0c0c)',
+                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
                         textAlign: 'left',
                         fontFamily: "'Outfit', sans-serif",
                     },
@@ -564,15 +564,15 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                         padding: '12px 24px',
                         fontWeight: 800,
                         fontSize: '0.85rem',
-                        backgroundColor: 'var(--accent, #8b5cf6)',
+                        backgroundColor: 'var(--accent, #0c0c0c)',
                         color: '#fff',
-                        boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.02em',
                     },
                     buttonBack: {
                         marginRight: '12px',
-                        color: 'var(--accent, #8b5cf6)',
+                        color: 'var(--accent, #0c0c0c)',
                         fontWeight: 600,
                         fontSize: '0.85rem',
                     },
@@ -603,15 +603,15 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '20px 22px',
-                    background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(79,70,229,0.04) 100%)',
-                    borderBottom: '1px solid rgba(99,102,241,0.15)',
+                    background: 'var(--accent-alpha)',
+                    borderBottom: '1px solid var(--border)',
                     flexShrink: 0,
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <div style={{
                             padding: '10px', borderRadius: '14px',
-                            background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                            boxShadow: '0 4px 12px rgba(99,102,241,0.4)',
+                            background: 'linear-gradient(135deg, #1a1a1a, #0c0c0c)',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                         }}>
                             <Layout size={18} color="#fff" />
                         </div>
@@ -643,8 +643,8 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                         <button
                             onClick={onClose}
                             style={{
-                                background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
-                                cursor: 'pointer', color: '#6366f1', borderRadius: '10px',
+                                background: 'var(--accent-alpha)', border: '1px solid var(--border)',
+                                cursor: 'pointer', color: 'var(--accent)', borderRadius: '10px',
                                 width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}
                         >
@@ -670,13 +670,13 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                 style={{
                                     flex: 1, padding: '10px 14px', border: 'none', cursor: 'pointer',
                                     borderRadius: '11px',
-                                    background: isActive ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'transparent',
+                                    background: isActive ? 'linear-gradient(135deg, #1a1a1a, #0c0c0c)' : 'transparent',
                                     color: isActive ? '#fff' : 'var(--text-muted)',
                                     fontWeight: isActive ? 700 : 500,
                                     fontSize: '0.82rem',
                                     transition: 'all 0.2s ease',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-                                    boxShadow: isActive ? '0 4px 12px rgba(99,102,241,0.3)' : 'none',
+                                    boxShadow: isActive ? '0 4px 12px rgba(0, 0, 0, 0.3)' : 'none',
                                 }}
                             >
                                 <span>{tab.icon}</span> {tab.label}
@@ -700,8 +700,8 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                        <Sparkles size={13} color="#6366f1" />
-                                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                        <Sparkles size={13} color="var(--accent)" />
+                                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                                             Vista Previa
                                         </span>
                                     </div>
@@ -754,8 +754,8 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                         <div key={w.id} title={def.label} style={{
                                                             flex, height: '36px',
                                                             borderRadius: '9px',
-                                                            background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(79,70,229,0.06) 100%)',
-                                                            border: '1px solid rgba(99,102,241,0.2)',
+                                                            background: 'var(--accent-alpha)',
+                                                            border: '1px solid var(--border)',
                                                             display: 'flex', alignItems: 'center',
                                                             gap: '6px', padding: '0 10px',
                                                             overflow: 'hidden', position: 'relative',
@@ -764,7 +764,7 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                             {span >= 6 && (
                                                                 <span style={{
                                                                     fontSize: '0.62rem', fontWeight: 600,
-                                                                    color: '#6366f1', opacity: 0.85,
+                                                                    color: 'var(--accent)', opacity: 0.85,
                                                                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                                                 }}>
                                                                     {def.label}
@@ -772,8 +772,8 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                             )}
                                                             <span style={{
                                                                 marginLeft: 'auto', fontSize: '0.55rem',
-                                                                background: 'rgba(99,102,241,0.15)',
-                                                                color: '#6366f1', fontWeight: 700,
+                                                                background: 'var(--accent-alpha)',
+                                                                color: 'var(--accent)', fontWeight: 700,
                                                                 padding: '2px 5px', borderRadius: '99px', flexShrink: 0,
                                                             }}>
                                                                 {sizeLabel(w.size || def.size)}

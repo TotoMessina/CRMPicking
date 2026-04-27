@@ -289,7 +289,7 @@ export default function Configuracion() {
     const deleteGrupoMutation = useDeleteGrupo();
 
     const [editingGrupo, setEditingGrupo] = useState(null);
-    const [grupoForm, setGrupoForm] = useState({ nombre: '', color: '#3b82f6' });
+    const [grupoForm, setGrupoForm] = useState({ nombre: '', color: '#0c0c0c' });
 
     const handleSaveGrupo = async (e) => {
         e.preventDefault();
@@ -303,7 +303,7 @@ export default function Configuracion() {
             }, {
                 onSuccess: () => {
                     setEditingGrupo(null);
-                    setGrupoForm({ nombre: '', color: '#3b82f6' });
+                    setGrupoForm({ nombre: '', color: '#0c0c0c' });
                 }
             });
         } else {
@@ -312,7 +312,7 @@ export default function Configuracion() {
                 ...grupoForm 
             }, {
                 onSuccess: () => {
-                    setGrupoForm({ nombre: '', color: '#3b82f6' });
+                    setGrupoForm({ nombre: '', color: '#0c0c0c' });
                 }
             });
         }
@@ -325,8 +325,8 @@ export default function Configuracion() {
     };
 
     const PRESET_COLORS = [
-        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
-        '#8b5cf6', '#ec4899', '#06b6d4', '#4b5563'
+        '#0c0c0c', '#ef4444', '#10b981', '#f59e0b', 
+        '#1a1a1a', '#ec4899', '#06b6d4', '#4b5563'
     ];
 
     return (
@@ -379,7 +379,7 @@ export default function Configuracion() {
                                     width: '90px',
                                     height: '90px',
                                     borderRadius: '20px',
-                                    background: displayedAvatar ? 'transparent' : 'linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%)',
+                                    background: displayedAvatar ? 'transparent' : 'linear-gradient(135deg, var(--accent) 0%, #333 100%)',
                                     display: 'grid',
                                     placeItems: 'center',
                                     fontSize: '2rem',
@@ -387,7 +387,7 @@ export default function Configuracion() {
                                     color: '#fff',
                                     cursor: 'pointer',
                                     overflow: 'hidden',
-                                    boxShadow: '0 6px 20px rgba(37, 99, 235, 0.25)',
+                                    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.25)',
                                     border: '2px solid var(--border)',
                                     transition: 'opacity 0.2s ease',
                                     opacity: uploadingAvatar ? 0.6 : 1,
@@ -699,7 +699,7 @@ export default function Configuracion() {
                 <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--accent)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
+                            <div style={{ background: 'var(--accent-soft)', color: 'var(--accent)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
                                 <Tag size={20} />
                             </div>
                             <div>
@@ -747,7 +747,7 @@ export default function Configuracion() {
                                     {editingGrupo ? 'Actualizar Grupo' : 'Crear Grupo'}
                                 </Button>
                                 {editingGrupo && (
-                                    <Button variant="secondary" onClick={() => { setEditingGrupo(null); setGrupoForm({ nombre: '', color: '#3b82f6' }); }}>
+                                    <Button variant="secondary" onClick={() => { setEditingGrupo(null); setGrupoForm({ nombre: '', color: '#0c0c0c' }); }}>
                                         Cancelar
                                     </Button>
                                 )}

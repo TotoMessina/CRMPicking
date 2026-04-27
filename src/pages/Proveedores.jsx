@@ -16,19 +16,19 @@ import { EventoProveedorModal } from '../components/ui/EventoProveedorModal';
 import { SprintModal } from '../components/ui/SprintModal';
 
 const TYPE_COLORS = {
-    pedido: "#8b5cf6",
+    pedido: "#0c0c0c",
     idea: "#eab308",
     plazo: "#ef4444",
     otro: "#64748b"
 };
 
 const SPRINT_PALETTES = [
-    { bg: 'rgba(99,102,241,0.07)', border: 'rgba(99,102,241,0.25)', text: '#6366f1', header: 'rgba(99,102,241,0.10)' },
+    { bg: 'rgba(0,0,0,0.07)', border: 'rgba(0,0,0,0.25)', text: '#0c0c0c', header: 'rgba(0,0,0,0.10)' },
     { bg: 'rgba(20,184,166,0.07)', border: 'rgba(20,184,166,0.25)', text: '#14b8a6', header: 'rgba(20,184,166,0.10)' },
     { bg: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.25)', text: '#d97706', header: 'rgba(245,158,11,0.10)' },
     { bg: 'rgba(236,72,153,0.07)', border: 'rgba(236,72,153,0.25)', text: '#ec4899', header: 'rgba(236,72,153,0.10)' },
     { bg: 'rgba(59,130,246,0.07)', border: 'rgba(59,130,246,0.25)', text: '#3b82f6', header: 'rgba(59,130,246,0.10)' },
-    { bg: 'rgba(139,92,246,0.07)', border: 'rgba(139,92,246,0.25)', text: '#8b5cf6', header: 'rgba(139,92,246,0.10)' },
+    { bg: 'rgba(0,0,0,0.05)', border: 'rgba(0,0,0,0.2)', text: '#0c0c0c', header: 'rgba(0,0,0,0.1)' },
 ];
 
 export default function Proveedores() {
@@ -101,7 +101,7 @@ export default function Proveedores() {
         const end = e.fecha_fin ? new Date(e.fecha_fin) : null;
         let titlePrefix = "";
         if (e.estado === 'pendiente' && end && now > end) { color = "#b91c1c"; titlePrefix = "⚠️ "; }
-        else if (e.fecha_real_cierre && end && new Date(e.fecha_real_cierre) > end) { color = "#7c3aed"; titlePrefix = "⏳ "; }
+        else if (e.fecha_real_cierre && end && new Date(e.fecha_real_cierre) > end) { color = "#0c0c0c"; titlePrefix = "⏳ "; }
         else if (e.estado === 'completado') { color = "#22c55e"; titlePrefix = "✅ "; }
         if (e.tipo === 'idea') { titlePrefix = "🚀 Lanzamiento: "; color = "#f59e0b"; }
         return {
@@ -274,7 +274,7 @@ export default function Proveedores() {
                 )}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: badge[2], color: badge[1] }}>{badge[0]}</span>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: idea.depende_de_nosotros ? 'rgba(59,130,246,0.1)' : 'rgba(139,92,246,0.1)', color: idea.depende_de_nosotros ? '#3b82f6' : '#8b5cf6' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: idea.depende_de_nosotros ? 'var(--accent-soft)' : 'rgba(0,0,0,0.05)', color: idea.depende_de_nosotros ? 'var(--accent)' : '#0c0c0c' }}>
                         {idea.depende_de_nosotros ? '👨‍💻 Equipo' : `⏳ ${idea.proveedores?.nombre || 'Proveedor'}`}
                     </span>
                 </div>

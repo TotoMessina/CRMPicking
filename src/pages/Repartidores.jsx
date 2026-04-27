@@ -380,9 +380,9 @@ export default function Repartidores() {
                         whileTap={{ scale: 0.9 }}
                         animate={{ 
                             boxShadow: [
-                                '0 8px 20px -6px rgba(139, 92, 246, 0.5)',
-                                '0 8px 35px 5px rgba(139, 92, 246, 0.3)',
-                                '0 8px 20px -6px rgba(139, 92, 246, 0.5)'
+                                '0 8px 20px -6px rgba(0, 0, 0, 0.3)',
+                                '0 8px 35px 5px rgba(0, 0, 0, 0.15)',
+                                '0 8px 20px -6px rgba(0, 0, 0, 0.3)'
                             ]
                         }}
                         transition={{ 
@@ -392,10 +392,10 @@ export default function Repartidores() {
                         style={{
                             pointerEvents: 'auto',
                             width: '64px', height: '64px', borderRadius: '32px',
-                            background: 'linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%)',
+                            background: 'linear-gradient(135deg, var(--accent) 0%, #1a1a1a 100%)',
                             color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer',
-                            boxShadow: '0 8px 20px -6px rgba(139, 92, 246, 0.5)'
+                            boxShadow: '0 8px 20px -6px rgba(0, 0, 0, 0.3)'
                         }}
                         title="Nuevo Repartidor"
                     >

@@ -18,11 +18,11 @@ export interface StatsTheme {
 
 export const STATS_THEME: StatsTheme = {
     colors: {
-        primary: '#4f46e5',
+        primary: '#0c0c0c',
         secondary: '#10b981',
         accent: '#f59e0b',
         danger: '#ef4444',
-        info: '#8b5cf6',
+        info: '#0c0c0c',
         slate: '#475569',
         grid: 'rgba(255, 255, 255, 0.05)',
         text: '#94a3b8',
@@ -98,10 +98,10 @@ export const barValueLabelPlugin: any = {
             // Extract bar color safely
             let rawColor = data.datasets[0].backgroundColor;
             if (Array.isArray(rawColor)) rawColor = rawColor[index] || rawColor[0];
-            const fallbackColor = typeof rawColor === 'string' ? rawColor : '#8b5cf6';
+            const fallbackColor = typeof rawColor === 'string' ? rawColor : '#0c0c0c';
             
             const hexToRgb = (hex: string) => {
-                if (!hex.startsWith('#')) return '139, 92, 246';
+                if (!hex.startsWith('#')) return '12, 12, 12';
                 return `${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}`;
             };
             
@@ -128,9 +128,9 @@ export const DOUGHNUT_COLORS: string[] = [
     STATS_THEME.colors.accent,
     STATS_THEME.colors.info, 
     STATS_THEME.colors.danger, 
-    '#8b5cf6', 
+    '#1a1a1a', 
     '#ec4899', 
-    '#6366f1'
+    '#334155'
 ];
 
 export const STATUS_COLORS: Record<string, string> = {

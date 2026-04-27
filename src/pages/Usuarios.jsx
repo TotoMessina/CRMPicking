@@ -152,7 +152,7 @@ export default function Usuarios() {
             };
         }
         if (roleName === 'admin') {
-            return { color: '#8b5cf6', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)' };
+            return { color: '#0c0c0c', background: 'var(--accent-soft)', border: '1px solid var(--border)' };
         }
         return { color: 'var(--text-muted)', background: 'var(--bg-elevated)', border: '1px solid var(--border)' };
     };

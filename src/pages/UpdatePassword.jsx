@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import { Moon, Sun, Lock } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function UpdatePassword() {
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
+    const { isDemoMode } = useAuth();
     
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,7 +38,7 @@ export default function UpdatePassword() {
     const handleUpdate = async (e) => {
         e.preventDefault();
         
-        const { isDemoMode } = useAuth();
+        
         if (isDemoMode) {
             showMessage('Modo Demostración: No se permite cambiar la contraseña.', 'error');
             return;

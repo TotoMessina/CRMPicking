@@ -8,12 +8,12 @@ interface Props {
 
 export const StatKpiCards: React.FC<Props> = ({ kpis }) => {
     const cards = [
-        { label: 'Clientes activos', val: kpis.totalClientesActivos, meta: 'Base activa', icon: <TrendingUp size={20} color="#818cf8" />, danger: false, theme: '#6366f1' },
+        { label: 'Clientes activos', val: kpis.totalClientesActivos, meta: 'Base activa', icon: <TrendingUp size={20} color="var(--accent)" />, danger: false, theme: '#0c0c0c' },
         { label: 'Agenda con fecha', val: kpis.conFecha, meta: 'Próximo contacto', icon: <Calendar size={20} color="#34d399" />, danger: false, theme: '#10b981' },
         { label: 'Vencidos', val: kpis.vencidos, meta: 'Anterior a hoy', danger: true, icon: <AlertTriangle size={20} color="#fb7185" />, theme: '#f43f5e' },
         { label: 'Sin fecha', val: kpis.sinFecha, meta: 'Sin próximo contacto', icon: <Clock size={20} color="#94a3b8" />, danger: false, theme: '#64748b' },
         { label: 'Actividades 7d', val: kpis.act7, meta: 'Clientes', icon: <Zap size={20} color="#fbbf24" />, danger: false, theme: '#f59e0b' },
-        { label: 'Actividades 30d', val: kpis.act30, meta: 'Clientes', icon: <Activity size={20} color="#c084fc" />, danger: false, theme: '#a855f7' }
+        { label: 'Actividades 30d', val: kpis.act30, meta: 'Clientes', icon: <Activity size={20} color="#94a3b8" />, danger: false, theme: '#64748b' }
     ];
 
     return (

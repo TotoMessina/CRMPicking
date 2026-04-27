@@ -41,7 +41,7 @@ const PredictiveInsights: React.FC<Props> = ({ data }) => {
       <div style={{ background: 'var(--bg-elevated)', position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
           <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>Salud de la Base</span>
-          <div style={{ padding: '8px', borderRadius: '8px', background: data.health_score > 80 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(79, 70, 229, 0.1)', color: data.health_score > 80 ? '#059669' : '#4f46e5' }}>
+          <div style={{ padding: '8px', borderRadius: '8px', background: data.health_score > 80 ? 'rgba(16, 185, 129, 0.1)' : 'var(--accent-alpha)', color: data.health_score > 80 ? '#059669' : 'var(--accent)' }}>
             <Battery size={18} />
           </div>
         </div>
@@ -60,7 +60,7 @@ const PredictiveInsights: React.FC<Props> = ({ data }) => {
       <div style={{ background: 'var(--bg-elevated)', position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
           <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>Nuevos (Últ. 30d)</span>
-          <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(79, 70, 229, 0.1)', color: '#4f46e5' }}>
+          <div style={{ padding: '8px', borderRadius: '8px', background: 'var(--accent-alpha)', color: 'var(--accent)' }}>
             <Zap size={18} />
           </div>
         </div>
@@ -80,7 +80,7 @@ const PredictiveInsights: React.FC<Props> = ({ data }) => {
       </div>
 
       {/* AI Projection */}
-      <div style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: '16px', color: 'white', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)' }}>
+      <div style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #0c0c0c 100%)', position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: '16px', color: 'white', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
         <div style={{ position: 'relative', zIndex: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
             <span style={{ fontSize: '0.875rem', fontWeight: 500, opacity: 0.8 }}>Proyección a 30 días</span>

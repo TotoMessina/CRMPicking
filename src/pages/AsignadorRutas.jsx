@@ -388,7 +388,7 @@ export default function AsignadorRutas() {
                         <div className="stat-label">Tiempo Est.</div>
                     </div>
                 </div>
-                <div className="stat-card premium violet interactive" style={{ cursor: 'pointer' }} onClick={() => setVerMapa(!verMapa)}>
+                <div className="stat-card premium black interactive" style={{ cursor: 'pointer' }} onClick={() => setVerMapa(!verMapa)}>
                     <div className="stat-squircle"><MapIcon size={22} /></div>
                     <div className="stat-info">
                         <div className="stat-value" style={{ fontSize: '1.2rem' }}>{verMapa ? 'ACTIVO' : 'OCULTO'}</div>
@@ -515,7 +515,7 @@ export default function AsignadorRutas() {
                                                                     </div>
                                                                     <div className="muted" style={{ fontSize: '0.75rem', marginLeft: 52 }}>{v.clientes?.direccion}</div>
                                                                     {v.comentarios_admin && (
-                                                                        <div style={{ fontSize: '0.72rem', marginLeft: 52, color: 'var(--accent)', fontStyle: 'italic', marginTop: 1, background: 'rgba(124, 58, 237, 0.05)', padding: '1px 6px', borderRadius: '4px', borderLeft: '2px solid var(--accent)' }}>
+                                                                        <div style={{ fontSize: '0.72rem', marginLeft: 52, color: 'var(--accent)', fontStyle: 'italic', marginTop: 1, background: 'var(--accent-soft)', padding: '1px 6px', borderRadius: '4px', borderLeft: '2px solid var(--accent)' }}>
                                                                             💬 {v.comentarios_admin}
                                                                         </div>
                                                                     )}
@@ -548,7 +548,7 @@ export default function AsignadorRutas() {
                                 <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="glass-card" style={{ width: '90%', maxWidth: '420px', padding: '24px', background: 'var(--bg)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)' }} onClick={e => e.stopPropagation()}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
                                         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                            <div style={{ background: 'rgba(124, 58, 237, 0.1)', padding: '8px', borderRadius: '10px', display: 'flex' }}><MessageSquare size={18} className="text-accent" /></div>
+                                            <div style={{ background: 'var(--accent-soft)', padding: '8px', borderRadius: '10px', display: 'flex' }}><MessageSquare size={18} className="text-accent" /></div>
                                             <strong style={{ fontSize: '1.1rem' }}>Mensaje al Vendedor</strong>
                                         </div>
                                         <button onClick={() => setEditingComentario(null)} className="premium-icon-btn" style={{ border: 'none' }}><X size={18} /></button>
@@ -645,9 +645,9 @@ export default function AsignadorRutas() {
                     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 .premium-pill-btn.active {
-                    background: rgba(124, 58, 237, 0.1);
+                    background: var(--accent-soft);
                     color: var(--accent);
-                    border-color: rgba(124, 58, 237, 0.3);
+                    border-color: var(--accent);
                 }
                 .premium-pill-btn:hover {
                     background: var(--bg-hover);

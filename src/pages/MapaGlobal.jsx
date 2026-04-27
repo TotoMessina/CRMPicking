@@ -387,7 +387,7 @@ export default function MapaGlobal() {
         if (historyMode && historyData.length > 1) {
             const latlngs = historyData.map(p => [p.lat, p.lng]);
             const polyline = L.polyline(latlngs, {
-                color: '#7c3aed',
+                color: '#0c0c0c',
                 weight: 4,
                 opacity: 0.8,
                 dashArray: '5, 10'

@@ -14,10 +14,10 @@ import { TurnoModal } from '../components/ui/TurnoModal';
 import { MasivoModal } from '../components/ui/MasivoModal';
 
 const TYPE_COLORS = {
-    jornada: "#8b5cf6", // Violet
+    jornada: "#0c0c0c", // Premium Black
     extra: "#f59e0b",   // Amber/Gold
     vacaciones: "#10b981", // Emerald
-    estudio: "#8b5cf6"    // Purple
+    estudio: "#1a1a1a"    // Dark Grey
 };
 
 export default function Horarios() {
@@ -308,7 +308,7 @@ export default function Horarios() {
             {filtroEmpleado && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                     <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
                             <Clock size={20} />
                         </div>
                         <div>
@@ -338,7 +338,7 @@ export default function Horarios() {
                     </div>
 
                     <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
                             <BookOpen size={20} />
                         </div>
                         <div>

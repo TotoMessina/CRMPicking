@@ -92,9 +92,9 @@ export const StatsFilters: React.FC<Props> = ({
                             display: 'flex', 
                             justifyContent: 'space-between', 
                             alignItems: 'center', 
-                            background: filterActivator.length > 0 ? 'var(--accent-soft, rgba(99, 102, 241, 0.1))' : 'var(--bg)',
-                            borderColor: filterActivator.length > 0 ? 'var(--accent, #6366f1)' : 'var(--border)',
-                            color: filterActivator.length > 0 ? 'var(--accent, #6366f1)' : 'var(--text)',
+                            background: filterActivator.length > 0 ? 'var(--accent-alpha)' : 'var(--bg)',
+                            borderColor: filterActivator.length > 0 ? 'var(--accent)' : 'var(--border)',
+                            color: filterActivator.length > 0 ? 'var(--accent)' : 'var(--text)',
                             transition: 'all 0.2s ease',
                             padding: '8px 14px'
                         }} 
@@ -131,8 +131,8 @@ export const StatsFilters: React.FC<Props> = ({
                                 style={{ 
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                                     padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', 
-                                    background: filterActivator.length === 0 ? 'var(--accent-soft, rgba(99, 102, 241, 0.15))' : 'transparent',
-                                    color: filterActivator.length === 0 ? 'var(--accent, #6366f1)' : 'var(--text)',
+                                    background: filterActivator.length === 0 ? 'var(--accent-alpha)' : 'transparent',
+                                    color: filterActivator.length === 0 ? 'var(--accent)' : 'var(--text)',
                                     fontWeight: filterActivator.length === 0 ? 700 : 500,
                                     borderBottom: '1px solid var(--border)', marginBottom: '4px',
                                     transition: 'background 0.15s ease'
@@ -156,8 +156,8 @@ export const StatsFilters: React.FC<Props> = ({
                                         style={{ 
                                             display: 'flex', alignItems: 'center', gap: '10px', 
                                             padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', 
-                                            background: isSelected ? 'var(--accent-soft, rgba(99, 102, 241, 0.08))' : 'transparent',
-                                            color: isSelected ? 'var(--accent, #6366f1)' : 'var(--text)',
+                                            background: isSelected ? 'var(--accent-alpha)' : 'transparent',
+                                            color: isSelected ? 'var(--accent)' : 'var(--text)',
                                             fontWeight: isSelected ? 600 : 500,
                                             transition: 'background 0.15s ease'
                                         }}
@@ -170,8 +170,8 @@ export const StatsFilters: React.FC<Props> = ({
                                     >
                                         <div style={{
                                             width: '18px', height: '18px', borderRadius: '4px',
-                                            border: `2px solid ${isSelected ? 'var(--accent, #6366f1)' : 'var(--text-muted)'}`,
-                                            background: isSelected ? 'var(--accent, #6366f1)' : 'transparent',
+                                            border: `2px solid ${isSelected ? 'var(--accent)' : 'var(--text-muted)'}`,
+                                            background: isSelected ? 'var(--accent)' : 'transparent',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             transition: 'all 0.15s ease', flexShrink: 0
                                         }}>
@@ -209,9 +209,9 @@ export const StatsFilters: React.FC<Props> = ({
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '6px',
                                     padding: '8px 14px', borderRadius: '10px',
-                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))',
-                                    border: '1px solid rgba(99,102,241,0.35)',
-                                    color: '#6366f1', cursor: 'pointer',
+                                    background: 'var(--accent-alpha)',
+                                    border: '1px solid var(--border)',
+                                    color: 'var(--accent)', cursor: 'pointer',
                                     fontSize: '0.82rem', fontWeight: 700,
                                     transition: 'all 0.2s ease',
                                     whiteSpace: 'nowrap',

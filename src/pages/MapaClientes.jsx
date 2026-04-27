@@ -33,7 +33,7 @@ import { ClientFilters } from '../components/clients/ClientFilters';
 import { getChurnRisk, CHURN_COLORS } from '../utils/riskScoring';
 
 const ZONE_COLORS = {
-    today: "#8b5cf6",
+    today: "#0c0c0c",
     done: "#ef4444",
     extra: "#f97316"
 };
@@ -44,7 +44,7 @@ const ESTADO_COLOR = {
     [ESTADO_RELEVADO]:          "#ff3d3d",
     "2 - Local Visitado No Activo": "#ff9f1c",
     "3 - Primer Ingreso":       "#ffef16",
-    "4 - Local Creado":         "#7700ff",
+    "4 - Local Creado":         "#0c0c0c",
     "5 - Local Visitado Activo": "#22ff34",
     "6 - Local No Interesado":  "#5f5f5f",
 };
@@ -57,7 +57,7 @@ const INTERES_COLORS = {
 };
 
 const ESTILO_COLORS = {
-    "Dueño": "#8b5cf6",
+    "Dueño": "#0c0c0c",
     "Empleado": "#eab308",
     "Cerrado": "#9ca3af",
     "Sin definir": "#64748b"
@@ -208,7 +208,7 @@ export default function MapaClientes() {
         const popupContent = `
             <div style="margin-bottom:8px; font-weight:bold;">Zona</div>
             <div style="display:flex; flex-direction:column; gap:6px;">
-                <button class="btn-popup-local" style="color:#7c3aed; border:1px solid #7c3aed; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#8b5cf6')">🟣 Marcar "Hoy"</button>
+                <button class="btn-popup-local" style="color:var(--text); border:1px solid var(--border); padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#0c0c0c')">⬛ Marcar "Hoy"</button>
                 <button class="btn-popup-local" style="color:#dc2626; border:1px solid #dc2626; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#ef4444')">🔴 Marcar "Realizada"</button>
                 <button class="btn-popup-local" style="color:#ea580c; border:1px solid #ea580c; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#f97316')">🟠 Marcar "Extra"</button>
                 <hr style="width:100%; border:0; border-top:1px solid #eee; margin:4px 0;">
@@ -805,7 +805,7 @@ export default function MapaClientes() {
 
             // Draw line
             const polyline = L.polyline(matchedLatlngs, {
-                color: '#6366f1',
+                color: '#0c0c0c',
                 weight: 5,
                 opacity: 0.8,
                 lineJoin: 'round'
@@ -816,7 +816,7 @@ export default function MapaClientes() {
             simplified.forEach(p => {
                 L.circleMarker([p.lat, p.lng], {
                     radius: 3,
-                    fillColor: '#6366f1',
+                    fillColor: '#0c0c0c',
                     color: '#fff',
                     weight: 1,
                     opacity: 0.5,
@@ -1070,7 +1070,7 @@ export default function MapaClientes() {
             routeWhileDragging: false,
             addWaypoints: false,
             showAlternatives: false,
-            lineOptions: { styles: [{ color: '#8b5cf6', opacity: 0.8, weight: 5 }] },
+            lineOptions: { styles: [{ color: '#0c0c0c', opacity: 0.8, weight: 5 }] },
             createMarker: () => null // Hide default routing markers, rely on ours
         }).addTo(mapRef.current);
 

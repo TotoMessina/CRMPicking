@@ -27,7 +27,7 @@ export default function PermisosEmpresa() {
     const [editUserForm, setEditUserForm] = useState({ role: '', activo: true });
 
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-    const [newRoleForm, setNewRoleForm] = useState({ nombre: '', color_hex: '#7C3AED' });
+    const [newRoleForm, setNewRoleForm] = useState({ nombre: '', color_hex: '#0c0c0c' });
 
     // Cargar empresas
     useEffect(() => {
@@ -166,7 +166,7 @@ export default function PermisosEmpresa() {
             if (error) throw error;
             toast.success('Rol creado exitosamente');
             setIsRoleModalOpen(false);
-            setNewRoleForm({ nombre: '', color_hex: '#7C3AED' });
+            setNewRoleForm({ nombre: '', color_hex: '#0c0c0c' });
             fetchCoreData();
         } catch (error) {
             toast.error('Ocurrió un error al crear el rol');
@@ -200,7 +200,7 @@ export default function PermisosEmpresa() {
             <div className="permisos-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '24px' }}>
                 <div className="title-section" style={{ flex: '1 1 300px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                        <div style={{ background: 'rgba(124, 58, 237, 0.15)', padding: 10, borderRadius: 12 }}>
+                        <div style={{ background: 'rgba(0, 0, 0, 0.15)', padding: 10, borderRadius: 12 }}>
                             <Shield size={26} color="var(--accent)" />
                         </div>
                         <h1 style={{ margin: 0, fontSize: '1.6rem', lineHeight: 1 }}>Centro de Accesos</h1>

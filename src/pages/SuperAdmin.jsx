@@ -143,11 +143,11 @@ export default function SuperAdmin() {
             {/* Stats Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '40px' }}>
                 <StatCard 
-                    icon={<Building2 color="#8b5cf6" />} 
+                    icon={<Building2 color="var(--accent)" />} 
                     label="Empresas Totales" 
                     value={stats.total_companies} 
                     trend="+12% este mes"
-                    bg="rgba(139, 92, 246, 0.1)"
+                    bg="var(--accent-soft)"
                 />
                 <StatCard 
                     icon={<Users color="#3b82f6" />} 

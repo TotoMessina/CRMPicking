@@ -264,7 +264,7 @@ export default function TinderClientes() {
                 const pos = [v.clientes.lat, v.clientes.lng];
                 const icon = L.divIcon({
                     className: 'custom-marker scheduled',
-                    html: `<div style="background: #8b5cf6; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: 800; box-shadow: var(--shadow-md);">${idx + 1}</div>`,
+                    html: `<div style="background: #0c0c0c; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: 800; box-shadow: var(--shadow-md);">${idx + 1}</div>`,
                     iconSize: [14, 14],
                     iconAnchor: [7, 7]
                 });
@@ -278,7 +278,7 @@ export default function TinderClientes() {
         });
 
         if (routePoints.length > 1) {
-            L.polyline(routePoints, { color: '#8b5cf6', weight: 4, opacity: 0.6, lineJoin: 'round' }).addTo(routeLineRef.current);
+            L.polyline(routePoints, { color: '#0c0c0c', weight: 4, opacity: 0.6, lineJoin: 'round' }).addTo(routeLineRef.current);
         }
 
         const currentClient = clients[0]?.clientes;
@@ -286,7 +286,7 @@ export default function TinderClientes() {
             const pos = [currentClient.lat, currentClient.lng];
             const icon = L.divIcon({
                 className: 'custom-marker current',
-                html: `<div style="position: relative; width: 24px; height: 24px;"><div style="position: absolute; inset: 0; background: #7c3aed; border-radius: 50%; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.75;"></div><div style="position: relative; background: #7c3aed; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(124, 58, 237, 0.8); display: flex; align-items: center; justify-content: center; color: white;"><span style="font-size: 10px; font-weight: 900;">★</span></div></div>`,
+                html: `<div style="position: relative; width: 24px; height: 24px;"><div style="position: absolute; inset: 0; background: #0c0c0c; border-radius: 50%; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.75;"></div><div style="position: relative; background: #0c0c0c; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; color: white;"><span style="font-size: 10px; font-weight: 900;">★</span></div></div>`,
                 iconSize: [24, 24],
                 iconAnchor: [12, 12]
             });
@@ -298,7 +298,7 @@ export default function TinderClientes() {
 
             if (routePoints.length > 0) {
                 const lastPoint = routePoints[routePoints.length - 1];
-                L.polyline([lastPoint, pos], { color: '#7c3aed', weight: 3, opacity: 0.5, dashArray: '8, 8', lineJoin: 'round' }).addTo(routeLineRef.current);
+                L.polyline([lastPoint, pos], { color: '#333', weight: 3, opacity: 0.5, dashArray: '8, 8', lineJoin: 'round' }).addTo(routeLineRef.current);
             }
         }
 
@@ -531,7 +531,7 @@ export default function TinderClientes() {
                 .stat-pill.primary {
                     background: var(--accent-soft);
                     color: var(--accent);
-                    border: 1px solid rgba(139, 92, 246, 0.2);
+                    border: 1px solid var(--border);
                 }
 
                 .tinder-controls {
@@ -637,7 +637,7 @@ export default function TinderClientes() {
                 .card-image-placeholder {
                     width: 100%;
                     height: 220px;
-                    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+                    background: linear-gradient(135deg, #1a1a1a 0%, #0c0c0c 100%);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -745,7 +745,7 @@ export default function TinderClientes() {
                     background: var(--accent-soft);
                     padding: 12px 16px;
                     border-radius: 16px;
-                    border: 1px solid rgba(124, 58, 237, 0.1);
+                    border: 1px solid var(--border);
                 }
 
                 .card-footer-info {

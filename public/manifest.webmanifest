@@ -3,7 +3,7 @@
     "short_name": "CRM",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#0f172a",
+    "background_color": "#0c0c0c",
     "description": "CRM para gestión de clientes, activadores, estadísticas y logística.",
     "icons": [
         {
@@ -17,5 +17,5 @@
             "type": "image/png"
         }
     ],
-    "theme_color": "#0f172a"
+    "theme_color": "#0c0c0c"
 }

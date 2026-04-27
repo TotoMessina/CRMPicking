@@ -31,7 +31,7 @@ export function BentoCard({
     desc,
     className,
     isPrimary,
-    variant, // enum: 'default', 'gradient-purple', 'gradient-green', 'gradient-blue', 'gradient-orange', 'dark'
+    variant, // enum: 'default', 'gradient-black', 'gradient-green', 'gradient-blue', 'gradient-orange', 'dark'
     actionIcon,
     children,
     ...props
