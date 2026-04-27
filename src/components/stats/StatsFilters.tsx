@@ -217,11 +217,11 @@ export const StatsFilters: React.FC<Props> = ({
                                     whiteSpace: 'nowrap',
                                 }}
                                 onMouseEnter={e => {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25))';
+                                    e.currentTarget.style.background = 'var(--accent-alpha)';
                                     e.currentTarget.style.transform = 'translateY(-1px)';
                                 }}
                                 onMouseLeave={e => {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))';
+                                    e.currentTarget.style.background = 'var(--accent-alpha)';
                                     e.currentTarget.style.transform = 'none';
                                 }}
                             >

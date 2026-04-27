@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import * as React from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Joyride, STATUS, Step } from 'react-joyride';
 import {
@@ -265,24 +266,29 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
         if (activeTab === 'layout') {
             return [
                 {
-                    target: '#tour-layout-list',
-                    content: 'Aquí puedes organizar tu dashboard. Arrastra los elementos del borde izquierdo para cambiar el orden.',
-                    placement: 'left',
+                    target: '#tour-tabs',
+                    content: 'Bienvenido al editor. Aquí puedes alternar entre organizar tu dashboard o crear nuevos widgets personalizados.',
+                    placement: 'bottom',
                     disableBeacon: true,
                 },
                 {
+                    target: '#tour-layout-list',
+                    content: 'En esta lista puedes ver todos tus widgets. Arrastra desde el borde izquierdo para cambiar el orden.',
+                    placement: 'auto',
+                },
+                {
                     target: '.tour-size-select',
-                    content: 'Usa el selector de tamaño para que el gráfico ocupe toda la pantalla (1/1), la mitad o un tercio.',
-                    placement: 'left',
+                    content: 'Ajusta el tamaño de cada widget: 1/1 para ancho completo, 1/2 o 1/3 para columnas.',
+                    placement: 'auto',
                 },
                 {
                     target: '.tour-visibility-toggle',
-                    content: '¿No quieres ver un gráfico hoy? Ocultalo con el icono del ojo sin borrar la configuración.',
-                    placement: 'left',
+                    content: 'Usa el ojo para ocultar widgets del dashboard sin eliminarlos.',
+                    placement: 'auto',
                 },
                 {
                     target: '#tour-layout-actions',
-                    content: '¡No olvides guardar tus cambios al terminal de organizar!',
+                    content: '¡No olvides guardar cuando termines de organizar!',
                     placement: 'top',
                 }
             ];
@@ -535,18 +541,19 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                 steps={tourSteps}
                 run={runTour}
                 continuous={true}
-                showProgress={true}
-                showSkipButton={true}
-                callback={handleJoyrideCallback}
+                onEvent={handleJoyrideCallback}
+                options={{
+                    primaryColor: 'var(--accent, #0c0c0c)',
+                    textColor: '#000',
+                    backgroundColor: '#ffffff',
+                    overlayColor: 'rgba(0, 0, 0, 0.65)',
+                    arrowColor: '#ffffff',
+                    zIndex: 10000,
+                    spotlightRadius: 18,
+                    showProgress: true,
+                    buttons: ['back', 'primary', 'skip'],
+                }}
                 styles={{
-                    options: {
-                        primaryColor: 'var(--accent, #0c0c0c)',
-                        textColor: '#000',
-                        backgroundColor: '#ffffff',
-                        overlayColor: 'rgba(0, 0, 0, 0.65)',
-                        arrowColor: '#ffffff',
-                        zIndex: 10000,
-                    },
                     tooltip: {
                         borderRadius: '20px',
                         padding: '16px',
@@ -559,7 +566,7 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                     tooltipContainer: {
                         padding: '5px',
                     },
-                    buttonNext: {
+                    buttonPrimary: {
                         borderRadius: '12px',
                         padding: '12px 24px',
                         fontWeight: 800,
@@ -581,10 +588,9 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                         fontSize: '0.78rem',
                         fontWeight: 500,
                     },
-                    spotlight: {
-                        borderRadius: 18,
-                    }
+                    spotlight: {}
                 }}
+
                 locale={{ back: 'Atrás', close: 'Cerrar', last: 'Finalizar', next: 'Siguiente', skip: 'Saltar Tour' }}
             />
 
@@ -654,7 +660,7 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                 </div>
 
                 {/* ── Tabs ── */}
-                <div style={{
+                <div id="tour-tabs" style={{
                     display: 'flex', gap: '6px', padding: '12px 14px',
                     background: 'var(--bg-elevated)',
                     borderBottom: '1px solid var(--border)',
@@ -694,7 +700,7 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                             {/* ── PREMIUM GRID PREVIEW ── */}
                             <div style={{
                                 padding: '18px 18px 14px',
-                                background: 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(79,70,229,0.02))',
+                                background: 'var(--accent-alpha)',
                                 borderBottom: '1px solid var(--border)',
                                 flexShrink: 0,
                             }}>
@@ -797,7 +803,7 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                             </div>
 
                             {/* Widget list */}
-                            <div style={{ padding: '12px', flexGrow: 1 }}>
+                            <div id="tour-layout-list" style={{ padding: '12px', flexGrow: 1 }}>
                                 {draft.map((widget, index) => {
                                     const def = getLocalDef(widget.id);
                                     if (!def) return null;
@@ -815,8 +821,8 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                 display: 'flex', alignItems: 'center', gap: '9px',
                                                 padding: '10px 12px', marginBottom: '5px',
                                                 borderRadius: '13px',
-                                                border: `1.5px solid ${isOver ? '#6366f1' : widget.visible ? 'var(--border)' : 'transparent'}`,
-                                                background: isOver ? 'rgba(99,102,241,0.07)' : widget.visible ? 'var(--bg-elevated)' : 'rgba(0,0,0,0.02)',
+                                                border: `1.5px solid ${isOver ? 'var(--accent)' : widget.visible ? 'var(--border)' : 'transparent'}`,
+                                                background: isOver ? 'var(--accent-alpha)' : widget.visible ? 'var(--bg-elevated)' : 'rgba(0,0,0,0.02)',
                                                 cursor: 'grab', opacity: widget.visible ? 1 : 0.38,
                                                 transition: 'all 0.15s ease',
                                                 boxShadow: widget.visible ? '0 1px 3px rgba(0,0,0,0.04)' : 'none',
@@ -840,8 +846,8 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                 onClick={e => e.stopPropagation()}
                                                 style={{
                                                     fontSize: '0.66rem', padding: '4px 6px', borderRadius: '8px',
-                                                    background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
-                                                    color: '#6366f1', fontWeight: 700, cursor: 'pointer', outline: 'none', flexShrink: 0,
+                                                    background: 'var(--accent-alpha)', border: '1px solid var(--border)',
+                                                    color: 'var(--accent)', fontWeight: 700, cursor: 'pointer', outline: 'none', flexShrink: 0,
                                                 }}
                                             >
                                                 <option value="full">1/1</option>
@@ -884,10 +890,10 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                     </button>
                                     <button onClick={handleSaveLayout} disabled={saving} style={{
                                         flex: 1, padding: '10px 18px', borderRadius: '11px',
-                                        background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                                        background: 'linear-gradient(135deg, #1a1a1a, #0c0c0c)',
                                         border: 'none', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer',
                                         fontWeight: 700, fontSize: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                        boxShadow: '0 4px 14px rgba(99,102,241,0.35)', opacity: saving ? 0.7 : 1,
+                                        boxShadow: '0 4px 14px rgba(0,0,0,0.35)', opacity: saving ? 0.7 : 1,
                                     }}>
                                         <Save size={14} /> {saving ? 'Guardando...' : 'Guardar Dashboard'}
                                     </button>
@@ -911,17 +917,17 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', flex: 1 }}>
                                                 <div style={{
                                                     width: '30px', height: '30px', borderRadius: '50%',
-                                                    background: isDone ? '#10b981' : isActive ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'var(--bg-elevated)',
+                                                    background: isDone ? '#10b981' : isActive ? 'linear-gradient(135deg, #1a1a1a, #0c0c0c)' : 'var(--bg-elevated)',
                                                     color: (isActive || isDone) ? '#fff' : 'var(--text-muted)',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     fontSize: '0.72rem', fontWeight: 800,
-                                                    boxShadow: isActive ? '0 4px 12px rgba(99,102,241,0.4)' : 'none',
-                                                    border: `2px solid ${isDone ? '#10b981' : isActive ? '#6366f1' : 'var(--border)'}`,
+                                                    boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.4)' : 'none',
+                                                    border: `2px solid ${isDone ? '#10b981' : isActive ? 'var(--accent)' : 'var(--border)'}`,
                                                     transition: 'all 0.25s ease',
                                                 }}>
                                                     {isDone ? '✓' : s}
                                                 </div>
-                                                <span style={{ fontSize: '0.65rem', fontWeight: isActive ? 700 : 500, color: isActive ? '#6366f1' : isDone ? '#10b981' : 'var(--text-muted)' }}>
+                                                <span style={{ fontSize: '0.65rem', fontWeight: isActive ? 700 : 500, color: isActive ? 'var(--accent)' : isDone ? '#10b981' : 'var(--text-muted)' }}>
                                                     {label}
                                                 </span>
                                             </div>
@@ -952,13 +958,13 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                 return (
                                                     <button key={ct.value} onClick={() => setNewWidget(prev => ({ ...prev, chart_type: ct.value as any }))} style={{
                                                         padding: '12px 8px', borderRadius: '12px',
-                                                        border: `2px solid ${isSelected ? '#6366f1' : 'var(--border)'}`,
-                                                        background: isSelected ? 'rgba(99,102,241,0.08)' : 'var(--bg-elevated)',
+                                                        border: `2px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                                                        background: isSelected ? 'var(--accent-alpha)' : 'var(--bg-elevated)',
                                                         cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-                                                        transition: 'all 0.2s ease', boxShadow: isSelected ? '0 4px 12px rgba(99,102,241,0.15)' : 'none',
+                                                        transition: 'all 0.2s ease', boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
                                                     }}>
-                                                        <div style={{ color: isSelected ? '#6366f1' : 'var(--text-muted)' }}>{ct.icon}</div>
-                                                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: isSelected ? '#6366f1' : 'var(--text)', textAlign: 'center' }}>{ct.label}</div>
+                                                        <div style={{ color: isSelected ? 'var(--accent)' : 'var(--text-muted)' }}>{ct.icon}</div>
+                                                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: isSelected ? 'var(--accent)' : 'var(--text)', textAlign: 'center' }}>{ct.label}</div>
                                                         <div style={{ fontSize: '0.59rem', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.2 }}>{ct.description}</div>
                                                     </button>
                                                 );
@@ -975,15 +981,15 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                 return (
                                                     <button key={o.value} onClick={() => setNewWidget(prev => ({ ...prev, data_source: o.value as any, group_by: '', filter_field: '', filter_value: '' }))} style={{
                                                         padding: '10px 14px', borderRadius: '11px', border: 'none',
-                                                        background: isSelected ? 'rgba(99,102,241,0.08)' : 'var(--bg-elevated)',
+                                                        background: isSelected ? 'var(--accent-alpha)' : 'var(--bg-elevated)',
                                                         cursor: 'pointer', textAlign: 'left',
                                                         display: 'flex', alignItems: 'center', gap: '10px',
-                                                        boxShadow: isSelected ? 'inset 0 0 0 1.5px #6366f1' : 'inset 0 0 0 1px var(--border)',
+                                                        boxShadow: isSelected ? 'inset 0 0 0 1.5px var(--accent)' : 'inset 0 0 0 1px var(--border)',
                                                         transition: 'all 0.2s ease',
                                                     }}>
                                                         <span style={{ fontSize: '1rem' }}>{o.icon}</span>
-                                                        <span style={{ fontSize: '0.84rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#6366f1' : 'var(--text)', flex: 1 }}>{o.label}</span>
-                                                        {isSelected && <ChevronRight size={14} color="#6366f1" />}
+                                                        <span style={{ fontSize: '0.84rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--accent)' : 'var(--text)', flex: 1 }}>{o.label}</span>
+                                                        {isSelected && <ChevronRight size={14} color="var(--accent)" />}
                                                     </button>
                                                 );
                                             })}
@@ -1074,11 +1080,11 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                 return (
                                                     <button key={m.value} onClick={() => setNewWidget(prev => ({ ...prev, metric: m.value as any }))} style={{
                                                         padding: '10px 6px', borderRadius: '11px',
-                                                        border: `2px solid ${isSel ? '#6366f1' : 'var(--border)'}`,
-                                                        background: isSel ? 'rgba(99,102,241,0.08)' : 'var(--bg-elevated)',
+                                                        border: `2px solid ${isSel ? 'var(--accent)' : 'var(--border)'}`,
+                                                        background: isSel ? 'var(--accent-alpha)' : 'var(--bg-elevated)',
                                                         cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', transition: 'all 0.2s',
                                                     }}>
-                                                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: isSel ? '#6366f1' : 'var(--text)' }}>{m.label}</div>
+                                                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: isSel ? 'var(--accent)' : 'var(--text)' }}>{m.label}</div>
                                                         <div style={{ fontSize: '0.59rem', color: 'var(--text-muted)', textAlign: 'center' }}>{m.desc}</div>
                                                     </button>
                                                 );
@@ -1111,10 +1117,10 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                     return (
                                                         <button key={tg.value} onClick={() => setNewWidget(prev => ({ ...prev, time_group: tg.value as any }))} style={{
                                                             padding: '8px 4px', borderRadius: '10px',
-                                                            border: `2px solid ${isSel ? '#6366f1' : 'var(--border)'}`,
-                                                            background: isSel ? 'rgba(99,102,241,0.08)' : 'var(--bg-elevated)',
+                                                            border: `2px solid ${isSel ? 'var(--accent)' : 'var(--border)'}`,
+                                                            background: isSel ? 'var(--accent-alpha)' : 'var(--bg-elevated)',
                                                             cursor: 'pointer', fontSize: '0.68rem', fontWeight: isSel ? 700 : 500,
-                                                            color: isSel ? '#6366f1' : 'var(--text-muted)', transition: 'all 0.2s', textAlign: 'center',
+                                                            color: isSel ? 'var(--accent)' : 'var(--text-muted)', transition: 'all 0.2s', textAlign: 'center',
                                                         }}>{tg.label}</button>
                                                     );
                                                 })}
@@ -1153,12 +1159,12 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                                 return (
                                                     <button key={o.value} onClick={() => setNewWidget(prev => ({ ...prev, size: o.value as any }))} style={{
                                                         padding: '12px 8px', borderRadius: '12px',
-                                                        border: `2px solid ${isSelected ? '#6366f1' : 'var(--border)'}`,
-                                                        background: isSelected ? 'rgba(99,102,241,0.08)' : 'var(--bg-elevated)',
+                                                        border: `2px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                                                        background: isSelected ? 'var(--accent-alpha)' : 'var(--bg-elevated)',
                                                         cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.2s ease',
                                                     }}>
-                                                        <div style={{ color: isSelected ? '#6366f1' : 'var(--text-muted)' }}>{o.icon}</div>
-                                                        <div style={{ fontSize: '0.74rem', fontWeight: 700, color: isSelected ? '#6366f1' : 'var(--text)' }}>{o.label}</div>
+                                                        <div style={{ color: isSelected ? 'var(--accent)' : 'var(--text-muted)' }}>{o.icon}</div>
+                                                        <div style={{ fontSize: '0.74rem', fontWeight: 700, color: isSelected ? 'var(--accent)' : 'var(--text)' }}>{o.label}</div>
                                                         <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{o.sub}</div>
                                                     </button>
                                                 );
@@ -1211,7 +1217,7 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                             )}
 
                             {/* Wizard Actions */}
-                            <div style={{ display: 'flex', gap: '10px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+                            <div id="tour-step-actions" style={{ display: 'flex', gap: '10px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
                                 {step > 1 && (
                                     <button onClick={() => setStep(s => s - 1)} disabled={evaluating} style={{ padding: '11px 16px', borderRadius: '11px', background: 'transparent', border: '1.5px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                         <ChevronLeft size={16} />
@@ -1220,10 +1226,10 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
                                 {step < 4 ? (
                                     <button onClick={handleNextStep} disabled={evaluating || (step === 2 && NEEDS_GROUP_BY.includes(newWidget.chart_type) && !newWidget.group_by)} style={{
                                         flex: 1, padding: '11px 20px', borderRadius: '11px',
-                                        background: 'linear-gradient(135deg, var(--accent, #6366f1), #4f46e5)',
+                                        background: 'linear-gradient(135deg, #1a1a1a, #0c0c0c)',
                                         border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                        boxShadow: '0 4px 14px rgba(99,102,241,0.3)', position: 'relative', overflow: 'hidden'
+                                        boxShadow: '0 4px 14px rgba(0,0,0,0.3)', position: 'relative', overflow: 'hidden'
                                     }}>
                                         {evaluating && (
                                             <div style={{
