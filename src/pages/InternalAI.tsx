@@ -1,28 +1,45 @@
-// v3.0.0 - RADAR TOTAL & ESTÉTICA DE PRECISIÓN
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInternalAI } from '../hooks/useInternalAI';
 import { sentimentAnalyzer } from '../lib/ai/SentimentAnalyzer';
 import { supabase } from '../lib/supabase';
 import { 
-    ShieldAlert, AlertTriangle, CheckCircle2, Phone, Search, RefreshCw, 
-    Activity, Mail, Target, ArrowRight, Zap, Cpu, Sparkles, 
-    History, TrendingDown, MessageSquareMore, Layers
+    Phone, RefreshCw, 
+    Zap, Cpu, 
+    Target, ArrowRight, Layers,
+    History, MessageSquareMore, CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface AIClient {
+    id: string;
+    nombre: string;
+    telefono?: string;
+    mail?: string;
+    ultima_actividad?: string;
+    created_at?: string;
+    estado?: string;
+    notas?: string;
+    riskLevel: 'bajo' | 'medio' | 'alto' | 'pendiente';
+    prob: number;
+    sentiment?: string;
+}
+
+/**
+ * Internal AI (Churn Radar) Page
+ */
 export default function InternalAI() {
     const navigate = useNavigate();
     const { trainFromHistory, getAIChurnRisk, isTrained } = useInternalAI();
     
-    const [clients, setClients] = useState([]);
+    const [clients, setClients] = useState<AIClient[]>([]);
     const [loading, setLoading] = useState(true);
     const [analyzing, setAnalyzing] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [logs, setLogs] = useState([]);
-    const [filter, setFilter] = useState('riesgo'); // 'riesgo', 'todos'
+    const [logs, setLogs] = useState<string[]>([]);
+    const [filter, setFilter] = useState<'riesgo' | 'todos'>('riesgo');
 
-    const addLog = (msg) => {
+    const addLog = (msg: string) => {
         setLogs(prev => [msg, ...prev].slice(0, 4));
     };
 
@@ -30,7 +47,7 @@ export default function InternalAI() {
         setLoading(true);
         addLog("Extrayendo base de datos completa...");
         
-        let allData = [];
+        let allData: any[] = [];
         let from = 0;
         let to = 999;
         let hasMore = true;
@@ -53,7 +70,7 @@ export default function InternalAI() {
         }
         
         if (allData.length > 0) {
-            const flattened = allData.map(item => ({
+            const flattened: AIClient[] = allData.map(item => ({
                 id: item.clientes?.id,
                 nombre: item.clientes?.nombre || 'Sin Nombre',
                 telefono: item.clientes?.telefono,
@@ -63,8 +80,7 @@ export default function InternalAI() {
                 estado: item.estado,
                 notas: item.notas,
                 riskLevel: 'pendiente',
-                prob: 0,
-                history: []
+                prob: 0
             }));
             setClients(flattened);
             addLog(`Base de datos cargada: ${flattened.length} clientes.`);
@@ -91,12 +107,12 @@ export default function InternalAI() {
         for (let i = 0; i < total; i += batchSize) {
             const batch = analyzedResults.slice(i, i + batchSize);
             
-            const promises = batch.map(async (c, idx) => {
-                const result = await getAIChurnRisk(c, []); // En esta versión simplificamos historia para velocidad masiva
+            const promises = batch.map(async (c) => {
+                const result = await getAIChurnRisk(c, []); 
                 if (!result) return c;
 
                 const { probability: prob, sentiment } = result;
-                let riskLevel = 'bajo';
+                let riskLevel: 'bajo' | 'medio' | 'alto' = 'bajo';
                 if (prob > 0.75) riskLevel = 'alto';
                 else if (prob > 0.45) riskLevel = 'medio';
 
@@ -105,7 +121,6 @@ export default function InternalAI() {
 
             const results = await Promise.all(promises);
             
-            // Actualizamos el array principal
             for (let j = 0; j < results.length; j++) {
                 analyzedResults[i + j] = results[j];
             }
@@ -133,15 +148,11 @@ export default function InternalAI() {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans selection:bg-slate-900/30 transition-colors duration-500">
-            
-            {/* RADAR BACKGROUND EFFECT */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-slate-900/10 via-transparent to-transparent blur-[120px] rounded-full" />
             </div>
 
             <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
-                
-                {/* HEADER MINIMALISTA & POTENTE */}
                 <header className="flex flex-col lg:flex-row items-center justify-between gap-8 pt-8">
                     <div className="space-y-4 text-center lg:text-left">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/10 dark:bg-slate-900/20 border border-slate-900/20">
@@ -193,7 +204,6 @@ export default function InternalAI() {
                     </div>
                 </header>
 
-                {/* CONSOLA DE LOGS ESTILO HUD */}
                 <AnimatePresence>
                     {logs.length > 0 && (
                         <motion.div 
@@ -213,9 +223,7 @@ export default function InternalAI() {
                     )}
                 </AnimatePresence>
 
-                {/* DASHBOARD DE RESULTADOS */}
                 <main className="space-y-8">
-                    {/* KPI SUMMARY BAR */}
                     {isTrained && (
                         <div className="flex flex-wrap gap-4 items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-8">
                             <div className="flex items-center gap-4">
@@ -250,7 +258,6 @@ export default function InternalAI() {
                         </div>
                     )}
 
-                    {/* GRID DE CLIENTES */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <AnimatePresence>
                             {displayClients.map((cliente, i) => (
@@ -261,7 +268,6 @@ export default function InternalAI() {
                                     transition={{ delay: (i % 12) * 0.05 }}
                                     className="group relative bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-[2rem] p-7 border border-slate-200 dark:border-slate-800 hover:border-slate-900/50 dark:hover:border-white/50 transition-all shadow-sm hover:shadow-2xl overflow-hidden"
                                 >
-                                    {/* HEATMAP INDICATOR */}
                                     <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] opacity-10 transition-opacity group-hover:opacity-30 ${
                                         cliente.riskLevel === 'alto' ? 'bg-rose-500' : 'bg-amber-500'
                                     }`} />
@@ -281,7 +287,6 @@ export default function InternalAI() {
                                             </div>
                                         </div>
 
-                                        {/* VISUAL METRICS (SIN TEXTO PESADO) */}
                                         <div className="flex gap-2">
                                             <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                                                 <motion.div 
@@ -297,7 +302,7 @@ export default function InternalAI() {
                                                 <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase">
                                                     <History size={10} /> Silence
                                                 </div>
-                                                <div className="text-sm font-bold">{Math.floor((new Date() - new Date(cliente.ultima_actividad || cliente.created_at)) / 86400000)} days</div>
+                                                <div className="text-sm font-bold">{Math.floor((new Date().getTime() - new Date(cliente.ultima_actividad || cliente.created_at || new Date()).getTime()) / 86400000)} days</div>
                                             </div>
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase">
@@ -312,7 +317,6 @@ export default function InternalAI() {
                                             </div>
                                         </div>
 
-                                        {/* QUICK ACTIONS */}
                                         <div className="flex items-center gap-3 pt-2">
                                             <a 
                                                 href={`tel:${cliente.telefono}`}
@@ -333,7 +337,6 @@ export default function InternalAI() {
                         </AnimatePresence>
                     </div>
 
-                    {/* EMPTY STATE */}
                     {isTrained && displayClients.length === 0 && (
                         <div className="py-20 text-center">
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-black uppercase mb-4">
@@ -344,7 +347,6 @@ export default function InternalAI() {
                         </div>
                     )}
                 </main>
-
             </div>
         </div>
     );

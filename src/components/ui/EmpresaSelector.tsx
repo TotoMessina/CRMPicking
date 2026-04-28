@@ -1,6 +1,12 @@
 import { Building2 } from 'lucide-react';
+import { Empresa } from '../../contexts/AuthContext';
 
-export function EmpresaSelector({ empresas, onSelect }) {
+interface Props {
+    empresas: Empresa[];
+    onSelect: (empresa: Empresa) => void;
+}
+
+export function EmpresaSelector({ empresas, onSelect }: Props) {
     return (
         <div style={{
             position: 'fixed', inset: 0, background: 'var(--bg)',

@@ -1,11 +1,19 @@
 import React from 'react';
 
+interface MapStatsBadgeProps {
+    inView: number;
+    total: number;
+    label?: string;
+    totalLabel?: string;
+    children?: React.ReactNode;
+}
+
 /**
  * MapStatsBadge
  * Floating badge for the top right corner of the map.
  * Displays "In View" vs "Total" metrics.
  */
-export const MapStatsBadge = ({ inView, total, label = "en zona", totalLabel = "Total", children }) => {
+export const MapStatsBadge: React.FC<MapStatsBadgeProps> = ({ inView, total, label = "en zona", totalLabel = "Total", children }) => {
     return (
         <div 
             className="map-glass-badge"

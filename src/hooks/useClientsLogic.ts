@@ -138,7 +138,7 @@ export const useClientsLogic = () => {
         setExpandedActivities(prev => ({ ...prev, [id]: !prev[id] }));
     }, []);
 
-    const handleQuickDate = useCallback((clienteId: string, daysOffset: number) => {
+    const handleQuickDate = useCallback((clienteId: string, daysOffset: number | null) => {
         quickDateMutation.mutate({ clienteId, daysOffset, empresaActiva, userName, user });
     }, [empresaActiva, userName, user, quickDateMutation]);
 

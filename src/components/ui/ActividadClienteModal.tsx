@@ -145,9 +145,10 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
             }
 
             const fechaISO = formData.fecha ? new Date(formData.fecha).toISOString() : new Date().toISOString();
+            const numericId = parseInt(clienteId, 10);
 
             const payload = {
-                cliente_id: Number(clienteId),
+                cliente_id: numericId,
                 descripcion: formData.descripcion.trim(),
                 fecha: fechaISO,
                 usuario: formData.usuario.trim() || null,
@@ -155,7 +156,7 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
                 foto_url: uploadedImageUrl
             };
 
-            const { error } = await supabase.from("actividades").insert([payload]);
+            const { error } = await supabase.from("actividades").insert([payload] as any);
             const isOffline = error && (error.message === 'Failed to fetch' || error.message?.includes('fetch') || !navigator.onLine);
 
             if (error && !isOffline) {
@@ -168,8 +169,8 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
 
             // Sync last activity on both tables
             const syncUpdates = Promise.all([
-                supabase.from("clientes").update({ ultima_actividad: fechaISO }).eq("id", clienteId),
-                supabase.from("empresa_cliente").update({ ultima_actividad: fechaISO }).eq("cliente_id", clienteId).eq("empresa_id", empresaActiva.id)
+                supabase.from("clientes").update({ ultima_actividad: fechaISO } as any).eq("id", numericId),
+                supabase.from("empresa_cliente").update({ ultima_actividad: fechaISO } as any).eq("cliente_id", numericId).eq("empresa_id", empresaActiva.id)
             ]);
 
             if (isOffline) {

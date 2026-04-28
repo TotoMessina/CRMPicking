@@ -7,7 +7,7 @@ export const useCompanyUsers = (empresaId: string | null) => {
         queryFn: async () => {
             if (!empresaId) return [];
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('empresa_usuario')
                 .select('usuario_email, usuarios(nombre)')
                 .eq('empresa_id', empresaId);
@@ -15,11 +15,11 @@ export const useCompanyUsers = (empresaId: string | null) => {
             if (error) throw error;
 
             const users = (data || [])
-                .map((eu: any) => eu.usuarios?.nombre || eu.usuario_email)
+                .map((eu: any) => eu.usuarios?.nombre || eu.usuario_email || '')
                 .filter(Boolean)
                 .sort();
 
-            return [...new Set(users)];
+            return [...new Set(users)] as string[];
         },
         enabled: !!empresaId,
         staleTime: 1000 * 60 * 10,
@@ -32,7 +32,7 @@ export const useCompanyUsersDetailed = (empresaId: string | null) => {
         queryFn: async () => {
             if (!empresaId) return [];
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('empresa_usuario')
                 .select('usuario_email, usuarios(nombre)')
                 .eq('empresa_id', empresaId);
@@ -42,10 +42,10 @@ export const useCompanyUsersDetailed = (empresaId: string | null) => {
             return (data || [])
                 .map((eu: any) => ({
                     email: eu.usuario_email,
-                    nombre: eu.usuarios?.nombre || eu.usuario_email
+                    nombre: eu.usuarios?.nombre || eu.usuario_email || ''
                 }))
-                .filter(u => u.email)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre));
+                .filter((u: any) => u.email)
+                .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
         },
         enabled: !!empresaId,
         staleTime: 1000 * 60 * 10,

@@ -179,7 +179,7 @@ export const useStatistics = () => {
         if (!empresaActiva?.id || !dateFrom || !dateTo) return;
         setLoading(true);
         try {
-            const { data, error: rpcError } = await supabase.rpc('get_advanced_stats', {
+            const { data: rawData, error: rpcError } = await (supabase as any).rpc('get_advanced_stats', {
                 p_empresa_id: empresaActiva.id,
                 p_date_from: dateFrom,
                 p_date_to: dateTo,
@@ -202,6 +202,7 @@ export const useStatistics = () => {
                 throw rpcError;
             }
 
+            const data = rawData as any;
             console.log('Stats Data Received:', data);
 
             // Update KPIs with safety checks
@@ -224,11 +225,11 @@ export const useStatistics = () => {
             });
 
             // Rehidratar Estado 5 Raw para RubrosSituacionChart
-            setClientesEstado5Raw(data.estado5_raw || []);
+            setClientesEstado5Raw(data?.estado5_raw || []);
 
-            const rubrosArr: [string, number][] = (data.rubros || []).map((r: any) => [r.rubro || 'Sin rubro', r.count]);
-            const estadosArr: [string, number][] = (data.estados || []).map((e: any) => [e.estado || 'Sin estado', e.count]);
-            const creadoresArr: [string, number][] = (data.creadores || []).map((c: any) => [c.creador, c.count]);
+            const rubrosArr: [string, number][] = (data?.rubros || []).map((r: any) => [r.rubro || 'Sin rubro', r.count]);
+            const estadosArr: [string, number][] = (data?.estados || []).map((e: any) => [e.estado || 'Sin estado', e.count]);
+            const creadoresArr: [string, number][] = (data?.creadores || []).map((c: any) => [c.creador, c.count]);
 
             // Situacion
             const situacionArr: [string, number][] = (data.situacion || []).map((s: any) => [s.situacion, s.count]);

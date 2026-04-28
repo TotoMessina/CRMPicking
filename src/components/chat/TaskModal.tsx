@@ -1,17 +1,40 @@
+import React from 'react';
 import { ClipboardList, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChatUser } from '../../hooks/useChat';
 
-export const TaskModal = ({ isTaskModalOpen, setIsTaskModalOpen, taskForm, setTaskForm, usuarios, selectedUser, sendingTask, handleSendTask }) => {
+interface TaskForm {
+    titulo: string;
+    descripcion: string;
+    fecha_vencimiento: string;
+    asignado_a: string[];
+}
+
+interface TaskModalProps {
+    isTaskModalOpen: boolean;
+    setIsTaskModalOpen: (open: boolean) => void;
+    taskForm: TaskForm;
+    setTaskForm: (form: TaskForm) => void;
+    usuarios: ChatUser[];
+    selectedUser: ChatUser | null;
+    sendingTask: boolean;
+    handleSendTask: (e?: React.FormEvent) => void;
+}
+
+export const TaskModal: React.FC<TaskModalProps> = ({ 
+    isTaskModalOpen, setIsTaskModalOpen, taskForm, setTaskForm, 
+    usuarios, selectedUser, sendingTask, handleSendTask 
+}) => {
     if (!isTaskModalOpen) return null;
 
     return (
         <AnimatePresence>
-            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' } as React.CSSProperties}>
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    style={{ background: 'var(--bg-elevated)', width: '100%', maxWidth: '520px', borderRadius: '24px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', maxHeight: '90dvh', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}
+                    style={{ background: 'var(--bg-elevated)', width: '100%', maxWidth: '520px', borderRadius: '24px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', maxHeight: '90dvh', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' } as React.CSSProperties}
                 >
                     <div style={{ padding: '24px 28px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass)' }}>
                         <div>
@@ -35,7 +58,7 @@ export const TaskModal = ({ isTaskModalOpen, setIsTaskModalOpen, taskForm, setTa
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.9rem' }}>Descripción</label>
-                                <textarea rows="3" placeholder="Detalles opcionales..." style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none', resize: 'none' }}
+                                <textarea rows={3} placeholder="Detalles opcionales..." style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none', resize: 'none' }}
                                     value={taskForm.descripcion} onChange={e => setTaskForm({ ...taskForm, descripcion: e.target.value })} />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
@@ -54,13 +77,13 @@ export const TaskModal = ({ isTaskModalOpen, setIsTaskModalOpen, taskForm, setTa
                                             borderRadius: '10px', cursor: 'pointer', transition: 'background 0.2s',
                                             background: taskForm.asignado_a.includes(u.email) ? 'var(--accent-soft)' : 'transparent',
                                             color: taskForm.asignado_a.includes(u.email) ? 'var(--accent)' : 'var(--text)'
-                                        }}>
+                                        } as React.CSSProperties}>
                                             <input type="checkbox" checked={taskForm.asignado_a.includes(u.email)} style={{ display: 'none' }}
                                                 onChange={(ev) => {
                                                     if (ev.target.checked) setTaskForm({ ...taskForm, asignado_a: [...taskForm.asignado_a, u.email] });
                                                     else setTaskForm({ ...taskForm, asignado_a: taskForm.asignado_a.filter(em => em !== u.email) });
                                                 }} />
-                                            <div style={{ width: '18px', height: '18px', borderRadius: '6px', border: '2px solid', borderColor: taskForm.asignado_a.includes(u.email) ? 'var(--accent)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ width: '18px', height: '18px', borderRadius: '6px', border: '2px solid', borderColor: taskForm.asignado_a.includes(u.email) ? 'var(--accent)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties}>
                                                 {taskForm.asignado_a.includes(u.email) && <Check size={14} strokeWidth={3} />}
                                             </div>
                                             <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{u.nombre || u.email}</span>

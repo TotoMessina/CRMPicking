@@ -50,8 +50,8 @@ export const ActivityTimeline: React.FC<Props> = ({ activities, maxInitial = 5 }
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <AnimatePresence mode="popLayout">
-                    {displayedActivities.map((activity, index) => {
-                        const { icon: Icon, color, bg } = getActivityConfig(activity.descripcion);
+                    {(displayedActivities as any[]).map((activity: any, index: number) => {
+                        const { icon: Icon, color, bg } = getActivityConfig(activity.descripcion || '');
                         const date = new Date(activity.fecha);
                         
                         return (

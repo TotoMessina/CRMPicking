@@ -10,12 +10,12 @@ import toast from 'react-hot-toast';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getChurnRisk } from '../utils/riskScoring';
 
 // ─── Estilos de colores por estado ──────────────────────────────────────────
-const ESTADOS_COLORES = {
+const ESTADOS_COLORES: Record<string, { badge: string; badgeBg: string; pin: string }> = {
     'Pendiente': { badge: '#f59e0b', badgeBg: 'rgba(245,158,11,0.15)', pin: '#f59e0b' },
     'Visitado':  { badge: '#10b981', badgeBg: 'rgba(16,185,129,0.15)', pin: '#10b981' },
     'Ausente':   { badge: '#ef4444', badgeBg: 'rgba(239,68,68,0.12)', pin: '#ef4444' },
@@ -23,7 +23,7 @@ const ESTADOS_COLORES = {
 };
 
 // Genera un ícono de pin numerado premium
-const makeNumberedIcon = (num, color, done, isRisk) => L.divIcon({
+const makeNumberedIcon = (num: number, color: string, done: boolean, isRisk: boolean) => L.divIcon({
     className: '',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
@@ -41,7 +41,7 @@ const makeNumberedIcon = (num, color, done, isRisk) => L.divIcon({
 });
 
 // Helper: Centrar mapa en la ruta
-function FitBounds({ points }) {
+function FitBounds({ points }: { points: L.LatLngExpression[] }) {
     const map = useMap();
     useEffect(() => {
         if (points.length === 0) return;
@@ -52,19 +52,19 @@ function FitBounds({ points }) {
 }
 
 // Helper: Forzar refresco de mapa al cambiar layouts
-function MapResizer({ mobileTab, verMapa }) {
+function MapResizer({ mobileTab, verMapa }: { mobileTab: string; verMapa: boolean }) {
     const map = useMap();
     useEffect(() => {
         setTimeout(() => {
             map.invalidateSize();
-        }, 400); // Dar margen para que las animaciones de CSS terminen
+        }, 400); 
     }, [map, mobileTab, verMapa]);
     return null;
 }
 
 // Helper: Distancia Haversine
-const getDistance = (lat1, lon1, lat2, lon2) => {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+const getDistance = (lat1: number | undefined, lon1: number | undefined, lat2: number | undefined, lon2: number | undefined) => {
+    if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return 0;
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -75,56 +75,66 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
     return R * c;
 };
 
+interface Visita {
+    id: string | number;
+    cliente_id: string;
+    usuario_asignado_email: string;
+    fecha_asignada: string;
+    estado: string;
+    orden: number;
+    comentarios_admin?: string;
+    clientes: {
+        id: string;
+        nombre_local: string;
+        direccion: string;
+        lat?: number;
+        lng?: number;
+    } | null;
+}
+
 export default function AsignadorRutas() {
     const { empresaActiva } = useAuth();
 
-    // Stats
     const [distanciaTotal, setDistanciaTotal] = useState(0);
-
-    // State principal
-    const [usuarios, setUsuarios] = useState([]);
+    const [usuarios, setUsuarios] = useState<{email: string, nombre: string}[]>([]);
     const [usuarioSeleccionado, setUsuarioSeleccionado] = useState('');
     const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
         const date = new Date();
         const offset = date.getTimezoneOffset() * 60000;
         return new Date(date.getTime() - offset).toISOString().split('T')[0];
     });
-    const [rutaActual, setRutaActual] = useState([]);
+    const [rutaActual, setRutaActual] = useState<Visita[]>([]);
     const [loadingRuta, setLoadingRuta] = useState(false);
 
-    // Tabs & Search
-    const [tabActiva, setTabActiva] = useState('riesgo'); // 'riesgo' | 'buscar'
+    const [tabActiva, setTabActiva] = useState<'riesgo' | 'buscar'>('riesgo'); 
     const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [sugerenciasRiesgo, setSugerenciasRiesgo] = useState([]);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [sugerenciasRiesgo, setSugerenciasRiesgo] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
 
-    // UI
-    const [editingComentario, setEditingComentario] = useState(null);
+    const [editingComentario, setEditingComentario] = useState<{id: string | number, texto: string} | null>(null);
     const [verMapa, setVerMapa] = useState(true);
-    const [mobileTab, setMobileTab] = useState('buscar'); // 'buscar' | 'ruta'
+    const [mobileTab, setMobileTab] = useState<'buscar' | 'ruta'>('buscar'); 
 
-    // ─── EFFECTS ─────────────────────────────────────────────────────────────
-
-    // 1. Cargar usuarios
     useEffect(() => {
         if (!empresaActiva?.id) return;
         const fetchUsuarios = async () => {
-            const { data: euData } = await supabase.from('empresa_usuario').select('usuario_email').eq('empresa_id', empresaActiva.id);
-            const emails = (euData || []).map(e => e.usuario_email);
+            const { data: euData } = await (supabase as any).from('empresa_usuario').select('usuario_email').eq('empresa_id', empresaActiva.id);
+            const emails = (euData || []).map((e: any) => e.usuario_email);
             if (emails.length === 0) return;
-            const { data: usersData } = await supabase.from('usuarios').select('email, nombre').in('email', emails).order('nombre');
-            setUsuarios((usersData || []).map(u => ({ email: u.email, nombre: u.nombre || u.email })));
+            const { data: usersData } = await (supabase as any).from('usuarios').select('email, nombre').in('email', emails).order('nombre');
+            setUsuarios((usersData || []).map((u: any) => ({ 
+                email: u.email || '', 
+                nombre: u.nombre || u.email || '' 
+            })));
         };
         fetchUsuarios();
     }, [empresaActiva]);
 
-    // 2. Cargar sugerencias de Riesgo (Churn)
     useEffect(() => {
         if (!empresaActiva?.id) return;
         const fetchRiesgo = async () => {
-            // Buscamos clientes activos o relevados
-            const { data, error } = await supabase
+            const { data } = await (supabase as any)
                 .from('empresa_cliente')
                 .select('id, cliente_id, estado, fecha_proximo_contacto, ultima_actividad, updated_at, created_at')
                 .eq('empresa_id', empresaActiva.id)
@@ -132,18 +142,23 @@ export default function AsignadorRutas() {
                 .limit(50);
             
             if (data && data.length > 0) {
-                const clienteIds = [...new Set(data.filter(ec => ec.cliente_id).map(ec => ec.cliente_id))];
-                const { data: clientesRaw } = await supabase
+                const clienteIds = (data as any[])
+                    .filter(ec => ec.cliente_id !== null && ec.cliente_id !== undefined)
+                    .map(ec => ec.cliente_id);
+                
+                const uniqueIds = [...new Set(clienteIds)];
+                
+                const { data: clientesRaw } = await (supabase as any)
                     .from('clientes')
                     .select('id, nombre_local, direccion, lat, lng')
-                    .in('id', clienteIds);
+                    .in('id', uniqueIds);
                 
-                const clienteMap = {};
-                (clientesRaw || []).forEach(c => { clienteMap[c.id] = c; });
+                const clienteMap: Record<string, any> = {};
+                (clientesRaw || []).forEach((c: any) => { if (c.id) clienteMap[c.id] = c; });
 
-                const dataConClientes = data.map(ec => ({
+                const dataConClientes = (data as any[]).map(ec => ({
                     ...ec,
-                    clientes: clienteMap[ec.cliente_id] || null
+                    clientes: ec.cliente_id ? (clienteMap[ec.cliente_id] || null) : null
                 }));
 
                 const conRiesgo = dataConClientes
@@ -160,30 +175,28 @@ export default function AsignadorRutas() {
         fetchRiesgo();
     }, [empresaActiva]);
 
-    // 3. Cargar ruta actual
     const fetchRuta = useCallback(async () => {
         if (!usuarioSeleccionado || !fechaSeleccionada || !empresaActiva?.id) {
             setRutaActual([]); setDistanciaTotal(0); return;
         }
         setLoadingRuta(true);
         try {
-            const { data: visitasRaw, error } = await supabase.from('visitas_diarias').select('*').eq('empresa_id', empresaActiva.id).eq('usuario_asignado_email', usuarioSeleccionado).eq('fecha_asignada', fechaSeleccionada).order('orden', { ascending: true });
+            const { data: visitasRaw, error } = await (supabase as any).from('visitas_diarias').select('*').eq('empresa_id', empresaActiva.id).eq('usuario_asignado_email', usuarioSeleccionado).eq('fecha_asignada', fechaSeleccionada).order('orden', { ascending: true });
             if (error) throw error;
             
-            let rutasArmadas = [];
-            if (visitasRaw && visitasRaw.length > 0) {
-                const clienteIds = [...new Set(visitasRaw.map(v => v.cliente_id))];
-                const { data: clientesRaw } = await supabase.from('clientes').select('id, nombre_local, direccion, lat, lng').in('id', clienteIds);
-                const clienteMap = {};
-                (clientesRaw || []).forEach(c => { clienteMap[c.id] = c; });
-                rutasArmadas = visitasRaw.map(v => ({ ...v, clientes: clienteMap[v.cliente_id] || null }));
+            let rutasArmadas: Visita[] = [];
+            if (visitasRaw && (visitasRaw as any[]).length > 0) {
+                const clienteIds = [...new Set((visitasRaw as any[]).map(v => v.cliente_id))];
+                const { data: clientesRaw } = await (supabase as any).from('clientes').select('id, nombre_local, direccion, lat, lng').in('id', clienteIds);
+                const clienteMap: Record<string, any> = {};
+                (clientesRaw || []).forEach((c: any) => { clienteMap[c.id] = c; });
+                rutasArmadas = (visitasRaw as any[]).map(v => ({ ...v, clientes: clienteMap[v.cliente_id] || null }));
             }
             setRutaActual(rutasArmadas);
             
-            // Calc distance
             let dist = 0;
-            for (let i = 0; i < (visitasRaw?.length || 0) - 1; i++) {
-                const v1 = visitasRaw[i].clientes; const v2 = visitasRaw[i+1].clientes;
+            for (let i = 0; i < (rutasArmadas.length || 0) - 1; i++) {
+                const v1 = rutasArmadas[i].clientes; const v2 = rutasArmadas[i+1].clientes;
                 dist += getDistance(v1?.lat, v1?.lng, v2?.lat, v2?.lng);
             }
             setDistanciaTotal(dist);
@@ -196,49 +209,45 @@ export default function AsignadorRutas() {
 
     useEffect(() => { fetchRuta(); }, [fetchRuta]);
 
-    // 4. Buscador
     useEffect(() => {
         if (searchTerm.length < 2) { setSearchResults([]); return; }
         const t = setTimeout(async () => {
             setSearching(true);
-            const { data } = await supabase.rpc('buscar_clientes_empresa', { p_empresa_id: empresaActiva.id, p_nombre: searchTerm, p_limit: 8 });
+            const { data } = await (supabase as any).rpc('buscar_clientes_empresa', { p_empresa_id: empresaActiva?.id, p_nombre: searchTerm, p_limit: 8 });
             if (data) {
-                setSearchResults(data.map(d => ({ id: d.ec_id, clientes: { id: d.cliente_id, nombre_local: d.nombre_local, direccion: d.direccion, lat: d.lat, lng: d.lng } })));
+                setSearchResults((data as any[]).map((d: any) => ({ id: d.ec_id, clientes: { id: d.cliente_id, nombre_local: d.nombre_local, direccion: d.direccion, lat: d.lat, lng: d.lng } })));
             }
             setSearching(false);
         }, 400);
         return () => clearTimeout(t);
     }, [searchTerm, empresaActiva]);
 
-    // ─── ACCIONES ────────────────────────────────────────────────────────────
-
-    const agregarAFila = async (ec) => {
+    const agregarAFila = async (ec: any) => {
         if (!usuarioSeleccionado) return toast.error('Seleccioná un usuario');
-        const yaExiste = rutaActual.find(v => v.cliente_id === ec.clientes.id);
+        const yaExiste = rutaActual.find(v => String(v.cliente_id) === String(ec.clientes.id));
         if (yaExiste) return toast.error('Ya está en la ruta');
 
         const newOrder = rutaActual.length;
-        const { data, error } = await supabase.from('visitas_diarias').insert([{
-            empresa_id: empresaActiva.id, cliente_id: ec.clientes.id, usuario_asignado_email: usuarioSeleccionado, fecha_asignada: fechaSeleccionada, estado: 'Pendiente', orden: newOrder
+        const { data, error } = await (supabase as any).from('visitas_diarias').insert([{
+            empresa_id: empresaActiva?.id, cliente_id: ec.clientes.id, usuario_asignado_email: usuarioSeleccionado, fecha_asignada: fechaSeleccionada, estado: 'Pendiente', orden: newOrder
         }]).select('*').single();
 
         if (error) return toast.error('Error al agregar');
-        const dataConClientes = { ...data, clientes: ec.clientes };
+        const dataConClientes: Visita = { ...data, clientes: ec.clientes };
         setRutaActual([...rutaActual, dataConClientes]);
         toast.success(`Agregado a ${usuarioSeleccionado.split('@')[0]}`);
     };
 
-    const quitarVisita = async (id) => {
-        const { error } = await supabase.from('visitas_diarias').delete().eq('id', id);
+    const quitarVisita = async (id: string | number) => {
+        const { error } = await (supabase as any).from('visitas_diarias').delete().eq('id', id);
         if (error) return toast.error('Error al eliminar');
         const nueva = rutaActual.filter(v => v.id !== id);
         setRutaActual(nueva);
-        // Re-ordenar
-        const updates = nueva.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id));
+        const updates = nueva.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id));
         await Promise.all(updates);
     };
 
-    const moverVisita = async (index, direccion) => {
+    const moverVisita = async (index: number, direccion: number) => {
         const nuevoIndex = index + direccion;
         if (nuevoIndex < 0 || nuevoIndex >= rutaActual.length) return;
         
@@ -247,20 +256,18 @@ export default function AsignadorRutas() {
         items.splice(nuevoIndex, 0, movedItem);
         setRutaActual(items);
         
-        // Persistir cambios
-        const updates = items.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id));
+        const updates = items.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id));
         await Promise.all(updates);
     };
 
-    const onDragEnd = async (result) => {
+    const onDragEnd = async (result: DropResult) => {
         if (!result.destination) return;
         const items = Array.from(rutaActual);
         const [reorderedItem] = items.splice(result.source.index, 1);
         items.splice(result.destination.index, 0, reorderedItem);
         setRutaActual(items);
         
-        // Persistir órdenes
-        const updates = items.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id));
+        const updates = items.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id));
         await Promise.all(updates);
     };
 
@@ -269,11 +276,10 @@ export default function AsignadorRutas() {
         if (!window.confirm('¿Estás seguro que deseas eliminar TODAS las visitas planificadas para este vendedor en esta fecha?')) return;
         
         const ids = rutaActual.map(v => v.id);
-        const { error } = await supabase.from('visitas_diarias').delete().in('id', ids);
+        const { error } = await (supabase as any).from('visitas_diarias').delete().in('id', ids);
         
         if (error) {
             toast.error('Error al vaciar la ruta');
-            console.error(error);
         } else {
             setRutaActual([]);
             toast.success('Ruta vaciada al 100%');
@@ -283,8 +289,7 @@ export default function AsignadorRutas() {
     const clonarUltimaRuta = async () => {
         if (!usuarioSeleccionado) return;
         setLoadingRuta(true);
-        // 1. Buscar la fecha más reciente con ruta
-        const { data: lastOne } = await supabase
+        const { data: lastOne } = await (supabase as any)
             .from('visitas_diarias')
             .select('fecha_asignada')
             .eq('usuario_asignado_email', usuarioSeleccionado)
@@ -296,12 +301,11 @@ export default function AsignadorRutas() {
 
         const lastDate = lastOne[0].fecha_asignada;
 
-        // 2. Obtener locales de esa fecha
-        const { data: aClonar } = await supabase.from('visitas_diarias').select('cliente_id, orden, comentarios_admin').eq('usuario_asignado_email', usuarioSeleccionado).eq('fecha_asignada', lastDate);
+        const { data: aClonar } = await (supabase as any).from('visitas_diarias').select('cliente_id, orden, comentarios_admin').eq('usuario_asignado_email', usuarioSeleccionado).eq('fecha_asignada', lastDate);
         
         if (aClonar) {
-            const logs = aClonar.map(v => ({
-                empresa_id: empresaActiva.id,
+            const logs = (aClonar as any[]).map(v => ({
+                empresa_id: empresaActiva?.id,
                 cliente_id: v.cliente_id,
                 usuario_asignado_email: usuarioSeleccionado,
                 fecha_asignada: fechaSeleccionada,
@@ -309,7 +313,7 @@ export default function AsignadorRutas() {
                 orden: v.orden,
                 comentarios_admin: v.comentarios_admin
             }));
-            const { error } = await supabase.from('visitas_diarias').insert(logs);
+            const { error } = await (supabase as any).from('visitas_diarias').insert(logs);
             if (!error) {
                 toast.success(`Ruta clonada del ${lastDate}`);
                 fetchRuta();
@@ -337,10 +341,9 @@ export default function AsignadorRutas() {
         
         toast.loading('Optimizando trayecto...', { id: 'opt' });
         let ruta = [...rutaActual];
-        // Nearest Neighbor básico + 2-opt
-        let optimizada = [];
+        let optimizada: Visita[] = [];
         let p = [...ruta];
-        let actual = p.shift();
+        let actual = p.shift()!;
         optimizada.push(actual);
         while (p.length > 0) {
             let idx = 0, minDist = Infinity;
@@ -353,19 +356,16 @@ export default function AsignadorRutas() {
         }
         
         setRutaActual(optimizada);
-        await Promise.all(optimizada.map((v, i) => supabase.from('visitas_diarias').update({ orden: i }).eq('id', v.id)));
+        await Promise.all(optimizada.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id)));
         toast.success('Ruta optimizada sin cruces 🎯', { id: 'opt' });
     };
 
-    // ─── RENDER ──────────────────────────────────────────────────────────────
-
     const polylinePoints = useMemo(() => 
-        rutaActual.map(v => v.clientes?.lat && v.clientes?.lng ? [v.clientes.lat, v.clientes.lng] : null).filter(p => p !== null)
+        rutaActual.map(v => v.clientes?.lat && v.clientes?.lng ? [v.clientes.lat, v.clientes.lng] as L.LatLngExpression : null).filter((p): p is L.LatLngExpression => p !== null)
     , [rutaActual]);
 
     return (
         <div className="asign-pro-container">
-            {/* 1. Header Pro */}
             <div className="asign-stats-bar">
                 <div className="stat-card premium blue">
                     <div className="stat-squircle"><MapPin size={22} /></div>
@@ -397,7 +397,6 @@ export default function AsignadorRutas() {
                 </div>
             </div>
 
-            {/* Selector de Pestañas Mobile (Toggle) */}
             <div className="mobile-tabs-switcher">
                 <button className={`m-tab-btn ${mobileTab === 'buscar' ? 'active' : ''}`} onClick={() => setMobileTab('buscar')}>
                     <Plus size={18} /> <span>Añadir</span>
@@ -407,10 +406,7 @@ export default function AsignadorRutas() {
                 </button>
             </div>
 
-            {/* 2. Layout Principal */}
             <div className={`asign-main-grid view-${mobileTab}`}>
-                
-                {/* Panel Izquierdo: Controles y Sugerencias */}
                 <div className={`side-panel ${mobileTab === 'buscar' ? 'mobile-visible' : 'mobile-hidden'}`}>
                     <div className="glass-card sticky-mobile-config">
                         <h3 className="asign-section-title" style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
@@ -470,7 +466,6 @@ export default function AsignadorRutas() {
                     </div>
                 </div>
 
-                {/* Panel Central: Ruta Drag & Drop */}
                 <div className={`route-panel ${mobileTab === 'ruta' ? 'mobile-visible' : 'mobile-hidden'}`}>
                     <div className="route-list-container">
                         <div className="route-header">
@@ -488,7 +483,7 @@ export default function AsignadorRutas() {
                         <DragDropContext onDragEnd={onDragEnd}>
                             <Droppable droppableId="ruta">
                                 {(provided) => (
-                                    <div {...provided.droppableProps} ref={provided.innerRef} className="route-list" style={{ ...provided.droppableProps.style, overflowY: 'auto', flex: 1, minHeight: '100px' }}>
+                                    <div {...provided.droppableProps} ref={provided.innerRef} className="route-list" style={{ overflowY: 'auto', flex: 1, minHeight: '100px' }}>
                                         {loadingRuta ? <div className="p-8 text-center muted">Actualizando lista...</div> :
                                          rutaActual.length === 0 ? (
                                             <div className="p-12 text-center muted">
@@ -553,11 +548,11 @@ export default function AsignadorRutas() {
                                         </div>
                                         <button onClick={() => setEditingComentario(null)} className="premium-icon-btn" style={{ border: 'none' }}><X size={18} /></button>
                                     </div>
-                                    <textarea className="input premium-input" autoFocus value={editingComentario.texto} onChange={e => setEditingComentario({...editingComentario, texto: e.target.value})} rows={4} style={{ width: '100%', marginBottom: 20, resize: 'none', fontSize: '0.95rem' }} placeholder="Escribe instrucciones especiales, horarios de atención, qué cobrar..." />
+                                    <textarea className="input premium-input" autoFocus value={editingComentario.texto} onChange={e => setEditingComentario({...editingComentario!, texto: e.target.value})} rows={4} style={{ width: '100%', marginBottom: 20, resize: 'none', fontSize: '0.95rem' }} placeholder="Escribe instrucciones especiales, horarios de atención, qué cobrar..." />
                                     <div style={{ display: 'flex', gap: 12 }}>
                                         <button className="btn-secundario" onClick={() => setEditingComentario(null)} style={{ flex: 1 }}>Cancelar</button>
                                         <button className="btn-primario" onClick={async () => {
-                                            const { error } = await supabase.from('visitas_diarias').update({ comentarios_admin: editingComentario.texto }).eq('id', editingComentario.id);
+                                            const { error } = await (supabase as any).from('visitas_diarias').update({ comentarios_admin: editingComentario.texto }).eq('id', editingComentario.id);
                                             if (error) {
                                                 toast.error('No se pudo guardar la nota');
                                                 return;
@@ -573,7 +568,6 @@ export default function AsignadorRutas() {
                     </AnimatePresence>
                 </div>
 
-                {/* Panel Derecha: Mapa (Opcional) */}
                 <AnimatePresence>
                     {verMapa && (
                         <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: window.innerWidth < 768 ? '100%' : '400px' }} exit={{ opacity: 0, width: 0 }} className="map-panel">
@@ -584,7 +578,7 @@ export default function AsignadorRutas() {
                                     <MapResizer mobileTab={mobileTab} verMapa={verMapa} />
                                     {polylinePoints.length > 1 && <Polyline positions={polylinePoints} pathOptions={{ color: 'var(--accent)', weight: 3, opacity: 0.6, dashArray: '5, 10' }} />}
                                     {rutaActual.map((v, idx) => {
-                                        if (!v.clientes?.lat) return null;
+                                        if (!v.clientes?.lat || !v.clientes?.lng) return null;
                                         const col = ESTADOS_COLORES[v.estado] || ESTADOS_COLORES['Pendiente'];
                                         return (
                                             <Marker key={v.id} position={[v.clientes.lat, v.clientes.lng]} icon={makeNumberedIcon(idx + 1, col.pin, v.estado === 'Visitado', false)}>
@@ -599,7 +593,6 @@ export default function AsignadorRutas() {
                 </AnimatePresence>
             </div>
 
-            {/* Barra Flotante de Acciones */}
             <div className="action-buttons-floating">
                 <button className="btn-floating btn-secundario" onClick={clonarUltimaRuta} title="Cargar locales de la visita anterior">
                     <Copy size={16} /> <span className="hide-mobile">Clonar Última</span>
@@ -611,62 +604,16 @@ export default function AsignadorRutas() {
                     <Share2 size={16} /> <span className="hide-mobile">WhatsApp</span>
                 </button>
                 <style>{`
-                .arrow-btn {
-                    border: none;
-                    background: transparent;
-                    color: var(--text-muted);
-                    padding: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .arrow-btn:hover:not(.disabled) {
-                    color: var(--accent);
-                    transform: scale(1.1);
-                }
-                .arrow-btn.disabled {
-                    opacity: 0.1;
-                    cursor: not-allowed;
-                }
-                .premium-pill-btn {
-                    padding: 6px 14px;
-                    border-radius: 20px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    background: var(--bg-elevated);
-                    color: var(--text-muted);
-                    border: 1px solid var(--border);
-                    cursor: pointer;
-                    font-size: 0.75rem;
-                    font-weight: 600;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                .premium-pill-btn.active {
-                    background: var(--accent-soft);
-                    color: var(--accent);
-                    border-color: var(--accent);
-                }
-                .premium-pill-btn:hover {
-                    background: var(--bg-hover);
-                    color: var(--text);
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                }
-                .premium-pill-btn.danger {
-                    color: #ef4444;
-                    background: rgba(239, 68, 68, 0.05);
-                    border-color: rgba(239, 68, 68, 0.1);
-                }
-                .premium-pill-btn.danger:hover {
-                    background: #ef4444;
-                    color: white;
-                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-                }
+                .arrow-btn { border: none; background: transparent; color: var(--text-muted); padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+                .arrow-btn:hover:not(.disabled) { color: var(--accent); transform: scale(1.1); }
+                .arrow-btn.disabled { opacity: 0.1; cursor: not-allowed; }
+                .premium-pill-btn { padding: 6px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+                .premium-pill-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+                .premium-pill-btn:hover { background: var(--bg-hover); color: var(--text); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+                .premium-pill-btn.danger { color: #ef4444; background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.1); }
+                .premium-pill-btn.danger:hover { background: #ef4444; color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
             `}</style>
-        </div>
+            </div>
         </div>
     );
 }

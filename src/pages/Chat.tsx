@@ -2,15 +2,23 @@ import { useChat } from '../hooks/useChat';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatArea } from '../components/chat/ChatArea';
 import { TaskModal } from '../components/chat/TaskModal';
+import { useAuth } from '../contexts/AuthContext';
 
+/**
+ * Chat Page
+ */
 export default function Chat() {
+    const { user, userName, empresaActiva, role, isDemoMode } = useAuth();
+    const roleName = role || '';
     const {
-        user, usuarios, selectedUser, setSelectedUser, mensajes, newMessage, setNewMessage,
+        usuarios, selectedUser, setSelectedUser, mensajes, newMessage, setNewMessage,
         loadingUsers, loadingMessages, isTaskModalOpen, setIsTaskModalOpen, taskForm, setTaskForm,
         sendingTask, hasMoreMessages, isMobile, messagesEndRef, topRef, scrollContainerRef,
         handleSend, handleSendTask, loadMoreMessages,
         selectedContext, setSelectedContext
     } = useChat();
+
+    const canEdit = !isDemoMode && (roleName === 'admin' || roleName === 'super-admin' || roleName === 'creador');
 
     const openTaskModal = () => {
         setTaskForm({
@@ -21,6 +29,8 @@ export default function Chat() {
         });
         setIsTaskModalOpen(true);
     };
+
+    if (!user) return <div className="p-8 text-center muted">Cargando sesión de chat...</div>;
 
     return (
         <div style={{
@@ -33,7 +43,7 @@ export default function Chat() {
             gap: isMobile ? 0 : '20px', 
             boxSizing: 'border-box',
             maxWidth: '1400px', 
-            margin: isMobile ? '-80px 0 0 0' : '0 auto', // Offset the AppShell mobile header margin if necessary, but we'll use fixed for ChatArea
+            margin: isMobile ? '-80px 0 0 0' : '0 auto', 
             position: isMobile ? 'relative' : 'static',
             zIndex: isMobile ? 1000 : 'auto'
         }}>
@@ -49,7 +59,7 @@ export default function Chat() {
                 selectedUser={selectedUser} 
                 setSelectedUser={setSelectedUser} 
                 mensajes={mensajes} 
-                user={user} 
+                user={user as any} 
                 newMessage={newMessage} 
                 setNewMessage={setNewMessage} 
                 handleSend={handleSend} 

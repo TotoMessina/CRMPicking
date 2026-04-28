@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import { Moon, Sun, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+/**
+ * Update Password Page (Password Recovery Flow)
+ */
 export default function UpdatePassword() {
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
@@ -13,31 +16,33 @@ export default function UpdatePassword() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState({ text: '', type: 'info' });
+    const [msg, setMsg] = useState<{ text: string, type: 'info' | 'error' | 'success' }>({ text: '', type: 'info' });
     const [sessionChecked, setSessionChecked] = useState(false);
 
     useEffect(() => {
         // Verificar si la URL trae el hash de acceso recovery de Supabase
-        // Supabase interceptará el hash (access_token) y establecerá una sesión local automáticamente
-        supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'PASSWORD_RECOVERY' || session) {
                 setSessionChecked(true);
             }
         });
 
-        // Timeout fall-back checking
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             setSessionChecked(true);
         }, 1500);
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(timer);
+        };
     }, []);
 
-    const showMessage = (text, type = 'info') => {
+    const showMessage = (text: string, type: 'info' | 'error' | 'success' = 'info') => {
         setMsg({ text, type });
     };
 
-    const handleUpdate = async (e) => {
+    const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
-        
         
         if (isDemoMode) {
             showMessage('Modo Demostración: No se permite cambiar la contraseña.', 'error');
@@ -65,12 +70,11 @@ export default function UpdatePassword() {
 
             showMessage('¡Contraseña actualizada con éxito!', 'success');
             
-            // Redirect to dashboard or login
             setTimeout(() => {
                 navigate('/');
             }, 2000);
             
-        } catch (error) {
+        } catch (error: any) {
             showMessage('Error al actualizar la contraseña: ' + error.message, 'error');
         } finally {
             setLoading(false);
@@ -88,7 +92,13 @@ export default function UpdatePassword() {
                         src="/logo-vertical.png" 
                         alt="Restablecer" 
                         style={{ height: '70px', width: 'auto', margin: '0 auto 24px', display: 'block', objectFit: 'contain' }} 
-                        onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
+                        onError={(e) => { 
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.style.display = 'none'; 
+                            if (target.nextElementSibling) {
+                                (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                            }
+                        }}
                     />
                     <div className="login-brand-logo" style={{ display: 'none' }}><Lock size={32} /></div>
                     <h1 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Nueva Contraseña</h1>

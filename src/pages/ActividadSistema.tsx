@@ -9,7 +9,7 @@ interface AuditLog {
     id: string;
     table_name: string;
     record_id: string;
-    action_type: 'INSERT' | 'UPDATE' | 'DELETE' | 'SESSION_END';
+    action_type: 'INSERT' | 'UPDATE' | 'DELETE' | 'SESSION_END' | string;
     old_data: any;
     new_data: any;
     created_at: string;
@@ -74,7 +74,7 @@ export const ActividadSistema: React.FC = () => {
 
     useEffect(() => {
         if (!hasAccess) return;
-        supabase.from('usuarios').select('id, nombre').order('nombre').then(({data}) => {
+        (supabase as any).from('usuarios').select('id, nombre').order('nombre').then(({data}: any) => {
             if(data) setSystemUsers(data);
         });
     }, [hasAccess]);
@@ -89,7 +89,7 @@ export const ActividadSistema: React.FC = () => {
         setLoading(true);
         if (!empresaActiva?.id) { setLoading(false); return; }
 
-        let query = supabase
+        let query = (supabase as any)
             .from('audit_logs')
             .select('*, usuarios(nombre)', { count: 'exact' })
             .eq('empresa_id', empresaActiva.id);
@@ -108,7 +108,7 @@ export const ActividadSistema: React.FC = () => {
         if (error) {
             console.error("Error fetching audit logs:", error);
         } else {
-            setLogs(data || []);
+            setLogs((data || []) as AuditLog[]);
             setTotalCount(count || 0);
             setTotalPages(Math.max(1, Math.ceil((count || 0) / pageSize)));
         }

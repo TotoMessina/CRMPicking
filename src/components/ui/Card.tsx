@@ -1,6 +1,11 @@
 import clsx from 'clsx';
+import { HTMLAttributes, ReactNode } from 'react';
 
-export function Card({ children, className, ...props }) {
+interface BaseProps extends HTMLAttributes<HTMLDivElement> {
+    children?: ReactNode;
+}
+
+export function Card({ children, className, ...props }: BaseProps) {
     return (
         <div className={clsx('card', className)} {...props}>
             {children}
@@ -8,7 +13,7 @@ export function Card({ children, className, ...props }) {
     );
 }
 
-export function CardHeader({ children, className, ...props }) {
+export function CardHeader({ children, className, ...props }: BaseProps) {
     return (
         <div className={clsx('card-header', className)} {...props}>
             {children}
@@ -16,12 +21,22 @@ export function CardHeader({ children, className, ...props }) {
     );
 }
 
-export function CardBody({ children, className, ...props }) {
+export function CardBody({ children, className, ...props }: BaseProps) {
     return (
         <div className={clsx('card-body', className)} {...props}>
             {children}
         </div>
     );
+}
+
+export interface BentoCardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
+    title?: ReactNode;
+    stat?: ReactNode;
+    icon?: ReactNode;
+    desc?: ReactNode;
+    isPrimary?: boolean;
+    variant?: 'default' | 'gradient-black' | 'gradient-green' | 'gradient-blue' | 'gradient-orange' | 'dark';
+    actionIcon?: ReactNode;
 }
 
 export function BentoCard({
@@ -31,12 +46,11 @@ export function BentoCard({
     desc,
     className,
     isPrimary,
-    variant, // enum: 'default', 'gradient-black', 'gradient-green', 'gradient-blue', 'gradient-orange', 'dark'
+    variant,
     actionIcon,
     children,
     ...props
-}) {
-    // Generates a dynamic class based on the variant prop
+}: BentoCardProps) {
     const variantClass = variant ? `bento-${variant}` : '';
 
     return (

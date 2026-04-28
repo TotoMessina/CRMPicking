@@ -1,31 +1,47 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Search, User, Calendar, RefreshCcw, ChevronLeft, ChevronRight, Maximize2, Settings } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { Search, User, Calendar, RefreshCcw, ChevronLeft, Maximize2, Settings, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ClienteModal } from '../components/ui/ClienteModal';
-import { Edit2 } from 'lucide-react';
 import { formatToLocal } from '../utils/dateUtils';
 import { usePipelineStates } from '../hooks/usePipelineStates';
 import { esEstadoFinal } from '../constants/estados';
 
+interface Client {
+    id: string | number;
+    nombre_local: string;
+    nombre?: string;
+    direccion?: string;
+    responsable?: string;
+    estado?: string;
+    fecha_proximo_contacto?: string;
+    interes?: string;
+    venta_digital?: boolean;
+    notas?: string;
+    [key: string]: any;
+}
+
+/**
+ * Pipeline (Kanban) Page
+ */
 export default function Pipeline() {
     const navigate = useNavigate();
-    const { user, userName, empresaActiva, role, roleName } = useAuth();
+    const { user, userName, empresaActiva, role, isDemoMode } = useAuth();
+    const roleName = role || '';
     const { states: COLUMNS, loading: loadingStates, refresh: refreshStates } = usePipelineStates(empresaActiva?.id);
     
-    const [clients, setClients] = useState([]);
+    const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState<string | number | null>(null);
 
-    // Responsive State
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-    const [activeTab, setActiveTab] = useState(null);
-    const [collapsedCols, setCollapsedCols] = useState(new Set());
+    const [activeTab, setActiveTab] = useState<string | null>(null);
+    const [collapsedCols, setCollapsedCols] = useState<Set<string>>(new Set());
 
     const isAdmin = role === 'super-admin' || roleName === 'admin' || role === 'admin';
 
@@ -33,9 +49,9 @@ export default function Pipeline() {
         if (COLUMNS && COLUMNS.length > 0 && !activeTab) {
             setActiveTab(COLUMNS[0].id);
         }
-    }, [COLUMNS]);
+    }, [COLUMNS, activeTab]);
 
-    const toggleCollapse = (id) => {
+    const toggleCollapse = (id: string) => {
         const newSet = new Set(collapsedCols);
         if (newSet.has(id)) newSet.delete(id);
         else newSet.add(id);
@@ -64,11 +80,11 @@ export default function Pipeline() {
             toast.error('Error cargando pipeline');
             console.error(error);
         } else {
-            const mapped = (data || []).map(row => ({
-                ...row.clientes,
+            const mapped = (data || []).map((row: any) => ({
+                ...(row.clientes || {}),
                 ...row,
                 id: row.clientes?.id
-            }));
+            })).filter((c: any) => c.id !== undefined);
             setClients(mapped);
         }
         setLoading(false);
@@ -78,7 +94,7 @@ export default function Pipeline() {
         fetchPipeline();
     }, [empresaActiva]);
 
-    const onDragEnd = async (result) => {
+    const onDragEnd = async (result: DropResult) => {
         const { destination, source, draggableId } = result;
         if (!destination) return;
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
@@ -89,16 +105,16 @@ export default function Pipeline() {
 
         const previousClients = [...clients];
         const updatedClients = clients.map(c =>
-            c.id === clientId ? { ...c, estado: newStatus } : c
+            Number(c.id) === clientId ? { ...c, estado: newStatus } : c
         );
         setClients(updatedClients);
 
-        const { error } = await supabase
+        const { error } = await (supabase as any)
             .from('empresa_cliente')
             .update({
                 estado: newStatus,
                 ...( esEstadoFinal(newStatus) ? { activador_cierre: userName || user?.email || null } : {})
-            })
+            } as any)
             .eq('cliente_id', clientId)
             .eq('empresa_id', empresaActiva.id);
 
@@ -107,7 +123,7 @@ export default function Pipeline() {
             setClients(previousClients);
         } else {
             const oldStatus = source.droppableId;
-            await supabase.from('actividades').insert([{
+            await (supabase as any).from('actividades').insert([{
                 cliente_id: clientId,
                 descripcion: `🔄 Cambio de estado (Pipeline): ${oldStatus} ➔ ${newStatus}`,
                 usuario: userName || user?.email || 'Sistema',
@@ -126,15 +142,14 @@ export default function Pipeline() {
             c.responsable?.toLowerCase().includes(term));
     });
 
-    const getColumnClients = (colId) => {
+    const getColumnClients = (colId: string) => {
         return filteredClients.filter(c => {
-            // Si el estado está vacío y es el primer ID de columna configurado, mostrarlo ahí
             if (!c.estado && COLUMNS.length > 0 && colId === COLUMNS[0].id) return true;
             return c.estado === colId;
         });
     };
 
-    const renderCard = (client, index, provided = null, snapshot = null) => {
+    const renderCard = (client: Client, index: number, provided: any = null, snapshot: any = null) => {
         const cardStyle = {
             ...(provided?.draggableProps?.style || {}),
             background: snapshot?.isDragging ? 'var(--bg-elevated)' : 'var(--bg-card)',
@@ -155,7 +170,7 @@ export default function Pipeline() {
                 ref={provided?.innerRef}
                 {...(provided?.draggableProps || {})}
                 {...(provided?.dragHandleProps || {})}
-                style={cardStyle}
+                style={cardStyle as any}
                 className="kanban-card-premium"
                 onClick={() => {
                     if (isMobile) {
@@ -221,7 +236,7 @@ export default function Pipeline() {
     if (loadingStates) return <div className="p-8 text-center muted">Sincronizando Pipeline...</div>;
 
     return (
-        <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '1400px', width: '100%', margin: isMobile ? '0' : '24px auto', borderRadius: isMobile ? '0' : '24px', overflow: 'hidden', minHeight: '100vh', background: 'transparent', boxShadow: 'none', border: 'none' }}>
+        <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '1400px', width: '100%', margin: isMobile ? '0' : '24px auto', borderRadius: isMobile ? '0' : '24px', overflow: 'hidden', minHeight: '100vh', background: 'transparent' }}>
             <header style={{ padding: isMobile ? '20px' : '0 0 32px 0', background: isMobile ? 'var(--bg-elevated)' : 'transparent', borderBottom: isMobile ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -263,7 +278,7 @@ export default function Pipeline() {
                 </div>
 
                 {isMobile && (
-                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '16px 0 4px 0', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '16px 0 4px 0', scrollbarWidth: 'none' }}>
                         {COLUMNS.map(col => (
                             <button
                                 key={col.id}
@@ -296,12 +311,12 @@ export default function Pipeline() {
                             <div style={{ width: '4px', height: '16px', borderRadius: '2px', background: COLUMNS.find(c => c.id === activeTab)?.color }}></div>
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{COLUMNS.find(c => c.id === activeTab)?.label}</h2>
                         </div>
-                        {getColumnClients(activeTab).length === 0 ? (
+                        {getColumnClients(activeTab || '').length === 0 ? (
                             <div className="muted" style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--bg-elevated)', borderRadius: '24px', border: '1px dashed var(--border)' }}>
                                 No hay clientes en este estado.
                             </div>
                         ) : (
-                            getColumnClients(activeTab).map((client, idx) => (
+                            getColumnClients(activeTab || '').map((client, idx) => (
                                 <div key={client.id}>{renderCard(client, idx)}</div>
                             ))
                         )}
@@ -379,13 +394,12 @@ export default function Pipeline() {
                                                             minHeight: '400px',
                                                             display: 'flex', 
                                                             flexDirection: 'column',
-                                                            gap: '4px',
-                                                            opacity: 1
+                                                            gap: '4px'
                                                         }}
                                                     >
                                                         {getColumnClients(column.id).map((client, index) => (
                                                             <Draggable key={client.id} draggableId={String(client.id)} index={index}>
-                                                                {(provided, snapshot) => renderCard(client, index, provided, snapshot)}
+                                                                {(prov, snap) => renderCard(client, index, prov, snap)}
                                                             </Draggable>
                                                         ))}
                                                         {provided.placeholder}
@@ -423,7 +437,7 @@ export default function Pipeline() {
             <ClienteModal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
-                clienteId={editingId}
+                clienteId={editingId as string}
                 onSaved={() => {
                     setModalOpen(false);
                     setTimeout(() => fetchPipeline(), 300);

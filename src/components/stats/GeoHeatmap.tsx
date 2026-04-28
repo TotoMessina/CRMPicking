@@ -35,9 +35,8 @@ const GeoHeatmap: React.FC<GeoHeatmapProps> = ({ points }) => {
                 center: [-34.6037, -58.3816], // Buenos Aires
                 zoom: 11,
                 scrollWheelZoom: false,
-                dragging: !L.Browser.mobile,
-                tap: !L.Browser.mobile
-            });
+                dragging: !(L.Browser as any).mobile,
+            } as any);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'

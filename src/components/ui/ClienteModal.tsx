@@ -166,9 +166,10 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
         if (data && data.id) {
             toast.success(`Cliente encontrado: ${data.nombre_local || data.nombre}`);
-            setClienteId(data.id);
+            const idString = data.id.toString();
+            setClienteId(idString);
             setErrors(prev => { const n = { ...prev }; delete n.telefono; return n; });
-            loadCliente(data.id);
+            loadCliente(idString);
             handleStepChange(1);
         } else {
             toast.success('Teléfono nuevo, podés continuar con la carga.');
@@ -241,10 +242,11 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const loadCliente = async (id: string) => {
         setLoading(true);
         try {
-            const { data: ecData, error: ecError } = await supabase
+            const numericId = parseInt(id, 10);
+            const { data: ecData, error: ecError } = await (supabase as any)
                 .from('empresa_cliente')
                 .select('*, clientes(*, cliente_grupos(grupo_id))')
-                .eq('cliente_id', id)
+                .eq('cliente_id', numericId)
                 .eq('empresa_id', empresaActiva?.id)
                 .maybeSingle();
 
@@ -254,19 +256,26 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
             if (ecData) {
                 // Merge both: fallback to universal if specific is null
+                const rawClientes = (ecData as any).clientes || {};
                 finalData = {
                     ...emptyForm(),
-                    ...ecData.clientes,
+                    ...rawClientes,
                     ...ecData,
-                    estado: ecData.estado || ecData.clientes?.estado || ESTADO_DEFAULT,
-                    rubro: ecData.rubro || ecData.clientes?.rubro || '',
-                    responsable: ecData.responsable || ecData.clientes?.responsable || '',
-                    situacion: ecData.situacion || ecData.clientes?.situacion || SITUACION_DEFAULT,
-                    notas: ecData.notas || ecData.clientes?.notas || '',
-                    tipo_contacto: ecData.tipo_contacto || ecData.clientes?.tipo_contacto || 'Visita Presencial',
-                    fecha_proximo_contacto: ecData.fecha_proximo_contacto || ecData.clientes?.fecha_proximo_contacto || '',
-                    hora_proximo_contacto: ecData.hora_proximo_contacto || ecData.clientes?.hora_proximo_contacto || '',
-                    venta_digital: ecData.venta_digital ? 'true' : 'false'
+                    nombre_local: (ecData as any).nombre_local || rawClientes.nombre_local || '',
+                    direccion: (ecData as any).direccion || rawClientes.direccion || '',
+                    nombre: (ecData as any).nombre || rawClientes.nombre || '',
+                    telefono: (ecData as any).telefono || rawClientes.telefono || '',
+                    mail: (ecData as any).mail || rawClientes.mail || '',
+                    cuit: (ecData as any).cuit || rawClientes.cuit || '',
+                    estado: (ecData as any).estado || rawClientes.estado || defaultState || ESTADO_DEFAULT,
+                    rubro: (ecData as any).rubro || rawClientes.rubro || '',
+                    responsable: (ecData as any).responsable || rawClientes.responsable || '',
+                    situacion: (ecData as any).situacion || rawClientes.situacion || defaultSituation || SITUACION_DEFAULT,
+                    notas: (ecData as any).notas || rawClientes.notas || '',
+                    tipo_contacto: (ecData as any).tipo_contacto || rawClientes.tipo_contacto || 'Visita Presencial',
+                    fecha_proximo_contacto: (ecData as any).fecha_proximo_contacto || rawClientes.fecha_proximo_contacto || '',
+                    hora_proximo_contacto: (ecData as any).hora_proximo_contacto || rawClientes.hora_proximo_contacto || '',
+                    venta_digital: ((ecData as any).venta_digital || rawClientes.venta_digital) ? 'true' : 'false'
                 };
 
                 // Track the initial address to avoid redundant geocoding if it doesn't change
@@ -278,19 +287,25 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 delete (finalData as any).clientes;
                 
                 // Set selected groups
-                if (ecData.clientes?.cliente_grupos) {
-                    setSelectedGrupos(ecData.clientes.cliente_grupos.map((cg: any) => cg.grupo_id.toString()));
+                if ((ecData as any).clientes && (ecData as any).clientes.cliente_grupos) {
+                    setSelectedGrupos(((ecData as any).clientes.cliente_grupos as any[]).map((cg: any) => cg.grupo_id.toString()));
                 } else {
                     setSelectedGrupos([]);
                 }
             } else {
                 // Fallback to just universal if not found in company
-                const { data, error } = await supabase.from('clientes').select('*').eq('id', id).single();
+                const { data, error } = await (supabase as any).from('clientes').select('*').eq('id', id).single();
                 if (error) throw error;
                 
                 finalData = { 
                     ...emptyForm(), 
-                    ...data, 
+                    ...data,
+                    nombre_local: data.nombre_local || '',
+                    direccion: data.direccion || '',
+                    nombre: data.nombre || '',
+                    telefono: data.telefono || '',
+                    mail: data.mail || '',
+                    cuit: data.cuit || '',
                     venta_digital: data.venta_digital ? 'true' : 'false' 
                 };
             }
@@ -435,9 +450,11 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             }
 
             let finalErr;
-            let resultId = clienteId;
+            let resultId: string | number | null = clienteId;
 
             if (clienteId) {
+                const numericId = parseInt(clienteId, 10);
+                
                 // EXCLUSIVELY universal fields for 'clientes' table
                 const universalFields = {
                     nombre_local: payload.nombre_local,
@@ -473,8 +490,8 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     .update({
                         ...companyFields,
                         updated_at: new Date().toISOString(),
-                    })
-                    .eq('cliente_id', Number(clienteId))
+                    } as any)
+                    .eq('cliente_id', numericId)
                     .eq('empresa_id', empresaActiva.id);
 
                 if (cErr) console.error('Error actualizando empresa_cliente:', cErr);
@@ -482,8 +499,8 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 // 2. Then update universal client record (name, address, coords)
                 const { error: uErr } = await supabase
                     .from('clientes')
-                    .update(universalFields)
-                    .eq('id', Number(clienteId));
+                    .update(universalFields as any)
+                    .eq('id', numericId);
 
                 if (uErr) console.error('Error actualizando clientes:', uErr);
 
@@ -500,22 +517,22 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
                     const desc = `✏️ Edición de cliente${parts.length ? ': ' + parts.join(' · ') : ''}`;
                     await supabase.from('actividades').insert([{
-                        cliente_id: clienteId,
+                        cliente_id: numericId,
                         descripcion: desc,
                         usuario: userName || user?.email || 'Sistema',
                         empresa_id: empresaActiva.id,
                         fecha: new Date().toISOString()
-                    }]);
+                    }] as any);
                 }
             } else {
                 // Creation logic (New Client) via RPC
-                let creadoPor = userName || null;
+                let creadoPor: string | null = userName || null;
                 if (!creadoPor && user?.email) {
                     const { data: uData } = await supabase.from('usuarios').select('nombre').eq('email', user.email).maybeSingle();
                     creadoPor = uData?.nombre || user.email;
                 }
 
-                const { data: createdId, error: rpcErr } = await supabase.rpc('crear_cliente_v5_final', {
+                const { data: createdId, error: rpcErr } = await (supabase as any).rpc('crear_cliente_v5_final', {
                     p_payload: {
                         ...payload,
                         p_nombre_local: payload.nombre_local,
@@ -553,26 +570,28 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     finalErr = rpcErr;
                 } else if (createdId) {
                     resultId = createdId;
+                    const numericResultId = typeof resultId === 'string' ? parseInt(resultId, 10) : resultId;
+                    
                     // Log creation
                     const desc = `${initialLocation ? '📍' : '🆕'} Alta de cliente - Estado: ${payload.estado || 'Sin estado'}`;
                     await supabase.from('actividades').insert([{
-                        cliente_id: resultId,
+                        cliente_id: numericResultId,
                         descripcion: desc,
                         usuario: creadoPor,
                         empresa_id: empresaActiva.id,
                         fecha: new Date().toISOString()
-                    }]);
+                    }] as any);
 
-                    if (shouldRecordVisit) {
+                    if (shouldRecordVisit && numericResultId) {
                         const now = new Date().toISOString();
-                        await supabase.from('actividades').insert([{
-                            cliente_id: resultId,
+                        await (supabase as any).from('actividades').insert([{
+                            cliente_id: numericResultId,
                             descripcion: `🚚 Visita inicial realizada - Estado: ${payload.estado}`,
                             fecha: now,
                             usuario: creadoPor,
                             empresa_id: empresaActiva.id
-                        }]);
-                        await supabase.from('empresa_cliente').update({ ultima_actividad: now }).eq('cliente_id', resultId).eq('empresa_id', empresaActiva.id);
+                        }] as any);
+                        await (supabase as any).from('empresa_cliente').update({ ultima_actividad: now } as any).eq('cliente_id', numericResultId).eq('empresa_id', empresaActiva.id);
                     }
                 }
             }
@@ -809,7 +828,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                     <label>Rubro *</label>
                                     <select {...inp('rubro')}>
                                         <option value="">Seleccionar rubro...</option>
-                                        {rubrosDB.map(r => (
+                                        {rubrosDB.map((r: string) => (
                                             <option key={r} value={r}>{r}</option>
                                         ))}
                                     </select>

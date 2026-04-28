@@ -4,37 +4,38 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Moon, Sun, Rocket } from 'lucide-react';
 
+/**
+ * Login Page
+ */
 export default function Login() {
     const { user, signIn } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState({ text: '', type: 'info' });
+    const [msg, setMsg] = useState<{ text: string, type: 'info' | 'error' | 'success' }>({ text: '', type: 'info' });
 
-    // Form states
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    // Check if we already have a session, if so, redirect
     useEffect(() => {
         if (user) {
             navigate('/');
         }
     }, [user, navigate]);
 
-    const showMessage = (text, type = 'info') => {
+    const showMessage = (text: string, type: 'info' | 'error' | 'success' = 'info') => {
         setMsg({ text, type });
     };
 
-    const handleLogin = async (e) => {
+    const handleLogin = async (e: React.FormEvent) => {
         if (e) e.preventDefault();
         setLoading(true);
         showMessage('Ingresando...');
 
         try {
             await signIn(email, password);
-        } catch (error) {
+        } catch (error: any) {
             let errorText = "Error al ingresar: " + error.message;
             if (error.message.includes("Invalid login credentials")) {
                 errorText = "Credenciales incorrectas. Verificá tu email y contraseña.";
@@ -48,8 +49,7 @@ export default function Login() {
     };
 
     const handleDemoLogin = () => {
-        // Credenciales de prueba (Hardcoded solo para la demo pública)
-        const demoEmail = 'test1@crm.com'; // Cambiar por el real si es distinto
+        const demoEmail = 'test1@crm.com'; 
         const demoPass = 'Test1234'; 
         
         setEmail(demoEmail);
@@ -57,10 +57,7 @@ export default function Login() {
         
         showMessage('Accediendo con cuenta Demo...', 'info');
         
-        // Pequeño delay para que el usuario vea que se autocompletó
         setTimeout(() => {
-            const fakeEvent = { preventDefault: () => {} };
-            // Usamos las variables locales directamente para evitar problemas de race condition con el setState
             setLoading(true);
             signIn(demoEmail, demoPass).catch(err => {
                 showMessage(err.message, 'error');
@@ -80,7 +77,13 @@ export default function Login() {
                         src="/logo-vertical.png" 
                         alt="PickingUp CRM" 
                         style={{ height: '70px', width: 'auto', margin: '0 auto 24px', display: 'block', objectFit: 'contain' }} 
-                        onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
+                        onError={(e) => { 
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.style.display = 'none'; 
+                            if (target.nextElementSibling) {
+                                (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                            }
+                        }}
                     />
                     <div className="login-brand-logo" style={{ display: 'none' }}>PU</div>
                     <h1>Bienvenido</h1>

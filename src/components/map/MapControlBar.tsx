@@ -1,11 +1,16 @@
 import React from 'react';
 
+interface MapControlBarProps {
+    children: React.ReactNode;
+    isMobile: boolean;
+}
+
 /**
  * MapControlBar
  * Reusable bottom control bar for immersive map dashboards.
  * Supports horizontal scrolling on mobile and glassmorphism styling.
  */
-export const MapControlBar = ({ children, isMobile }) => {
+export const MapControlBar: React.FC<MapControlBarProps> = ({ children, isMobile }) => {
     return (
         <div style={{
             height: isMobile ? 'auto' : '80px', 
@@ -35,7 +40,7 @@ export const MapControlBar = ({ children, isMobile }) => {
                 {children}
             </div>
             
-            <style tabIndex="-1">{`
+            <style tabIndex={-1}>{`
                 .bottom-bar-scroll::-webkit-scrollbar { display: none; }
             `}</style>
         </div>

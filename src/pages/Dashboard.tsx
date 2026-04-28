@@ -1,11 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-    Search, MoreVertical, Calendar, User, Clock, CheckCircle, 
-    Map as MapIcon, Users, Truck, TrendingUp, TrendingDown,
-    Activity, Shield, Zap, Target, ArrowRight
+    Activity, Shield, Zap, Target, ArrowRight, Truck, Users, CheckCircle
 } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { LiveOperationStream } from '../components/ui/LiveOperationStream';
@@ -17,26 +15,39 @@ import {
     ArcElement, 
     Title, 
     Tooltip, 
-    Legend 
+    Legend,
+    ChartData
 } from 'chart.js';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { format, subDays, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion } from 'framer-motion';
-import { barValueLabelPlugin } from '../constants/statsConstants';
 import { getChurnRisk } from '../utils/riskScoring';
 import { usePipelineStates } from '../hooks/usePipelineStates';
 
 // Register ChartJS
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
+interface DashboardStats {
+    clientesTotal: number;
+    nuevosHoy: number;
+    repartidores: number;
+    consumidores: number;
+    crecimientoDiario: ChartData<'bar'>;
+    distribucionCartera: ChartData<'doughnut'>;
+    ultimasVisitas: any[];
+    proximosContactos: any[];
+    localesMapa: any[];
+    topChurn: any[];
+}
+
 export default function Dashboard() {
-    const { empresaActiva, user, userName } = useAuth();
+    const { empresaActiva, userName } = useAuth();
     const { states: COLUMNS, loading: loadingStates } = usePipelineStates(empresaActiva?.id);
     
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({
+    const [stats, setStats] = useState<DashboardStats>({
         clientesTotal: 0,
         nuevosHoy: 0,
         repartidores: 0,
@@ -56,7 +67,6 @@ export default function Dashboard() {
             const today = startOfDay(new Date()).toISOString();
             const sevenDaysAgo = subDays(new Date(), 7).toISOString();
 
-            // Find relevant statuses for filtering (fallback to defaults if names changed)
             const activeStatus = COLUMNS.find(c => c.label.includes('Activo'))?.label || COLUMNS[Math.min(COLUMNS.length - 1, 4)]?.label;
             const relevantForChurn = COLUMNS.slice(0, Math.min(COLUMNS.length, 5)).map(c => c.label);
 
@@ -84,31 +94,31 @@ export default function Dashboard() {
                 supabase.from('empresa_cliente').select('id, cliente_id, fecha_proximo_contacto, ultima_actividad, updated_at, estado').eq('empresa_id', empresaActiva.id).eq('activo', true).in('estado', relevantForChurn).limit(100)
             ]);
 
-            const allClientIds = new Set([
+            const allClientIds = new Set<number>([
                 ...(recentVisits?.map(v => v.cliente_id) || []),
                 ...(pendingContacts?.map(c => c.cliente_id) || []),
                 ...(mapLocals?.map(m => m.cliente_id) || []),
                 ...(churnDataResult?.map(ch => ch.cliente_id) || [])
-            ].filter(Boolean));
+            ].filter((id): id is number => id !== null));
 
-            let clientMap = {};
+            let clientMap: Record<string, any> = {};
             if (allClientIds.size > 0) {
-                const { data: clientsRaw } = await supabase.from('clientes').select('id, nombre_local, lat, lng').in('id', Array.from(allClientIds));
-                clientsRaw?.forEach(c => { clientMap[c.id] = c; });
+                const { data: clientsRaw } = await (supabase as any).from('clientes').select('id, nombre_local, lat, lng').in('id', Array.from(allClientIds));
+                clientsRaw?.forEach((c: any) => { clientMap[c.id] = c; });
             }
 
-            const recentVisitsFinal = (recentVisits || []).map(v => ({ ...v, clientes: clientMap[v.cliente_id] || { nombre_local: 'Desconocido' } }));
-            const churnDataFinal = (churnDataResult || []).map(ch => ({ ...ch, clientes: clientMap[ch.cliente_id] || { nombre_local: 'Desconocido' } }));
+            const recentVisitsFinal = (recentVisits || []).map(v => ({ ...v, clientes: (v.cliente_id ? clientMap[v.cliente_id] : null) || { nombre_local: 'Desconocido' } }));
+            const churnDataFinal = (churnDataResult || []).map(ch => ({ ...ch, clientes: (ch.cliente_id ? clientMap[ch.cliente_id] : null) || { nombre_local: 'Desconocido' } }));
 
             const labelsGrid = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), 6 - i), 'EEE', { locale: es }));
             const growthCounts = Array(7).fill(0);
             growthData?.forEach(d => {
+                if (!d.created_at) return;
                 const dayIndex = 6 - Math.floor((new Date().getTime() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24));
                 if (dayIndex >= 0 && dayIndex < 7) growthCounts[dayIndex]++;
             });
 
-            // Calculate distribution using dynamic labels/colors
-            const stateCountsMap = {};
+            const stateCountsMap: Record<string, number> = {};
             stateDist?.forEach(d => { 
                 const label = d.estado || COLUMNS[0].label;
                 stateCountsMap[label] = (stateCountsMap[label] || 0) + 1; 
@@ -143,7 +153,8 @@ export default function Dashboard() {
                     }]
                 },
                 ultimasVisitas: recentVisitsFinal,
-                localesMapa: (mapLocals || []).map(m => ({ ...m, clientes: clientMap[m.cliente_id] || null })).filter(m => m.clientes?.lat),
+                proximosContactos: pendingContacts || [],
+                localesMapa: (mapLocals || []).map(m => ({ ...m, clientes: (m.cliente_id ? clientMap[m.cliente_id] : null) || null })).filter(m => m.clientes?.lat && m.clientes?.lng),
                 topChurn: churnDataFinal
                     .map(c => ({ ...c, risk: getChurnRisk(c) }))
                     .filter(c => c.risk.level === 'alto' || c.risk.level === 'medio')
@@ -200,7 +211,6 @@ export default function Dashboard() {
             animate="visible"
             variants={containerVariants}
         >
-            {/* 1. HERO SECTION */}
             <motion.div className="hero-section-pro" variants={itemVariants}>
                 <div className="hero-content">
                     <div className="hero-subtitle-pro">
@@ -227,7 +237,6 @@ export default function Dashboard() {
                 <div className="hero-deco deco-2"></div>
             </motion.div>
 
-            {/* 2. KPI ROW */}
             <div className="metrics-row">
                 <motion.div 
                     className="glass-card-pro metric-card-pro cursor-pointer" 
@@ -284,10 +293,7 @@ export default function Dashboard() {
                 </motion.div>
             </div>
 
-            {/* 3. MAIN GRID (INTELLIGENCE + OPERATIONS) */}
             <div className="ops-main-grid">
-                
-                {/* LEFT: INTELLIGENCE HUB */}
                 <div className="intelligence-hub">
                     <motion.div className="glass-card-pro" variants={itemVariants}>
                         <div className="section-header-pro">
@@ -309,7 +315,7 @@ export default function Dashboard() {
                                         stroke={true}
                                         weight={2}
                                     >
-                                        <Popup>{l.clientes.nombre_local}</Popup>
+                                        <Popup>{l.clientes?.nombre_local || 'Local'}</Popup>
                                     </CircleMarker>
                                 ))}
                             </MapContainer>
@@ -327,7 +333,7 @@ export default function Dashboard() {
                                 <h2 className="section-title-pro">Performance de Crecimiento</h2>
                             </div>
                             <div style={{ height: '180px' }}>
-                                <Bar data={stats.crecimientoDiario} options={chartOptions} />
+                                <Bar data={stats.crecimientoDiario as any} options={chartOptions as any} />
                             </div>
                         </motion.div>
 
@@ -337,15 +343,14 @@ export default function Dashboard() {
                             </div>
                             <div style={{ height: '180px' }}>
                                 <Doughnut 
-                                    data={stats.distribucionCartera} 
-                                    options={{ ...chartOptions, plugins: { legend: { display: true, position: 'right', labels: { boxWidth: 8, font: { size: 9, weight: '700' }, color: 'var(--text-muted)' } } } }} 
+                                    data={stats.distribucionCartera as any} 
+                                    options={{ ...chartOptions, plugins: { legend: { display: true, position: 'right', labels: { boxWidth: 8, font: { size: 9, weight: '700' }, color: 'var(--text-muted)' } } } } as any} 
                                 />
                             </div>
                         </motion.div>
                     </div>
                 </div>
 
-                {/* RIGHT: OPERATIONS SIDEBAR */}
                 <div className="ops-sidebar">
                     <motion.div className="glass-card-pro" variants={itemVariants} style={{ padding: 0, overflow: 'hidden', height: '100%', minHeight: '400px' }}>
                         <LiveOperationStream />
@@ -375,7 +380,7 @@ export default function Dashboard() {
                                         </tr>
                                     ))}
                                     {stats.topChurn.length === 0 && (
-                                        <tr><td colSpan="2" className="text-center py-4 muted" style={{ fontSize: '0.7rem' }}>Sin alertas críticas</td></tr>
+                                        <tr><td colSpan={2} className="text-center py-4 muted" style={{ fontSize: '0.7rem' }}>Sin alertas críticas</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -385,7 +390,6 @@ export default function Dashboard() {
 
             </div>
 
-            {/* 4. BOTTOM MONITORING */}
             <motion.div className="glass-card-pro" variants={itemVariants}>
                 <div className="section-header-pro">
                     <h2 className="section-title-pro">Actividad Reciente del Staff</h2>
@@ -406,9 +410,9 @@ export default function Dashboard() {
                                 <tr key={v.id} style={{ cursor: 'pointer' }} onClick={() => window.location.hash = `#/clientes?id=${v.cliente_id}`}>
                                     <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }}></div>
-                                        <strong>{v.clientes?.nombre_local}</strong>
+                                        <strong>{v.clientes?.nombre_local || 'Desconocido'}</strong>
                                     </div></td>
-                                    <td className="muted" style={{ fontSize: '0.8rem' }}>{format(new Date(v.fecha), 'HH:mm', { locale: es })}hs</td>
+                                    <td className="muted" style={{ fontSize: '0.8rem' }}>{v.fecha ? format(new Date(v.fecha), 'HH:mm', { locale: es }) : '--:--'}hs</td>
                                     <td style={{ fontSize: '0.85rem', fontWeight: '500' }}>{v.usuario || 'Operador'}</td>
                                     <td style={{ textAlign: 'right' }}><CheckCircle size={14} style={{ color: 'var(--success)' }} /></td>
                                 </tr>

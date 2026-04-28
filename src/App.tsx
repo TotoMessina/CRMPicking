@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { NetworkStatusHandler } from './components/ui/NetworkStatusHandler';
@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
 import InternalAI from './pages/InternalAI';
+
 const Clientes = lazy(() => import('./pages/Clientes'));
 const Pipeline = lazy(() => import('./pages/Pipeline'));
 const Consumidores = lazy(() => import('./pages/Consumidores'));
@@ -35,12 +36,10 @@ const RutaDiaria = lazy(() => import('./pages/RutaDiaria'));
 const AsignadorRutas = lazy(() => import('./pages/AsignadorRutas'));
 const TinderClientes = lazy(() => import('./pages/TinderClientes'));
 const PipelineSettings = lazy(() => import('./pages/PipelineSettings'));
-// IA cargada directamente para forzar actualización
-// const InternalAI = lazy(() => import('./pages/InternalAI'));
 
-function App() {
+function App(): React.JSX.Element {
   // Interceptar recuperación de contraseña si Supabase nos mandó a la raíz
-  React.useEffect(() => {
+  useEffect(() => {
     if (window.location.hash && window.location.hash.includes("type=recovery") && window.location.pathname !== '/update-password') {
       window.location.replace('/update-password' + window.location.hash);
     }

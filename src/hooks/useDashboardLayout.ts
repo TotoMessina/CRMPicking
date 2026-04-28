@@ -14,7 +14,7 @@ export const useDashboardLayout = (customWidgets: any[] = []) => {
         if (!empresaActiva?.id) return;
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('empresa_dashboard_layout')
                 .select('layout')
                 .eq('empresa_id', empresaActiva.id)
@@ -48,7 +48,7 @@ export const useDashboardLayout = (customWidgets: any[] = []) => {
         } finally {
             setLoading(false);
         }
-    }, [empresaActiva?.id]);
+    }, [empresaActiva?.id, customWidgets]);
 
     useEffect(() => {
         loadLayout();
@@ -87,7 +87,7 @@ export const useDashboardLayout = (customWidgets: any[] = []) => {
         if (!empresaActiva?.id) return;
         setSaving(true);
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from('empresa_dashboard_layout')
                 .upsert(
                     { empresa_id: empresaActiva.id, layout: newLayout },

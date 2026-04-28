@@ -33,14 +33,14 @@ export const useCustomWidgets = () => {
         if (!empresaActiva?.id) return;
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('empresa_custom_widgets')
                 .select('*')
                 .eq('empresa_id', empresaActiva.id)
                 .order('sort_order', { ascending: true });
 
             if (error) throw error;
-            setWidgets(data || []);
+            setWidgets((data as CustomWidgetConfig[]) || []);
         } catch (err) {
             console.warn('Could not load custom widgets:', err);
             setWidgets([]);
@@ -56,13 +56,13 @@ export const useCustomWidgets = () => {
         setSaving(true);
         try {
             if (config.id) {
-                const { error } = await supabase
+                const { error } = await (supabase as any)
                     .from('empresa_custom_widgets')
                     .update({ ...config, empresa_id: empresaActiva.id })
                     .eq('id', config.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase
+                const { error } = await (supabase as any)
                     .from('empresa_custom_widgets')
                     .insert({ ...config, empresa_id: empresaActiva.id, sort_order: widgets.length });
                 if (error) throw error;
@@ -82,7 +82,7 @@ export const useCustomWidgets = () => {
     const deleteWidget = useCallback(async (id: string) => {
         if (!empresaActiva?.id) return;
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from('empresa_custom_widgets')
                 .delete()
                 .eq('id', id)
@@ -98,13 +98,13 @@ export const useCustomWidgets = () => {
     const checkWidgetViability = useCallback(async (config: CustomWidgetConfig): Promise<boolean> => {
         if (!empresaActiva?.id) return false;
         try {
-            let query = supabase
+            let query = (supabase as any)
                 .from(config.data_source)
                 .select('*', { count: 'exact', head: true })
                 .eq('empresa_id', empresaActiva.id);
 
             if (config.filter_field && config.filter_value) {
-                query = (query as any).eq(config.filter_field, config.filter_value);
+                query = query.eq(config.filter_field, config.filter_value);
             }
 
             const { count, error } = await query;

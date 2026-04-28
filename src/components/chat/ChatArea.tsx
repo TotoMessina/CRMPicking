@@ -1,25 +1,47 @@
+import React, { useState } from 'react';
 import { UserCircle, X, MessageCircle, Send, ClipboardList, Check, CheckCheck, Calendar, ArrowUpRight, Link as LinkIcon, Users, User, Route } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatToLocal } from '../../utils/dateUtils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
 import { ContextSelectorModal } from './ContextSelectorModal';
+import { ChatUser, ChatMessage, ChatContext } from '../../hooks/useChat';
 
-const formatTime = (isoString) => {
+interface ChatAreaProps {
+    selectedUser: ChatUser | null;
+    setSelectedUser: (user: ChatUser | null) => void;
+    mensajes: ChatMessage[];
+    user: { email: string } | null;
+    newMessage: string;
+    setNewMessage: (msg: string) => void;
+    handleSend: (e?: React.FormEvent) => void;
+    openTaskModal: () => void;
+    loadingMessages: boolean;
+    hasMoreMessages: boolean;
+    isMobile: boolean;
+    scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+    topRef: React.RefObject<HTMLDivElement | null>;
+    messagesEndRef: React.RefObject<HTMLDivElement | null>;
+    selectedContext: ChatContext | null;
+    setSelectedContext: (ctx: ChatContext | null) => void;
+    loadMoreMessages: () => Promise<void>;
+}
+
+const formatTime = (isoString: string) => {
     if (!isoString) return '';
     return new Date(isoString).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 };
 
-export const ChatArea = ({ 
+export const ChatArea: React.FC<ChatAreaProps> = ({ 
     selectedUser, setSelectedUser, mensajes, user, 
     newMessage, setNewMessage, handleSend, openTaskModal,
     loadingMessages, hasMoreMessages, isMobile, 
     scrollContainerRef, topRef, messagesEndRef,
-    selectedContext, setSelectedContext
+    selectedContext, setSelectedContext,
+    loadMoreMessages
 }) => {
     const [isContextModalOpen, setIsContextModalOpen] = useState(false);
 
-    const parseMessage = (text) => {
+    const parseMessage = (text: string) => {
         if (text?.startsWith('[TAREA_ASIGNADA]|')) {
             const parts = text.split('|');
             return { type: 'task', title: parts[1], desc: parts[2], date: parts[3] };
@@ -39,19 +61,20 @@ export const ChatArea = ({
         return { type: 'text', content: text };
     };
 
-    const getContextIcon = (type) => {
+    const getContextIcon = (type: string) => {
         if (type === 'clientes') return <User size={14} />;
         if (type === 'consumidores') return <Users size={14} />;
         if (type === 'rutas') return <Route size={14} />;
         return <LinkIcon size={14} />;
     };
 
-    const getContextLink = (type, id) => {
+    const getContextLink = (type: string, id: string) => {
         if (type === 'clientes') return `/clientes?id=${id}`;
         if (type === 'consumidores') return `/consumidores?id=${id}`;
         if (type === 'rutas') return `/ruta`;
         return '#';
     };
+
     if (isMobile && !selectedUser) return null;
 
     if (!selectedUser) {
@@ -76,7 +99,7 @@ export const ChatArea = ({
                 zIndex: 2000, 
                 height: '100dvh' 
             } : { height: '100%' }),
-        }}>
+        } as React.CSSProperties}>
             {/* Header */}
             <div style={{ 
                 display: 'flex', alignItems: 'center', gap: '12px', 
@@ -99,7 +122,7 @@ export const ChatArea = ({
                     border: '1px solid var(--border)'
                 }}>
                     {selectedUser.avatar_url ? (
-                        <img src={selectedUser.avatar_url} alt={selectedUser.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={selectedUser.avatar_url} alt={selectedUser.nombre || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                         <UserCircle size={28} />
                     )}
@@ -118,12 +141,12 @@ export const ChatArea = ({
             {/* Messages */}
             <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg)' }}>
                 {hasMoreMessages && (
-                    <div ref={topRef} style={{ textAlign: 'center', padding: '10px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                        {loadingMessages ? 'Cargando...' : 'Subi para ver mas'}
+                    <div ref={topRef} style={{ textAlign: 'center', padding: '10px', color: 'var(--text-muted)', fontSize: '0.82rem', cursor: 'pointer' }} onClick={() => loadMoreMessages()}>
+                        {loadingMessages ? 'Cargando...' : 'Pulsa para cargar más mensajes'}
                     </div>
                 )}
                 {mensajes.map((msg, i) => {
-                    const isMe = msg.de_usuario === user.email;
+                    const isMe = user && msg.de_usuario === user.email;
                     const parsed = parseMessage(msg.mensaje);
                     
                     return (
@@ -140,7 +163,7 @@ export const ChatArea = ({
                             <div style={{
                                 maxWidth: isMobile ? '85%' : '70%', 
                                 position: 'relative'
-                            }}>
+                            } as React.CSSProperties}>
                                 {parsed.type === 'task' ? (
                                     <div style={{ 
                                         background: 'var(--bg-elevated)', 
@@ -149,7 +172,7 @@ export const ChatArea = ({
                                         width: isMobile ? '230px' : '280px', 
                                         display: 'flex', flexDirection: 'column', gap: '10px',
                                         boxShadow: 'var(--shadow-sm)'
-                                    }}>
+                                    } as React.CSSProperties}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}>
                                             <ClipboardList size={18} />
                                             <span style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Tarea Asignada</span>
@@ -172,7 +195,7 @@ export const ChatArea = ({
                                         border: isMe ? 'none' : '1px solid var(--border)',
                                         opacity: msg.isOptimistic ? 0.7 : 1,
                                         boxShadow: 'var(--shadow-sm)'
-                                    }}>
+                                    } as React.CSSProperties}>
                                         {parsed.type === 'context' && (
                                             <div style={{ 
                                                 background: isMe ? 'rgba(255,255,255,0.1)' : 'var(--bg-active)', 
@@ -180,12 +203,12 @@ export const ChatArea = ({
                                                 display: 'flex', flexDirection: 'column', gap: '6px'
                                             }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>
-                                                    {getContextIcon(parsed.ctxType)}
+                                                    {getContextIcon(parsed.ctxType || '')}
                                                     <span>Referencia: {parsed.ctxType}</span>
                                                 </div>
                                                 <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{parsed.ctxLabel}</div>
                                                 <Link 
-                                                    to={getContextLink(parsed.ctxType, parsed.ctxId)} 
+                                                    to={getContextLink(parsed.ctxType || '', parsed.ctxId || '')} 
                                                     style={{ 
                                                         background: isMe ? 'rgba(255,255,255,0.2)' : 'var(--bg-card)', 
                                                         padding: '6px 10px', borderRadius: '8px', 
@@ -204,8 +227,8 @@ export const ChatArea = ({
                                             fontSize: '0.95rem', 
                                             lineHeight: 1.5,
                                             whiteSpace: 'pre-wrap' 
-                                        }}>
-                                            {parsed.type === 'context' ? parsed.content : parsed.content}
+                                        } as React.CSSProperties}>
+                                            {parsed.content}
                                         </div>
                                         <div style={{ 
                                             display: 'flex', justifyContent: 'flex-end', alignItems: 'center', 
@@ -258,8 +281,6 @@ export const ChatArea = ({
                             onClick={openTaskModal} 
                             title="Asignar tarea"
                             style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text)', transition: 'all 0.2s' }}
-                            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
                         >
                             <ClipboardList size={20} />
                         </button>

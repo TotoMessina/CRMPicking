@@ -1,8 +1,17 @@
+import React, { useState } from 'react';
 import { UserCircle, Search } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { ChatUser } from '../../hooks/useChat';
 
-export const ChatSidebar = ({ usuarios, selectedUser, setSelectedUser, loadingUsers, isMobile }) => {
+interface ChatSidebarProps {
+    usuarios: ChatUser[];
+    selectedUser: ChatUser | null;
+    setSelectedUser: (user: ChatUser | null) => void;
+    loadingUsers: boolean;
+    isMobile: boolean;
+}
+
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({ usuarios, selectedUser, setSelectedUser, loadingUsers, isMobile }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     if (isMobile && selectedUser) return null;
@@ -25,7 +34,7 @@ export const ChatSidebar = ({ usuarios, selectedUser, setSelectedUser, loadingUs
             height: isMobile ? '100dvh' : '100%',
             boxShadow: isMobile ? 'none' : 'var(--shadow-lg)',
             backdropFilter: 'blur(10px)'
-        }}>
+        } as React.CSSProperties}>
             <div style={{ 
                 padding: isMobile ? `calc(24px + env(safe-area-inset-top)) 20px 16px` : '24px 20px', 
                 borderBottom: '1px solid var(--border)', 
@@ -84,17 +93,7 @@ export const ChatSidebar = ({ usuarios, selectedUser, setSelectedUser, loadingUs
                                     borderRadius: '16px', cursor: 'pointer', textAlign: 'left',
                                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                     position: 'relative'
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (selectedUser?.email !== u.email) {
-                                        e.currentTarget.style.background = 'var(--bg-active)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (selectedUser?.email !== u.email) {
-                                        e.currentTarget.style.background = 'transparent';
-                                    }
-                                }}
+                                } as React.CSSProperties}
                             >
                                 <div style={{ position: 'relative', flexShrink: 0 }}>
                                     <div style={{ 
@@ -106,12 +105,12 @@ export const ChatSidebar = ({ usuarios, selectedUser, setSelectedUser, loadingUs
                                         transition: 'all 0.2s'
                                     }}>
                                         {u.avatar_url ? (
-                                            <img src={u.avatar_url} alt={u.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <img src={u.avatar_url} alt={u.nombre || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         ) : (
                                             <UserCircle size={28} />
                                         )}
                                     </div>
-                                    {u.unreadCount > 0 && (
+                                    {u.unreadCount && u.unreadCount > 0 ? (
                                         <div style={{ 
                                             position: 'absolute', top: '-5px', right: '-5px', 
                                             background: '#ef4444', color: '#fff', fontSize: '0.7rem', 
@@ -122,31 +121,31 @@ export const ChatSidebar = ({ usuarios, selectedUser, setSelectedUser, loadingUs
                                         }}>
                                             {u.unreadCount > 99 ? '99+' : u.unreadCount}
                                         </div>
-                                    )}
+                                    ) : null}
                                 </div>
                                 <div style={{ flex: 1, overflow: 'hidden' }}>
                                     <div style={{ 
-                                        fontWeight: u.unreadCount > 0 ? 800 : 600, 
-                                        color: u.unreadCount > 0 ? 'var(--text)' : (selectedUser?.email === u.email ? 'var(--accent)' : 'var(--text)'), 
+                                        fontWeight: u.unreadCount && u.unreadCount > 0 ? 800 : 600, 
+                                        color: u.unreadCount && u.unreadCount > 0 ? 'var(--text)' : (selectedUser?.email === u.email ? 'var(--accent)' : 'var(--text)'), 
                                         whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', 
                                         fontSize: '0.98rem',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '6px'
-                                    }}>
+                                    } as React.CSSProperties}>
                                         {u.nombre || u.email.split('@')[0]}
-                                        {u.unreadCount > 0 && (
+                                        {u.unreadCount && u.unreadCount > 0 ? (
                                             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }} />
-                                        )}
+                                        ) : null}
                                     </div>
                                     <div style={{ 
                                         fontSize: '0.8rem', 
-                                        color: u.unreadCount > 0 ? 'var(--accent)' : 'var(--text-muted)', 
-                                        fontWeight: u.unreadCount > 0 ? 700 : 500, 
+                                        color: u.unreadCount && u.unreadCount > 0 ? 'var(--accent)' : 'var(--text-muted)', 
+                                        fontWeight: u.unreadCount && u.unreadCount > 0 ? 700 : 500, 
                                         marginTop: '1px',
-                                        opacity: u.unreadCount > 0 ? 1 : 0.8
-                                    }}>
-                                        {u.unreadCount > 0 ? 'Mensaje nuevo' : (u.role || 'Usuario')}
+                                        opacity: u.unreadCount && u.unreadCount > 0 ? 1 : 0.8
+                                    } as React.CSSProperties}>
+                                        {u.unreadCount && u.unreadCount > 0 ? 'Mensaje nuevo' : (u.role || 'Usuario')}
                                     </div>
                                 </div>
                                 {selectedUser?.email === u.email && (

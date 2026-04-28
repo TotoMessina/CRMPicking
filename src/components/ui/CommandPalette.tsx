@@ -1,38 +1,43 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import { useAppShell } from '../../hooks/useAppShell';
 import { 
-    Search, Command, Navigation, User, Users, Truck, 
-    Settings, LogOut, Sun, Moon, Hash, History, 
-    ChevronRight, Zap, Database, Route, Map
+    Zap, Hash, Truck, Navigation, Sun, Moon, LogOut, Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface CommandItem {
+    id?: string;
+    type: 'header' | 'nav' | 'action' | 'cliente' | 'usuario';
+    title: string;
+    desc?: string;
+    icon?: ReactNode;
+    url?: string;
+    action?: () => void;
+    badge?: string;
+}
+
 /**
  * CommandPalette (Centro de Comando Ultra)
- * Atajo: Ctrl + K o Cmd + K
  */
 export function CommandPalette() {
-    const { empresaActiva, handleLogout, toggleTheme, theme, handleForceUpdate } = useAppShell();
-    const { navItems } = useAppShell();
+    const { empresaActiva, handleLogout, toggleTheme, theme, handleForceUpdate, navItems } = useAppShell();
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
-    const [results, setResults] = useState([]);
+    const [results, setResults] = useState<CommandItem[]>([]);
     const [focusedIndex, setFocusedIndex] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [recentItems, setRecentItems] = useState(() => {
+    const [recentItems, setRecentItems] = useState<CommandItem[]>(() => {
         const saved = localStorage.getItem('cp_recent_items');
         return saved ? JSON.parse(saved) : [];
     });
 
-    const inputRef = useRef(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
 
-    // Sincronizar atajos globales
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDownGlobal = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 setIsOpen((prev) => !prev);
@@ -41,11 +46,10 @@ export function CommandPalette() {
                 setIsOpen(false);
             }
         };
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', handleKeyDownGlobal);
+        return () => document.removeEventListener('keydown', handleKeyDownGlobal);
     }, [isOpen]);
 
-    // Reseteos cuando el modal abre/cierra
     useEffect(() => {
         if (isOpen) {
             setTimeout(() => inputRef.current?.focus(), 150);
@@ -54,34 +58,31 @@ export function CommandPalette() {
         }
     }, [isOpen]);
 
-    const addToRecent = (item) => {
+    const addToRecent = (item: CommandItem) => {
         const updated = [item, ...recentItems.filter(r => r.url !== item.url)].slice(0, 5);
         setRecentItems(updated);
         localStorage.setItem('cp_recent_items', JSON.stringify(updated));
     };
 
-    // Lista de acciones directas (Slash Commands)
-    const ACTIONS = useMemo(() => [
+    const ACTIONS: CommandItem[] = useMemo(() => [
         { id: 'toggle-theme', title: 'Cambiar Tema', desc: `Activar modo ${theme === 'dark' ? 'claro' : 'oscuro'}`, icon: theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>, action: toggleTheme, type: 'action', badge: 'Tema' },
-        { id: 'logout', title: 'Cerrar Sesión', desc: 'Finalizar sesión actual', icon: <LogOut size={18}/>, action: handleLogout, type: 'action', badge: 'Sesión' },
+        { id: 'logout', title: 'Cerrar Sesión', desc: 'Finalizar sesión actual', icon: <LogOut size={18}/>, action: () => handleLogout(), type: 'action', badge: 'Sesión' },
         { id: 'sync', title: 'Actualización Forzada', desc: 'Recargar sistema sin cache', icon: <Database size={18}/>, action: handleForceUpdate, type: 'action', badge: 'Sistema' },
     ], [theme, toggleTheme, handleLogout, handleForceUpdate]);
 
-    // Lógica de búsqueda principal
     useEffect(() => {
         const searchItems = async () => {
             const searchTerm = query.trim().toLowerCase();
             
-            // 1. Vista Inicial (Vacia) -> Mostrar Recientes y Navegación Base
             if (searchTerm === '') {
                 setResults([
-                    ...(recentItems.length > 0 ? [{ type: 'header', title: 'Recientes' }, ...recentItems] : []),
-                    { type: 'header', title: 'Navegación Rápida' },
+                    ...(recentItems.length > 0 ? [{ type: 'header', title: 'Recientes' } as CommandItem, ...recentItems] : []),
+                    { type: 'header', title: 'Navegación Rápida' } as CommandItem,
                     ...navItems.slice(0, 4).map(ni => ({
-                        type: 'nav',
-                        title: ni.label,
+                        type: 'nav' as const,
+                        title: ni.label || '',
                         desc: ni.group || 'Página',
-                        icon: <ni.icon size={18}/>,
+                        icon: ni.icon ? <ni.icon size={18}/> : undefined,
                         url: ni.to
                     }))
                 ]);
@@ -89,35 +90,31 @@ export function CommandPalette() {
                 return;
             }
 
-            // 2. Modo Comandos (Inicia con /)
             if (searchTerm.startsWith('/')) {
                 const subQuery = searchTerm.slice(1);
-                const filtered = ACTIONS.filter(a => a.title.toLowerCase().includes(subQuery) || a.id.includes(subQuery));
+                const filtered = ACTIONS.filter(a => a.title.toLowerCase().includes(subQuery) || a.id?.includes(subQuery));
                 setResults([
-                    { type: 'header', title: 'Comandos del Sistema' },
+                    { type: 'header', title: 'Comandos del Sistema' } as CommandItem,
                     ...filtered
                 ]);
                 setFocusedIndex(0);
                 return;
             }
 
-            // 3. Búsqueda Global (DB + Páginas)
             setLoading(true);
             try {
-                // Mock Nav Items search
-                const navMatches = navItems
-                    .filter(ni => ni.label.toLowerCase().includes(searchTerm))
+                const navMatches: CommandItem[] = navItems
+                    .filter(ni => ni.label?.toLowerCase().includes(searchTerm))
                     .map(ni => ({
                         type: 'nav',
-                        title: ni.label,
+                        title: ni.label || '',
                         desc: `${ni.group || 'Navegación'}`,
-                        icon: <ni.icon size={18}/>,
+                        icon: ni.icon ? <ni.icon size={18}/> : undefined,
                         url: ni.to
                     }));
 
-                // DB Search
-                const [ { data: clientes }, { data: repartidores } ] = await Promise.all([
-                    supabase.rpc('buscar_clientes_empresa', {
+                const [ { data: clientes }, { data: usuarios } ] = await Promise.all([
+                    (supabase as any).rpc('buscar_clientes_empresa', {
                         p_empresa_id: empresaActiva?.id,
                         p_nombre: searchTerm,
                         p_limit: 4
@@ -129,14 +126,14 @@ export function CommandPalette() {
                         .limit(3)
                 ]);
 
-                let res = [];
+                let res: CommandItem[] = [];
                 if (navMatches.length > 0) {
-                    res.push({ type: 'header', title: 'Páginas' }, ...navMatches);
+                    res.push({ type: 'header', title: 'Páginas' } as CommandItem, ...navMatches);
                 }
 
-                if (clientes && clientes.length > 0) {
-                    res.push({ type: 'header', title: 'Clientes' });
-                    clientes.forEach(c => res.push({
+                if (clientes && (clientes as any[]).length > 0) {
+                    res.push({ type: 'header', title: 'Clientes' } as CommandItem);
+                    (clientes as any[]).forEach((c: any) => res.push({
                         type: 'cliente',
                         title: c.nombre_local || c.nombre,
                         desc: c.direccion || 'Local relevado',
@@ -146,9 +143,9 @@ export function CommandPalette() {
                     }));
                 }
 
-                if (repartidores && repartidores.length > 0) {
-                    res.push({ type: 'header', title: 'Usuarios' });
-                    repartidores.forEach(r => res.push({
+                if (usuarios && (usuarios as any[]).length > 0) {
+                    res.push({ type: 'header', title: 'Usuarios' } as CommandItem);
+                    (usuarios as any[]).forEach((r: any) => res.push({
                         type: 'usuario',
                         title: r.nombre || r.email,
                         desc: r.role?.toUpperCase(),
@@ -159,7 +156,7 @@ export function CommandPalette() {
                 }
 
                 setResults(res);
-                setFocusedIndex(1); // Foco en el primer item real (después del primer header)
+                setFocusedIndex(res.length > 0 ? (res[0].type === 'header' ? 1 : 0) : 0);
 
             } catch (err) {
                 console.error("Error global search:", err);
@@ -172,7 +169,7 @@ export function CommandPalette() {
         return () => clearTimeout(timer);
     }, [query, empresaActiva, navItems, recentItems, ACTIONS]);
 
-    const handleSelect = (item) => {
+    const handleSelect = (item: CommandItem) => {
         if (!item || item.type === 'header') return;
         if (item.action) {
             item.action();
@@ -186,7 +183,7 @@ export function CommandPalette() {
         }
     };
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: React.KeyboardEvent) => {
         if (results.length === 0) return;
         if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -282,5 +279,3 @@ export function CommandPalette() {
         </AnimatePresence>
     );
 }
-
-// Re-using same style names from index.css for consistency

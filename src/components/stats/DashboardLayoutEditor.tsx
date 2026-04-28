@@ -390,14 +390,14 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
         // Predictively fetch values for the first field
         const firstField = fields[0].value;
         try {
-            const { data } = await supabase
+            const { data } = await (supabase as any)
                 .from(source)
                 .select(firstField)
                 .eq('empresa_id', empresaActiva.id)
                 .limit(20); // Small sample for prefetch
             
             if (data) {
-                const unique = [...new Set(data.map((row: any) => row[firstField]).filter(Boolean))].sort() as string[];
+                const unique = [...new Set((data as any[]).map((row: any) => row[firstField]).filter(Boolean))].sort() as string[];
                 setFilterValues(unique);
             }
         } catch (e) { /* silent fail for prefetch */ }
@@ -420,14 +420,14 @@ export const DashboardLayoutEditor: React.FC<Props> = ({
         const fetchValues = async () => {
             setLoadingFilterValues(true);
             try {
-                const { data, error } = await supabase
+                const { data, error } = await (supabase as any)
                     .from(newWidget.data_source)
                     .select(newWidget.filter_field!)
                     .eq('empresa_id', empresaActiva.id);
 
                 if (!error && data) {
                     const unique = [...new Set(
-                        data.map((row: any) => row[newWidget.filter_field!]).filter(Boolean)
+                        (data as any[]).map((row: any) => row[newWidget.filter_field!]).filter(Boolean)
                     )].sort() as string[];
                     setFilterValues(unique);
                 }

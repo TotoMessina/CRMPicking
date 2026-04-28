@@ -1,11 +1,24 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
+interface MapLegendItem {
+    label: string;
+    color: string;
+}
+
+interface MapLegendProps {
+    items: MapLegendItem[];
+    isMobile: boolean;
+    showMobile: boolean;
+    onCloseMobile: () => void;
+    title?: string;
+}
+
 /**
  * MapLegend
  * Adaptive legend that floats on desktop and appears as a centered modal on mobile.
  */
-export const MapLegend = ({ 
+export const MapLegend: React.FC<MapLegendProps> = ({ 
     items, 
     isMobile, 
     showMobile, 
@@ -57,10 +70,10 @@ export const MapLegend = ({
                 </div>
             ))}
             
-            <style tabIndex="-1">{`
+            <style tabIndex={-1}>{`
                 @keyframes fadeIn { 
-                    from { opacity: 0; transform: translateY(10px); } 
-                    to { opacity: 1; transform: translateY(0); } 
+                    from { opacity: 0; transform: ${isMobile ? 'translate(-50%, 60%)' : 'translateY(10px)'}; } 
+                    to { opacity: 1; transform: ${isMobile ? 'translate(-50%, 50%)' : 'translateY(0)'}; } 
                 }
             `}</style>
         </div>

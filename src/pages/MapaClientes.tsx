@@ -4,13 +4,12 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { 
-    MapPin, RefreshCw, Route as RouteIcon, Navigation, Layers, Filter, X,
-    Clock, User, History, Map as MapIcon, Info, Users
+    RefreshCw, Route as RouteIcon, Layers, Filter, X,
+    User, Map as MapIcon, Info, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { ESTADOS_LISTA, ESTADO_RELEVADO, esEstadoFinal } from '../constants/estados';
+import { ESTADOS_LISTA, ESTADO_RELEVADO } from '../constants/estados';
 import L from 'leaflet';
-window.L = window.L || L;
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import 'leaflet-routing-machine';
@@ -25,22 +24,31 @@ import { MapLegend } from '../components/map/MapLegend';
 
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { AsignarRutaModal } from '../components/ui/AsignarRutaModal';
-import { useClientesMapa } from '../hooks/useClientesMapa';
+import { useClientesMapa, MapFilters } from '../hooks/useClientesMapa';
 import { formatToLocal } from '../utils/dateUtils';
 import { useCompanyUsers } from '../hooks/useCompanyUsers';
 import { useRubros } from '../hooks/useRubros';
 import { ClientFilters } from '../components/clients/ClientFilters';
 import { getChurnRisk, CHURN_COLORS } from '../utils/riskScoring';
 
+// Extensiones para el objeto window para los popups de Leaflet
+declare global {
+    interface Window {
+        L: typeof L;
+        updateZoneColor: (id: string, newColor: string) => Promise<void>;
+        deleteZoneById: (id: string) => Promise<void>;
+    }
+}
+
 const ZONE_COLORS = {
     today: "#0c0c0c",
     done: "#ef4444",
     extra: "#f97316"
-};
+} as const;
 
 const ESTADOS = ESTADOS_LISTA;
 
-const ESTADO_COLOR = {
+const ESTADO_COLOR: Record<string, string> = {
     [ESTADO_RELEVADO]:          "#ff3d3d",
     "2 - Local Visitado No Activo": "#ff9f1c",
     "3 - Primer Ingreso":       "#ffef16",
@@ -49,25 +57,23 @@ const ESTADO_COLOR = {
     "6 - Local No Interesado":  "#5f5f5f",
 };
 
-const INTERES_COLORS = {
+const INTERES_COLORS: Record<string, string> = {
     "Bajo": "#22c55e",
     "Medio": "#eab308",
     "Alto": "#ef4444",
     "Sin interés": "#94a3b8"
 };
 
-const ESTILO_COLORS = {
+const ESTILO_COLORS: Record<string, string> = {
     "Dueño": "#0c0c0c",
     "Empleado": "#eab308",
     "Cerrado": "#9ca3af",
     "Sin definir": "#64748b"
 };
 
-// Remplazado por src/utils/riskScoring.ts
-
-const timeSince = (date) => {
+const timeSince = (date: string | null) => {
     if (!date) return 'Nunca';
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     let interval = seconds / 31536000;
     if (interval > 1) return Math.floor(interval) + " años";
     interval = seconds / 2592000;
@@ -81,8 +87,8 @@ const timeSince = (date) => {
     return Math.floor(seconds) + " seg";
 };
 
-const CREATOR_COLORS = {};
-function getColorForCreator(user) {
+const CREATOR_COLORS: Record<string, string> = {};
+function getColorForCreator(user: string | null) {
     const key = (user || "Desconocido").trim();
     if (!key) return "#94a3b8";
     if (CREATOR_COLORS[key]) return CREATOR_COLORS[key];
@@ -96,8 +102,8 @@ function getColorForCreator(user) {
     return hex;
 }
 
-const RUBRO_COLORS = {};
-function getColorForRubro(rubro) {
+const RUBRO_COLORS: Record<string, string> = {};
+function getColorForRubro(rubro: string | null) {
     const key = (rubro || 'Sin rubro').trim();
     if (RUBRO_COLORS[key]) return RUBRO_COLORS[key];
     let hash = 0;
@@ -109,13 +115,13 @@ function getColorForRubro(rubro) {
 
 export default function MapaClientes() {
     const { empresaActiva } = useAuth();
-    const mapContainerRef = useRef(null);
-    const mapRef = useRef(null);
-    const markersLayerRef = useRef(null);
-    const drawnZonesRef = useRef(null);
-    const markersActivadoresLayerRef = useRef(null);
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapRef = useRef<L.Map | null>(null);
+    const markersLayerRef = useRef<L.LayerGroup | null>(null);
+    const drawnZonesRef = useRef<L.FeatureGroup | null>(null);
+    const markersActivadoresLayerRef = useRef<L.LayerGroup | null>(null);
 
-    const [filters, setFilters] = useState({
+    const [filters, setFilters] = useState<MapFilters>({
         nombre: '',
         telefono: '',
         direccion: '',
@@ -135,14 +141,14 @@ export default function MapaClientes() {
         contactoHasta: ''
     });
 
-    const updateFilter = (name, value) => {
+    const updateFilter = (name: keyof MapFilters, value: any) => {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
 
     const { data: clientes = [], isLoading: loading, refetch: fetchClientes } = useClientesMapa(empresaActiva?.id, filters);
-    const { data: responsablesValidos = [] } = useCompanyUsers(empresaActiva?.id);
+    const { data: responsablesValidos = [] } = useCompanyUsers(empresaActiva?.id || null);
     const { data: rubrosValidos = [] } = useRubros();
-    const [activadores, setActivadores] = useState([]);
+    const [activadores, setActivadores] = useState<any[]>([]);
     const [showActivadores, setShowActivadores] = useState(true);
     const [showZones, setShowZones] = useState(true);
     const [zoneType, setZoneType] = useState('today');
@@ -153,12 +159,12 @@ export default function MapaClientes() {
     const [showFilters, setShowFilters] = useState(false);
     const [totalAbsoluto, setTotalAbsoluto] = useState(0);
     const [clientesEnZona, setClientesEnZona] = useState(0);
-    const heatLayerRef = useRef(null);
+    const heatLayerRef = useRef<any>(null);
     
     useEffect(() => {
         const fetchTotal = async () => {
             if (!empresaActiva?.id) return;
-            const { count } = await supabase
+            const { count } = await (supabase as any)
                 .from('empresa_cliente')
                 .select('*', { count: 'exact', head: true })
                 .eq('empresa_id', empresaActiva.id);
@@ -167,8 +173,7 @@ export default function MapaClientes() {
         fetchTotal();
     }, [empresaActiva]);
 
-    // Filters & Coloring
-    const [colorMode, setColorMode] = useState('estado'); // estado, creador, interes, estilo
+    const [colorMode, setColorMode] = useState('estado'); 
     const [showLegendMobile, setShowLegendMobile] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -179,32 +184,27 @@ export default function MapaClientes() {
     }, []);
     const [activeFilters, setActiveFilters] = useState(new Set());
 
-    // Modal state
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    const [selectedLatLng, setSelectedLatLng] = useState(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
 
-    // Asignar Ruta Modal state
     const [asignarModalOpen, setAsignarModalOpen] = useState(false);
-    const [selectedClienteForRuta, setSelectedClienteForRuta] = useState(null);
+    const [selectedClienteForRuta, setSelectedClienteForRuta] = useState<any>(null);
 
-    // Geolocation
-    const [myLocation, setMyLocation] = useState(null);
-    const myMarkerRef = useRef(null);
-    const myCircleRef = useRef(null);
+    const [myLocation, setMyLocation] = useState<{lat: number, lng: number} | null>(null);
+    const myMarkerRef = useRef<L.Marker | null>(null);
+    const myCircleRef = useRef<L.Circle | null>(null);
 
-    // Routing Mode
     const [isRoutingMode, setIsRoutingMode] = useState(false);
-    const [routeStops, setRouteStops] = useState([]);
-    const routingControlRef = useRef(null);
+    const [routeStops, setRouteStops] = useState<any[]>([]);
+    const routingControlRef = useRef<any>(null);
 
-    // Historical Tracking
     const [isHistoricalMode, setIsHistoricalMode] = useState(false);
     const [historicalActivadorId, setHistoricalActivadorId] = useState('');
     const [historicalDate, setHistoricalDate] = useState(() => new Date().toISOString().split('T')[0]);
-    const historicalPathLayerRef = useRef(null);
+    const historicalPathLayerRef = useRef<L.LayerGroup | null>(null);
 
-    const bindZonePopup = (layer, zoneId) => {
+    const bindZonePopup = (layer: any, zoneId: string) => {
         const popupContent = `
             <div style="margin-bottom:8px; font-weight:bold;">Zona</div>
             <div style="display:flex; flex-direction:column; gap:6px;">
@@ -220,38 +220,38 @@ export default function MapaClientes() {
 
     const loadZonas = async () => {
         if (!drawnZonesRef.current) return;
-        drawnZonesRef.current.clearLayers();
-        if (!showZones) return;
+        if (!showZones || !empresaActiva?.id) return;
 
-        const { data, error } = await supabase.from('zones').select('*').eq('empresa_id', empresaActiva?.id);
+        const { data, error } = await (supabase as any).rpc('get_map_zonas', {
+            p_empresa_id: empresaActiva.id
+        });
         if (error) {
             console.error("Error cargando zonas:", error);
             return;
         }
 
-        data.forEach(zone => {
+        data.forEach((zone: any) => {
             if (!zone.coordinates) return;
             const polygon = L.polygon(zone.coordinates, {
                 color: zone.color || '#ef4444',
-                fillOpacity: 0.2, // Ligther opacity for clients map
+                fillOpacity: 0.2, 
                 weight: 2,
                 bubblingMouseEvents: false
             });
-            polygon.zoneId = zone.id;
+            (polygon as any).zoneId = zone.id;
             bindZonePopup(polygon, zone.id);
-            drawnZonesRef.current.addLayer(polygon);
+            drawnZonesRef.current?.addLayer(polygon);
         });
     };
 
-    // Global popup handlers
     useEffect(() => {
-        window.updateZoneColor = async (id, newColor) => {
-            const { error } = await supabase.from('zones').update({ color: newColor }).eq('id', id).eq('empresa_id', empresaActiva?.id);
+        window.updateZoneColor = async (id: string, newColor: string) => {
+            const { error } = await (supabase as any).from('zones').update({ color: newColor }).eq('id', id).eq('empresa_id', empresaActiva?.id);
             if (error) {
                 toast.error("Error al actualizar color");
             } else {
                 if (drawnZonesRef.current) {
-                    drawnZonesRef.current.eachLayer(layer => {
+                    drawnZonesRef.current.eachLayer((layer: any) => {
                         if (layer.zoneId === id) {
                             layer.setStyle({ color: newColor });
                             layer.closePopup();
@@ -262,16 +262,16 @@ export default function MapaClientes() {
             }
         };
 
-        window.deleteZoneById = async (id) => {
+        window.deleteZoneById = async (id: string) => {
             if (!window.confirm("¿Eliminar esta zona?")) return;
-            const { error } = await supabase.from('zones').delete().eq('id', id).eq('empresa_id', empresaActiva?.id);
+            const { error } = await (supabase as any).from('zones').delete().eq('id', id).eq('empresa_id', empresaActiva?.id);
             if (error) {
                 toast.error("Error al eliminar zona");
             } else {
                 if (drawnZonesRef.current) {
-                    drawnZonesRef.current.eachLayer(layer => {
+                    drawnZonesRef.current.eachLayer((layer: any) => {
                         if (layer.zoneId === id) {
-                            drawnZonesRef.current.removeLayer(layer);
+                            drawnZonesRef.current?.removeLayer(layer);
                         }
                     });
                 }
@@ -280,8 +280,8 @@ export default function MapaClientes() {
         };
 
         return () => {
-            delete window.updateZoneColor;
-            delete window.deleteZoneById;
+            delete (window as any).updateZoneColor;
+            delete (window as any).deleteZoneById;
         };
     }, [empresaActiva]);
 
@@ -289,11 +289,9 @@ export default function MapaClientes() {
         if (!empresaActiva?.id) return;
 
         try {
-            // No intentar buscar activadores si estamos offline
             if (!navigator.onLine) return;
 
-            // 1. Obtener los emails de los miembros de la empresa activa para filtrar ubicaciones
-            const { data: euData, error: euError } = await supabase
+            const { data: euData, error: euError } = await (supabase as any)
                 .from('empresa_usuario')
                 .select('usuario_email')
                 .eq('empresa_id', empresaActiva.id);
@@ -304,10 +302,9 @@ export default function MapaClientes() {
                 return;
             }
 
-            const emails = euData.map(e => e.usuario_email);
+            const emails = euData.map((e: any) => e.usuario_email);
 
-            // 2. Obtener posiciones solo de los miembros que ya filtramos
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("usuarios")
                 .select("id, nombre, email, role, lat, lng, last_seen, avatar_emoji")
                 .in("email", emails)
@@ -316,7 +313,7 @@ export default function MapaClientes() {
                 .eq("activo", true);
 
             if (!error) {
-                const filtered = (data || []).filter(u =>
+                const filtered = (data || []).filter((u: any) =>
                     u.role?.toLowerCase().includes('activador') ||
                     u.role?.toLowerCase().includes('admin')
                 );
@@ -325,7 +322,6 @@ export default function MapaClientes() {
                 throw error;
             }
         } catch (err) {
-            // Solo logueamos si estamos online, para no llenar la consola de errores esperados
             if (navigator.onLine) {
                 console.error('Error fetching activadores for map:', err);
             }
@@ -338,7 +334,6 @@ export default function MapaClientes() {
         return () => clearInterval(interval);
     }, []);
 
-    // Initialize Map
     useEffect(() => {
         if (!mapContainerRef.current) return;
         if (!mapRef.current) {
@@ -352,50 +347,30 @@ export default function MapaClientes() {
             markersActivadoresLayerRef.current = L.layerGroup().addTo(m);
             drawnZonesRef.current = new L.FeatureGroup().addTo(m);
 
-            m.isDrawing = false;
-            m.on(L.Draw.Event.DRAWSTART, () => { m.isDrawing = true; });
-            m.on(L.Draw.Event.DRAWSTOP, () => { setTimeout(() => { m.isDrawing = false; }, 100); });
-            m.on(L.Draw.Event.EDITSTART, () => { m.isDrawing = true; });
-            m.on(L.Draw.Event.EDITSTOP, () => { setTimeout(() => { m.isDrawing = false; }, 100); });
-            m.on(L.Draw.Event.DELETESTART, () => { m.isDrawing = true; });
-            m.on(L.Draw.Event.DELETESTOP, () => { setTimeout(() => { m.isDrawing = false; }, 100); });
+            (m as any).isDrawing = false;
+            m.on('draw:drawstart' as any, () => { (m as any).isDrawing = true; });
+            m.on('draw:drawstop' as any, () => { setTimeout(() => { (m as any).isDrawing = false; }, 100); });
+            m.on('draw:editstart' as any, () => { (m as any).isDrawing = true; });
+            m.on('draw:editstop' as any, () => { setTimeout(() => { (m as any).isDrawing = false; }, 100); });
+            m.on('draw:deletestart' as any, () => { (m as any).isDrawing = true; });
+            m.on('draw:deletestop' as any, () => { setTimeout(() => { (m as any).isDrawing = false; }, 100); });
 
             m.on('click', (e) => {
-                if (m.isDrawing) return;
-
-                // Prevent 'Nuevo Cliente' modal if we clicked an existing SVG path (e.g. a zone or polyline)
-                if (e.originalEvent && e.originalEvent.target && e.originalEvent.target.tagName && e.originalEvent.target.tagName.toLowerCase() === 'path') {
+                if ((m as any).isDrawing) return;
+                if (e.originalEvent && (e.originalEvent.target as any).tagName && (e.originalEvent.target as any).tagName.toLowerCase() === 'path') {
                     return;
                 }
-
                 setEditingId(null);
                 setSelectedLatLng({ lat: e.latlng.lat, lng: e.latlng.lng });
                 setModalOpen(true);
             });
 
-            // Draw Control setup
-            // Monkey-patch leaflet-draw 1.0.4 bug: `readableArea` uses `type` var that
-            // is undefined in minified builds. Override with a safe implementation.
-            if (L.GeometryUtil) {
-                L.GeometryUtil.readableArea = function(area, isMetric) {
-                    if (isMetric) {
-                        return area >= 10000
-                            ? (area / 1000000).toFixed(2) + ' km²'
-                            : area.toFixed(0) + ' m²';
-                    }
-                    const sqyards = area / 0.836127;
-                    if (sqyards >= 3097600) return (sqyards / 3097600).toFixed(2) + ' mi²';
-                    if (sqyards >= 4840)    return (sqyards / 4840).toFixed(2) + ' ac';
-                    return sqyards.toFixed(0) + ' yd²';
-                };
-            }
-            const drawControl = new L.Control.Draw({
+            const drawControl = new (L as any).Control.Draw({
                 position: 'topright',
                 draw: {
                     polygon: { allowIntersection: false, showArea: true, metric: true, shapeOptions: { color: ZONE_COLORS.today, fillOpacity: 0.2, bubblingMouseEvents: false } },
                     rectangle: { showArea: true, metric: true, shapeOptions: { color: ZONE_COLORS.today, fillOpacity: 0.2, bubblingMouseEvents: false } },
                     polyline: false, circle: false, marker: false, circlemarker: false
-                    // NOTE: showArea uses the patched L.GeometryUtil.readableArea above
                 },
                 edit: {
                     featureGroup: drawnZonesRef.current,
@@ -406,22 +381,22 @@ export default function MapaClientes() {
 
             m.addControl(drawControl);
 
-            m.on(L.Draw.Event.CREATED, async function (e) {
+            m.on('draw:created' as any, async function (e: any) {
                 const layer = e.layer;
-                const selectElement = document.getElementById("zoneSelectorInputClientes");
+                const selectElement = document.getElementById("zoneSelectorInputClientes") as HTMLSelectElement;
                 const currentZone = selectElement ? selectElement.value : 'today';
-                const color = ZONE_COLORS[currentZone] || ZONE_COLORS.today;
+                const color = (ZONE_COLORS as any)[currentZone] || ZONE_COLORS.today;
 
                 layer.setStyle({ color: color, fillOpacity: 0.2 });
-                drawnZonesRef.current.addLayer(layer);
+                drawnZonesRef.current?.addLayer(layer);
 
                 const shape = layer.toGeoJSON();
-                const coords = shape.geometry.coordinates[0].map(p => ({ lat: p[1], lng: p[0] }));
+                const coords = shape.geometry.coordinates[0].map((p: any) => ({ lat: p[1], lng: p[0] }));
 
                 if (!coords || coords.length < 3) return;
 
                 toast.loading("Guardando zona...", { id: 'save-zone' });
-                const { data, error } = await supabase.from('zones').insert([{
+                const { data, error } = await (supabase as any).from('zones').insert([{
                     coordinates: coords,
                     color: color,
                     scope: 'kiosco_map',
@@ -430,26 +405,25 @@ export default function MapaClientes() {
 
                 if (error) {
                     toast.error("Error al guardar la zona", { id: 'save-zone' });
-                    drawnZonesRef.current.removeLayer(layer);
+                    drawnZonesRef.current?.removeLayer(layer);
                 } else {
                     const newId = data[0].id;
-                    layer.zoneId = newId;
+                    (layer as any).zoneId = newId;
                     bindZonePopup(layer, newId);
                     toast.success("Zona guardada", { id: 'save-zone' });
                 }
             });
 
-            m.on(L.Draw.Event.DELETED, async function (e) {
+            m.on('draw:deleted' as any, async function (e: any) {
                 const layers = e.layers;
-                layers.eachLayer(async function (layer) {
+                layers.eachLayer(async function (layer: any) {
                     if (layer.zoneId) {
-                        const { error } = await supabase.from('zones').delete().eq('id', layer.zoneId).eq('empresa_id', empresaActiva?.id);
+                        const { error } = await (supabase as any).from('zones').delete().eq('id', layer.zoneId).eq('empresa_id', empresaActiva?.id);
                         if (error) toast.error("Error eliminando zona");
                     }
                 });
             });
 
-            // Fix for blank map issue on initial load
             setTimeout(() => {
                 if (mapRef.current) {
                     mapRef.current.invalidateSize();
@@ -462,7 +436,6 @@ export default function MapaClientes() {
         }
 
         return () => {
-            // Cleanup Leaflet on unmount
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
@@ -473,11 +446,10 @@ export default function MapaClientes() {
     const updateVisibleCount = useCallback(() => {
         if (!mapRef.current) return;
         const bounds = mapRef.current.getBounds();
-        const inView = (clientes || []).filter(c => {
-            const lat = parseFloat(c.lat);
-            const lng = parseFloat(c.lng);
-            if (isNaN(lat) || isNaN(lng)) return false;
-            return bounds.contains(L.latLng(lat, lng));
+        const inView = (clientes as any[]).filter((c: any) => {
+            const lat = Number(c.lat);
+            const lng = Number(c.lng);
+            return !isNaN(lat) && !isNaN(lng) && bounds.contains(L.latLng(lat, lng));
         }).length;
         setClientesEnZona(inView);
     }, [clientes]);
@@ -486,18 +458,16 @@ export default function MapaClientes() {
         if (!mapRef.current) return;
         const m = mapRef.current;
         m.on('moveend zoomend', updateVisibleCount);
-        updateVisibleCount(); // Initial count
+        updateVisibleCount(); 
         return () => {
             m.off('moveend zoomend', updateVisibleCount);
         };
     }, [mapRef.current, updateVisibleCount]);
 
-    // Reload zones when toggle changes
     useEffect(() => {
         loadZonas();
     }, [showZones, empresaActiva]);
 
-    // Render Markers whenever data or filters change
     useEffect(() => {
         if (!mapRef.current || !markersLayerRef.current) return;
         const layer = markersLayerRef.current;
@@ -505,12 +475,8 @@ export default function MapaClientes() {
 
         const hasFilters = activeFilters.size > 0;
 
-        clientes.forEach(rec => {
-            // Apply filtering
-            if (filters.smartRoute) {
-                const rs = getChurnRisk(rec);
-                if (rs.level === 'bajo' && rs.diasSinContacto < 15) return; // Hide healthy clients
-            } else if (hasFilters) {
+        clientes.forEach((rec: any) => {
+            if (hasFilters) {
                 if (colorMode === "creador" && !activeFilters.has((rec.creado_por || "Desconocido").trim())) return;
                 else if (colorMode === "rubro" && !activeFilters.has((rec.rubro || "Sin rubro").trim())) return;
                 else if (colorMode === "interes" && !activeFilters.has(rec.interes || "Bajo")) return;
@@ -518,7 +484,6 @@ export default function MapaClientes() {
                 else if (colorMode === "estado" && !activeFilters.has(rec.estado)) return;
             }
 
-            // Determine Color
             let color = "#94a3b8";
             if (colorMode === "riesgo") {
                 const risk = getChurnRisk(rec);
@@ -529,12 +494,10 @@ export default function MapaClientes() {
             else if (colorMode === "estilo") color = ESTILO_COLORS[rec.estilo_contacto || "Sin definir"] || ESTILO_COLORS["Sin definir"];
             else color = ESTADO_COLOR[rec.estado] || "#94a3b8";
 
-            // Marker interaction
             const isSelectedForRouting = routeStops.some(s => s.id === rec.id);
             const risk = getChurnRisk(rec);
             const isHighRisk = colorMode === 'riesgo' && risk.level === 'alto';
             const opacityStyle = isHeatmapMode ? 'opacity: 0.15;' : '';
-            const pulseStyle = isHighRisk ? 'animation: pulse-ring 1.5s cubic-bezier(0,0,0.2,1) infinite;' : '';
 
             const iconHtml = `
                 <div style="position: relative;">
@@ -560,7 +523,7 @@ export default function MapaClientes() {
 
             const icon = L.divIcon({ className: "", html: iconHtml, iconSize: [14, 14], iconAnchor: [7, 7] });
 
-            const marker = L.marker([rec.lat, rec.lng], { icon, title: rec.nombre_local || rec.nombre }).addTo(layer);
+            const marker = L.marker([Number(rec.lat), Number(rec.lng)], { icon, title: rec.nombre_local || rec.nombre }).addTo(layer);
 
             if (isRoutingMode) {
                 marker.on('click', () => {
@@ -608,7 +571,7 @@ export default function MapaClientes() {
                 `);
 
                 marker.on('popupopen', (e) => {
-                    const btn = e.popup.getElement().querySelector('.btn-popup-edit');
+                    const btn = e.popup.getElement()?.querySelector('.btn-popup-edit') as HTMLButtonElement;
                     if (btn) {
                         btn.onclick = () => {
                             setEditingId(rec.id);
@@ -618,7 +581,7 @@ export default function MapaClientes() {
                         };
                     }
 
-                    const btnAssign = e.popup.getElement().querySelector('.btn-popup-assign');
+                    const btnAssign = e.popup.getElement()?.querySelector('.btn-popup-assign') as HTMLButtonElement;
                     if (btnAssign) {
                         btnAssign.onclick = () => {
                             setSelectedClienteForRuta({ id: rec.id, nombre: rec.nombre_local || rec.nombre });
@@ -631,7 +594,6 @@ export default function MapaClientes() {
         });
     }, [clientes, colorMode, activeFilters, isRoutingMode, routeStops, mapReady, isHeatmapMode]);
 
-    // Render Heatmap
     useEffect(() => {
         if (!mapRef.current) return;
         
@@ -643,10 +605,10 @@ export default function MapaClientes() {
             return;
         }
 
-        const points = [];
+        const points: any[] = [];
         const hasFilters = activeFilters.size > 0;
 
-        clientes.forEach(rec => {
+        clientes.forEach((rec: any) => {
             if (hasFilters) {
                 if (colorMode === "creador" && !activeFilters.has((rec.creado_por || "Desconocido").trim())) return;
                 else if (colorMode === "rubro" && !activeFilters.has((rec.rubro || "Sin rubro").trim())) return;
@@ -655,7 +617,7 @@ export default function MapaClientes() {
                 else if (colorMode === "estado" && !activeFilters.has(rec.estado)) return;
             }
             if (rec.lat && rec.lng) {
-                points.push([rec.lat, rec.lng, 1]);
+                points.push([Number(rec.lat), Number(rec.lng), 1]);
             }
         });
 
@@ -663,19 +625,16 @@ export default function MapaClientes() {
             mapRef.current.removeLayer(heatLayerRef.current);
         }
 
-        if (L.heatLayer) {
-            heatLayerRef.current = L.heatLayer(points, {
+        if ((L as any).heatLayer) {
+            heatLayerRef.current = (L as any).heatLayer(points, {
                 radius: 25,
                 blur: 15,
                 maxZoom: 17,
                 gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}
             }).addTo(mapRef.current);
-        } else {
-            console.warn("L.heatLayer no está disponible.");
         }
     }, [clientes, isHeatmapMode, activeFilters, colorMode, mapReady]);
 
-    // Render Activadores
     useEffect(() => {
         if (!mapRef.current || !markersActivadoresLayerRef.current) return;
         const layer = markersActivadoresLayerRef.current;
@@ -691,7 +650,7 @@ export default function MapaClientes() {
                 </div>
             `;
             const icon = L.divIcon({ className: "", html: iconHtml, iconSize: [30, 30], iconAnchor: [15, 15] });
-            const marker = L.marker([user.lat, user.lng], { icon, title: user.nombre }).addTo(layer);
+            const marker = L.marker([Number(user.lat), Number(user.lng)], { icon, title: user.nombre }).addTo(layer);
 
             marker.bindPopup(`
                 <div style="min-width:180px; padding: 5px;">
@@ -709,181 +668,17 @@ export default function MapaClientes() {
         });
     }, [activadores, showActivadores, mapReady]);
 
-    // Historical Path Effect
-    useEffect(() => {
-        if (!mapRef.current) return;
-
-        if (!isHistoricalMode || !historicalActivadorId) {
-            if (historicalPathLayerRef.current) {
-                mapRef.current.removeLayer(historicalPathLayerRef.current);
-                historicalPathLayerRef.current = null;
-            }
-            return;
-        }
-
-        const fetchPath = async () => {
-            const startDate = new Date(`${historicalDate}T00:00:00`).toISOString();
-            const endDate = new Date(`${historicalDate}T23:59:59.999`).toISOString();
-
-            const { data, error } = await supabase
-                .from('historial_ubicaciones')
-                .select('lat, lng, fecha')
-                .eq('empresa_id', empresaActiva?.id)
-                .eq('usuario_id', historicalActivadorId)
-                .gte('fecha', startDate)
-                .lte('fecha', endDate)
-                .order('fecha', { ascending: true });
-
-            if (error) {
-                console.error("Error fetching history:", error);
-                toast.error("Error al cargar historial");
-                return;
-            }
-
-            if (historicalPathLayerRef.current) {
-                mapRef.current.removeLayer(historicalPathLayerRef.current);
-            }
-
-            if (data.length < 2) {
-                toast.error("Datos insuficientes para dibujar recorrido", { id: 'nohistory' });
-                return;
-            }
-
-            toast.loading("Procesando recorrido por calles...", { id: 'nohistory' });
-
-            // 1. Simplificar puntos para OSRM (eliminar duplicados o muy cercanos < 5m)
-            const simplified = [];
-            data.forEach((p, i) => {
-                if (i === 0) { simplified.push(p); return; }
-                const dist = haversineKm({ lat: data[i-1].lat, lng: data[i-1].lng }, { lat: p.lat, lng: p.lng });
-                if (dist > 0.005) simplified.push(p); // mayor a 5 metros
-            });
-
-            // 2. Función para obtener trayecto real de OSRM en tramos (limite 100 pts)
-            const getMatchedPath = async (pts) => {
-                const chunks = [];
-                const SIZE = 80; // Bajamos a 80 para mayor seguridad
-                for (let i = 0; i < pts.length; i += SIZE) {
-                    chunks.push(pts.slice(i, i + SIZE + 1));
-                    if (i + SIZE + 1 >= pts.length) break;
-                }
-
-                let fullPath = [];
-                for (const chunk of chunks) {
-                    if (chunk.length < 2) continue;
-                    const coords = chunk.map(p => `${p.lng},${p.lat}`).join(';');
-                    // Generar radiuses de 50m para cada punto
-                    const radiuses = chunk.map(() => '50').join(';');
-                    
-                    try {
-                        const url = `https://router.project-osrm.org/match/v1/walking/${coords}?overview=full&geometries=geojson&radiuses=${radiuses}&tidy=true`;
-                        const resp = await fetch(url);
-                        const result = await resp.json();
-                        
-                        if (result.code === 'Ok' && result.matchings?.length > 0) {
-                            const matched = result.matchings[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                            // Evitar duplicar el punto de conexión entre chunks
-                            if (fullPath.length > 0 && matched.length > 0) {
-                                fullPath = [...fullPath, ...matched.slice(1)];
-                            } else {
-                                fullPath = [...fullPath, ...matched];
-                            }
-                        } else {
-                            console.warn("OSRM Match failed with code:", result.code, result);
-                            fullPath = [...fullPath, ...chunk.map(c => [c.lat, c.lng])];
-                        }
-                    } catch (e) {
-                        console.error("OSRM Fetch Error:", e);
-                        fullPath = [...fullPath, ...chunk.map(c => [c.lat, c.lng])];
-                    }
-                }
-                return fullPath;
-            };
-
-            const matchedLatlngs = await getMatchedPath(simplified);
-            const layerGroup = L.layerGroup();
-
-            // Draw line
-            const polyline = L.polyline(matchedLatlngs, {
-                color: '#0c0c0c',
-                weight: 5,
-                opacity: 0.8,
-                lineJoin: 'round'
-            });
-            layerGroup.addLayer(polyline);
-
-            // Add dots at original coordinates
-            simplified.forEach(p => {
-                L.circleMarker([p.lat, p.lng], {
-                    radius: 3,
-                    fillColor: '#0c0c0c',
-                    color: '#fff',
-                    weight: 1,
-                    opacity: 0.5,
-                    fillOpacity: 0.5
-                }).addTo(layerGroup);
-            });
-
-            const getBearing = (p1, p2) => {
-                const lat1 = p1[0] * Math.PI / 180;
-                const lat2 = p2[0] * Math.PI / 180;
-                const lon1 = p1[1] * Math.PI / 180;
-                const lon2 = p2[1] * Math.PI / 180;
-                const y = Math.sin(lon2 - lon1) * Math.cos(lat2);
-                const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
-                const theta = Math.atan2(y, x);
-                return (theta * 180 / Math.PI + 360) % 360;
-            };
-
-            // Add arrows to show direction
-            const addArrows = (path, group) => {
-                if (path.length < 2) return;
-                // Add arrows every ~15 points to avoid clutter
-                const step = Math.max(Math.floor(path.length / 10), 10);
-                for (let i = 0; i < path.length - 1; i += step) {
-                    const p1 = path[i];
-                    const p2 = path[i + 1];
-                    const angle = getBearing(p1, p2);
-                    
-                    const arrowIcon = L.divIcon({
-                        html: `<div style="transform: rotate(${angle}deg); color: white; display:flex; align-items:center; justify-content:center;">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                               </div>`,
-                        className: '',
-                        iconSize: [12, 12],
-                        iconAnchor: [6, 6]
-                    });
-                    L.marker(p1, { icon: arrowIcon, interactive: false }).addTo(group);
-                }
-            };
-
-            addArrows(matchedLatlngs, layerGroup);
-
-            // Add start and end markers
-            if (simplified.length > 0) {
-                const startPoint = [simplified[0].lat, simplified[0].lng];
-                const endPoint = [simplified[simplified.length - 1].lat, simplified[simplified.length - 1].lng];
-                const createDotIcon = (color) => L.divIcon({
-                    html: `<div style="width: 16px; height: 16px; background-color: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.4);"></div>`,
-                    className: '', iconSize: [16, 16], iconAnchor: [8, 8]
-                });
-                L.marker(startPoint, { icon: createDotIcon('#10b981'), zIndexOffset: 1000 }).bindPopup('<b>Inicio de ruta</b><br/>' + new Date(simplified[0].fecha).toLocaleTimeString()).addTo(layerGroup);
-                if (simplified.length > 1) {
-                    L.marker(endPoint, { icon: createDotIcon('#ef4444'), zIndexOffset: 1000 }).bindPopup('<b>Fin de ruta</b><br/>' + new Date(simplified[simplified.length - 1].fecha).toLocaleTimeString()).addTo(layerGroup);
-                }
-            }
-
-            historicalPathLayerRef.current = layerGroup;
-            mapRef.current.addLayer(layerGroup);
-            toast.success(`Recorrido real generado (${matchedLatlngs.length} puntos)`, { id: 'nohistory' });
-
-            if (matchedLatlngs.length > 0) {
-                mapRef.current.fitBounds(L.polyline(matchedLatlngs).getBounds(), { padding: [50, 50] });
-            }
-        };
-
-        fetchPath();
-    }, [isHistoricalMode, historicalActivadorId, historicalDate, empresaActiva?.id, mapReady]);
+    const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const lat1Rad = lat1 * Math.PI / 180;
+        const lat2Rad = lat2 * Math.PI / 180;
+        const s1 = Math.sin(dLat / 2);
+        const s2 = Math.sin(dLng / 2);
+        const h = s1 * s1 + Math.cos(lat1Rad) * Math.cos(lat2Rad) * s2 * s2;
+        return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    };
 
     const exportarReporteRecorrido = async () => {
         if (!historicalActivadorId) return toast.error('Debe seleccionar un activador');
@@ -892,8 +687,7 @@ export default function MapaClientes() {
         const startDate = new Date(`${historicalDate}T00:00:00`).toISOString();
         const endDate = new Date(`${historicalDate}T23:59:59.999`).toISOString();
 
-        // 1. Obtener Historial de Ubicaciones
-        const { data: historial, error: histErr } = await supabase
+        const { data: historial, error: histErr } = await (supabase as any)
             .from('historial_ubicaciones')
             .select('lat, lng, fecha')
             .eq('empresa_id', empresaActiva?.id)
@@ -903,15 +697,22 @@ export default function MapaClientes() {
             .order('fecha', { ascending: true });
 
         if (histErr) {
-            return toast.error('Error al obtener datos del recorrido', { id: 'export' });
+            console.error("Error historial:", histErr);
+            toast.error("Error al cargar historial");
+            return;
         }
 
-        // 2. Obtener Actividades/Visitas realizadas por este usuario ese día
+        const hData = historial as any[];
+        if (hData.length === 0) {
+            toast.error("No hay datos de ubicación para ese día");
+            return;
+        }
+
         const activador = activadores.find(a => a.id === historicalActivadorId);
         const activadorEmail = activador?.email || '';
         const activadorName = activador?.nombre || 'Activador';
 
-        const { data: actividades, error: actErr } = await supabase
+        const { data: actividades } = await (supabase as any)
             .from('actividades')
             .select('id, descripcion, fecha')
             .eq('empresa_id', empresaActiva?.id)
@@ -919,7 +720,6 @@ export default function MapaClientes() {
             .gte('fecha', startDate)
             .lte('fecha', endDate);
 
-        // Calculate metrics
         let totalDistanceKm = 0;
         let diffMs = 0;
         let startTime = 'N/A';
@@ -931,7 +731,7 @@ export default function MapaClientes() {
             diffMs = new Date(historial[historial.length - 1].fecha).getTime() - new Date(historial[0].fecha).getTime();
 
             for (let i = 1; i < historial.length; i++) {
-                totalDistanceKm += haversineKm({ lat: historial[i-1].lat, lng: historial[i-1].lng }, { lat: historial[i].lat, lng: historial[i].lng });
+                totalDistanceKm += haversineKm(Number(historial[i-1].lat), Number(historial[i-1].lng), Number(historial[i].lat), Number(historial[i].lng));
             }
         }
 
@@ -940,10 +740,8 @@ export default function MapaClientes() {
         const durationStr = `${hours}h ${mins}m`;
         const actCount = actividades ? actividades.length : 0;
 
-        // 3. Crear Workbooks
         const wb = XLSX.utils.book_new();
 
-        // Hoja 1: Resumen
         const resumenData = [
             ["Reporte de Jornada - CRM PickingUp"],
             [],
@@ -957,11 +755,9 @@ export default function MapaClientes() {
         ];
 
         const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
-        // Style adjustments could go here 
         XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
 
-        // Hoja 2: Puntos de Control GPS
-        const gpsData = (historial || []).map((p, index) => ({
+        const gpsData = (historial || []).map((p: any, index: number) => ({
             "Punto N°": index + 1,
             "Hora": new Date(p.fecha).toLocaleTimeString(),
             "Latitud": p.lat,
@@ -970,72 +766,15 @@ export default function MapaClientes() {
         const wsGps = gpsData.length > 0 ? XLSX.utils.json_to_sheet(gpsData) : XLSX.utils.aoa_to_sheet([["Sin puntos de GPS registrados"]]);
         XLSX.utils.book_append_sheet(wb, wsGps, "Rastreo GPS");
 
-        // Hoja 3: Actividades
-        const actData = (actividades || []).map((a) => ({
+        const actData = (actividades || []).map((a: any) => ({
             "Descripción": a.descripcion,
             "Hora": new Date(a.fecha).toLocaleTimeString()
         }));
         const wsAct = actData.length > 0 ? XLSX.utils.json_to_sheet(actData) : XLSX.utils.aoa_to_sheet([["Sin actividades registradas"]]);
         XLSX.utils.book_append_sheet(wb, wsAct, "Actividades");
 
-        // Guardar archivo
-        XLSX.writeFile(wb, `Reporte_Ruta_${activadorName.replace(/\\s+/g, '_')}_${historicalDate}.xlsx`);
+        XLSX.writeFile(wb, `Reporte_Ruta_${activadorName.replace(/\s+/g, '_')}_${historicalDate}.xlsx`);
         toast.success('Reporte exportado correctamente', { id: 'export' });
-    };
-
-    const handleLocateMe = () => {
-        if (!navigator.geolocation) return toast.error("Geolocalización no soportada");
-
-        toast.loading("Buscando ubicación...", { id: 'geo' });
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                toast.success("Ubicación encontrada", { id: 'geo' });
-                const latlng = [pos.coords.latitude, pos.coords.longitude];
-                setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-
-                if (mapRef.current) {
-                    if (!myMarkerRef.current) {
-                        myMarkerRef.current = L.marker(latlng, { title: "Mi ubicación" }).addTo(mapRef.current);
-                        myCircleRef.current = L.circle(latlng, { radius: Math.max(pos.coords.accuracy, 20), opacity: 0.5 }).addTo(mapRef.current);
-                    } else {
-                        myMarkerRef.current.setLatLng(latlng);
-                        myCircleRef.current.setLatLng(latlng);
-                        myCircleRef.current.setRadius(Math.max(pos.coords.accuracy, 20));
-                    }
-                    mapRef.current.setView(latlng, 15);
-                }
-            },
-            (err) => toast.error("Error al obtener ubicación", { id: 'geo' }),
-            { enableHighAccuracy: true }
-        );
-    };
-
-    const handleRegisterHere = () => {
-        if (!myLocation) return toast.error("Primero debés ubicarte");
-        setEditingId(null);
-        setSelectedLatLng(myLocation);
-        setModalOpen(true);
-    };
-
-    const toggleFilter = (val) => {
-        setActiveFilters(prev => {
-            const next = new Set(prev);
-            if (next.has(val)) next.delete(val);
-            else next.add(val);
-            return next;
-        });
-    };
-
-    const haversineKm = (a, b) => {
-        const R = 6371;
-        const dLat = (b.lat - a.lat) * Math.PI / 180;
-        const dLng = (b.lng - a.lng) * Math.PI / 180;
-        const lat1 = a.lat * Math.PI / 180;
-        const lat2 = b.lat * Math.PI / 180;
-        const s1 = Math.sin(dLat / 2);
-        const s2 = Math.sin(dLng / 2);
-        const h = s1 * s1 + Math.cos(lat1) * Math.cos(lat2) * s2 * s2;
-        return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
     };
 
     const optimizeRoute = () => {
@@ -1051,7 +790,7 @@ export default function MapaClientes() {
             let bestIdx = 0;
             let bestDist = Infinity;
             for (let i = 0; i < remaining.length; i++) {
-                const d = haversineKm(current, remaining[i]);
+                const d = haversineKm(Number(current.lat), Number(current.lng), Number(remaining[i].lat), Number(remaining[i].lng));
                 if (d < bestDist) { bestDist = d; bestIdx = i; }
             }
             const next = remaining.splice(bestIdx, 1)[0];
@@ -1060,18 +799,18 @@ export default function MapaClientes() {
         }
 
         if (routingControlRef.current) {
-            mapRef.current.removeControl(routingControlRef.current);
+            mapRef.current?.removeControl(routingControlRef.current);
         }
 
-        const waypoints = ordered.map(s => L.latLng(s.lat, s.lng));
+        const waypoints = ordered.map(s => L.latLng(Number(s.lat), Number(s.lng)));
 
-        routingControlRef.current = L.Routing.control({
+        routingControlRef.current = (L as any).Routing.control({
             waypoints,
             routeWhileDragging: false,
             addWaypoints: false,
             showAlternatives: false,
             lineOptions: { styles: [{ color: '#0c0c0c', opacity: 0.8, weight: 5 }] },
-            createMarker: () => null // Hide default routing markers, rely on ours
+            createMarker: () => null 
         }).addTo(mapRef.current);
 
         setIsRoutingMode(false);
@@ -1096,21 +835,18 @@ export default function MapaClientes() {
             { label: 'Riesgo Alto ⚠️ (7–10)', color: CHURN_COLORS.alto },
         ];
         if (colorMode === 'rubro') {
-            const rubros = [...new Set(clientes.map(c => (c.rubro || 'Sin rubro').trim()))].sort();
-            return rubros.map(r => ({ label: r, color: getColorForRubro(r) }));
+            const rubros = [...new Set((clientes as any[]).map(c => (c.rubro || 'Sin rubro').trim()))].sort();
+            return rubros.map((r: any) => ({ label: r, color: getColorForRubro(r) }));
         }
-        // Creador
-        const creators = [...new Set(clientes.map(c => (c.creado_por || 'Desconocido').trim()))];
-        return creators.map(c => ({ label: c, color: getColorForCreator(c) }));
+        const creators = [...new Set((clientes as any[]).map(c => (c.creado_por || 'Desconocido').trim()))];
+        return creators.map((c: any) => ({ label: c, color: getColorForCreator(c) }));
     };
 
     return (
         <div className="map-immersive-container">
-            {/* MAIN MAP CONTAINER - FULL DIMENSIONS */}
             <div className="map-main-view">
                 <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
 
-                {/* OVERLAY: STATS BADGE (TOP RIGHT) */}
                 <MapStatsBadge 
                     inView={clientesEnZona} 
                     total={totalAbsoluto} 
@@ -1118,7 +854,6 @@ export default function MapaClientes() {
                     totalLabel="Total locales" 
                 />
 
-                {/* OVERLAY: FLOATING FILTER BUTTON (LEFT) */}
                 <button 
                     onClick={() => setShowFilters(!showFilters)}
                     style={{
@@ -1134,7 +869,6 @@ export default function MapaClientes() {
                     {showFilters ? <X size={24} /> : <Filter size={24} />}
                 </button>
 
-                {/* OVERLAY: LEGEND (ADAPTIVE) */}
                 <MapLegend 
                     items={getLegendItems()}
                     isMobile={isMobile}
@@ -1142,7 +876,6 @@ export default function MapaClientes() {
                     onCloseMobile={() => setShowLegendMobile(false)}
                 />
 
-                {/* OVERLAY: HISTORICAL PANEL (FLOATING ABOVE BOTTOM BAR) */}
                 {isHistoricalMode && (
                     <div style={{
                         position: 'absolute', bottom: '100px', left: '50%', transform: 'translateX(-50%)',
@@ -1181,9 +914,7 @@ export default function MapaClientes() {
                 )}
             </div>
 
-            {/* FLOATING BOTTOM CONTROL BAR (WITH RESPONSIVE SCROLL) */}
             <MapControlBar isMobile={isMobile}>
-                {/* SELECTOR DE CAPAS DE DATOS */}
                 <div style={{ 
                     display: 'flex', alignItems: 'center', gap: '8px', 
                     background: 'var(--bg-glass)', padding: '6px 12px', borderRadius: '16px', 
@@ -1269,7 +1000,7 @@ export default function MapaClientes() {
                 </Button>
 
                 {isRoutingMode && routeStops.length > 0 && (
-                    <div style={{ marginLeft: '20px', animation: 'fadeIn 0.3s' }}>
+                    <div style={{ marginLeft: '20px' }}>
                         <Button 
                             variant="primary" 
                             onClick={optimizeRoute}
@@ -1281,12 +1012,10 @@ export default function MapaClientes() {
                 )}
             </MapControlBar>
 
-            {/* FLOATING SIDEBAR FILTERS (DRAWER) */}
             {showFilters && (
                 <div style={{
                     position: 'fixed', top: '100px', left: '20px',
-                    width: 'min(400px, 90vw)', maxHeight: 'calc(100vh - 200px)', zIndex: 1005,
-                    animation: 'fadeIn 0.3s ease'
+                    width: 'min(400px, 90vw)', maxHeight: 'calc(100vh - 200px)', zIndex: 1005
                 }}>
                     <div style={{
                         background: 'var(--bg-glass)', backdropFilter: 'blur(20px) saturate(180%)',
@@ -1295,10 +1024,11 @@ export default function MapaClientes() {
                         overflowY: 'auto', padding: '10px'
                     }}>
                         <ClientFilters 
-                            filters={filters}
-                            updateFilter={updateFilter}
+                            filters={filters as any}
+                            updateFilter={(name, val) => updateFilter(name as any, val)}
                             rubrosValidos={rubrosValidos}
                             responsablesValidos={responsablesValidos}
+                            gruposValidos={[]}
                         />
                     </div>
                 </div>
@@ -1323,10 +1053,9 @@ export default function MapaClientes() {
                 clienteNombre={selectedClienteForRuta?.nombre || null}
             />
 
-            <style tabIndex="-1">{`
+            <style>{`
                 @keyframes churn-pulse { 0% { transform: scale(0.95); opacity: 0.5; } 70% { transform: scale(2); opacity: 0; } 100% { transform: scale(0.95); opacity: 0; } }
             `}</style>
         </div>
     );
 }
-

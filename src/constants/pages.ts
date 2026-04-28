@@ -1,14 +1,24 @@
 import { 
     MapPin, Users, Activity, Map, Settings, Calendar, Clock, 
-    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain 
+    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain, LucideIcon
 } from 'lucide-react';
+
+export interface PageItem {
+    to?: string;
+    icon: LucideIcon;
+    label: string;
+    group: string;
+    adminOnly?: boolean;
+    superAdminOnly?: boolean;
+    spacer?: boolean;
+}
 
 /**
  * MANIFIESTO CENTRAL DE PÁGINAS
  * Esta es la Única Fuente de Verdad para la navegación y los permisos.
  * Cualquier página agregada aquí aparecerá automáticamente en el Panel de Permisos.
  */
-export const ALL_PAGES = [
+export const ALL_PAGES: PageItem[] = [
     // --- Grupo: Activaciones ---
     { to: '/', icon: MapPin, label: 'Inicio', group: 'Activaciones' },
     { to: '/chat', icon: MessageCircle, label: 'Chat Interno', group: 'Activaciones' },

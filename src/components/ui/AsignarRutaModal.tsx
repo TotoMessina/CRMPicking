@@ -16,11 +16,17 @@ interface Props {
 
 export const AsignarRutaModal: React.FC<Props> = ({ isOpen, onClose, clienteId, clienteNombre, onSaved }) => {
     const { empresaActiva } = useAuth();
-    const { data: usuarios = [], isLoading: loadingUsers } = useCompanyUsersDetailed(empresaActiva?.id);
+    const { data: usuarios = [], isLoading: loadingUsers } = useCompanyUsersDetailed(empresaActiva?.id || null);
     
     const [selectedUser, setSelectedUser] = useState('');
     const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [userSearch, setUserSearch] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    const filteredUsers = usuarios.filter((u: any) => 
+        u.nombre?.toLowerCase().includes(userSearch.toLowerCase()) || 
+        u.email?.toLowerCase().includes(userSearch.toLowerCase())
+    );
 
     if (!isOpen) return null;
 
@@ -32,8 +38,10 @@ export const AsignarRutaModal: React.FC<Props> = ({ isOpen, onClose, clienteId, 
 
         setIsSaving(true);
         try {
+            const numericClienteId = parseInt(clienteId, 10);
+            
             // 1. Obtener el último orden para ese usuario y fecha
-            const { data: existingVisitas, error: fetchError } = await supabase
+            const { data: existingVisitas, error: fetchError } = await (supabase as any)
                 .from('visitas_diarias')
                 .select('orden')
                 .eq('empresa_id', empresaActiva.id)
@@ -44,14 +52,14 @@ export const AsignarRutaModal: React.FC<Props> = ({ isOpen, onClose, clienteId, 
 
             if (fetchError) throw fetchError;
 
-            const nextOrder = existingVisitas && existingVisitas.length > 0 ? existingVisitas[0].orden + 1 : 0;
+            const nextOrder = (existingVisitas && (existingVisitas as any[]).length > 0) ? (existingVisitas as any[])[0].orden + 1 : 0;
 
             // 2. Insertar la nueva visita
-            const { error: insertError } = await supabase
+            const { error: insertError } = await (supabase as any)
                 .from('visitas_diarias')
                 .insert([{
                     empresa_id: empresaActiva.id,
-                    cliente_id: clienteId,
+                    cliente_id: numericClienteId,
                     usuario_asignado_email: selectedUser,
                     fecha_asignada: selectedDate,
                     estado: 'Pendiente',
@@ -60,7 +68,7 @@ export const AsignarRutaModal: React.FC<Props> = ({ isOpen, onClose, clienteId, 
 
             if (insertError) throw insertError;
 
-            toast.success(`Asignado a la ruta de ${usuarios.find(u => u.email === selectedUser)?.nombre}`);
+            toast.success(`Asignado a la ruta de ${usuarios.find((u: any) => u.email === selectedUser)?.nombre}`);
             if (onSaved) onSaved();
             onClose();
         } catch (error: any) {
@@ -97,7 +105,7 @@ export const AsignarRutaModal: React.FC<Props> = ({ isOpen, onClose, clienteId, 
                             style={{ padding: '12px', borderRadius: '12px', background: 'var(--bg-input)' }}
                         >
                             <option value="">— Elegir un vendedor/activador —</option>
-                            {usuarios.map(u => (
+                            {usuarios.map((u: any) => (
                                 <option key={u.email} value={u.email}>{u.nombre}</option>
                             ))}
                         </select>

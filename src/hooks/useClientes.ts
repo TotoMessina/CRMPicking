@@ -58,16 +58,18 @@ export function useClientes(params: UseClientesParams) {
         queryFn: async () => {
             if (!empresaId) return { clientes: [] as Client[], total: 0, activities: {} as Record<string, ClientActivity[]> };
 
-            let request = supabase
+            let selectStr = '*, clientes!inner(*, cliente_grupos(grupos(*)))';
+            if (fGrupos && fGrupos.length > 0) {
+                selectStr = '*, clientes!inner(*, cliente_grupos!inner(grupos(*)))';
+            }
+
+            let request = (supabase as any)
                 .from('empresa_cliente')
-                .select('*, clientes!inner(*, cliente_grupos(grupos(*)))', { count: 'exact' })
+                .select(selectStr, { count: 'exact' })
                 .eq('empresa_id', empresaId)
                 .eq('activo', true);
 
-            // If filtering by groups, we must force the join to be inner to restrict results
             if (fGrupos && fGrupos.length > 0) {
-                // We re-apply select to override with !inner on the groups relation
-                request = request.select('*, clientes!inner(*, cliente_grupos!inner(grupos(*)))', { count: 'exact' });
                 request = request.in('clientes.cliente_grupos.grupo_id', fGrupos);
             }
 
@@ -147,7 +149,7 @@ export function useClientes(params: UseClientesParams) {
             let actsObj: Record<string, ClientActivity[]> = {};
 
             if (hasTextFilter) {
-                const { data: rpcData, error: rpcError } = await supabase.rpc('buscar_clientes_empresa', {
+                const { data: rpcData, error: rpcError } = await (supabase as any).rpc('buscar_clientes_empresa', {
                     p_empresa_id: empresaId,
                     p_nombre: fNombre || null,
                     p_telefono: fTelefono || null,
@@ -210,7 +212,7 @@ export function useClientes(params: UseClientesParams) {
                     grupos: row.grupos || []
                 }));
 
-                total = rpcData && rpcData.length > 0 ? Number(rpcData[0].total_count) : 0;
+                total = rpcData && (rpcData as any[]).length > 0 ? Number((rpcData as any[])[0].total_count) : 0;
             } else {
                 const { data, count, error } = await request;
 
@@ -220,7 +222,7 @@ export function useClientes(params: UseClientesParams) {
                     throw error;
                 }
 
-                mapped = (data || []).map(row => {
+                mapped = (data || []).map((row: any) => {
                     const c = row.clientes || {};
                     return {
                         id: c.id,
@@ -255,19 +257,19 @@ export function useClientes(params: UseClientesParams) {
             }
 
             if (mapped.length > 0) {
-                const ids = mapped.map(c => c.id).filter(Boolean);
-                const { data: acts } = (await supabase
+                const ids = mapped.map(c => typeof c.id === 'string' ? parseInt(c.id, 10) : c.id).filter(Boolean) as number[];
+                const { data: acts, error: actsError } = await supabase
                     .from('actividades')
                     .select('*')
                     .in('cliente_id', ids)
                     .eq('empresa_id', empresaId)
-                    .order('fecha', { ascending: false })) as { data: ClientActivity[] | null };
+                    .order('fecha', { ascending: false });
 
-                if (acts) {
-                    acts.forEach(a => {
-                        const cid = (a as any).cliente_id;
+                if (!actsError && acts) {
+                    (acts as any[]).forEach(a => {
+                        const cid = a.cliente_id;
                         if (!actsObj[cid]) actsObj[cid] = [];
-                        actsObj[cid].push(a);
+                        actsObj[cid].push(a as ClientActivity);
                     });
                 }
             }
@@ -286,10 +288,11 @@ export function useDeleteCliente() {
 
     return useMutation({
         mutationFn: async ({ id, empresaActiva }: { id: string; empresaActiva: any }) => {
+            const numericId = parseInt(id, 10);
             const { error } = await supabase
                 .from("empresa_cliente")
-                .update({ activo: false })
-                .eq("cliente_id", id)
+                .update({ activo: false } as any)
+                .eq("cliente_id", numericId)
                 .eq("empresa_id", empresaActiva?.id);
 
             if (error) {
@@ -328,10 +331,11 @@ export function useQuickDateCliente() {
                 displayMsg = `Próximo contacto: ${d.toLocaleDateString('es-AR')}`;
             }
 
+            const numericId = parseInt(clienteId, 10);
             const { error: updateError } = await supabase
                 .from('empresa_cliente')
-                .update({ fecha_proximo_contacto: dateStr })
-                .eq('cliente_id', clienteId)
+                .update({ fecha_proximo_contacto: dateStr } as any)
+                .eq('cliente_id', numericId)
                 .eq('empresa_id', empresaActiva?.id);
 
             if (updateError) {
@@ -342,12 +346,12 @@ export function useQuickDateCliente() {
             const desc = dateStr ? `📅 Agenda actualizada: próximo contacto el ${formatToLocal(dateStr)}` : '🗑️ Fecha de próximo contacto eliminada';
 
             const { error: logError } = await supabase.from('actividades').insert([{
-                cliente_id: clienteId,
+                cliente_id: numericId,
                 descripcion: desc,
                 usuario: userName || user?.email || 'Sistema',
                 empresa_id: empresaActiva?.id,
                 fecha: new Date().toISOString()
-            }]);
+            }] as any);
 
             if (logError) {
                 const isOfflineError = logError.message === 'Failed to fetch' || logError.message?.includes('fetch') || !navigator.onLine;
@@ -373,14 +377,15 @@ export function useRegistrarVisitaCliente() {
     return useMutation({
         mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }: { clienteId: string; nombre: string; empresaActiva: any; userName: string; user: any }) => {
             const now = new Date().toISOString();
+            const numericId = parseInt(clienteId, 10);
 
             const { error: logError } = await supabase.from('actividades').insert([{
-                cliente_id: clienteId,
+                cliente_id: numericId,
                 descripcion: 'Visita realizada',
                 fecha: now,
                 usuario: userName || user?.email || 'Sistema',
                 empresa_id: empresaActiva?.id
-            }]);
+            }] as any);
 
             if (logError) {
                 const isOfflineError = logError.message === 'Failed to fetch' || logError.message?.includes('fetch') || !navigator.onLine;
@@ -389,8 +394,8 @@ export function useRegistrarVisitaCliente() {
 
             const { error: updateError } = await supabase
                 .from('empresa_cliente')
-                .update({ ultima_actividad: now })
-                .eq('cliente_id', clienteId)
+                .update({ ultima_actividad: now } as any)
+                .eq('cliente_id', numericId)
                 .eq('empresa_id', empresaActiva?.id);
 
             if (updateError) {
@@ -421,14 +426,15 @@ export function useRegistrarLlamadaCliente() {
     return useMutation({
         mutationFn: async ({ clienteId, nombre, empresaActiva, userName, user }: { clienteId: string; nombre: string; empresaActiva: any; userName: string; user: any }) => {
             const now = new Date().toISOString();
+            const numericId = parseInt(clienteId, 10);
 
             const { error: logError } = await supabase.from('actividades').insert([{
-                cliente_id: clienteId,
+                cliente_id: numericId,
                 descripcion: 'Llamada realizada',
                 fecha: now,
                 usuario: userName || user?.email || 'Sistema',
                 empresa_id: empresaActiva?.id
-            }]);
+            }] as any);
 
             if (logError) {
                 const isOfflineError = logError.message === 'Failed to fetch' || logError.message?.includes('fetch') || !navigator.onLine;
@@ -437,8 +443,8 @@ export function useRegistrarLlamadaCliente() {
 
             const { error: updateError } = await supabase
                 .from('empresa_cliente')
-                .update({ ultima_actividad: now })
-                .eq('cliente_id', clienteId)
+                .update({ ultima_actividad: now } as any)
+                .eq('cliente_id', numericId)
                 .eq('empresa_id', empresaActiva?.id);
 
             if (updateError) {

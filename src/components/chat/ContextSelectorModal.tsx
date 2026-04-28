@@ -1,14 +1,27 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Search, User, Users, Route, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { ChatContext } from '../../hooks/useChat';
 
-export const ContextSelectorModal = ({ isOpen, onClose, onSelect }) => {
+interface ContextSelectorModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSelect: (ctx: ChatContext) => void;
+}
+
+interface ResultItem {
+    id: string;
+    nombre: string;
+    type: string;
+}
+
+export const ContextSelectorModal: React.FC<ContextSelectorModalProps> = ({ isOpen, onClose, onSelect }) => {
     const { empresaActiva } = useAuth();
-    const [tab, setTab] = useState('clientes'); // 'clientes', 'consumidores', 'rutas'
+    const [tab, setTab] = useState<'clientes' | 'consumidores' | 'rutas'>('clientes'); 
     const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState([]);
+    const [results, setResults] = useState<ResultItem[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -24,20 +37,14 @@ export const ContextSelectorModal = ({ isOpen, onClose, onSelect }) => {
         if (!empresaActiva) return;
         setLoading(true);
         try {
-            let query;
+            let query: any;
             if (tab === 'clientes') {
-                query = supabase.from('clientes').select('id, nombre').eq('empresa_id', empresaActiva.id).limit(20);
+                query = (supabase as any).from('clientes').select('id, nombre').eq('empresa_id', empresaActiva.id).limit(20);
                 if (searchTerm) query = query.ilike('nombre', `%${searchTerm}%`);
             } else if (tab === 'consumidores') {
-                query = supabase.from('consumidores').select('id, nombre').eq('empresa_id', empresaActiva.id).limit(20);
+                query = (supabase as any).from('consumidores').select('id, nombre').eq('empresa_id', empresaActiva.id).limit(20);
                 if (searchTerm) query = query.ilike('nombre', `%${searchTerm}%`);
             } else if (tab === 'rutas') {
-                // For routes, we can list recent dates or something similar. 
-                // Using 'rutas' logic might depend on how they are stored.
-                // Assuming there's a table 'rutas_reparto' or similar.
-                // For now, let's simplify or check what 'rutas' means.
-                // In this CRM, 'ruta' often refers to a date.
-                // Let's assume we can link to a specific date of route.
                 setResults([
                     { id: 'hoy', nombre: 'Ruta de Hoy', type: 'ruta' },
                     { id: 'ayer', nombre: 'Ruta de Ayer', type: 'ruta' },
@@ -48,7 +55,7 @@ export const ContextSelectorModal = ({ isOpen, onClose, onSelect }) => {
 
             const { data, error } = await query;
             if (error) throw error;
-            setResults(data.map(item => ({ ...item, type: tab })));
+            setResults((data as any[]).map(item => ({ id: String(item.id), nombre: item.nombre, type: tab })));
         } catch (error) {
             console.error('Error fetching context results:', error);
         } finally {
@@ -64,7 +71,7 @@ export const ContextSelectorModal = ({ isOpen, onClose, onSelect }) => {
                 position: 'fixed', inset: 0, zIndex: 3000,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 padding: '16px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)'
-            }}>
+            } as React.CSSProperties}>
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -76,7 +83,7 @@ export const ContextSelectorModal = ({ isOpen, onClose, onSelect }) => {
                         border: '1px solid var(--border)', display: 'flex', 
                         flexDirection: 'column', overflow: 'hidden',
                         boxShadow: '0 20px 50px -12px rgba(0,0,0,0.5)'
-                    }}
+                    } as React.CSSProperties}
                 >
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
@@ -90,9 +97,9 @@ export const ContextSelectorModal = ({ isOpen, onClose, onSelect }) => {
 
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
                         {[
-                            { id: 'clientes', label: 'Clientes', icon: User },
-                            { id: 'consumidores', label: 'Consumidores', icon: Users },
-                            { id: 'rutas', label: 'Rutas', icon: Route }
+                            { id: 'clientes' as const, label: 'Clientes', icon: User },
+                            { id: 'consumidores' as const, label: 'Consumidores', icon: Users },
+                            { id: 'rutas' as const, label: 'Rutas', icon: Route }
                         ].map(t => (
                             <button
                                 key={t.id}
@@ -105,7 +112,7 @@ export const ContextSelectorModal = ({ isOpen, onClose, onSelect }) => {
                                     alignItems: 'center', justifyContent: 'center', gap: '8px',
                                     borderBottom: tab === t.id ? '3px solid var(--accent)' : '3px solid transparent',
                                     transition: 'all 0.2s'
-                                }}
+                                } as React.CSSProperties}
                             >
                                 <t.icon size={18} />
                                 {t.label}
@@ -148,9 +155,7 @@ export const ContextSelectorModal = ({ isOpen, onClose, onSelect }) => {
                                             padding: '14px 18px', borderRadius: '16px', border: '1px solid var(--border)',
                                             background: 'var(--bg-card)', cursor: 'pointer', textAlign: 'left',
                                             transition: 'all 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                                        } as React.CSSProperties}
                                     >
                                         <span style={{ fontWeight: 600, color: 'var(--text)' }}>{item.nombre}</span>
                                         <div style={{ background: 'var(--bg-active)', borderRadius: '8px', padding: '4px' }}>

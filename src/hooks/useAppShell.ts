@@ -1,0 +1,244 @@
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate, useLocation, Location, NavigateFunction } from 'react-router-dom';
+import { useAuth, Empresa, PaginasPermitidas } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
+import { ALL_PAGES, PageItem } from '../constants/pages';
+
+function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+export interface UseAppShellReturn {
+    user: any; // User type from Supabase is complex, keeping any for now but checking nulls
+    role: string | null;
+    userName: string | null;
+    avatarUrl: string | null;
+    signOut: () => Promise<void>;
+    empresaActiva: Empresa | null;
+    empresasDisponibles: Empresa[];
+    setEmpresaActiva: (empresa: Empresa | null) => void;
+    theme: 'light' | 'dark';
+    toggleTheme: () => void;
+    navigate: NavigateFunction;
+    location: Location;
+    isMobileMenuOpen: boolean;
+    setIsMobileMenuOpen: (open: boolean) => void;
+    pushEnabled: boolean;
+    unreadChatCount: number;
+    showEmpresaSelector: boolean;
+    setShowEmpresaSelector: (show: boolean) => void;
+    isRutaActive: boolean;
+    toggleModoRuta: () => Promise<void>;
+    handleLogout: (e?: React.MouseEvent | React.FormEvent) => Promise<void>;
+    handleSubscribePush: () => Promise<void>;
+    handleForceUpdate: () => Promise<void>;
+    navItems: PageItem[];
+}
+
+export const useAppShell = (): UseAppShellReturn => {
+    const { user, role, userName, avatarUrl, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva, paginasPermitidas } = useAuth();
+    const { theme, toggleTheme } = useTheme();
+    const navigate = useNavigate();
+    const location = useLocation();
+    
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState(false);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
+    const [showEmpresaSelector, setShowEmpresaSelector] = useState(false);
+    
+    const [isRutaActive, setIsRutaActive] = useState(() => {
+        return localStorage.getItem('modo-ruta-active') === 'true';
+    });
+    const wakeLockRef = useRef<any>(null);
+
+    const toggleModoRuta = async () => {
+        const next = !isRutaActive;
+        
+        if (next) {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+                    toast.success('Modo Ruta: Pantalla bloqueada', { icon: '🔒' });
+                } catch (err) {
+                    console.error('Wake Lock Error:', err);
+                    toast.error('No se pudo bloquear la pantalla (Requiere HTTPS)');
+                }
+            } else {
+                toast.error('Navegador no soporta bloqueo de pantalla');
+            }
+        } else {
+            if (wakeLockRef.current) {
+                await wakeLockRef.current.release();
+                wakeLockRef.current = null;
+            }
+        }
+
+        setIsRutaActive(next);
+        localStorage.setItem('modo-ruta-active', String(next));
+        window.dispatchEvent(new CustomEvent('modo-ruta-changed', { detail: next }));
+    };
+
+    useEffect(() => {
+        if (!isRutaActive) return;
+
+        const handleVisibility = async () => {
+            if (document.visibilityState === 'visible' && isRutaActive) {
+                try {
+                    if (!wakeLockRef.current) {
+                        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+                    }
+                } catch (e) { console.error(e); }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, [isRutaActive]);
+
+    useEffect(() => {
+        if ('Notification' in window && navigator.serviceWorker) {
+            navigator.serviceWorker.ready.then(reg => {
+                reg.pushManager.getSubscription().then(sub => {
+                    if (sub) setPushEnabled(true);
+                });
+            });
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!user) {
+            navigate('/login');
+        }
+    }, [user, navigate]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchUnread = async () => {
+            if (!user?.email || !empresaActiva?.id) return;
+            const { count, error } = await supabase
+                .from('mensajes_chat')
+                .select('*', { count: 'exact', head: true })
+                .eq('para_usuario', user.email)
+                .eq('leido', false)
+                .eq('empresa_id', empresaActiva?.id);
+
+            if (!error && count !== null) {
+                setUnreadChatCount(count);
+            }
+        };
+
+        fetchUnread();
+
+        const handleMessagesRead = () => fetchUnread();
+        window.addEventListener('chat-messages-read', handleMessagesRead);
+
+        const channel = supabase
+            .channel('global_chat_updates')
+            .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'mensajes_chat', filter: `para_usuario=eq.${user.email}` }, (payload: any) => {
+                if (!payload.new.leido) setUnreadChatCount(prev => prev + 1);
+            })
+            .on('postgres_changes' as any, { event: 'UPDATE', schema: 'public', table: 'mensajes_chat', filter: `para_usuario=eq.${user.email}` }, () => {
+                fetchUnread();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+            window.removeEventListener('chat-messages-read', handleMessagesRead);
+        };
+    }, [user, empresaActiva]);
+
+    const handleLogout = async (e?: React.MouseEvent | React.FormEvent) => {
+        e?.preventDefault();
+        await signOut();
+        navigate('/login');
+    };
+
+    const handleSubscribePush = async () => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            toast.error('Las notificaciones push no están soportadas en este navegador.');
+            return;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+                const vapidPublicKey = (import.meta as any).env.VITE_VAPID_PUBLIC_KEY || "BOgAhv4pIXj5g9FXfR7BYaEVnnWSwsgKsgymp0BqOYSaBUnSqtglbkl85wCBP39UTMYGUX_xCQevEcdOKN3OcQY";
+                const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedVapidKey
+                });
+            }
+
+            if (user?.email) {
+                const { error } = await (supabase as any).from('push_subscriptions').upsert(
+                    { user_email: user.email, subscription: JSON.parse(JSON.stringify(subscription)) },
+                    { onConflict: 'user_email,subscription' }
+                );
+                if (error) throw error;
+            }
+
+            setPushEnabled(true);
+            toast.success('¡Notificaciones activadas exitosamente!', { icon: '🔔' });
+        } catch (error: any) {
+            console.error('Error suscribiendo al push:', error);
+            toast.error(Notification.permission === 'denied' ? 'Permiso denegado. Habilita las notificaciones.' : 'Ocurrió un error al activar notificaciones.');
+        }
+    };
+
+    const navItems = (() => {
+        const isSuperAdmin = role === 'super-admin';
+        const effectiveRole = (isSuperAdmin ? 'super-admin' : (empresaActiva?.role_en_empresa?.toLowerCase() || role || '')) as string;
+        const isActivador = effectiveRole?.includes('activador');
+        const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super-admin';
+        const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial', '/ruta']);
+
+        const allItems = ALL_PAGES;
+
+        if (isSuperAdmin) return allItems;
+        if (paginasPermitidas && Object.keys(paginasPermitidas).length > 0) {
+            return allItems.filter(item => {
+                if (item.spacer) return true;
+                if (item.superAdminOnly) return false;
+                const perm = paginasPermitidas[item.to || ''];
+                return perm && perm.includes(effectiveRole);
+            });
+        }
+        if (isActivador) return allItems.filter(item => !!item.spacer || activadorRoutes.has(item.to || ''));
+        return allItems.filter(item => (!item.adminOnly && !item.superAdminOnly) || isAdmin);
+    })();
+
+    const handleForceUpdate = async () => {
+        if (window.confirm('¿Limpiar cache y forzar actualización?')) {
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (let r of regs) await r.unregister();
+            }
+            localStorage.clear();
+            window.location.reload();
+        }
+    };
+
+    return {
+        user, role, userName, avatarUrl, signOut, empresaActiva, empresasDisponibles, setEmpresaActiva,
+        theme, toggleTheme, navigate, location,
+        isMobileMenuOpen, setIsMobileMenuOpen,
+        pushEnabled, unreadChatCount,
+        showEmpresaSelector, setShowEmpresaSelector,
+        isRutaActive, toggleModoRuta,
+        handleLogout, handleSubscribePush, handleForceUpdate,
+        navItems
+    };
+};
