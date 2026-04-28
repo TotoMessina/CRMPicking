@@ -5,7 +5,7 @@ import { useAppShell } from '../../hooks/useAppShell';
 import { LocationTracker } from '../ui/LocationTracker';
 import { CommandPalette } from '../ui/CommandPalette';
 import { EmpresaSelector } from '../ui/EmpresaSelector';
-import { LogOut, Sun, Moon, Bell, Building2, ChevronDown, Navigation } from 'lucide-react';
+import { LogOut, Sun, Moon, Bell, Building2, ChevronDown, Navigation, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SidebarBrand = ({ setIsMobileMenuOpen }) => (
@@ -212,6 +212,23 @@ export function AppShell() {
 
                 {/* ── FOOTER ──────────────────────────── */}
                 <div className="sidebar-footer">
+                    {/* Botón de IA Estratégica */}
+                    <button
+                        className="sidebar-ruta-btn"
+                        style={{ 
+                            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(217, 70, 239, 0.2))',
+                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                            marginBottom: '8px',
+                            color: '#8b5cf6'
+                        }}
+                        onClick={() => {
+                            // Disparar el evento para abrir el chat
+                            window.dispatchEvent(new CustomEvent('open-pickingbot'));
+                        }}
+                    >
+                        <Bot size={14} />
+                        <span style={{ fontWeight: 800 }}>COQUEBOT</span>
+                    </button>
 
                     {/* Modo Ruta */}
                     <button

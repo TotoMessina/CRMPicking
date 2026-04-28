@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
 import InternalAI from './pages/InternalAI';
+import { CoqueBot } from './components/ui/CoqueBot';
 
 const Clientes = lazy(() => import('./pages/Clientes'));
 const Pipeline = lazy(() => import('./pages/Pipeline'));
@@ -55,6 +56,7 @@ function App(): React.JSX.Element {
       />
       <NetworkStatusHandler />
       <UpdateNotifier />
+      <CoqueBot />
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />

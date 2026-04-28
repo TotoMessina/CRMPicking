@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInternalAI } from '../hooks/useInternalAI';
-import { sentimentAnalyzer } from '../lib/ai/SentimentAnalyzer';
 import { supabase } from '../lib/supabase';
 import { 
     Phone, RefreshCw, 
@@ -90,7 +89,6 @@ export default function InternalAI() {
 
     useEffect(() => {
         fetchAllClients();
-        sentimentAnalyzer.warmup();
     }, [fetchAllClients]);
 
     const handleStartRadar = async () => {
