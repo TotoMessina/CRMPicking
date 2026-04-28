@@ -36,4 +36,5 @@ export interface ClientActivity {
     fecha: string;
     usuario: string;
     foto_url?: string;
+    notas?: string;
 }

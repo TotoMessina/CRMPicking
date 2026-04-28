@@ -22,6 +22,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Tag as TagIcon } from 'lucide-react';
 import { usePipelineStates } from '../../hooks/usePipelineStates';
 import { usePipelineSituations } from '../../hooks/usePipelineSituations';
+import { aiProvider } from '../../lib/aiProvider';
+import { Sparkles, Wand2 } from 'lucide-react';
 
 interface Props {
     isOpen: boolean;
@@ -91,6 +93,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const [clienteId, setClienteId] = useState<string | null>(initialClienteId);
     const [verifyingPhone, setVerifyingPhone] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
+    const [isMagicThinking, setIsMagicThinking] = useState(false);
 
     // Grupos
     const { data: gruposDB = [] } = useGrupos(empresaActiva?.id);
@@ -178,6 +181,35 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         }
     };
     
+    const handleMagicFill = async () => {
+        const name = formData.nombre_local?.trim();
+        if (!name || name.length < 3) {
+            toast.error('Ingresá el nombre del local para usar la IA');
+            return;
+        }
+
+        setIsMagicThinking(true);
+        const tid = toast.loading('IA analizando local...');
+
+        try {
+            const suggestion = await aiProvider.suggestClientDetails(name, formData.direccion);
+            
+            setFormData(prev => ({
+                ...prev,
+                rubro: prev.rubro || suggestion.rubro || prev.rubro,
+                interes: suggestion.interes || prev.interes,
+                notas: (prev.notas ? prev.notas + '\n' : '') + (suggestion.notas || '')
+            }));
+
+            toast.success('¡IA completó los datos!', { id: tid });
+            setIsDirty(true);
+        } catch (error) {
+            toast.error('Error al consultar la IA', { id: tid });
+        } finally {
+            setIsMagicThinking(false);
+        }
+    };
+
     const handleGeocode = async () => {
         const currentAddress = formData.direccion?.trim();
         if (!currentAddress) {
@@ -726,7 +758,24 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                             <h3 style={{ marginBottom: '16px' }}>1. Datos del Local y Contacto</h3>
                             <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div className="field">
-                                    <label>Nombre del Local *</label>
+                                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Nombre del Local *</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={handleMagicFill}
+                                            disabled={isMagicThinking}
+                                            className={`ai-button ${isMagicThinking ? 'thinking' : ''}`}
+                                            style={{ 
+                                                display: 'flex', alignItems: 'center', gap: '4px',
+                                                fontSize: '0.65rem', fontWeight: 800, 
+                                                padding: '2px 8px', borderRadius: '6px', 
+                                                textTransform: 'uppercase', letterSpacing: '0.05em'
+                                            }}
+                                        >
+                                            {isMagicThinking ? <Sparkles size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                                            {isMagicThinking ? 'Analizando...' : 'Magic Fill'}
+                                        </button>
+                                    </label>
                                     <input type="text" {...inp('nombre_local')} />
                                     <FieldError msg={errors.nombre_local} />
                                 </div>

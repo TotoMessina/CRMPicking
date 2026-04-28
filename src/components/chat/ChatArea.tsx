@@ -24,6 +24,7 @@ interface ChatAreaProps {
     selectedContext: ChatContext | null;
     setSelectedContext: (ctx: ChatContext | null) => void;
     loadMoreMessages: () => Promise<void>;
+    smartReplies?: string[];
 }
 
 const formatTime = (isoString: string) => {
@@ -37,7 +38,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     loadingMessages, hasMoreMessages, isMobile, 
     scrollContainerRef, topRef, messagesEndRef,
     selectedContext, setSelectedContext,
-    loadMoreMessages
+    loadMoreMessages, smartReplies
 }) => {
     const [isContextModalOpen, setIsContextModalOpen] = useState(false);
 
@@ -270,6 +271,40 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                             <button onClick={() => setSelectedContext(null)} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer' }}>
                                 <X size={16} />
                             </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {smartReplies && smartReplies.length > 0 && !newMessage && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 5 }}
+                            style={{ 
+                                display: 'flex', gap: '8px', padding: '10px 20px', 
+                                overflowX: 'auto', scrollbarWidth: 'none',
+                                background: 'rgba(var(--accent-rgb), 0.03)'
+                            }}
+                        >
+                            {smartReplies.map((reply, idx) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => { setNewMessage(reply); setTimeout(() => handleSend(), 0); }}
+                                    style={{ 
+                                        whiteSpace: 'nowrap', padding: '6px 14px', borderRadius: '99px',
+                                        background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                        fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent)',
+                                        cursor: 'pointer', transition: 'all 0.2s',
+                                        boxShadow: 'var(--shadow-sm)'
+                                    }}
+                                    onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                                    onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                                >
+                                    {reply}
+                                </button>
+                            ))}
                         </motion.div>
                     )}
                 </AnimatePresence>

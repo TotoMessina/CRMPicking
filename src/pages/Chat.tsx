@@ -15,7 +15,7 @@ export default function Chat() {
         loadingUsers, loadingMessages, isTaskModalOpen, setIsTaskModalOpen, taskForm, setTaskForm,
         sendingTask, hasMoreMessages, isMobile, messagesEndRef, topRef, scrollContainerRef,
         handleSend, handleSendTask, loadMoreMessages,
-        selectedContext, setSelectedContext
+        selectedContext, setSelectedContext, smartReplies
     } = useChat();
 
     const canEdit = !isDemoMode && (roleName === 'admin' || roleName === 'super-admin' || roleName === 'creador');
@@ -73,6 +73,7 @@ export default function Chat() {
                 loadMoreMessages={loadMoreMessages}
                 selectedContext={selectedContext}
                 setSelectedContext={setSelectedContext}
+                smartReplies={smartReplies}
             />
 
             <TaskModal 

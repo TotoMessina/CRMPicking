@@ -294,6 +294,27 @@ export const useChat = () => {
         loadingUsers, loadingMessages, isTaskModalOpen, setIsTaskModalOpen, taskForm, setTaskForm,
         sendingTask, hasMoreMessages, isMobile, messagesEndRef, topRef, scrollContainerRef,
         handleSend, handleSendTask, loadMoreMessages,
-        selectedContext, setSelectedContext
+        selectedContext, setSelectedContext,
+        smartReplies: getSmartReplies(mensajes, user?.email || '')
     };
+};
+
+const getSmartReplies = (messages: ChatMessage[], currentUserEmail: string) => {
+    if (messages.length === 0) return ["Hola!", "Buen día", "En qué puedo ayudarte?"];
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.de_usuario === currentUserEmail) return []; 
+    
+    const text = lastMsg.mensaje.toLowerCase();
+    if (text.includes("precio") || text.includes("cuanto sale") || text.includes("presupuesto")) 
+        return ["Te envío el catálogo", "Consulto stock y te digo", "Te paso el presupuesto ahora"];
+    if (text.includes("hola") || text.includes("buen") || text.includes("que tal")) 
+        return ["¡Hola!", "¡Buen día!", "¿Cómo estás?"];
+    if (text.includes("gracias") || text.includes("chau") || text.includes("luego")) 
+        return ["¡De nada!", "¡A vos!", "¡Saludos!", "Nos vemos"];
+    if (text.includes("tarea") || text.includes("asignada") || text.includes("fijate")) 
+        return ["Recibido", "Lo reviso ahora mismo", "¡Listo!", "Dale"];
+    if (text.includes("reunion") || text.includes("llamada") || text.includes("visita")) 
+        return ["Agendado", "Pasame la dirección", "¿A qué hora?", "Confirmo"];
+    
+    return ["Entendido", "Ok", "Perfecto", "Dale"];
 };

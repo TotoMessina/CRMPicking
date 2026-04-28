@@ -7320,3 +7320,15 @@ fieldset legend:hover {
 .deco-1 { top: -100px; right: -50px; }
 .deco-2 { bottom: -100px; left: -50px; }
 
+
+/* -- AI & MAGIC EFFECTS -------------------------------------------------- */
+.ai-button { background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%); color: white; border: none; position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3); }
+.ai-button:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5); filter: brightness(1.1); }
+.ai-button:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.ai-button.thinking { cursor: wait; pointer-events: none; }
+.ai-button.thinking::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent); transform: rotate(45deg); animation: ai-shimmer 1.5s infinite; }
+.ai-badge { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+.ai-glow { box-shadow: 0 0 15px rgba(139, 92, 246, 0.4); border: 1px solid rgba(139, 92, 246, 0.6) !important; }
+@keyframes ai-shimmer { 0% { transform: translateX(-100%) rotate(45deg); } 100% { transform: translateX(100%) rotate(45deg); } }
+@keyframes ai-pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+.animate-ai-pulse { animation: ai-pulse 2s infinite ease-in-out; }
