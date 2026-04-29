@@ -56,7 +56,12 @@ const NavItem = ({ item, unreadChatCount, setIsMobileMenuOpen }) => {
     const Icon = item.icon;
     return (
         <li onClick={() => setIsMobileMenuOpen(false)}>
-            <NavLink to={item.to} className={({ isActive }) => (isActive ? 'active' : '')} style={{ display: 'flex', alignItems: 'center' }}>
+            <NavLink 
+                to={item.to} 
+                id={`nav-item-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                className={({ isActive }) => (isActive ? 'active' : '')} 
+                style={{ display: 'flex', alignItems: 'center' }}
+            >
                 <Icon size={18} style={{ marginRight: '8px', flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {item.to === '/chat' && unreadChatCount > 0 && (
@@ -149,6 +154,19 @@ export function AppShell() {
             return next;
         });
     }, [routerLocation.pathname]);
+
+    useEffect(() => {
+        const handleOpenGroup = (e) => {
+            const { groupName } = e.detail;
+            setOpenGroups(prev => {
+                const next = new Set(prev);
+                next.add(groupName);
+                return next;
+            });
+        };
+        window.addEventListener('coque-open-nav-group', handleOpenGroup);
+        return () => window.removeEventListener('coque-open-nav-group', handleOpenGroup);
+    }, []);
 
     const toggleGroup = (groupName) => {
         setOpenGroups(prev => {

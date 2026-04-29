@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, X, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Joyride, Step } from 'react-joyride';
 import { aiProvider } from '../../lib/aiProvider';
+import { COQUE_TUTORIALS } from '../../lib/coqueTutorials';
 
 /**
  * CoqueBot - The funny & smart floating assistant
@@ -13,6 +15,11 @@ export const CoqueBot: React.FC = () => {
     ]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    
+    // Tutorial state
+    const [runTutorial, setRunTutorial] = useState(false);
+    const [tutorialSteps, setTutorialSteps] = useState<Step[]>([]);
+
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -44,10 +51,52 @@ export const CoqueBot: React.FC = () => {
     useEffect(() => {
         const handleOpen = () => setIsOpen(true);
         window.addEventListener('open-pickingbot', handleOpen);
-        return () => window.removeEventListener('open-pickingbot', handleOpen);
+        
+        const handleStartTutorial = (e: any) => {
+            const { tutorialId } = e.detail;
+            const tutorial = COQUE_TUTORIALS.find(t => t.id === tutorialId);
+            if (tutorial) {
+                // Si el tutorial requiere abrir un grupo de navegación, disparamos el evento
+                if (tutorial.groupToOpen) {
+                    window.dispatchEvent(new CustomEvent('coque-open-nav-group', { 
+                        detail: { groupName: tutorial.groupToOpen } 
+                    }));
+                }
+                
+                setTutorialSteps(tutorial.steps);
+                setRunTutorial(true);
+                setIsOpen(false); // Cerramos el chat para que no tape el tutorial
+            }
+        };
+        window.addEventListener('coque-start-tutorial', handleStartTutorial);
+
+        return () => {
+            window.removeEventListener('open-pickingbot', handleOpen);
+            window.removeEventListener('coque-start-tutorial', handleStartTutorial);
+        };
     }, []);
 
     return (
+        <>
+            <Joyride
+                steps={tutorialSteps}
+                run={runTutorial}
+                continuous
+                onEvent={(data: any) => {
+                    const { status } = data;
+                    if (['finished', 'skipped'].includes(status)) {
+                        setRunTutorial(false);
+                        setIsOpen(true); // Reabrimos el chat al terminar
+                    }
+                }}
+                styles={{}}
+                options={{
+                    primaryColor: '#8b5cf6',
+                    zIndex: 10000,
+                    showProgress: true,
+                    buttons: ['back', 'close', 'primary', 'skip'],
+                }}
+            />
         <div style={{ position: 'fixed', bottom: '24px', left: '24px', zIndex: 1000 }}>
             <AnimatePresence>
                 {isOpen && (
@@ -159,5 +208,6 @@ export const CoqueBot: React.FC = () => {
                 )}
             </AnimatePresence>
         </div>
+        </>
     );
 };

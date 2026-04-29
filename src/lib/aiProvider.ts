@@ -1,7 +1,9 @@
+import { supabase } from './supabase';
+import { findBestCoqueResponse } from './coqueKnowledge';
+
 /**
- * AI Provider Service v13 (CoqueBot Master Edition)
- * Ultra-complete conversational engine for CoqueBot.
- * Includes objection handling, competitor info, materials, and motivational tactics.
+ * AI Provider Service v17 (CoqueBot Infinite Knowledge Edition)
+ * Master engine with external knowledge base, DB lookup and learning mechanism.
  */
 
 export interface AISuggestion {
@@ -70,73 +72,77 @@ export const aiProvider = {
         const msg = message.toLowerCase();
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // 1. SALUDOS Y PERSONALIDAD
-        if (msg.includes('hola') || msg.includes('quien sos') || msg.includes('quien eres')) {
-            return "¡Buenas, buenas! Acá CoqueBot al habla. 🦾 Tu copiloto de ventas, el que nunca duerme y siempre tiene un consejo a mano. ¿A qué local vamos a digitalizar hoy?";
+        // 1. DATA LOOKUP (Base de datos en tiempo real)
+        const lookupTriggers = ['quien es', 'como esta', 'info de', 'buscar', 'decime de', 'datos de', 'que onda con', 'sabes algo de', 'conoces a', 'que es'];
+        const isLookup = lookupTriggers.some(t => msg.includes(t));
+
+        if (isLookup) {
+            let potentialName = message.toLowerCase();
+            lookupTriggers.forEach(t => potentialName = potentialName.replace(t, ''));
+            potentialName = potentialName.replace(/[?¿!¡]/g, '').trim();
+            
+            if (potentialName && potentialName.length > 1) {
+                try {
+                    const { data: clients } = await supabase
+                        .from('clientes')
+                        .select('id, nombre, nombre_local')
+                        .or(`nombre.ilike.%${potentialName}%,nombre_local.ilike.%${potentialName}%`)
+                        .limit(1);
+
+                    if (clients && clients.length > 0) {
+                        const client = clients[0];
+                        const { data: bizData } = await supabase
+                            .from('empresa_cliente')
+                            .select('estado, situacion, ultima_actividad, visitas')
+                            .eq('cliente_id', client.id)
+                            .limit(1);
+
+                        const nombre = client.nombre_local || client.nombre;
+                        if (bizData && bizData.length > 0) {
+                            const b = bizData[0];
+                            const estado = b.estado || 'Sin estado';
+                            const situacion = b.situacion || 'sin comunicación';
+                            const last = b.ultima_actividad ? new Date(b.ultima_actividad).toLocaleDateString() : 'nunca';
+                            const visitas = b.visitas || 0;
+                            
+                            return `¡Lo encontré! 🕵️‍♂️ Te cuento de **${nombre}**: Está en **${estado}** y su situación es **"${situacion}"**. Lo visitamos ${visitas} veces y la última vez fue el ${last}. ¡Metele pilas! 🚀`;
+                        } else {
+                            return `Encontré a **${nombre}**, pero parece que es un prospecto nuevo y no tiene historial de negocio todavía. ¡Es tu oportunidad para convertirlo! 🎯`;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error in lookup:', e);
+                }
+            }
         }
 
-        // 2. RESPUESTAS POR ESTADOS (1-6)
-        if (msg.includes('estado 1')) return "Estado 1: El cliente es un prospecto virgen. 📋 Solo tenemos su info. ¡Es el momento de la primera visita! No te olvides de llevar folletos y una buena sonrisa.";
-        if (msg.includes('estado 2')) return "Estado 2: Lo visitaste y dijo que no. 🚫 Pero ojo, un 'no' hoy puede ser un 'sí' cuando vea que al de al lado le va bien con la App Rosa. ¡Volvé en un tiempo!";
-        if (msg.includes('estado 3')) return "¡Estado 3 detectado! 📱 El cliente bajó la app pero tiene la tienda más vacía que heladera de soltero. ¡Metele pilas con el Video 1 y 2 para que cree la tienda ya!";
-        if (msg.includes('estado 4')) return "¡Un Estado 4! ✨ Estos son cracks: bajaron la app y crearon la tienda solos. ¡Felicitalo y pasalo a 'En Funcionamiento' para que empiece a vender!";
-        if (msg.includes('estado 5')) return "Estado 5... ¡Mística de campo! 🤝 Lo convenciste en la visita. Ahora asegurate de que cargue el catálogo, sino la app no sirve para nada.";
-        if (msg.includes('estado 6')) return "Estado 6: No le interesa nada de nada. 🛑 No pierdas pólvora en chimangos, che. Busquemos a alguien que quiera crecer.";
-
-        // 3. RESPUESTAS POR SITUACIONES
-        if (msg.includes('sin comunicacion')) return "Situación 'Sin Comunicación': Estamos a ciegas. ❓ Hay que llamarlo o pasar para ver si la tienda está operativa o si le agarró miedo al éxito.";
-        if (msg.includes('en proceso')) return "Está 'En Proceso', o sea, cocinando el catálogo. ⚒️ Si ves que tarda, tirale un centro y ayudalo con las fotos. ¡Que no se queme el guiso!";
-        if (msg.includes('en funcionamiento')) return "🚀 ¡MODO COHETE! Está en funcionamiento. Ya es un cliente digital. Ahora asegurate de que los clientes del local se enteren.";
-
-        // 4. MANEJO DE OBJECIONES (NUEVO v13)
-        if (msg.includes('comision') || msg.includes('caro') || msg.includes('precio')) {
-            return "Decile esto: 'Don, con la App Rosa las comisiones son historia'. 💸 Comparalo con PedidosYa o Rappi y se va a dar cuenta que se está ahorrando un dineral.";
-        }
-        if (msg.includes('tiempo') || msg.includes('full') || msg.includes('ocupado')) {
-            return "El clásico 'no tengo tiempo'. ⏳ Decile que cargar el catálogo lleva 15 minutos y que después la App labura sola por él. ¡Es una inversión de tiempo, no un gasto!";
-        }
-        if (msg.includes('whatsapp')) {
-            return "Si prefiere WhatsApp, decile que la App es como WhatsApp pero profesional: 📱 Sin mensajes perdidos, con stock automático y sin tener que estar respondiendo '¿A cuánto el cuarto de helado?' mil veces.";
-        }
-        if (msg.includes('viejo') || msg.includes('tecnologia') || msg.includes('no sabe')) {
-            return "Barrera tecnológica... 📵 No te preocupes. Mostrale lo fácil que es. Si puede usar WhatsApp, puede usar la App Rosa. ¡Acompañalo en los primeros pasos!";
+        // 2. CONOCIMIENTO MASIVO (coqueKnowledge.ts)
+        const knowledgeResult = findBestCoqueResponse(message);
+        if (knowledgeResult) {
+            // El componente CoqueBot.tsx detectará si hay un tutorialId en la respuesta
+            // Podríamos enviarlo como un metadato si el formato fuera JSON, 
+            // pero para mantenerlo simple, usaremos un evento global o una marca en el texto.
+            if (knowledgeResult.tutorialId) {
+                // Disparamos un evento para que el componente UI lo capture
+                window.dispatchEvent(new CustomEvent('coque-start-tutorial', { 
+                    detail: { tutorialId: knowledgeResult.tutorialId } 
+                }));
+            }
+            return knowledgeResult.response;
         }
 
-        // 5. COMPETENCIA
-        if (msg.includes('pedidos ya') || msg.includes('rappi') || msg.includes('peya')) {
-            return "¡Peya y Rappi nos sirven para comparar! 🥊 Ellos cobran comisiones asesinas. Nosotros le damos autonomía y ahorro. ¡Resaltale que la plata se la queda él, no la plataforma!";
+        // 3. MECANISMO DE APRENDIZAJE (Machine Learning Local)
+        // Si no encontró respuesta en la base de datos ni en el Knowledge Base, lo guarda.
+        const { error: insertError } = await (supabase.from('ai_unknown_queries' as any) as any).insert({
+            query: message,
+            created_at: new Date().toISOString()
+        });
+
+        if (insertError) {
+            console.error('Error saving unknown query to Supabase:', insertError);
         }
 
-        // 6. MATERIALES Y CAPACITACIÓN
-        if (msg.includes('videos')) return "🎬 Cuatro videos clave: 1 y 2 (Setup Tienda), 3 (Fotos Pro) y 4 (Gestión de Pedidos). ¡Son cortos y van al grano!";
-        if (msg.includes('folleto') || msg.includes('flyer') || msg.includes('qr')) {
-            return "¡Folletería al poder! 📄 El QR en el mostrador es fundamental. Sin QR, los clientes no se enteran. ¡Pegale un sticker en la vidriera si podés!";
-        }
-
-        // 7. MOTIVACIÓN Y CONSEJOS ALEATORIOS
-        if (msg.includes('consejo') || msg.includes('ayuda') || msg.includes('que hago') || msg.includes('tip')) {
-            const tips = [
-                "Tip de Coque: El que no arriesga no gana, pero el que no visita no vende. 🚶‍♂️",
-                "Che, revisá los días sin contacto. Si pasaron 30 días, el cliente ya se olvidó de tu cara. ¡Llamalo!",
-                "La clave está en los 'Estado 3'. Están a un pasito de ser operativos. ¡Empujalos!",
-                "¡Ojo con los que cargan mal los precios! Avisales para que no pierdan plata y se enojen con la App.",
-                "¡Metéle onda! El entusiasmo vende más que cualquier manual técnico. 🚀"
-            ];
-            return tips[Math.floor(Math.random() * tips.length)];
-        }
-
-        if (msg.includes('chiste')) {
-            const jokes = [
-                "¿Por qué el preventista cruzó la calle? Para instalar la App Rosa en el local de enfrente... ¡pero estaba cerrado! 😂",
-                "Un dueño de local dice: 'Mi hijo me instaló la app'. El preventista: '¿Y funciona?'. El dueño: 'El hijo sí, la app todavía no cargó nada'. 🤦‍♂️ ¡Metele pilas!",
-                "¿Qué le dice un Estado 1 a un Estado 5? 'Cuando sea grande quiero ser como vos'. 🚀"
-            ];
-            return jokes[Math.floor(Math.random() * jokes.length)];
-        }
-
-        if (msg.includes('gracias')) return "¡De nada, fiera! Andá y cerrá ese local que hoy se vende fuerte. 🚀";
-
-        return "No te entendí ni medio, che. 😅 Pero recordá que sé todo sobre Estados (1-6), Situaciones, Objeciones (precios/tiempo), Competencia y Videos. ¡Preguntame algo de eso!";
+        return "Uy, fiera, esa me mataste. 😅 No la tengo en mi manual todavía, pero ya me la anoté en mi base de datos para estudiarla y que la próxima no me agarres desprevenido. ¿Querés preguntarme algo sobre el CRM (mapas, rutas, tareas), objeciones o buscar algún Cliente?";
     },
 
     async summarizeActivities(activities: ActivityRecord[], context: ClientContext): Promise<AISummaryResult> {

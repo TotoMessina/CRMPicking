@@ -210,6 +210,7 @@ const Clientes: React.FC = () => {
                             boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
                         }}
                         onClick={handleCreate}
+                        id="btn-nuevo-cliente"
                         style={{
                             pointerEvents: 'auto',
                             width: '64px', height: '64px', borderRadius: '32px',
