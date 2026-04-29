@@ -173,9 +173,13 @@ export const COQUE_KNOWLEDGE: { keywords: string[], response: string, tutorialId
         response: "Para conseguir más clientes: 1. Mirá el Mapa de la zona y buscá huecos donde no tengamos a nadie. 2. Caminá las calles principales. 3. Usá el 'Swipe Prospecting' (Tinder de Clientes) para filtrar rápido. ¡La calle no miente! 🏃‍♂️"
     },
     {
-        keywords: ['crear cliente', 'creo cliente', 'alta de cliente', 'nuevo local', 'cargar cliente', 'como creo', 'como cargo'],
+        keywords: ['crear cliente', 'creo cliente', 'alta de cliente', 'nuevo local', 'cargar cliente', 'como creo', 'como cargo', 'crear un cliente'],
         response: "¡Nuevo cliente, nueva victoria! 🏆 Para crearlo: 1. Andá a la sección 'Clientes'. 2. Hacé clic en el botón flotante '+' (abajo a la derecha). 3. Cargá los datos, pineá la ubicación exacta y ¡listo! Ya lo tenés en tu ruta.",
         tutorialId: 'crear_cliente'
+    },
+    {
+        keywords: ['reporte', 'excel', 'exportar', 'descargar clientes', 'bajar lista'],
+        response: "Para sacar un reporte de tus clientes: 1. Andá a la solapa 'Clientes'. 2. Hacé clic en el botón 'Acciones' (el de los tres puntitos arriba a la derecha). 3. Seleccioná 'Exportar Clientes'. ¡Y listo! Tenés un Excel con toda la data para analizar. 📊"
     },
     {
         keywords: ['preguntar', 'que sabes', 'que puedo preguntarte', 'capacidades'],

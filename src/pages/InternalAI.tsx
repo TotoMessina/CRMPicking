@@ -37,9 +37,38 @@ export default function InternalAI() {
     const [progress, setProgress] = useState(0);
     const [logs, setLogs] = useState<string[]>([]);
     const [filter, setFilter] = useState<'riesgo' | 'todos'>('riesgo');
+    
+    // Training Mode State
+    const [mode, setMode] = useState<'radar' | 'training'>('radar');
+    const [unknownQueries, setUnknownQueries] = useState<any[]>([]);
+    const [trainingResponses, setTrainingResponses] = useState<{[key: number]: {response: string, keywords: string}}>({});
 
     const addLog = (msg: string) => {
         setLogs(prev => [msg, ...prev].slice(0, 4));
+    };
+
+    const fetchUnknownQueries = async () => {
+        const { data } = await (supabase.from('ai_unknown_queries' as any) as any)
+            .select('*')
+            .is('response', null)
+            .order('created_at', { ascending: false });
+        if (data) setUnknownQueries(data);
+    };
+
+    useEffect(() => {
+        if (mode === 'training') fetchUnknownQueries();
+    }, [mode]);
+
+    const handleSaveTraining = async (id: number) => {
+        const tr = trainingResponses[id];
+        if (!tr || !tr.response) return;
+        
+        await (supabase.from('ai_unknown_queries' as any) as any)
+            .update({ response: tr.response, keywords: tr.keywords || '' })
+            .eq('id', id);
+            
+        setTrainingResponses(prev => { const n = {...prev}; delete n[id]; return n; });
+        fetchUnknownQueries();
     };
 
     const fetchAllClients = useCallback(async () => {
@@ -160,6 +189,10 @@ export default function InternalAI() {
                         <h1 className="text-5xl md:text-8xl font-black tracking-tighter leading-none">
                             RADAR<span className="text-slate-900 dark:text-white">.</span>
                         </h1>
+                        <div className="flex gap-2 mt-4 bg-slate-200 dark:bg-slate-800 p-1 rounded-xl w-max mx-auto lg:mx-0">
+                            <button onClick={() => setMode('radar')} className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${mode === 'radar' ? 'bg-white dark:bg-slate-900 shadow-sm' : 'text-slate-500'}`}>Radar de Riesgo</button>
+                            <button onClick={() => setMode('training')} className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${mode === 'training' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Modo Maestro</button>
+                        </div>
                         <p className="text-slate-500 dark:text-slate-400 text-lg font-medium max-w-xl">
                             Escaneo profundo de {stats.total} clientes en tiempo real.
                         </p>
@@ -222,8 +255,74 @@ export default function InternalAI() {
                 </AnimatePresence>
 
                 <main className="space-y-8">
+                    {mode === 'training' ? (
+                        <div className="space-y-6">
+                            <div className="bg-indigo-500/10 border border-indigo-500/20 p-6 rounded-3xl">
+                                <h2 className="text-xl font-black text-indigo-500 uppercase tracking-widest mb-2">Centro de Entrenamiento (CoqueBot)</h2>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                                    Aquí aparecen las preguntas que los usuarios hicieron y CoqueBot no supo responder. Escribí la respuesta y las palabras clave para que aprenda.
+                                </p>
+                            </div>
+                            
+                            {unknownQueries.length === 0 ? (
+                                <div className="text-center py-20 border border-dashed border-slate-300 dark:border-slate-800 rounded-3xl">
+                                    <CheckCircle2 size={40} className="mx-auto text-emerald-500 mb-4 opacity-50" />
+                                    <h3 className="text-xl font-black text-slate-400">Todo al día</h3>
+                                    <p className="text-slate-500 text-sm">No hay consultas pendientes de aprendizaje.</p>
+                                </div>
+                            ) : (
+                                <div className="grid gap-4">
+                                    {unknownQueries.map(q => (
+                                        <div key={q.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase">Pregunta del usuario</span>
+                                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">"{q.query}"</h3>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400">{new Date(q.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Tu Respuesta (Lo que dirá CoqueBot)</label>
+                                                    <textarea 
+                                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                                        rows={3}
+                                                        placeholder="Ej: Para hacer eso, tenés que ir a..."
+                                                        value={trainingResponses[q.id]?.response || ''}
+                                                        onChange={(e) => setTrainingResponses(prev => ({...prev, [q.id]: {...(prev[q.id] || {}), response: e.target.value}}))}
+                                                    />
+                                                </div>
+                                                <div className="flex gap-4 items-end">
+                                                    <div className="flex-1">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Palabras Clave (Separadas por coma)</label>
+                                                        <input 
+                                                            type="text"
+                                                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                                            placeholder="Ej: reporte, bajar excel, descargar clientes"
+                                                            value={trainingResponses[q.id]?.keywords || ''}
+                                                            onChange={(e) => setTrainingResponses(prev => ({...prev, [q.id]: {...(prev[q.id] || {}), keywords: e.target.value}}))}
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleSaveTraining(q.id)}
+                                                        disabled={!trainingResponses[q.id]?.response}
+                                                        className="h-11 px-6 bg-indigo-500 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 disabled:opacity-50 transition-all"
+                                                    >
+                                                        Enseñar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <>
                     {isTrained && (
                         <div className="flex flex-wrap gap-4 items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-8">
+
                             <div className="flex items-center gap-4">
                                 <button 
                                     onClick={() => setFilter('riesgo')}
@@ -343,6 +442,8 @@ export default function InternalAI() {
                             <h3 className="text-2xl font-black text-slate-900 dark:text-white">No hay riesgos detectados</h3>
                             <p className="text-slate-500 dark:text-slate-400 mt-2">Todos tus clientes están operando dentro de sus rangos normales.</p>
                         </div>
+                    )}
+                    </>
                     )}
                 </main>
             </div>

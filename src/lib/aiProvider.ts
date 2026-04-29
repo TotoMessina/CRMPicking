@@ -64,66 +64,92 @@ const SEMANTIC_DICO = {
     }
 };
 
+// Memoria de contexto local (Simulación de hilo de conversación)
+let lastContext: { clientId?: string, clientName?: string, lastTopic?: string } = {};
+
 export const aiProvider = {
     /**
      * CoqueBot: Master Conversational Engine
+     */
+    /**
+     * CoqueBot: Master Conversational Engine v18 (Intent-Based)
      */
     async ask(message: string): Promise<string> {
         const msg = message.toLowerCase();
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // 1. DATA LOOKUP (Base de datos en tiempo real)
-        const lookupTriggers = ['quien es', 'como esta', 'info de', 'buscar', 'decime de', 'datos de', 'que onda con', 'sabes algo de', 'conoces a', 'que es'];
-        const isLookup = lookupTriggers.some(t => msg.includes(t));
+        // 0. DETECCIÓN DE CONTEXTO (Pronombres y referencias)
+        const contextTriggers = ['como llego', 'como llegar', 'donde queda', 'ubicacion', 'que onda', 'decime mas', 'el', 'ella'];
+        const isContextual = contextTriggers.some(t => msg.startsWith(t) || msg === t) && lastContext.clientName;
 
-        if (isLookup) {
-            let potentialName = message.toLowerCase();
-            lookupTriggers.forEach(t => potentialName = potentialName.replace(t, ''));
-            potentialName = potentialName.replace(/[?¿!¡]/g, '').trim();
+        // 1. ANALIZADOR DE INTENCIÓN (Sistema de Pesos)
+        const intentScores = {
+            lookup: 0,
+            knowledge: 0
+        };
+
+        // Pesos para búsqueda en Base de Datos (Lookup)
+        const lookupTerms = ['quien', 'como esta', 'info', 'buscar', 'decime de', 'datos', 'onda', 'sabes algo', 'conoces', 'donde', 'ubicacion', 'direccion'];
+        lookupTerms.forEach(t => { if (msg.includes(t)) intentScores.lookup += 2; });
+        
+        // Si el mensaje tiene un nombre propio (capitalizado o al menos 2 palabras), suma puntos a lookup
+        const words = message.trim().split(' ');
+        if (words.length >= 1 && words[0][0] === words[0][0].toUpperCase() && words[0].length > 2) intentScores.lookup += 3;
+        if (words.length >= 2) intentScores.lookup += 2;
+
+        // Pesos para Base de Conocimiento (Manuales/Tutoriales)
+        const knowledgeTerms = ['crear', 'alta', 'como', 'hacer', 'que es', 'pasos', 'explicame', 'ayuda', 'manual', 'videos', 'objeciones', 'competencia'];
+        knowledgeTerms.forEach(t => { if (msg.includes(t)) intentScores.knowledge += 2; });
+
+        // 2. EJECUCIÓN BASADA EN INTENCIÓN PREDOMINANTE
+        
+        // Prioridad 1: Si es contextual (pronombres), vamos directo al lookup
+        if (isContextual) {
+            const result = await this._handleLookup(lastContext.clientName || '');
+            if (result) return result;
+        }
+
+        // Prioridad 2: Decidir entre Lookup y Knowledge
+        if (intentScores.lookup >= intentScores.knowledge && intentScores.lookup > 0) {
+            // Intentar extraer nombre
+            let nameToSearch = msg;
+            lookupTerms.forEach(t => nameToSearch = nameToSearch.replace(t, ''));
+            nameToSearch = nameToSearch.replace(/[?¿!¡]/g, '').trim();
             
-            if (potentialName && potentialName.length > 1) {
-                try {
-                    const { data: clients } = await supabase
-                        .from('clientes')
-                        .select('id, nombre, nombre_local')
-                        .or(`nombre.ilike.%${potentialName}%,nombre_local.ilike.%${potentialName}%`)
-                        .limit(1);
-
-                    if (clients && clients.length > 0) {
-                        const client = clients[0];
-                        const { data: bizData } = await supabase
-                            .from('empresa_cliente')
-                            .select('estado, situacion, ultima_actividad, visitas')
-                            .eq('cliente_id', client.id)
-                            .limit(1);
-
-                        const nombre = client.nombre_local || client.nombre;
-                        if (bizData && bizData.length > 0) {
-                            const b = bizData[0];
-                            const estado = b.estado || 'Sin estado';
-                            const situacion = b.situacion || 'sin comunicación';
-                            const last = b.ultima_actividad ? new Date(b.ultima_actividad).toLocaleDateString() : 'nunca';
-                            const visitas = b.visitas || 0;
-                            
-                            return `¡Lo encontré! 🕵️‍♂️ Te cuento de **${nombre}**: Está en **${estado}** y su situación es **"${situacion}"**. Lo visitamos ${visitas} veces y la última vez fue el ${last}. ¡Metele pilas! 🚀`;
-                        } else {
-                            return `Encontré a **${nombre}**, pero parece que es un prospecto nuevo y no tiene historial de negocio todavía. ¡Es tu oportunidad para convertirlo! 🎯`;
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error in lookup:', e);
-                }
+            if (nameToSearch.length > 2) {
+                const lookupResult = await this._handleLookup(nameToSearch);
+                if (lookupResult) return lookupResult;
             }
         }
 
-        // 2. CONOCIMIENTO MASIVO (coqueKnowledge.ts)
+        // Prioridad 3: Dynamic Knowledge (Modo Maestro - Respuestas entrenadas)
+        if (intentScores.knowledge >= intentScores.lookup || intentScores.knowledge > 0) {
+            try {
+                const { data: trainedAnswers } = await (supabase.from('ai_unknown_queries' as any) as any)
+                    .select('response, keywords')
+                    .not('response', 'is', null);
+
+                if (trainedAnswers && trainedAnswers.length > 0) {
+                    for (const row of trainedAnswers) {
+                        const kwList = (row.keywords || '').toLowerCase().split(',').map((k: string) => k.trim());
+                        if (kwList.some((kw: string) => {
+                            const words = kw.split(' ');
+                            if (words.length > 1) return words.every((w: string) => msg.includes(w));
+                            return msg.includes(kw);
+                        })) {
+                            return row.response;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching trained answers:', e);
+            }
+        }
+
+        // Prioridad 4: Knowledge Base Estática (coqueKnowledge.ts)
         const knowledgeResult = findBestCoqueResponse(message);
         if (knowledgeResult) {
-            // El componente CoqueBot.tsx detectará si hay un tutorialId en la respuesta
-            // Podríamos enviarlo como un metadato si el formato fuera JSON, 
-            // pero para mantenerlo simple, usaremos un evento global o una marca en el texto.
             if (knowledgeResult.tutorialId) {
-                // Disparamos un evento para que el componente UI lo capture
                 window.dispatchEvent(new CustomEvent('coque-start-tutorial', { 
                     detail: { tutorialId: knowledgeResult.tutorialId } 
                 }));
@@ -131,18 +157,94 @@ export const aiProvider = {
             return knowledgeResult.response;
         }
 
-        // 3. MECANISMO DE APRENDIZAJE (Machine Learning Local)
-        // Si no encontró respuesta en la base de datos ni en el Knowledge Base, lo guarda.
+        // Prioridad 5: Inteligencia Colectiva (Fallback de Chat Interno)
+        // Buscamos si algún compañero ya respondió algo similar en el chat general
+        if (msg.length > 5) {
+            try {
+                // Buscamos palabras clave importantes (sacando artículos cortos)
+                const searchWords = words.filter(w => w.length > 3).join(' | ');
+                if (searchWords) {
+                    const { data: chatMatch } = await supabase
+                        .from('mensajes_chat')
+                        .select('mensaje, de_usuario')
+                        .textSearch('mensaje', searchWords)
+                        .limit(1);
+
+                    if (chatMatch && chatMatch.length > 0) {
+                        return `No lo tengo en mi manual oficial, pero leí que **${chatMatch[0].de_usuario.split('@')[0]}** comentó esto en el chat: \n*"${chatMatch[0].mensaje}"*.\n¿Te sirve? 🕵️‍♂️💬`;
+                    }
+                }
+            } catch (e) {
+                console.error('Error searching chat:', e);
+            }
+        }
+
+        // 6. MECANISMO DE APRENDIZAJE
         const { error: insertError } = await (supabase.from('ai_unknown_queries' as any) as any).insert({
             query: message,
             created_at: new Date().toISOString()
         });
 
-        if (insertError) {
-            console.error('Error saving unknown query to Supabase:', insertError);
-        }
-
         return "Uy, fiera, esa me mataste. 😅 No la tengo en mi manual todavía, pero ya me la anoté en mi base de datos para estudiarla y que la próxima no me agarres desprevenido. ¿Querés preguntarme algo sobre el CRM (mapas, rutas, tareas), objeciones o buscar algún Cliente?";
+    },
+
+    /**
+     * Helper para buscar clientes en DB y manejar contexto
+     */
+    async _handleLookup(potentialName: string): Promise<string | null> {
+        try {
+            const { data: clients } = await supabase
+                .from('clientes')
+                .select('id, nombre, nombre_local')
+                .or(`nombre.ilike.%${potentialName}%,nombre_local.ilike.%${potentialName}%`)
+                .limit(1);
+
+            if (clients && clients.length > 0) {
+                const client = clients[0];
+                const { data: bizData } = await supabase
+                    .from('empresa_cliente')
+                    .select('estado, situacion, ultima_actividad, visitas')
+                    .eq('cliente_id', client.id)
+                    .limit(1);
+
+                // Fetch últimas actividades (Bitácora)
+                const { data: actData } = await supabase
+                    .from('actividades')
+                    .select('descripcion, fecha, usuario')
+                    .eq('cliente_id', client.id)
+                    .order('fecha', { ascending: false })
+                    .limit(2);
+
+                const nombre = client.nombre_local || client.nombre;
+                lastContext = { clientId: String(client.id), clientName: nombre };
+
+                if (bizData && bizData.length > 0) {
+                    const b = bizData[0];
+                    const estado = b.estado || 'Sin estado';
+                    const situacion = b.situacion || 'sin comunicación';
+                    const last = b.ultima_actividad ? new Date(b.ultima_actividad).toLocaleDateString() : 'nunca';
+                    
+                    let actResumen = '';
+                    if (actData && actData.length > 0) {
+                        const ultimas = actData.map((a: any) => `- *${a.descripcion}* (${a.usuario || 'Alguien'})`).join('\n');
+                        actResumen = `\n\n📝 **Últimas notas en la calle:**\n${ultimas}`;
+                        
+                        // Radar rápido de riesgo/sentimiento
+                        const textAll = actData.map((a: any) => a.descripcion).join(' ').toLowerCase();
+                        if (textAll.includes('enojado') || textAll.includes('queja') || textAll.includes('error')) {
+                            actResumen += `\n\n⚠️ **Radar de Retención:** Detecté palabras de riesgo en las visitas. Andá con cuidado y resolvé sus problemas técnicos.`;
+                        }
+                    }
+
+                    return `¡Lo encontré! 🕵️‍♂️ Te cuento de **${nombre}**: Está en **${estado}** y su situación es **"${situacion}"**. Lo visitamos ${b.visitas || 0} veces y la última fue el ${last}.${actResumen} \n\n¡Metele pilas! 🚀`;
+                }
+                return `Encontré a **${nombre}**, pero parece que es un prospecto nuevo sin historial todavía. ¡Es tu oportunidad para convertirlo! 🎯`;
+            }
+            return null;
+        } catch (e) {
+            console.error('Error in lookup:', e);
+            return null;
+        }
     },
 
     async summarizeActivities(activities: ActivityRecord[], context: ClientContext): Promise<AISummaryResult> {
