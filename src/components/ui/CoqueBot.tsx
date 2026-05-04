@@ -4,15 +4,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Joyride, Step } from 'react-joyride';
 import { aiProvider } from '../../lib/aiProvider';
 import { COQUE_TUTORIALS } from '../../lib/coqueTutorials';
+import { useTenant } from '../../contexts/TenantContext';
+import { TenantStore } from '../../config/tenant';
 
-/**
- * CoqueBot - The funny & smart floating assistant
- */
 export const CoqueBot: React.FC = () => {
+    const { tenantConfig } = useTenant();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<{ role: 'bot' | 'user'; text: string }[]>([
-        { role: 'bot', text: '¡Buenas! Soy CoqueBot. 🦾 ¿Qué local vamos a cerrar hoy? Preguntame lo que quieras, che.' }
+        { role: 'bot', text: `¡Buenas! Soy ${tenantConfig.ai.name}. 🦾 ¿Qué local vamos a cerrar hoy? Preguntame lo que quieras.` }
     ]);
+
+    // Actualizar saludo inicial si cambia el tenant y no hay conversación aún
+    useEffect(() => {
+        if (messages.length === 1 && messages[0].role === 'bot') {
+            setMessages([{ role: 'bot', text: `¡Buenas! Soy ${tenantConfig.ai.name}. 🦾 ¿Qué local vamos a cerrar hoy? Preguntame lo que quieras.` }]);
+        }
+    }, [tenantConfig.ai.name]);
+
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     
@@ -130,7 +138,7 @@ export const CoqueBot: React.FC = () => {
                                     <Bot size={20} />
                                 </div>
                                 <div>
-                                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>CoqueBot</div>
+                                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{tenantConfig.ai.name}</div>
                                     <div style={{ fontSize: '0.65rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></div>
                                         Online y con chispa
@@ -179,7 +187,7 @@ export const CoqueBot: React.FC = () => {
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                                placeholder="Mandale un mensaje a CoqueBot..."
+                                placeholder={`Mandale un mensaje a ${tenantConfig.ai.name}...`}
                                 style={{
                                     flex: 1,
                                     background: 'rgba(255,255,255,0.02)',

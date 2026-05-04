@@ -1,9 +1,10 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../types/database.types';
+import { TenantStore } from '../config/tenant';
 
 /**
  * offlineManager.ts
- * Motor de sincronización Offline-First para PickingUp CRM.
+ * Motor de sincronización Offline-First.
  */
 
 const DB_NAME = 'pickingup-offline-v1';

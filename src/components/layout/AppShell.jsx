@@ -7,24 +7,28 @@ import { CommandPalette } from '../ui/CommandPalette';
 import { EmpresaSelector } from '../ui/EmpresaSelector';
 import { LogOut, Sun, Moon, Bell, Building2, ChevronDown, Navigation, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTenant } from '../../contexts/TenantContext';
 
-const SidebarBrand = ({ setIsMobileMenuOpen }) => (
+const SidebarBrand = ({ setIsMobileMenuOpen }) => {
+    const { tenantConfig } = useTenant();
+    return (
     <div className="sidebar-brand">
         <img
-            src="/logo-horizontal.png"
-            alt="PickingUp CRM"
+            src={tenantConfig.app.logoUrl}
+            alt={tenantConfig.app.name}
             className="sidebar-logo-img"
             onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
         />
         <div className="sidebar-brand-text" style={{ display: 'none' }}>
             <div className="logo-pu">
-                <div className="sidebar-logo">PU</div>
-                <div className="sidebar-title">PickingUp</div>
+                <div className="sidebar-logo">{tenantConfig.app.shortName.substring(0,2).toUpperCase()}</div>
+                <div className="sidebar-title">{tenantConfig.app.shortName}</div>
             </div>
         </div>
         <button className="sidebar-close-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Cerrar menú">×</button>
     </div>
-);
+    );
+};
 
 const UserInfo = ({ userName, email, avatarUrl, empresaActiva, empresasDisponibles, onChangeEmpresa }) => (
     <div className="sidebar-user-card">
@@ -139,6 +143,7 @@ export function AppShell() {
     } = useAppShell();
 
     const routerLocation = useLocation();
+    const { tenantConfig } = useTenant();
 
     const [openGroups, setOpenGroups] = useState(() => {
         const active = getActiveGroup(routerLocation.pathname, navItems);
@@ -237,7 +242,7 @@ export function AppShell() {
                             background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(217, 70, 239, 0.2))',
                             border: '1px solid rgba(139, 92, 246, 0.3)',
                             marginBottom: '8px',
-                            color: '#8b5cf6'
+                            color: 'var(--color-primary)'
                         }}
                         onClick={() => {
                             // Disparar el evento para abrir el chat
@@ -245,7 +250,7 @@ export function AppShell() {
                         }}
                     >
                         <Bot size={14} />
-                        <span style={{ fontWeight: 800 }}>COQUEBOT</span>
+                        <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>{tenantConfig.ai.name}</span>
                     </button>
 
                     {/* Modo Ruta */}

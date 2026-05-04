@@ -8,6 +8,7 @@ import {
     User, Map as MapIcon, Info, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTenant } from '../contexts/TenantContext';
 import { ESTADOS_LISTA, ESTADO_RELEVADO } from '../constants/estados';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -115,6 +116,7 @@ function getColorForRubro(rubro: string | null) {
 
 export default function MapaClientes() {
     const { empresaActiva } = useAuth();
+    const { tenantConfig } = useTenant();
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const markersLayerRef = useRef<L.LayerGroup | null>(null);
@@ -743,7 +745,7 @@ export default function MapaClientes() {
         const wb = XLSX.utils.book_new();
 
         const resumenData = [
-            ["Reporte de Jornada - CRM PickingUp"],
+            [`Reporte de Jornada - ${tenantConfig.app.name}`],
             [],
             ["Activador", activadorName],
             ["Fecha", historicalDate],

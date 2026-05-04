@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { flushOutbox } from '../lib/offlineManager';
+import { TenantStore, injectTenantTheme } from '../config/tenant';
 
 export interface Empresa {
     id: string;
@@ -94,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Load empresas this user belongs to
         const { data: empData } = await supabase
             .from('empresa_usuario')
-            .select('role_en_empresa:role, empresas(id, nombre, logo_url)')
+            .select('role_en_empresa:role, empresas(id, nombre, logo_url, config)')
             .eq('usuario_email', authUser.email as string);
 
         const empresas: Empresa[] = (empData || []).map((e: any) => ({
@@ -121,6 +122,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setEmpresaActivaState(null);
         }
     };
+
+    // Sincronizar TenantStore cuando cambia la empresa activa
+    useEffect(() => {
+        if (empresaActiva?.config) {
+            TenantStore.setConfig(empresaActiva.config);
+            injectTenantTheme(empresaActiva.config);
+        } else {
+            // Reset to default
+            TenantStore.setConfig(null as any);
+            injectTenantTheme();
+        }
+    }, [empresaActiva]);
 
     const fetchPermisosPaginas = async (empresaId: string | undefined, userRole: string | null) => {
         if (userRole === 'super-admin') {

@@ -1,4 +1,10 @@
-﻿export const COQUE_KNOWLEDGE: { keywords: string[], response: string, tutorialId?: string }[] = [
+import { TenantStore } from '../config/tenant';
+
+// Helper to get fresh config
+const getConfig = () => TenantStore.getConfig();
+
+
+export const COQUE_KNOWLEDGE_RAW: { keywords: string[], response: string, tutorialId?: string }[] = [
     // ==========================================
     // 1. ESTADOS DEL CLIENTE (1 al 6)
     // ==========================================
@@ -151,7 +157,7 @@
     // ==========================================
     {
         keywords: ['hola', 'quien sos', 'quien eres', 'que haces', 'buenas'],
-        response: "¡Buenas, buenas! Acá CoqueBot al habla. 🦾 Tu copiloto de ventas, enciclopedia del CRM y el que nunca duerme. ¿A qué local vamos a digitalizar hoy? Preguntame lo que necesites."
+        response: `¡Buenas, buenas! Acá {aiName} al habla. 🦾 Tu copiloto de ventas, enciclopedia del CRM y el que nunca duerme. ¿A qué local vamos a digitalizar hoy? Preguntame lo que necesites.`
     },
     {
         keywords: ['chiste', 'broma', 'humor', 'reir'],
@@ -163,7 +169,7 @@
     },
     {
         keywords: ['consejo', 'tip', 'ayuda', 'recomendacion', 'motivacion'],
-        response: "Tip de Coque: El éxito está en el seguimiento. No sirve de nada bajar la app si el cliente no la usa. Volvé a los 'Estado 3' y 'Estado 4' y pasalos a 'En Funcionamiento'. ¡Ahí está la plata! 💸"
+        response: `Tip de {aiName}: El éxito está en el seguimiento. No sirve de nada bajar la app si el cliente no la usa. Volvé a los 'Estado 3' y 'Estado 4' y pasalos a 'En Funcionamiento'. ¡Ahí está la plata! 💸`
     },
     // ==========================================
     // 10. CONOCIMIENTO APRENDIDO (v1.0)
@@ -183,7 +189,7 @@
     },
     {
         keywords: ['preguntar', 'que sabes', 'que puedo preguntarte', 'capacidades'],
-        response: "¡Soy una enciclopedia de PickingUp! 🧠 Me podés preguntar por: \n- Información de clientes específicos (ej: '¿Quién es Bianca?').\n- Estados del negocio (1 al 6).\n- Cómo usar el mapa y las rutas.\n- Consejos para vender y manejar objeciones (precios, PedidosYa).\n- Cómo usar el CRM (tareas, tickets, modo offline).\n¡Probame, fiera!"
+        response: `¡Soy una enciclopedia de {appName}! 🧠 Me podés preguntar por: \n- Información de clientes específicos (ej: '¿Quién es Bianca?').\n- Estados del negocio (1 al 6).\n- Cómo usar el mapa y las rutas.\n- Consejos para vender y manejar objeciones (precios, PedidosYa).\n- Cómo usar el CRM (tareas, tickets, modo offline).\n¡Probame, fiera!`
     },
     {
         keywords: ['test', 'probando'],
@@ -197,7 +203,9 @@ export const findBestCoqueResponse = (message: string): { response: string, tuto
     let bestMatch: { response: string, tutorialId?: string } | null = null;
     let bestScore = 0;
 
-    for (const item of COQUE_KNOWLEDGE) {
+    const tenantConfig = TenantStore.getConfig();
+
+    for (const item of COQUE_KNOWLEDGE_RAW) {
         let score = 0;
         for (const kw of item.keywords) {
             const words = kw.split(' ');
@@ -211,7 +219,13 @@ export const findBestCoqueResponse = (message: string): { response: string, tuto
         }
         if (score > bestScore) {
             bestScore = score;
-            bestMatch = { response: item.response, tutorialId: item.tutorialId };
+            
+            // Interpolate placeholders
+            const response = item.response
+                .replace(/{aiName}/g, tenantConfig.ai.name)
+                .replace(/{appName}/g, tenantConfig.app.shortName);
+
+            bestMatch = { response, tutorialId: item.tutorialId };
         }
     }
     

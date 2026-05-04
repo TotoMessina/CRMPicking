@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Moon, Sun, Rocket } from 'lucide-react';
+import { useTenant } from '../contexts/TenantContext';
 
 /**
  * Login Page
@@ -10,6 +11,7 @@ import { Moon, Sun, Rocket } from 'lucide-react';
 export default function Login() {
     const { user, signIn } = useAuth();
     const { theme, toggleTheme } = useTheme();
+    const { tenantConfig } = useTenant();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
@@ -74,8 +76,8 @@ export default function Login() {
             <div className="login-glass-card">
                 <div className="login-brand-header">
                     <img 
-                        src="/logo-vertical.png" 
-                        alt="PickingUp CRM" 
+                        src={tenantConfig.app.logoUrl} 
+                        alt={tenantConfig.app.name} 
                         style={{ height: '70px', width: 'auto', margin: '0 auto 24px', display: 'block', objectFit: 'contain' }} 
                         onError={(e) => { 
                             const target = e.currentTarget as HTMLImageElement;
@@ -85,7 +87,7 @@ export default function Login() {
                             }
                         }}
                     />
-                    <div className="login-brand-logo" style={{ display: 'none' }}>PU</div>
+                    <div className="login-brand-logo" style={{ display: 'none' }}>{tenantConfig.app.shortName.substring(0, 2).toUpperCase()}</div>
                     <h1>Bienvenido</h1>
                     <p>Ingresá tus credenciales para continuar</p>
                 </div>

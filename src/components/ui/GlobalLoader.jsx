@@ -1,7 +1,9 @@
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { useTenant } from '../../contexts/TenantContext';
 
 export function GlobalLoader() {
+    const { tenantConfig } = useTenant();
     return (
         <div style={{
             position: 'fixed',
@@ -56,7 +58,7 @@ export function GlobalLoader() {
                         WebkitTextFillColor: 'transparent',
                         animation: 'shimmer-text 3s infinite linear'
                     }}>
-                        PickingUp CRM
+                        {tenantConfig.app.name}
                     </span>
                     <span style={{
                         fontSize: '0.8rem',

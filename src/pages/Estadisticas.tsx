@@ -24,6 +24,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { jsPDF } from 'jspdf';
 import { useCustomWidgets } from '../hooks/useCustomWidgets';
 import * as XLSX from 'xlsx';
+import { useTenant } from '../contexts/TenantContext';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip, Legend, Filler);
 ChartJS.defaults.devicePixelRatio = typeof window !== 'undefined' ? Math.max(window.devicePixelRatio || 1, 3) : 3;
@@ -44,6 +45,7 @@ const Estadisticas: React.FC = () => {
 
     const dashboardRef = useRef<HTMLDivElement>(null);
     const { empresaActiva, user, userName }: any = useAuth();
+    const { tenantConfig } = useTenant();
     const [isExportingPdf, setIsExportingPdf] = useState(false);
     const [showEditor, setShowEditor] = useState(false);
 
@@ -121,7 +123,7 @@ const Estadisticas: React.FC = () => {
         try {
             // Hoja 1: Resumen (KPIs)
             const wsResumenData: any[][] = [
-                ["Reporte Ejecutivo CRM - Resumen"],
+                [`Reporte Ejecutivo ${tenantConfig.app.shortName} - Resumen`],
                 ["Fecha de generación", new Date().toLocaleString()],
                 ["Filtro Rango", rangePreset as string],
                 [],
@@ -207,14 +209,14 @@ const Estadisticas: React.FC = () => {
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <img 
-                                src="/logo-horizontal.png" 
-                                alt="PickingUp" 
+                                src={tenantConfig.app.logoUrl} 
+                                alt={tenantConfig.app.name} 
                                 style={{ height: '80px', objectFit: 'contain' }}
                                 onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; ((e.currentTarget as HTMLElement).nextElementSibling as HTMLElement).style.display = 'flex'; }} 
                             />
                             <div style={{ display: 'none', alignItems: 'center', gap: '16px' }}>
                                 <div style={{ 
-                                    background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)', 
+                                    background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)', 
                                     color: 'white', 
                                     fontWeight: 800, 
                                     fontSize: '28px', 
@@ -224,12 +226,12 @@ const Estadisticas: React.FC = () => {
                                     alignItems: 'center', 
                                     justifyContent: 'center', 
                                     borderRadius: '14px',
-                                    boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)'
+                                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)'
                                 }}>
-                                    PU
+                                    {tenantConfig.app.shortName.substring(0, 2).toUpperCase()}
                                 </div>
                                 <div>
-                                    <h1 style={{ margin: 0, fontSize: '32px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.1 }}>PickingUp</h1>
+                                    <h1 style={{ margin: 0, fontSize: '32px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{tenantConfig.app.shortName}</h1>
                                     <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                         Reporte Corporativo
                                     </p>

@@ -8,9 +8,12 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
+import { useTenant } from '../contexts/TenantContext';
+import { defaultTenantConfig } from '../config/tenant';
 
 export default function SuperAdmin() {
     const { role } = useAuth();
+    const { tenantConfig } = useTenant();
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({ total_companies: 0, total_users: 0, active_tickets: 0, total_mrr: 0 });
     const [empresas, setEmpresas] = useState([]);
@@ -88,7 +91,8 @@ export default function SuperAdmin() {
                     billing_currency: editingEmpresa.billing_currency,
                     billing_status: editingEmpresa.billing_status,
                     billing_due_date: editingEmpresa.billing_due_date,
-                    billing_notes: editingEmpresa.billing_notes
+                    billing_notes: editingEmpresa.billing_notes,
+                    config: editingEmpresa.config
                 })
                 .eq('id', editingEmpresa.id);
 
@@ -130,7 +134,7 @@ export default function SuperAdmin() {
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 900, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
                         Super Admin <span style={{ color: 'var(--accent)', fontSize: '1rem', verticalAlign: 'middle', background: 'var(--accent-alpha)', padding: '4px 10px', borderRadius: '20px', marginLeft: '10px' }}>Dashboard</span>
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '1.1rem' }}>Control global de PickingUp CRM</p>
+                    <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '1.1rem' }}>Control global de {tenantConfig.app.name}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <Button variant="secondary" onClick={fetchGlobalData} disabled={loading}>
@@ -381,6 +385,72 @@ export default function SuperAdmin() {
                                     value={editingEmpresa.billing_notes || ''}
                                     onChange={e => setEditingEmpresa({ ...editingEmpresa, billing_notes: e.target.value })}
                                 />
+                            </div>
+                             
+                            <div style={{ marginTop: '25px', padding: '20px', background: 'rgba(139, 92, 246, 0.05)', borderRadius: '16px', border: '1px solid rgba(139, 92, 246, 0.1)', gridColumn: 'span 2' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', color: 'var(--color-primary)' }}>
+                                    <Sparkles size={18} />
+                                    <h4 style={{ margin: 0, fontWeight: 700 }}>Personalización & AI</h4>
+                                </div>
+                                
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                    <div>
+                                        <label className="billing-label" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Color Primario (Hex)</label>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input 
+                                                type="color" 
+                                                style={{ width: '40px', height: '40px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                                value={editingEmpresa.config?.theme?.colors?.primary || defaultTenantConfig.theme.colors.primary}
+                                                onChange={e => {
+                                                    const cfg = JSON.parse(JSON.stringify(editingEmpresa.config || defaultTenantConfig));
+                                                    if (!cfg.theme.colors) cfg.theme.colors = { ...defaultTenantConfig.theme.colors };
+                                                    cfg.theme.colors.primary = e.target.value;
+                                                    setEditingEmpresa({ ...editingEmpresa, config: cfg });
+                                                }}
+                                            />
+                                            <input 
+                                                type="text" 
+                                                className="input" 
+                                                style={{ flex: 1 }}
+                                                value={editingEmpresa.config?.theme?.colors?.primary || defaultTenantConfig.theme.colors.primary}
+                                                onChange={e => {
+                                                    const cfg = JSON.parse(JSON.stringify(editingEmpresa.config || defaultTenantConfig));
+                                                    if (!cfg.theme.colors) cfg.theme.colors = { ...defaultTenantConfig.theme.colors };
+                                                    cfg.theme.colors.primary = e.target.value;
+                                                    setEditingEmpresa({ ...editingEmpresa, config: cfg });
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="billing-label" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Nombre de la IA</label>
+                                        <input 
+                                            type="text" 
+                                            className="input" 
+                                            placeholder="Ej: CoqueBot"
+                                            value={editingEmpresa.config?.ai?.name || defaultTenantConfig.ai.name}
+                                            onChange={e => {
+                                                const cfg = JSON.parse(JSON.stringify(editingEmpresa.config || defaultTenantConfig));
+                                                cfg.ai.name = e.target.value;
+                                                setEditingEmpresa({ ...editingEmpresa, config: cfg });
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label className="billing-label" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '6px' }}>URL del Logo</label>
+                                        <input 
+                                            type="text" 
+                                            className="input" 
+                                            placeholder="https://..."
+                                            value={editingEmpresa.config?.app?.logoUrl || defaultTenantConfig.app.logoUrl}
+                                            onChange={e => {
+                                                const cfg = JSON.parse(JSON.stringify(editingEmpresa.config || defaultTenantConfig));
+                                                cfg.app.logoUrl = e.target.value;
+                                                setEditingEmpresa({ ...editingEmpresa, config: cfg });
+                                            }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

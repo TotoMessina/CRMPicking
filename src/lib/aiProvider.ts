@@ -1,8 +1,9 @@
 import { supabase } from './supabase';
 import { findBestCoqueResponse } from './coqueKnowledge';
+import { TenantStore } from '../config/tenant';
 
 /**
- * AI Provider Service v17 (CoqueBot Infinite Knowledge Edition)
+ * AI Provider Service v17 (Infinite Knowledge Edition)
  * Master engine with external knowledge base, DB lookup and learning mechanism.
  */
 
@@ -69,10 +70,7 @@ let lastContext: { clientId?: string, clientName?: string, lastTopic?: string } 
 
 export const aiProvider = {
     /**
-     * CoqueBot: Master Conversational Engine
-     */
-    /**
-     * CoqueBot: Master Conversational Engine v18 (Intent-Based)
+     * Master Conversational Engine v18 (Intent-Based)
      */
     async ask(message: string): Promise<string> {
         const msg = message.toLowerCase();

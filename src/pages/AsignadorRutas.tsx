@@ -13,6 +13,7 @@ import 'leaflet/dist/leaflet.css';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getChurnRisk } from '../utils/riskScoring';
+import { useTenant } from '../contexts/TenantContext';
 
 // ─── Estilos de colores por estado ──────────────────────────────────────────
 const ESTADOS_COLORES: Record<string, { badge: string; badgeBg: string; pin: string }> = {
@@ -94,6 +95,7 @@ interface Visita {
 
 export default function AsignadorRutas() {
     const { empresaActiva } = useAuth();
+    const { tenantConfig } = useTenant();
 
     const [distanciaTotal, setDistanciaTotal] = useState(0);
     const [usuarios, setUsuarios] = useState<{email: string, nombre: string}[]>([]);
@@ -332,7 +334,7 @@ export default function AsignadorRutas() {
             return `${i + 1}. *${c?.nombre_local}*\n🏠 ${c?.direccion}\n${v.comentarios_admin ? `📝 _${v.comentarios_admin}_\n` : ''}${mapsLink ? `🔗 GPS: ${mapsLink}\n` : ''}`;
         }).join('\n');
         
-        const texto = encodeURIComponent(header + body + '\n\nGenerado por PickingUp CRM');
+        const texto = encodeURIComponent(header + body + `\n\nGenerado por ${tenantConfig.app.name}`);
         window.open(`https://wa.me/?text=${texto}`, '_blank');
     };
 

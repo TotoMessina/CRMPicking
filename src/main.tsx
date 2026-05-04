@@ -6,6 +6,10 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
+import { injectTenantTheme } from './config/tenant';
+import { TenantProvider } from './contexts/TenantContext';
+
+injectTenantTheme();
 
 
 const queryClient = new QueryClient({
@@ -25,7 +29,9 @@ createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <App />
+          <TenantProvider>
+            <App />
+          </TenantProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

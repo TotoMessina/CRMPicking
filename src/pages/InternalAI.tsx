@@ -9,6 +9,7 @@ import {
     ShieldAlert, AlertTriangle, TrendingDown, Activity,
     BookOpen, Sparkles, ChevronRight, Clock
 } from 'lucide-react';
+import { useTenant } from '../contexts/TenantContext';
 
 interface AIClient {
     id: string;
@@ -29,6 +30,7 @@ interface AIClient {
  */
 export default function InternalAI() {
     const navigate = useNavigate();
+    const { tenantConfig } = useTenant();
     const { trainFromHistory, getAIChurnRisk, isTrained } = useInternalAI();
     
     const [clients, setClients] = useState<AIClient[]>([]);
@@ -194,7 +196,7 @@ export default function InternalAI() {
                 <header className="ai-header">
                     <div className="ai-title-wrap">
                         <div className="ai-badge">
-                            <Brain size={12} className="spin" /> Intelligence Engine v4 · CoqueBot
+                            <Brain size={12} className="spin" /> Intelligence Engine v4 · {tenantConfig.ai.name}
                         </div>
                         <h1 className="ai-title">
                             RADAR<span className="ai-dot">.</span>
@@ -264,7 +266,7 @@ export default function InternalAI() {
                                 <div className="ai-train-icon"><Sparkles size={20} /></div>
                                 <div className="ai-train-text">
                                     <h2>Centro de Entrenamiento</h2>
-                                    <p>Preguntas que CoqueBot no supo responder. Enseñale la respuesta y las palabras clave para que aprenda.</p>
+                                    <p>Preguntas que {tenantConfig.ai.name} no supo responder. Enseñale la respuesta y las palabras clave para que aprenda.</p>
                                 </div>
                             </div>
 
@@ -292,7 +294,7 @@ export default function InternalAI() {
                                             </div>
 
                                             <div className="ai-form-group">
-                                                <label className="ai-label">Respuesta para CoqueBot</label>
+                                                <label className="ai-label">Respuesta para {tenantConfig.ai.name}</label>
                                                 <textarea
                                                     className="ai-input"
                                                     rows={3}
@@ -331,7 +333,7 @@ export default function InternalAI() {
                                             </div>
                                             {trainingResponses[q.id]?.response && (
                                                 <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(139, 92, 246, 0.05)', borderRadius: '8px', border: '1px dashed #8b5cf6' }}>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8b5cf6', marginBottom: '4px' }}>PREVIEW DE COQUEBOT:</div>
+                                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8b5cf6', marginBottom: '4px', textTransform: 'uppercase' }}>PREVIEW DE {tenantConfig.ai.name}:</div>
                                                     <div style={{ fontSize: '0.85rem', color: 'var(--text)', fontStyle: 'italic' }}>
                                                         "{trainingResponses[q.id].response}"
                                                     </div>
