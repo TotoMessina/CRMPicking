@@ -333,6 +333,15 @@ body::-webkit-scrollbar-thumb {
   padding-bottom: 120px; /* Asegura que botones flotantes no tapen contenido */
 }
 
+/* Full-bleed pages: override app-content padding so the page controls its own background */
+.page-fullbleed {
+  margin: calc(-1 * var(--content-padding, 0px));
+  min-height: 100vh;
+}
+.app-content:has(.page-fullbleed) {
+  padding: 0 !important;
+}
+
 /* Ajuste de container: que se vea centrado dentro del área */
 .app-content .container {
   max-width: 1100px;
@@ -1693,6 +1702,12 @@ body::-webkit-scrollbar-thumb {
   min-width: 0;
   padding: 20px;
 }
+
+/* Full-bleed override (same block, dark-mode section) */
+.app-content:has(.page-fullbleed) {
+  padding: 0 !important;
+}
+
 
 /* Responsive: sidebar arriba en móvil */
 @media (max-width: 900px) {

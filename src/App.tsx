@@ -37,6 +37,7 @@ const RutaDiaria = lazy(() => import('./pages/RutaDiaria'));
 const AsignadorRutas = lazy(() => import('./pages/AsignadorRutas'));
 const TinderClientes = lazy(() => import('./pages/TinderClientes'));
 const PipelineSettings = lazy(() => import('./pages/PipelineSettings'));
+const Campanas = lazy(() => import('./pages/Campanas'));
 
 function App(): React.JSX.Element {
   // Interceptar recuperación de contraseña si Supabase nos mandó a la raíz
@@ -88,6 +89,7 @@ function App(): React.JSX.Element {
             <Route path="/super-admin" element={<Suspense fallback={<GlobalLoader />}><SuperAdmin /></Suspense>} />
             <Route path="/actividad-sistema" element={<Suspense fallback={<GlobalLoader />}><ActividadSistema /></Suspense>} />
             <Route path="/configuracion/pipeline" element={<Suspense fallback={<GlobalLoader />}><PipelineSettings /></Suspense>} />
+            <Route path="/campanas" element={<Suspense fallback={<GlobalLoader />}><Campanas /></Suspense>} />
             <Route path="/ia-interna" element={<InternalAI />} />
             <Route path="/swipe-prospecting" element={<Suspense fallback={<GlobalLoader />}><TinderClientes /></Suspense>} />
             <Route path="/configuracion" element={<Suspense fallback={<GlobalLoader />}><Configuracion /></Suspense>} />

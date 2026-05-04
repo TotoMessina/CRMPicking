@@ -1,4 +1,4 @@
-export const COQUE_KNOWLEDGE: { keywords: string[], response: string, tutorialId?: string }[] = [
+﻿export const COQUE_KNOWLEDGE: { keywords: string[], response: string, tutorialId?: string }[] = [
     // ==========================================
     // 1. ESTADOS DEL CLIENTE (1 al 6)
     // ==========================================
@@ -194,21 +194,28 @@ export const COQUE_KNOWLEDGE: { keywords: string[], response: string, tutorialId
 export const findBestCoqueResponse = (message: string): { response: string, tutorialId?: string } | null => {
     const msg = message.toLowerCase();
     
-    // Buscar la primera categoría donde coincida alguna palabra clave
+    let bestMatch: { response: string, tutorialId?: string } | null = null;
+    let bestScore = 0;
+
     for (const item of COQUE_KNOWLEDGE) {
-        if (item.keywords.some(kw => {
-            // Si la keyword tiene espacios (ej: 'crear cliente'), 
-            // intentamos ver si ambas palabras están en el mensaje aunque no estén juntas
+        let score = 0;
+        for (const kw of item.keywords) {
             const words = kw.split(' ');
-            if (words.length > 1) {
-                return words.every(word => msg.includes(word));
+            const matched = words.length > 1
+                ? words.every(w => msg.includes(w))
+                : msg.includes(kw);
+            if (matched) {
+                // Keywords con espacios (frases exactas) valen el doble
+                score += words.length > 1 ? 2 : 1;
             }
-            // Si es una sola palabra, usamos el includes normal
-            return msg.includes(kw);
-        })) {
-            return { response: item.response, tutorialId: item.tutorialId };
+        }
+        if (score > bestScore) {
+            bestScore = score;
+            bestMatch = { response: item.response, tutorialId: item.tutorialId };
         }
     }
     
-    return null; // Si no encuentra nada
+    return bestScore > 0 ? bestMatch : null;
 };
+
+

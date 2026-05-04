@@ -1,7 +1,8 @@
 import { 
     MapPin, Users, Activity, Map, Settings, Calendar, Clock, 
-    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain, LucideIcon
+    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain, Megaphone, LucideIcon
 } from 'lucide-react';
+
 
 export interface PageItem {
     to?: string;
@@ -37,6 +38,8 @@ export const ALL_PAGES: PageItem[] = [
     { to: '/calendario', icon: Calendar, label: 'Calendario', group: 'Planificación' },
     { to: '/horarios', icon: Clock, label: 'Horarios', group: 'Planificación' },
     { to: '/tablero', icon: LayoutDashboard, label: 'Tablero Tareas', group: 'Planificación' },
+    { to: '/campanas', icon: Megaphone, label: 'Campañas', group: 'Planificación' },
+
 
     // --- Grupo: Mapas ---
     { to: '/mapa', icon: Map, label: 'Mapa Clientes', group: 'Mapas' },

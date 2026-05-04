@@ -92,13 +92,17 @@ export const aiProvider = {
         const lookupTerms = ['quien', 'como esta', 'info', 'buscar', 'decime de', 'datos', 'onda', 'sabes algo', 'conoces', 'donde', 'ubicacion', 'direccion'];
         lookupTerms.forEach(t => { if (msg.includes(t)) intentScores.lookup += 2; });
         
-        // Si el mensaje tiene un nombre propio (capitalizado o al menos 2 palabras), suma puntos a lookup
-        const words = message.trim().split(' ');
-        if (words.length >= 1 && words[0][0] === words[0][0].toUpperCase() && words[0].length > 2) intentScores.lookup += 3;
-        if (words.length >= 2) intentScores.lookup += 2;
-
         // Pesos para Base de Conocimiento (Manuales/Tutoriales)
         const knowledgeTerms = ['crear', 'alta', 'como', 'hacer', 'que es', 'pasos', 'explicame', 'ayuda', 'manual', 'videos', 'objeciones', 'competencia'];
+
+        // Si el mensaje tiene un nombre propio (capitalizado) Y NO tiene palabras de accion, suma puntos a lookup
+        const words = message.trim().split(' ');
+        const hasActionWord = knowledgeTerms.some(t => msg.includes(t));
+        if (!hasActionWord && words.length >= 1 && words[0][0] === words[0][0].toUpperCase() && words[0].length > 2) intentScores.lookup += 3;
+        if (!hasActionWord && words.length >= 2) intentScores.lookup += 2;
+        // Si hay palabras de accion, reducir lookup para que no compita
+        if (hasActionWord && intentScores.lookup > 0) intentScores.lookup = Math.max(0, intentScores.lookup - 4);
+
         knowledgeTerms.forEach(t => { if (msg.includes(t)) intentScores.knowledge += 2; });
 
         // 2. EJECUCIÓN BASADA EN INTENCIÓN PREDOMINANTE
@@ -323,7 +327,12 @@ export const aiProvider = {
             alertas,
             patrones,
             planAccion,
-            resumenEjecutivo: `Análisis para Cliente Estado ${estadoNum}.`
+            resumenEjecutivo: (() => {
+                const diasLabel = context.diasSinContacto > 0 ? `${context.diasSinContacto} días sin contacto.` : 'Contacto reciente.';
+                const riesgoLabel = scores.churn > 3 ? 'Señales de abandono detectadas.' : scores.resistencia > 3 ? 'Barrera tecnológica presente.' : 'Perfil estable.';
+                const accionLabel = alertas.length > 0 ? `Prioridad: ${alertas[0]}` : planAccion[0] || 'Mantener seguimiento regular.';
+                return `${diasLabel} ${riesgoLabel} ${accionLabel}`;
+            })()
         };
     },
 
@@ -334,15 +343,37 @@ export const aiProvider = {
         const diasInactivo = Math.floor((new Date().getTime() - lastDate.getTime()) / 86400000);
 
         let probability = 0;
-        if (diasInactivo > 60) probability += 0.6;
+
+        // Factor 1: Inactividad
+        if (diasInactivo > 90) probability += 0.8;
+        else if (diasInactivo > 60) probability += 0.6;
         else if (diasInactivo > 30) probability += 0.3;
 
+        // Factor 2: Estado de rechazo
         if (estadoNum === 2 || estadoNum === 6) probability += 0.3;
-        if (allText.includes('error') || allText.includes('falla')) probability += 0.2;
 
+        // Factor 3: App muerta (estado 3 + 45+ dias sin movimiento)
+        if (estadoNum === 3 && diasInactivo > 45) probability += 0.4;
+
+        // Factor 4: Prospecto abandonado (estado 1 + 60+ dias)
+        if (estadoNum === 1 && diasInactivo > 60) probability += 0.35;
+
+        // Factor 5: Sin visitas registradas
+        const visitas = clientData.visitas || 0;
+        if (visitas === 0 && diasInactivo > 30) probability += 0.15;
+
+        // Factor 6: Problemas tecnicos en notas
+        if (allText.includes('error') || allText.includes('falla') || allText.includes('se tilda')) probability += 0.2;
+
+        // Factor 7: Sentimiento negativo en notas
         let sentiment: 'POSITIVO' | 'NEGATIVO' | 'NEUTRAL' = 'NEUTRAL';
-        if (allText.includes('enojado') || allText.includes('queja')) sentiment = 'NEGATIVO';
-        else if (allText.includes('interesado') || allText.includes('conforme')) sentiment = 'POSITIVO';
+        if (allText.includes('enojado') || allText.includes('queja') || allText.includes('mal ') || allText.includes('no quiere')) {
+            sentiment = 'NEGATIVO';
+            probability += 0.25;
+        } else if (allText.includes('interesado') || allText.includes('conforme') || allText.includes('contento') || allText.includes('funciona')) {
+            sentiment = 'POSITIVO';
+            probability = Math.max(0, probability - 0.2); // Palabras positivas reducen el riesgo
+        }
 
         return { probability: Math.min(probability, 1), sentiment };
     },
@@ -355,3 +386,6 @@ export const aiProvider = {
         return keywords.reduce((acc, k) => acc + (text.includes(k) ? 1 : 0), 0);
     }
 };
+
+
+
