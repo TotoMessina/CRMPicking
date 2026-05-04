@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { calculatePresetDates, PresetType } from '../utils/dateUtils';
 import toast from 'react-hot-toast';
 import { ESTADO_RELEVADO, ESTADO_LOCAL_CREADO, ESTADO_ACTIVO } from '../constants/estados';
+import { forecastingService, ForecastResult } from '../lib/forecastingService';
 
 const STATUS_COLORS: Record<string, string> = {
     [ESTADO_RELEVADO]: '#475569',
@@ -83,6 +84,9 @@ export const useStatistics = () => {
     const [activators, setActivators] = useState<Activator[]>([]);
     const [filtroSituacionRubros, setFiltroSituacionRubros] = useState<Set<string>>(new Set());
     const [clientesEstado5Raw, setClientesEstado5Raw] = useState<any[]>([]);
+    const [forecast, setForecast] = useState<ForecastResult | null>(null);
+    const [loadingForecast, setLoadingForecast] = useState(false);
+
 
     const [kpis, setKpis] = useState<KpiState>({
         totalClientesActivos: 0,
@@ -381,9 +385,31 @@ export const useStatistics = () => {
         }
     }, [empresaActiva?.id, dateFrom, dateTo, filterActivator]);
 
+    const refreshForecast = useCallback(async () => {
+        if (!empresaActiva?.id) return;
+        setLoadingForecast(true);
+        try {
+            // Obtener clientes actuales para proyectar
+            const { data: clients } = await supabase
+                .from('empresa_cliente')
+                .select('estado')
+                .eq('empresa_id', empresaActiva.id)
+                .eq('activo', true);
+
+            const result = await forecastingService.getForecast(empresaActiva.id, clients || []);
+            setForecast(result);
+        } catch (err) {
+            console.error('Error refreshing forecast:', err);
+        } finally {
+            setLoadingForecast(false);
+        }
+    }, [empresaActiva?.id]);
+
+
     useEffect(() => {
         refreshStats();
-    }, [refreshStats]);
+        refreshForecast();
+    }, [refreshStats, refreshForecast]);
 
     return {
         currentTab, setCurrentTab,
@@ -401,6 +427,7 @@ export const useStatistics = () => {
         extraData,
         totalSituacion,
         refreshStats,
-        filtroSituacionRubros, setFiltroSituacionRubros
+        filtroSituacionRubros, setFiltroSituacionRubros,
+        forecast, loadingForecast, refreshForecast
     };
 };

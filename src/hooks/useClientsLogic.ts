@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { descargarModeloClientes, importarClientesExcel, exportarClientesExcel } from '../lib/excelExport';
 import { Client, ClientActivity } from '../types/client';
 import { useGrupos } from './useGrupos';
+import { securityService } from '../lib/securityService';
 
 export interface ClientFilters {
     nombre: string;
@@ -159,6 +160,14 @@ export const useClientsLogic = () => {
 
     const handleDescargarExcel = async () => {
         setExportLoading(true);
+        // Log sensitive action
+        securityService.logAction(
+            user?.email, 
+            empresaActiva?.id, 
+            'export_excel', 
+            { filters: { ...filters, isAgendaHoy }, records_total: total },
+            total > 500 ? 'medio' : 'bajo'
+        );
         await exportarClientesExcel(empresaActiva, { ...filters, isAgendaHoy }, () => setExportLoading(false));
     };
 

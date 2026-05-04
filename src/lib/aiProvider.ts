@@ -72,7 +72,7 @@ export const aiProvider = {
     /**
      * Master Conversational Engine v18 (Intent-Based)
      */
-    async ask(message: string): Promise<string> {
+    async ask(message: string): Promise<{ text: string, chartData?: any }> {
         const msg = message.toLowerCase();
         await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -83,7 +83,9 @@ export const aiProvider = {
         // 1. ANALIZADOR DE INTENCIÓN (Sistema de Pesos)
         const intentScores = {
             lookup: 0,
-            knowledge: 0
+            knowledge: 0,
+            stats: 0,
+            personality: 0
         };
 
         // Pesos para búsqueda en Base de Datos (Lookup)
@@ -103,12 +105,22 @@ export const aiProvider = {
 
         knowledgeTerms.forEach(t => { if (msg.includes(t)) intentScores.knowledge += 2; });
 
+        // Pesos para Estadísticas (Counts/Totals)
+        const statsTerms = ['cuantos', 'total', 'cantidad', 'hay', 'numero', 'estatistica', 'metricas', 'resumen'];
+        statsTerms.forEach(t => { if (msg.includes(t)) intentScores.stats += 2; });
+        if (msg.includes('estado') && (msg.includes('cuant') || msg.includes('hay'))) intentScores.stats += 3;
+
+        // Pesos para Personalidad / Cháchara
+        const personalityTerms = ['hola', 'quien sos', 'que haces', 'chau', 'gracias', 'mal', 'feo', 'tonto', 'ayuda'];
+        personalityTerms.forEach(t => { if (msg.includes(t)) intentScores.personality += 1; });
+        if (msg.length < 5) intentScores.personality += 2;
+
         // 2. EJECUCIÓN BASADA EN INTENCIÓN PREDOMINANTE
         
         // Prioridad 1: Si es contextual (pronombres), vamos directo al lookup
         if (isContextual) {
             const result = await this._handleLookup(lastContext.clientName || '');
-            if (result) return result;
+            if (result) return { text: result };
         }
 
         // Prioridad 2: Decidir entre Lookup y Knowledge
@@ -120,7 +132,7 @@ export const aiProvider = {
             
             if (nameToSearch.length > 2) {
                 const lookupResult = await this._handleLookup(nameToSearch);
-                if (lookupResult) return lookupResult;
+                if (lookupResult) return { text: lookupResult };
             }
         }
 
@@ -139,7 +151,7 @@ export const aiProvider = {
                             if (words.length > 1) return words.every((w: string) => msg.includes(w));
                             return msg.includes(kw);
                         })) {
-                            return row.response;
+                            return { text: row.response };
                         }
                     }
                 }
@@ -148,7 +160,21 @@ export const aiProvider = {
             }
         }
 
-        // Prioridad 4: Knowledge Base Estática (coqueKnowledge.ts)
+        // Prioridad 4: Estadísticas en tiempo real
+        if (intentScores.stats >= 3 || (intentScores.stats > 0 && msg.includes('estado'))) {
+            const statsResult = await this._handleStatsLookup(msg);
+            if (statsResult) return statsResult;
+        }
+
+        // Prioridad 5: Personalidad / Respuestas Rápidas
+        if (intentScores.personality > 2 || msg === 'hola' || msg.includes('quien sos')) {
+            if (msg.includes('hola')) return { text: "¡Buenas, buenas! Acá CoqueBot al habla. 🦾 Tu copiloto de ventas y enciclopedia del CRM. ¿A qué local vamos a digitalizar hoy?" };
+            if (msg.includes('quien sos')) return { text: "Soy CoqueBot, el primer modelo de IA entrenado específicamente para el CRM PickingUp. Mi misión es ayudarte a cerrar más locales y que no se te escape ningún dato." };
+            if (msg.includes('gracias')) return { text: "¡De nada, fiera! A romperla en la calle. 🚀" };
+            if (msg.includes('mal') || msg.includes('tonto') || msg.includes('feo')) return { text: "¡Epa! Perdón si te fallé, che. Todavía estoy aprendiendo los modismos de la calle. Si me preguntás algo más específico del CRM seguro te ayudo mejor. 😅" };
+        }
+
+        // Prioridad 6: Knowledge Base Estática (coqueKnowledge.ts)
         const knowledgeResult = findBestCoqueResponse(message);
         if (knowledgeResult) {
             if (knowledgeResult.tutorialId) {
@@ -156,10 +182,10 @@ export const aiProvider = {
                     detail: { tutorialId: knowledgeResult.tutorialId } 
                 }));
             }
-            return knowledgeResult.response;
+            return { text: knowledgeResult.response };
         }
 
-        // Prioridad 5: Inteligencia Colectiva (Fallback de Chat Interno)
+        // Prioridad 7: Inteligencia Colectiva (Fallback de Chat Interno)
         // Buscamos si algún compañero ya respondió algo similar en el chat general
         if (msg.length > 5) {
             try {
@@ -170,10 +196,15 @@ export const aiProvider = {
                         .from('mensajes_chat')
                         .select('mensaje, de_usuario')
                         .textSearch('mensaje', searchWords)
+                        .not('mensaje', 'ilike', '%Error%')
+                        .not('mensaje', 'ilike', '%Uncaught%')
+                        .not('mensaje', 'ilike', '%index-%')
+                        .not('mensaje', 'ilike', '%400%')
+                        .not('mensaje', 'ilike', '%fetch%')
                         .limit(1);
 
                     if (chatMatch && chatMatch.length > 0) {
-                        return `No lo tengo en mi manual oficial, pero leí que **${chatMatch[0].de_usuario.split('@')[0]}** comentó esto en el chat: \n*"${chatMatch[0].mensaje}"*.\n¿Te sirve? 🕵️‍♂️💬`;
+                        return { text: `No lo tengo en mi manual oficial, pero leí que **${chatMatch[0].de_usuario.split('@')[0]}** comentó esto en el chat: \n*"${chatMatch[0].mensaje}"*.\n¿Te sirve? 🕵️‍♂️💬` };
                     }
                 }
             } catch (e) {
@@ -181,13 +212,19 @@ export const aiProvider = {
             }
         }
 
-        // 6. MECANISMO DE APRENDIZAJE
+        // 3. MECANISMO DE APRENDIZAJE (Fallback Final)
         const { error: insertError } = await (supabase.from('ai_unknown_queries' as any) as any).insert({
             query: message,
             created_at: new Date().toISOString()
         });
 
-        return "Uy, fiera, esa me mataste. 😅 No la tengo en mi manual todavía, pero ya me la anoté en mi base de datos para estudiarla y que la próxima no me agarres desprevenido. ¿Querés preguntarme algo sobre el CRM (mapas, rutas, tareas), objeciones o buscar algún Cliente?";
+        const fallbackOptions = [
+            "Uy, fiera, esa me mataste. 😅 No la tengo en mi manual todavía, pero ya me la anoté para estudiarla. ¿Querés preguntarme por un local o por cómo manejar una objeción?",
+            "Che, esa pregunta está picante. No tengo la respuesta exacta acá, pero ya la guardé en mi base de datos para aprenderla. ¿Te puedo ayudar con estados de locales o el mapa?",
+            "Me agarraste en offside. ⚽ Todavía no sé responder eso, pero ya estoy investigando. Mientras tanto, me podés preguntar por 'Bianca' o cómo crear una ruta."
+        ];
+
+        return { text: fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)] };
     },
 
     /**
@@ -382,6 +419,61 @@ export const aiProvider = {
 
     _calcScore(text: string, keywords: string[]): number {
         return keywords.reduce((acc, k) => acc + (text.includes(k) ? 1 : 0), 0);
+    },
+
+    /**
+     * Helper para responder preguntas sobre conteos y estados
+     */
+    async _handleStatsLookup(msg: string): Promise<{ text: string, chartData?: any } | null> {
+        try {
+            // Extraer el número de estado si existe (1-6)
+            const stateMatch = msg.match(/estado\s*([1-6])/i);
+            const targetState = stateMatch ? stateMatch[1] : null;
+
+            const { data: counts, error } = await supabase
+                .from('empresa_cliente')
+                .select('estado', { count: 'exact' });
+
+            if (error) return null;
+
+            if (targetState) {
+                const count = counts?.filter(c => c.estado?.startsWith(targetState)).length || 0;
+                return { 
+                    text: `Tenemos **${count}** locales en **Estado ${targetState}**. ${this._getStateComment(targetState)}`
+                };
+            }
+
+            // Si pregunta en general, devolvemos data para el gráfico
+            const total = counts?.length || 0;
+            const distributions: Record<string, number> = {};
+            counts?.forEach(c => {
+                const s = c.estado || 'Sin estado';
+                distributions[s] = (distributions[s] || 0) + 1;
+            });
+
+            return { 
+                text: `En total tenemos **${total}** locales cargados en el sistema. Así viene la mano con los estados:`,
+                chartData: {
+                    type: 'bar',
+                    labels: Object.keys(distributions).sort(),
+                    values: Object.keys(distributions).sort().map(k => distributions[k])
+                }
+            };
+        } catch (e) {
+            return null;
+        }
+    },
+
+    _getStateComment(state: string): string {
+        const comments: Record<string, string> = {
+            '1': 'Son puros prospectos, hay que ir a visitarlos ya. 🏃‍♂️',
+            '2': 'Fueron visitados pero no están activos. ¡No hay que darlos por perdidos! 🔄',
+            '3': '¡Ya tienen la App! Hay que ayudarlos con el primer pedido. 📱',
+            '4': 'Locales creados en sistema, listos para operar. ✨',
+            '5': '¡La gloria! Locales activos y convertidos. 🤝',
+            '6': 'Estos nos sacaron cagando o no les interesa por ahora. 🚫'
+        };
+        return comments[state] || '';
     }
 };
 

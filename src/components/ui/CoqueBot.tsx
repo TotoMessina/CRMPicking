@@ -10,7 +10,7 @@ import { TenantStore } from '../../config/tenant';
 export const CoqueBot: React.FC = () => {
     const { tenantConfig } = useTenant();
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState<{ role: 'bot' | 'user'; text: string }[]>([
+    const [messages, setMessages] = useState<{ role: 'bot' | 'user'; text: string; chartData?: any }[]>([
         { role: 'bot', text: `¡Buenas! Soy ${tenantConfig.ai.name}. 🦾 ¿Qué local vamos a cerrar hoy? Preguntame lo que quieras.` }
     ]);
 
@@ -48,7 +48,7 @@ export const CoqueBot: React.FC = () => {
 
         try {
             const response = await aiProvider.ask(userMsg);
-            setMessages(prev => [...prev, { role: 'bot', text: response }]);
+            setMessages(prev => [...prev, { role: 'bot', text: response.text, chartData: response.chartData }]);
         } catch (error) {
             setMessages(prev => [...prev, { role: 'bot', text: 'Perdón, me tildé un poco. ¿Podés repetir?' }]);
         } finally {
@@ -168,6 +168,33 @@ export const CoqueBot: React.FC = () => {
                                     lineHeight: '1.4'
                                 }}>
                                     {m.text}
+                                    {m.chartData && m.chartData.type === 'bar' && (
+                                        <div style={{ marginTop: '12px', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.1)' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                {m.chartData.labels.map((label: string, idx: number) => {
+                                                    const val = m.chartData.values[idx];
+                                                    const max = Math.max(...m.chartData.values);
+                                                    const pct = max > 0 ? (val / max) * 100 : 0;
+                                                    return (
+                                                        <div key={idx}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: '4px', color: 'var(--text-muted)' }}>
+                                                                <span>{label}</span>
+                                                                <span style={{ fontWeight: 800, color: 'var(--text)' }}>{val}</span>
+                                                            </div>
+                                                            <div style={{ height: '6px', background: 'var(--bg-body)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                                <motion.div 
+                                                                    initial={{ width: 0 }}
+                                                                    animate={{ width: `${pct}%` }}
+                                                                    transition={{ duration: 0.8, delay: idx * 0.1 }}
+                                                                    style={{ height: '100%', background: 'linear-gradient(90deg, #8b5cf6, #d946ef)', borderRadius: '3px' }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             {isTyping && (

@@ -47,7 +47,7 @@ export default function Usuarios() {
             // 1. Obtener emails de los usuarios asociados a esta empresa
             const { data: euData, error: euError } = await supabase
                 .from('empresa_usuario')
-                .select('usuario_email, role')
+                .select('usuario_email, role, activo')
                 .eq('empresa_id', empresaActiva.id);
 
             if (euError) throw euError;
@@ -75,7 +75,8 @@ export default function Usuarios() {
                 const eu = euData.find(e => e.usuario_email === u.email);
                 return {
                     ...u,
-                    role_empresa: eu ? eu.role : 'user'
+                    role_empresa: eu ? eu.role : 'user',
+                    activo: eu ? eu.activo : true
                 };
             });
 

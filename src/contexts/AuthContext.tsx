@@ -1,14 +1,17 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { flushOutbox } from '../lib/offlineManager';
+import { flushOutbox, clearAllOfflineData } from '../lib/offlineManager';
 import { TenantStore, injectTenantTheme } from '../config/tenant';
+import toast from 'react-hot-toast';
 
 export interface Empresa {
     id: string;
     nombre: string;
     logo_url?: string | null;
     role_en_empresa?: string;
+    config?: any;
+    activo?: boolean;
 }
 
 export interface PaginasPermitidas {
@@ -95,12 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Load empresas this user belongs to
         const { data: empData } = await supabase
             .from('empresa_usuario')
-            .select('role_en_empresa:role, empresas(id, nombre, logo_url, config)')
+            .select('role_en_empresa:role, activo, empresas(id, nombre, logo_url, config)')
             .eq('usuario_email', authUser.email as string);
 
         const empresas: Empresa[] = (empData || []).map((e: any) => ({
             ...e.empresas,
-            role_en_empresa: e.role_en_empresa
+            role_en_empresa: e.role_en_empresa,
+            activo: e.activo
         }));
 
         setEmpresasDisponibles(empresas);
@@ -110,15 +114,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
-                const stillValid = empresas.find(e => e.id === parsed.id);
-                setEmpresaActivaState(stillValid || empresas[0] || null);
+                const stillValid = empresas.find(e => e.id === parsed.id && e.activo !== false);
+                if (!stillValid && empresas.some(e => e.id === parsed.id)) {
+                    // Si existe pero no está activo, forzar logout de esa empresa
+                    toast.error('Tu acceso a esta empresa ha sido revocado.');
+                    setEmpresaActivaState(null);
+                } else {
+                    setEmpresaActivaState(stillValid || empresas.find(e => e.activo !== false) || null);
+                }
             } catch {
-                setEmpresaActivaState(empresas[0] || null);
+                setEmpresaActivaState(empresas.find(e => e.activo !== false) || null);
             }
-        } else if (empresas.length === 1) {
+        } else if (empresas.length === 1 && empresas[0].activo !== false) {
             setEmpresaActivaState(empresas[0]);
             localStorage.setItem(EMPRESA_KEY, JSON.stringify(empresas[0]));
-        } else if (empresas.length > 1) {
+        } else {
+            // Filtrar solo las activas para la selección manual
+            const activas = empresas.filter(e => e.activo !== false);
+            if (activas.length === 0 && empresas.length > 0) {
+                 toast.error('No tienes empresas activas asociadas.');
+            }
             setEmpresaActivaState(null);
         }
     };
@@ -134,6 +149,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             injectTenantTheme();
         }
     }, [empresaActiva]);
+
+    // KILL-SWITCH: Escuchar cambios de estado 'activo' del usuario en tiempo real
+    useEffect(() => {
+        if (!user || !empresaActiva || !navigator.onLine) return;
+
+        const channel = supabase
+            .channel(`kill-switch-${empresaActiva.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'empresa_usuario',
+                    filter: `usuario_email=eq.${user.email}`,
+                },
+                async (payload) => {
+                    const { empresa_id, activo } = payload.new;
+                    if (empresa_id === empresaActiva.id && activo === false) {
+                        toast.error('ACCESO REVOCADO INSTANTÁNEAMENTE. Borrando datos locales...', { duration: 5000 });
+                        
+                        // 1. Borrar IndexedDB
+                        await clearAllOfflineData();
+                        
+                        // 2. Borrar LocalStorage y sesión
+                        await signOut();
+                        
+                        // 3. Forzar recarga total para limpiar memoria
+                        window.location.href = '/login?reason=blocked';
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, empresaActiva]);
 
     const fetchPermisosPaginas = async (empresaId: string | undefined, userRole: string | null) => {
         if (userRole === 'super-admin') {

@@ -25,6 +25,9 @@ import { jsPDF } from 'jspdf';
 import { useCustomWidgets } from '../hooks/useCustomWidgets';
 import * as XLSX from 'xlsx';
 import { useTenant } from '../contexts/TenantContext';
+import { securityService } from '../lib/securityService';
+import { ForecastingRadar } from '../components/stats/ForecastingRadar';
+
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip, Legend, Filler);
 ChartJS.defaults.devicePixelRatio = typeof window !== 'undefined' ? Math.max(window.devicePixelRatio || 1, 3) : 3;
@@ -40,7 +43,8 @@ const Estadisticas: React.FC = () => {
         activators, rubrosEstado5Data,
         kpis, chartsData, listsData, extraData,
         totalSituacion, refreshStats,
-        filtroSituacionRubros, setFiltroSituacionRubros
+        filtroSituacionRubros, setFiltroSituacionRubros,
+        forecast, loadingForecast, refreshForecast
     } = useStatistics();
 
     const dashboardRef = useRef<HTMLDivElement>(null);
@@ -108,6 +112,9 @@ const Estadisticas: React.FC = () => {
             
             pdf.save(`Reporte_Grafico_CRM_${new Date().getTime()}.pdf`);
             
+            // Log security event
+            securityService.logAction(user?.email, empresaActiva?.id, 'export_pdf', { type: 'graphic_report' });
+
             setIsExportingPdf(false);
             toast.dismiss('pdf-toast');
             toast.success("PDF generado exitosamente");
@@ -184,6 +191,9 @@ const Estadisticas: React.FC = () => {
 
             XLSX.writeFile(wb, `Reporte_Avanzado_CRM_${new Date().getTime()}.xlsx`);
             
+            // Log security event
+            securityService.logAction(user?.email, empresaActiva?.id, 'export_excel', { type: 'advanced_stats_report' });
+
             toast.success("Reporte Excel descargado exitosamente");
         } catch (error) {
             console.error("Export error", error);
@@ -300,6 +310,12 @@ const Estadisticas: React.FC = () => {
                 >
                     ⚡ Gestión Activadores
                 </div>
+                <div
+                    style={{ flex: 1, padding: '12px', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', background: currentTab === 'tabForecasting' ? STATS_THEME.colors.primary : 'var(--bg-elevated)', color: currentTab === 'tabForecasting' ? '#fff' : 'var(--text)' }}
+                    onClick={() => setCurrentTab('tabForecasting')}
+                >
+                    🎯 Proyecciones AI
+                </div>
             </div>
 
             {currentTab === 'tabApps' && (
@@ -395,6 +411,14 @@ const Estadisticas: React.FC = () => {
                         filterActivator={Array.isArray(filterActivator) ? filterActivator : (filterActivator ? [filterActivator as string] : [])} 
                     />
                 </ErrorBoundary>
+            )}
+
+            {currentTab === 'tabForecasting' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
+                    <div style={{ gridColumn: 'span 12' }}>
+                        <ForecastingRadar data={forecast || { monthlyEstimates: 0, weightedValue: 0, stageProbabilities: {}, avgVelocityDays: 0 }} loading={loadingForecast} />
+                    </div>
+                </div>
             )}
         </div>
     );

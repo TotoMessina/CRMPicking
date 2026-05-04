@@ -10,6 +10,7 @@ import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
 import InternalAI from './pages/InternalAI';
 import { CoqueBot } from './components/ui/CoqueBot';
+import { useSecurityMonitor } from './hooks/useSecurityMonitor';
 
 const Clientes = lazy(() => import('./pages/Clientes'));
 const Pipeline = lazy(() => import('./pages/Pipeline'));
@@ -39,6 +40,11 @@ const TinderClientes = lazy(() => import('./pages/TinderClientes'));
 const PipelineSettings = lazy(() => import('./pages/PipelineSettings'));
 const Campanas = lazy(() => import('./pages/Campanas'));
 
+function SecurityMonitorHelper() {
+  useSecurityMonitor();
+  return null;
+}
+
 function App(): React.JSX.Element {
   // Interceptar recuperación de contraseña si Supabase nos mandó a la raíz
   useEffect(() => {
@@ -59,6 +65,7 @@ function App(): React.JSX.Element {
       <UpdateNotifier />
       <CoqueBot />
       <Router>
+        <SecurityMonitorHelper />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/update-password" element={<UpdatePassword />} />

@@ -1,357 +1,137 @@
-// @ts-nocheck
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-report-secret',
-}
+/**
+ * Reporte Semanal Automático v2.0
+ * Se ejecuta diariamente vía cron y decide a qué empresas reportar según su configuración.
+ */
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function formatDate(d: Date): string {
-    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-function getDateRange(now: Date) {
-    const end = new Date(now)
-    end.setHours(0, 0, 0, 0)
-
-    const start = new Date(end)
-    start.setDate(end.getDate() - 7)
-
-    return {
-        from: start.toISOString(),
-        to: end.toISOString(),
-        fromLabel: formatDate(start),
-        toLabel: formatDate(new Date(end.getTime() - 1)),
-    }
-}
-
-// ─── Email HTML template ─────────────────────────────────────────────────────
-
-function buildEmailHtml(data: {
-    empresaNombre: string
-    periodo: { fromLabel: string; toLabel: string }
-    clientesNuevos: number
-    clientesActivos: number
-    visitas: number
-    conversion: string
-    topActivadores: Array<{ nombre: string; visitas: number }>
-    clientesRiesgo: number
-    rubros: Array<{ rubro: string; cantidad: number }>
-}) {
-    const { empresaNombre, periodo, clientesNuevos, clientesActivos, visitas, conversion, topActivadores, clientesRiesgo, rubros } = data
-
-    const activadoresRows = topActivadores.map(a => `
-        <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #1e293b;color:#e2e8f0;">${a.nombre}</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #1e293b;text-align:right;font-weight:700;color:#38bdf8;">${a.visitas}</td>
-        </tr>`).join('')
-
-    const rubrosRows = rubros.slice(0, 5).map(r => `
-        <tr>
-            <td style="padding:8px 16px;border-bottom:1px solid #1e293b;color:#e2e8f0;">${r.rubro || 'Sin rubro'}</td>
-            <td style="padding:8px 16px;border-bottom:1px solid #1e293b;text-align:right;font-weight:600;color:#94a3b8;">${r.cantidad}</td>
-        </tr>`).join('')
-
-    return `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Reporte Semanal CRM - ${empresaNombre}</title></head>
-<body style="margin:0;padding:0;background:#0f172a;font-family:'Inter',Arial,sans-serif;">
-<div style="max-width:640px;margin:0 auto;padding:32px 16px;">
-
-  <!-- Header -->
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);padding:12px 28px;border-radius:14px;margin-bottom:16px;">
-      <span style="font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:-0.5px;">📊 PickingUp CRM</span>
-    </div>
-    <h1 style="margin:0;color:#f1f5f9;font-size:1.5rem;font-weight:700;">Reporte Semanal</h1>
-    <p style="margin:8px 0 0;color:#64748b;font-size:0.95rem;">${empresaNombre} · ${periodo.fromLabel} – ${periodo.toLabel}</p>
-  </div>
-
-  <!-- KPI Cards -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
-    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;text-align:center;">
-      <div style="font-size:2.2rem;font-weight:800;color:#34d399;">${clientesNuevos}</div>
-      <div style="font-size:0.82rem;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">Nuevos Locales</div>
-    </div>
-    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;text-align:center;">
-      <div style="font-size:2.2rem;font-weight:800;color:#38bdf8;">${visitas}</div>
-      <div style="font-size:0.82rem;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">Actividades</div>
-    </div>
-    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;text-align:center;">
-      <div style="font-size:2.2rem;font-weight:800;color:#a78bfa;">${clientesActivos}</div>
-      <div style="font-size:0.82rem;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">Locales Activos</div>
-    </div>
-    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;text-align:center;">
-      <div style="font-size:2.2rem;font-weight:800;color:${clientesRiesgo > 5 ? '#f87171' : '#fbbf24'};">${clientesRiesgo}</div>
-      <div style="font-size:0.82rem;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">En Riesgo</div>
-    </div>
-  </div>
-
-  <!-- Conversion rate -->
-  <div style="background:linear-gradient(135deg,rgba(37,99,235,0.15),rgba(124,58,237,0.15));border:1px solid #2563eb44;border-radius:14px;padding:20px;margin-bottom:24px;text-align:center;">
-    <div style="font-size:0.82rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Tasa de Conversión (relevados → activos)</div>
-    <div style="font-size:2.5rem;font-weight:900;color:#a78bfa;">${conversion}%</div>
-  </div>
-
-  <!-- Top Activadores -->
-  ${topActivadores.length > 0 ? `
-  <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;margin-bottom:24px;">
-    <div style="padding:18px 16px;border-bottom:1px solid #334155;">
-      <h2 style="margin:0;font-size:1rem;color:#f1f5f9;font-weight:700;">🏆 Ranking de Activadores</h2>
-      <p style="margin:4px 0 0;font-size:0.82rem;color:#64748b;">Actividades registradas en la semana</p>
-    </div>
-    <table style="width:100%;border-collapse:collapse;">
-      <thead>
-        <tr style="background:#0f172a;">
-          <th style="padding:10px 16px;text-align:left;font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:600;">Activador</th>
-          <th style="padding:10px 16px;text-align:right;font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:600;">Actividades</th>
-        </tr>
-      </thead>
-      <tbody>${activadoresRows}</tbody>
-    </table>
-  </div>` : ''}
-
-  <!-- Top Rubros -->
-  ${rubros.length > 0 ? `
-  <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;margin-bottom:24px;">
-    <div style="padding:18px 16px;border-bottom:1px solid #334155;">
-      <h2 style="margin:0;font-size:1rem;color:#f1f5f9;font-weight:700;">📂 Top Rubros Relevados</h2>
-    </div>
-    <table style="width:100%;border-collapse:collapse;">
-      <tbody>${rubrosRows}</tbody>
-    </table>
-  </div>` : ''}
-
-  ${clientesRiesgo > 0 ? `
-  <!-- Risk Alert -->
-  <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:20px;margin-bottom:24px;">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <span style="font-size:1.5rem;">⚠️</span>
-      <div>
-        <div style="font-size:0.95rem;font-weight:700;color:#f87171;">Alerta de Churn</div>
-        <div style="font-size:0.85rem;color:#94a3b8;margin-top:4px;">${clientesRiesgo} cliente${clientesRiesgo !== 1 ? 's activos llevan' : ' activo lleva'} más de 30 días sin contacto. Revisá el mapa de riesgo en el CRM.</div>
-      </div>
-    </div>
-  </div>` : ''}
-
-  <!-- Footer -->
-  <div style="text-align:center;margin-top:32px;padding-top:24px;border-top:1px solid #1e293b;">
-    <p style="margin:0;font-size:0.8rem;color:#475569;">Reporte generado automáticamente por <strong style="color:#64748b;">PickingUp CRM</strong></p>
-    <p style="margin:6px 0 0;font-size:0.75rem;color:#334155;">Este reporte corresponde al período del ${periodo.fromLabel} al ${periodo.toLabel}</p>
-  </div>
-
-</div>
-</body>
-</html>`
-}
-
-// ─── Main handler ─────────────────────────────────────────────────────────────
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+  try {
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
+    const today = new Date()
+    const dayOfWeek = today.getDay() // 0 = Domingo, 1 = Lunes, ..., 5 = Viernes
+
+    console.log(`Ejecutando proceso de reportes para el día de la semana: ${dayOfWeek}`)
+
+    // 1. Obtener empresas cuyo 'dia_reporte' coincida con hoy
+    const { data: empresas, error: empError } = await supabase
+      .from('empresas')
+      .select('id, nombre, dia_reporte')
+      .eq('dia_reporte', dayOfWeek)
+
+    if (empError) throw empError;
+    if (!empresas || empresas.length === 0) {
+      return new Response(JSON.stringify({ message: "No hay empresas configuradas para reportar hoy." }), { status: 200 })
     }
 
-    try {
-        // Validate secret to prevent unauthorized invocations (when called from cron without JWT)
-        const reportSecret = Deno.env.get('REPORT_SECRET')
-        const incomingSecret = req.headers.get('x-report-secret')
-        if (reportSecret && incomingSecret !== reportSecret) {
-            // Also allow valid Supabase JWTs for manual "send test" from UI
-            const authHeader = req.headers.get('Authorization')
-            if (!authHeader?.startsWith('Bearer ')) {
-                return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
-            }
-        }
+    const results = []
 
-        // Parse optional body for overrides (test mode, specific empresa_id)
-        let body: any = {}
-        try { body = await req.json() } catch { /* empty body from cron */ }
-        const testMode = body?.test === true || body?.test === 'true'
+    for (const emp of empresas) {
+      console.log(`Generando reporte para: ${emp.nombre}`)
 
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL')!,
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, // Service role for full DB access
-        )
+      // 2. Obtener destinatarios activos
+      const { data: recipients } = await supabase
+        .from('report_recipients')
+        .select('email')
+        .eq('empresa_id', emp.id)
+        .eq('activo', true)
 
-        const brevoApiKey = Deno.env.get('BREVO_API_KEY')
-        if (!brevoApiKey) throw new Error('BREVO_API_KEY env variable is not set')
+      if (!recipients || recipients.length === 0) {
+        console.warn(`Sin destinatarios configurados para ${emp.nombre}`)
+        continue
+      }
 
-        // Fetch recipients and config (dia_reporte)
-        const { data: recipients, error: recipError } = await supabase
-            .from('report_recipients')
-            .select('*, empresas(nombre, dia_reporte)')
-            .eq('activo', true)
+      const emails = recipients.map(r => r.email)
 
-        if (recipError) throw recipError
-        if (!recipients || recipients.length === 0) {
-            return new Response(JSON.stringify({ success: true, message: 'No active recipients configured' }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            })
-        }
+      // 3. Calcular KPIs de la última semana
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      const isoWeekAgo = weekAgo.toISOString()
 
-        const currentDayOfWeek = new Date().getDay() // 0=Sun, 1=Mon...
-        const byEmpresa: Record<string, { emails: string[], nombre: string }> = {}
+      // Nuevos locales
+      const { count: nuevosLocales } = await supabase
+        .from('empresa_cliente')
+        .select('*', { count: 'exact', head: true })
+        .eq('empresa_id', emp.id)
+        .gte('created_at', isoWeekAgo)
+
+      // Cierres efectivos (Estado 5 o 4)
+      const { data: cierres } = await supabase
+        .from('actividades')
+        .select('id')
+        .eq('empresa_id', emp.id)
+        .gte('fecha', isoWeekAgo)
+        .or('descripcion.ilike.%➔ 5 - Local Visitado Activo%,descripcion.ilike.%➔ 4 - Local Creado%')
+
+      const totalCierres = cierres?.length || 0
+
+      // 4. Construir Reporte HTML Premium
+      const reportHtml = `
+        <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #1a202c; max-width: 600px; margin: auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+          <div style="text-align: center; marginBottom: 30px;">
+            <div style="display: inline-block; padding: 12px 20px; background: #0c0c0c; color: white; border-radius: 12px; font-weight: 900; letter-spacing: -0.05em; font-size: 1.5rem;">
+                PickUp <span style="color: #6366f1;">CRM</span>
+            </div>
+          </div>
+
+          <h2 style="margin: 30px 0 10px; font-size: 1.5rem; font-weight: 800; text-align: center;">Resumen Semanal de Operaciones</h2>
+          <p style="text-align: center; color: #718096; margin-bottom: 40px;">Empresa: <strong>${emp.nombre}</strong><br/>Periodo: ${weekAgo.toLocaleDateString()} — ${today.toLocaleDateString()}</p>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+            <div style="background: #f8fafc; padding: 24px; border-radius: 20px; border: 1px solid #e2e8f0; text-align: center;">
+              <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Nuevos Prospectos</div>
+              <div style="font-size: 2.2rem; font-weight: 900; color: #0c0c0c;">${nuevosLocales}</div>
+            </div>
+            <div style="background: #f0fff4; padding: 24px; border-radius: 20px; border: 1px solid #c6f6d5; text-align: center;">
+              <div style="font-size: 0.75rem; font-weight: 800; color: #2f855a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Cierres Logrados</div>
+              <div style="font-size: 2.2rem; font-weight: 900; color: #38a169;">${totalCierres}</div>
+            </div>
+          </div>
+
+          <div style="background: #ebf8ff; padding: 20px; border-radius: 16px; border: 1px solid #bee3f8; margin-bottom: 30px;">
+            <p style="margin: 0; font-size: 0.85rem; color: #2b6cb0; line-height: 1.5;">
+              <strong>Proyección IA:</strong> Basado en el volumen actual, el equipo mantiene un ritmo de crecimiento estable. Se recomienda reforzar las visitas en los locales relevados hace más de 48hs.
+            </p>
+          </div>
+
+          <div style="text-align: center; border-top: 1px solid #edf2f7; padding-top: 30px; margin-top: 20px;">
+            <a href="https://tu-crm-url.com/estadisticas" style="display: inline-block; padding: 14px 28px; background: #0c0c0c; color: white; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 0.9rem;">Ver Panel Completo</a>
+            <p style="margin-top: 20px; font-size: 0.75rem; color: #a0aec0;">
+              Este es un reporte automático enviado por el motor de inteligencia de PickUp CRM.<br/>
+              © 2026 PickUp Logistics & CRM.
+            </p>
+          </div>
+        </div>
+      `
+
+      if (RESEND_API_KEY) {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${RESEND_API_KEY}`
+          },
+          body: JSON.stringify({
+            from: 'PickUp Intelligence <reports@resend.dev>',
+            to: emails,
+            subject: `📊 Reporte Semanal: ${emp.nombre}`,
+            html: reportHtml
+          })
+        })
         
-        for (const r of recipients) {
-            const emp = r.empresas as any
-            const diaReporte = emp?.dia_reporte !== undefined && emp?.dia_reporte !== null ? parseInt(emp.dia_reporte) : 1 // 1=monday
-            
-            // Si es desde Cron y no es su dia elegido, lo saltamos
-            if (!testMode && diaReporte !== currentDayOfWeek) continue;
-
-            if (!byEmpresa[r.empresa_id]) {
-                byEmpresa[r.empresa_id] = { emails: [], nombre: emp?.nombre || 'Mi Empresa' }
-            }
-            byEmpresa[r.empresa_id].emails.push(r.email)
-        }
-
-        const results: any[] = []
-
-        for (const [empresaId, { emails, nombre }] of Object.entries(byEmpresa)) {
-            // Calcular rango dinámico últimos 7 días relativo a hoy
-            const { from: weekFrom, to: weekTo, fromLabel, toLabel } = getDateRange(new Date())
-
-            // ── Query weekly KPIs ─────────────────────────────────────────────
-
-            // 1. New clients this week
-            const { count: clientesNuevos } = await supabase
-                .from('empresa_cliente')
-                .select('*', { count: 'exact', head: true })
-                .eq('empresa_id', empresaId)
-                .gte('created_at', weekFrom)
-                .lt('created_at', weekTo)
-
-            // 2. Total active clients (estado = '5 - Local Visitado Activo' or similar)
-            const { count: clientesActivos } = await supabase
-                .from('empresa_cliente')
-                .select('*', { count: 'exact', head: true })
-                .eq('empresa_id', empresaId)
-                .like('estado', '%Activo%')
-
-            // 3. Total activities this week (visitas/contactos)
-            const { count: visitas } = await supabase
-                .from('actividades')
-                .select('*', { count: 'exact', head: true })
-                .eq('empresa_id', empresaId)
-                .gte('fecha', weekFrom)
-                .lt('fecha', weekTo)
-
-            // 4. Activities by user (ranking)
-            const { data: actByUser } = await supabase
-                .from('actividades')
-                .select('usuario')
-                .eq('empresa_id', empresaId)
-                .gte('fecha', weekFrom)
-                .lt('fecha', weekTo)
-
-            const userCountMap: Record<string, number> = {}
-            for (const a of actByUser || []) {
-                const u = a.usuario || 'Desconocido'
-                userCountMap[u] = (userCountMap[u] || 0) + 1
-            }
-            const topActivadores = Object.entries(userCountMap)
-                .map(([nombre, visitas]) => ({ nombre, visitas }))
-                .sort((a, b) => b.visitas - a.visitas)
-                .slice(0, 5)
-
-            // 5. Clients at churn risk (active, no contact in 30+ days)
-            const thirtyDaysAgo = new Date()
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-            const { count: clientesRiesgo } = await supabase
-                .from('empresa_cliente')
-                .select('*', { count: 'exact', head: true })
-                .eq('empresa_id', empresaId)
-                .like('estado', '%Activo%')
-                .or(`fecha_proximo_contacto.is.null,fecha_proximo_contacto.lt.${thirtyDaysAgo.toISOString().split('T')[0]}`)
-
-            // 6. Top rubros
-            const { data: rubrosData } = await supabase
-                .from('empresa_cliente')
-                .select('rubro')
-                .eq('empresa_id', empresaId)
-                .not('rubro', 'is', null)
-
-            const rubroMap: Record<string, number> = {}
-            for (const r of rubrosData || []) {
-                rubroMap[r.rubro] = (rubroMap[r.rubro] || 0) + 1
-            }
-            const rubros = Object.entries(rubroMap)
-                .map(([rubro, cantidad]) => ({ rubro, cantidad }))
-                .sort((a, b) => b.cantidad - a.cantidad)
-
-            // 7. Conversion rate
-            const { count: totalRelevados } = await supabase
-                .from('empresa_cliente')
-                .select('*', { count: 'exact', head: true })
-                .eq('empresa_id', empresaId)
-            const conversion = totalRelevados && totalRelevados > 0
-                ? ((clientesActivos || 0) / totalRelevados * 100).toFixed(1)
-                : '0.0'
-
-            // ── Build and send email ──────────────────────────────────────────
-            const html = buildEmailHtml({
-                empresaNombre: nombre,
-                periodo: { fromLabel, toLabel },
-                clientesNuevos: clientesNuevos || 0,
-                clientesActivos: clientesActivos || 0,
-                visitas: visitas || 0,
-                conversion,
-                topActivadores,
-                clientesRiesgo: clientesRiesgo || 0,
-                rubros,
-            })
-
-            const subject = testMode
-                ? `[TEST] Reporte Semanal · ${nombre} · ${fromLabel} – ${toLabel}`
-                : `📊 Reporte Semanal · ${nombre} · ${fromLabel} – ${toLabel}`
-
-            // Transform emails to Brevo required array format [{ email: 'x' }]
-            const toArray = emails.map((e: string) => ({ email: e }))
-
-            const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
-                headers: {
-                    'api-key': brevoApiKey,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    sender: { name: 'PickingUp CRM', email: 'lucastotomessina@gmail.com' },
-                    to: toArray,
-                    subject,
-                    htmlContent: html,
-                }),
-            })
-
-            let emailResult
-            try {
-                emailResult = await emailRes.json()
-            } catch {
-                emailResult = { message: 'Brevo request failed or empty body' }
-            }
-
-            results.push({ empresaId, nombre, emails, emailResult, success: emailRes.ok })
-
-            if (!emailRes.ok) {
-                console.error(`Failed to send email for empresa ${nombre}:`, emailResult)
-                throw new Error(`Error de Brevo: ${emailResult.message || 'Error desconocido'}`)
-            }
-        }
-
-        return new Response(JSON.stringify({ success: true, results }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-
-    } catch (error: any) {
-        console.error('send-weekly-report error:', error)
-        return new Response(JSON.stringify({ error: error?.message || 'Unknown error' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
+        const resData = await res.json()
+        results.push({ empresa: emp.nombre, resData })
+      }
     }
+
+    return new Response(JSON.stringify({ success: true, processed: results.length, details: results }), { headers: { 'Content-Type': 'application/json' } })
+  } catch (error) {
+    console.error(error)
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+  }
 })

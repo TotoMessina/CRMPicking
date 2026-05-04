@@ -247,3 +247,30 @@ export async function clearLocalClients(): Promise<void> {
         console.warn('[OfflineManager] Error clearing local clients:', err);
     }
 }
+
+/**
+ * Borrado total de la base de datos local por seguridad (Kill-Switch)
+ */
+export async function clearAllOfflineData(): Promise<void> {
+    try {
+        if (_db) {
+            _db.close();
+            _db = null;
+        }
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.deleteDatabase(DB_NAME);
+            req.onsuccess = () => {
+                console.log('[OfflineManager] 🛑 Base de datos local borrada exitosamente.');
+                resolve();
+            };
+            req.onerror = () => reject(req.error);
+            req.onblocked = () => {
+                console.warn('[OfflineManager] Borrado bloqueado, reintentando tras recarga.');
+                resolve();
+            };
+        });
+    } catch (err) {
+        console.error('[OfflineManager] Error fatal al borrar base de datos:', err);
+    }
+}
+
