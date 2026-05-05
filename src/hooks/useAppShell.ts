@@ -203,7 +203,7 @@ export const useAppShell = (): UseAppShellReturn => {
         const effectiveRole = (isSuperAdmin ? 'super-admin' : (empresaActiva?.role_en_empresa?.toLowerCase() || role || '')) as string;
         const isActivador = effectiveRole?.includes('activador');
         const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super-admin';
-        const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial', '/ruta']);
+        const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial', '/ruta', '/inventario-marketing']);
 
         const allItems = ALL_PAGES;
 

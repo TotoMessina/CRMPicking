@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from './Button';
-import { X, AlertCircle, Camera, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { X, AlertCircle, Camera, Image as ImageIcon, Trash2, Package, Plus, Minus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { compressImage } from '../../lib/imageCompression';
+import { motion } from 'framer-motion';
 
 
 interface Props {
@@ -23,7 +24,7 @@ interface FormData {
 }
 
 export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId, clienteNombre, onSaved }) => {
-    const { empresaActiva }: any = useAuth();
+    const { user, empresaActiva }: any = useAuth();
     const [loading, setLoading] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
@@ -37,6 +38,11 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [uploadingImage, setUploadingImage] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // Marketing Materials
+    const [availableMaterials, setAvailableMaterials] = useState<any[]>([]);
+    const [deliveries, setDeliveries] = useState<Record<string, number>>({});
+    const [showMaterials, setShowMaterials] = useState(false);
 
 
     const handleClose = () => {
@@ -71,8 +77,19 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
             setSelectedImage(null);
             setImagePreview(null);
             setUploadingImage(false);
+            setDeliveries({});
+            setShowMaterials(false);
+
+            // Fetch available materials
+            if (empresaActiva?.id) {
+                (supabase as any).from('marketing_material')
+                    .select('*')
+                    .eq('empresa_id', empresaActiva.id)
+                    .gt('stock_actual', 0)
+                    .then(({ data }: any) => setAvailableMaterials(data || []));
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, empresaActiva?.id]);
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -156,16 +173,31 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
                 foto_url: uploadedImageUrl
             };
 
-            const { error } = await supabase.from("actividades").insert([payload] as any);
+            const { data: newActData, error } = await supabase.from("actividades").insert([payload] as any).select();
             const isOffline = error && (error.message === 'Failed to fetch' || error.message?.includes('fetch') || !navigator.onLine);
 
             if (error && !isOffline) {
                 console.error("Supabase insert error:", error);
                 toast.error(`Error de base de datos: ${error.message}`);
-                return; // Finally will clear loading
+                return;
             }
 
             toast.success(isOffline ? "Actividad agregada (Offline)" : "Actividad agregada");
+
+            // 2. Register material deliveries
+            const newActId = newActData?.[0]?.id;
+            
+            if (newActId && Object.keys(deliveries).length > 0) {
+                const deliveryRows = Object.entries(deliveries).map(([mId, qty]) => ({
+                    empresa_id: empresaActiva.id,
+                    cliente_id: numericId,
+                    actividad_id: newActId,
+                    material_id: mId,
+                    cantidad: qty,
+                    usuario_email: user?.email || 'unknown'
+                }));
+                await (supabase as any).from("material_entrega").insert(deliveryRows);
+            }
 
             // Sync last activity on both tables
             const syncUpdates = Promise.all([
@@ -277,6 +309,83 @@ export const ActividadClienteModal: React.FC<Props> = ({ isOpen, onClose, client
                                 </div>
                             )}
                         </div>
+                    </div>
+                    <div className="field" style={{ marginTop: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span className="field-label" style={{ marginBottom: 0 }}>¿Entregaste material?</span>
+                            <button 
+                                type="button" 
+                                onClick={() => setShowMaterials(!showMaterials)}
+                                style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                            >
+                                {showMaterials ? 'Cerrar' : '+ Agregar Material'}
+                            </button>
+                        </div>
+                        
+                        {showMaterials && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                style={{ marginTop: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border)', padding: '12px', overflow: 'hidden' }}
+                            >
+                                {availableMaterials.length === 0 ? (
+                                    <p className="muted" style={{ fontSize: '0.8rem', textAlign: 'center', margin: '8px 0' }}>No hay materiales con stock disponible.</p>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {availableMaterials.map(m => (
+                                            <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <Package size={14} className="muted" />
+                                                    <span style={{ fontSize: '0.9rem' }}>{m.nombre}</span>
+                                                    <span className="muted" style={{ fontSize: '0.7rem' }}>({m.stock_actual} disp.)</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const current = deliveries[m.id] || 0;
+                                                            if (current > 0) {
+                                                                const next = current - 1;
+                                                                const newD = { ...deliveries };
+                                                                if (next === 0) delete newD[m.id];
+                                                                else newD[m.id] = next;
+                                                                setDeliveries(newD);
+                                                            }
+                                                        }}
+                                                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid var(--border)', background: 'none', color: 'var(--text)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                                                    >
+                                                        <Minus size={12} />
+                                                    </button>
+                                                    <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 800 }}>{deliveries[m.id] || 0}</span>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const current = deliveries[m.id] || 0;
+                                                            if (current < m.stock_actual) {
+                                                                setDeliveries({ ...deliveries, [m.id]: current + 1 });
+                                                                setIsDirty(true);
+                                                            } else {
+                                                                toast.error('No hay más stock');
+                                                            }
+                                                        }}
+                                                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid var(--border)', background: 'none', color: 'var(--text)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                                                    >
+                                                        <Plus size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </motion.div>
+                        )}
+
+                        {/* Summary line if something selected but collapsed */}
+                        {!showMaterials && Object.keys(deliveries).length > 0 && (
+                            <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600 }}>
+                                Seleccionado: {Object.values(deliveries).reduce((a, b) => a + b, 0)} items para entregar.
+                            </div>
+                        )}
                     </div>
 
                     <div className="modal-actions" style={{ marginTop: '24px' }}>

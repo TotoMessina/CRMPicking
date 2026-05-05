@@ -1,6 +1,6 @@
 import { 
     MapPin, Users, Activity, Map, Settings, Calendar, Clock, 
-    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain, Megaphone, LucideIcon
+    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain, Megaphone, Package, LucideIcon
 } from 'lucide-react';
 
 
@@ -33,6 +33,7 @@ export const ALL_PAGES: PageItem[] = [
     { to: '/consumidores', icon: Users, label: 'Consumidores', group: 'Operaciones' },
     { to: '/repartidores', icon: Truck, label: 'Repartidores', group: 'Operaciones' },
     { to: '/proveedores', icon: ShoppingCart, label: 'Proveedores', group: 'Operaciones' },
+    { to: '/inventario-marketing', icon: Package, label: 'Inventario Marketing', group: 'Operaciones' },
 
     // --- Grupo: Planificación ---
     { to: '/calendario', icon: Calendar, label: 'Calendario', group: 'Planificación' },

@@ -39,6 +39,7 @@ const AsignadorRutas = lazy(() => import('./pages/AsignadorRutas'));
 const TinderClientes = lazy(() => import('./pages/TinderClientes'));
 const PipelineSettings = lazy(() => import('./pages/PipelineSettings'));
 const Campanas = lazy(() => import('./pages/Campanas'));
+const InventarioMarketing = lazy(() => import('./pages/InventarioMarketing'));
 
 function SecurityMonitorHelper() {
   useSecurityMonitor();
@@ -100,6 +101,7 @@ function App(): React.JSX.Element {
             <Route path="/ia-interna" element={<InternalAI />} />
             <Route path="/swipe-prospecting" element={<Suspense fallback={<GlobalLoader />}><TinderClientes /></Suspense>} />
             <Route path="/configuracion" element={<Suspense fallback={<GlobalLoader />}><Configuracion /></Suspense>} />
+            <Route path="/inventario-marketing" element={<Suspense fallback={<GlobalLoader />}><InventarioMarketing /></Suspense>} />
           </Route>
         </Routes>
       </Router>
