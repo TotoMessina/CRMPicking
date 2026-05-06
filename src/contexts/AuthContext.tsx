@@ -267,8 +267,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         fetchPermisosPaginas(empresaActiva?.id, role);
-        const handleUpdate = () => {
+        const handleUpdate = async () => {
             fetchPermisosPaginas(empresaActiva?.id, role);
+            if (empresaActiva?.id) {
+                const { data } = await supabase
+                    .from('empresas')
+                    .select('id, nombre, logo_url, config')
+                    .eq('id', empresaActiva.id)
+                    .maybeSingle();
+                if (data) {
+                    const updated = {
+                        ...empresaActiva,
+                        ...data
+                    };
+                    setEmpresaActiva(updated);
+                }
+            }
         };
         window.addEventListener('permissions-updated', handleUpdate);
         return () => window.removeEventListener('permissions-updated', handleUpdate);

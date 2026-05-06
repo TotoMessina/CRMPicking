@@ -205,7 +205,13 @@ export const useAppShell = (): UseAppShellReturn => {
         const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super-admin';
         const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial', '/ruta', '/inventario-marketing']);
 
-        const allItems = ALL_PAGES;
+        const customPageGroups = empresaActiva?.config?.pageGroups || {};
+        const allItems = ALL_PAGES.map(item => {
+            if (item.to && customPageGroups[item.to]) {
+                return { ...item, group: customPageGroups[item.to] };
+            }
+            return item;
+        });
 
         if (isSuperAdmin) return allItems;
         if (paginasPermitidas && Object.keys(paginasPermitidas).length > 0) {

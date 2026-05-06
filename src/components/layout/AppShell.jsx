@@ -121,13 +121,13 @@ const NavGroup = ({ groupName, items, unreadChatCount, setIsMobileMenuOpen, isOp
     );
 };
 
-function getActiveGroup(pathname, navItems) {
+function getActiveGroup(pathname, navItems, defaultGroup = 'Activaciones') {
     const match = navItems.find(item => {
         if (!item.to) return false;
         if (item.to === '/') return pathname === '/';
         return pathname.startsWith(item.to);
     });
-    return match?.group || NAV_GROUP_ORDER[0];
+    return match?.group || defaultGroup;
 }
 
 export function AppShell() {
@@ -144,21 +144,25 @@ export function AppShell() {
 
     const routerLocation = useLocation();
     const { tenantConfig } = useTenant();
+    
+    const NAV_GROUP_LIST = tenantConfig?.sidebarGroups || NAV_GROUP_ORDER;
 
     const [openGroups, setOpenGroups] = useState(() => {
-        const active = getActiveGroup(routerLocation.pathname, navItems);
+        const defaultGroup = NAV_GROUP_LIST[0] || 'Activaciones';
+        const active = getActiveGroup(routerLocation.pathname, navItems, defaultGroup);
         return new Set([active]);
     });
 
     useEffect(() => {
-        const active = getActiveGroup(routerLocation.pathname, navItems);
+        const defaultGroup = NAV_GROUP_LIST[0] || 'Activaciones';
+        const active = getActiveGroup(routerLocation.pathname, navItems, defaultGroup);
         setOpenGroups(prev => {
             if (prev.has(active)) return prev;
             const next = new Set(prev);
             next.add(active);
             return next;
         });
-    }, [routerLocation.pathname]);
+    }, [routerLocation.pathname, navItems, NAV_GROUP_LIST]);
 
     useEffect(() => {
         const handleOpenGroup = (e) => {
@@ -215,7 +219,7 @@ export function AppShell() {
                 {/* ── NAV (scrolleable) ────────────────── */}
                 <nav className="sidebar-nav" aria-label="Navegación principal">
                     <ul className="sidebar-menu">
-                        {NAV_GROUP_ORDER.map(groupName => {
+                        {NAV_GROUP_LIST.map(groupName => {
                             const items = navItems.filter(item => item.group === groupName);
                             if (items.length === 0) return null;
                             return (

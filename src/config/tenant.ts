@@ -17,6 +17,8 @@ export interface TenantConfig {
             accent: string;
         };
     };
+    sidebarGroups?: string[];
+    pageGroups?: Record<string, string>;
 }
 
 export const defaultTenantConfig: TenantConfig = {
@@ -37,7 +39,16 @@ export const defaultTenantConfig: TenantConfig = {
             primaryDark: "#7c3aed",  
             accent: "#d946ef",       
         }
-    }
+    },
+    sidebarGroups: [
+        'Activaciones',
+        'Operaciones',
+        'Planificación',
+        'Mapas',
+        'Listados',
+        'Administrativo'
+    ],
+    pageGroups: {}
 };
 
 let currentConfig: TenantConfig = { ...defaultTenantConfig };
@@ -57,7 +68,9 @@ export const TenantStore = {
                 ai: { ...defaultTenantConfig.ai, ...newConfig.ai },
                 theme: {
                     colors: { ...defaultTenantConfig.theme?.colors, ...newConfig.theme?.colors }
-                }
+                },
+                sidebarGroups: newConfig.sidebarGroups || defaultTenantConfig.sidebarGroups,
+                pageGroups: newConfig.pageGroups || defaultTenantConfig.pageGroups
             };
         }
         listeners.forEach(l => l(currentConfig));

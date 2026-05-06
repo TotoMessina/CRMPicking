@@ -15,7 +15,9 @@ export default function PermisosEmpresa() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
-    const [activeTab, setActiveTab] = useState('modulos'); // 'modulos' | 'usuarios'
+    const [activeTab, setActiveTab] = useState('modulos'); // 'modulos' | 'usuarios' | 'categorias'
+    const [localSidebarGroups, setLocalSidebarGroups] = useState([]);
+    const [localPageGroups, setLocalPageGroups] = useState({});
 
     // Nuevos Estados Dinámicos
     const [rolesDinamicos, setRolesDinamicos] = useState([]);
@@ -32,7 +34,7 @@ export default function PermisosEmpresa() {
     // Cargar empresas
     useEffect(() => {
         const fetchEmpresas = async () => {
-            const { data } = await supabase.from('empresas').select('id, nombre').order('nombre');
+            const { data } = await supabase.from('empresas').select('id, nombre, config').order('nombre');
             setEmpresas(data || []);
             if (data?.length > 0) setSelectedEmpresa(data[0]);
         };
@@ -93,6 +95,12 @@ export default function PermisosEmpresa() {
             
             setUsuariosEmpresa(usersData || []);
 
+            // 4. Cargar Configuración de Categorías de la Empresa
+            const configGroups = selectedEmpresa?.config?.sidebarGroups || GROUPS;
+            const configPageGroups = selectedEmpresa?.config?.pageGroups || {};
+            setLocalSidebarGroups(configGroups);
+            setLocalPageGroups(configPageGroups);
+
         } catch (error) {
             toast.error("Error al sincronizar datos");
         } finally {
@@ -116,14 +124,33 @@ export default function PermisosEmpresa() {
             updated_at: new Date().toISOString(),
         }));
 
-        const { error } = await supabase
+        const { error: permError } = await supabase
             .from('empresa_permisos_pagina')
             .upsert(rows, { onConflict: 'empresa_id,pagina' });
 
-        if (error) {
+        if (permError) {
             toast.error('Error al guardar permisos');
+            setSaving(false);
+            return;
+        }
+
+        const updatedConfig = {
+            ...(selectedEmpresa.config || {}),
+            sidebarGroups: localSidebarGroups,
+            pageGroups: localPageGroups
+        };
+
+        const { error: configError } = await supabase.rpc('update_empresa_config', {
+            p_empresa_id: selectedEmpresa.id,
+            p_config: updatedConfig
+        });
+
+        if (configError) {
+            toast.error('Error al guardar configuración de categorías');
         } else {
-            toast.success('Permisos actualizados');
+            toast.success('Permisos y categorías actualizados');
+            setEmpresas(prev => prev.map(emp => emp.id === selectedEmpresa.id ? { ...emp, config: updatedConfig } : emp));
+            setSelectedEmpresa(prev => ({ ...prev, config: updatedConfig }));
             setDirty(false);
             window.dispatchEvent(new CustomEvent('permissions-updated'));
         }
@@ -181,16 +208,18 @@ export default function PermisosEmpresa() {
 
     const groupedPages = useMemo(() => {
         const groups = {};
-        GROUPS.forEach(g => { groups[g] = []; });
+        const categories = localSidebarGroups.length > 0 ? localSidebarGroups : GROUPS;
+        categories.forEach(g => { groups[g] = []; });
         ALL_PAGES.forEach(p => {
-            if (groups[p.group]) groups[p.group].push(p);
+            const currentGroup = localPageGroups[p.to] || p.group;
+            if (groups[currentGroup]) groups[currentGroup].push(p);
             else {
                 if(!groups['Otros']) groups['Otros'] = [];
                 groups['Otros'].push(p);
             }
         });
         return groups;
-    }, []);
+    }, [localSidebarGroups, localPageGroups]);
 
     if (!hasPermission) return null; // Fallback or restricted view
 
@@ -239,6 +268,12 @@ export default function PermisosEmpresa() {
                     style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'usuarios' ? '2px solid var(--accent)' : '2px solid transparent', padding: '12px 20px', color: activeTab === 'usuarios' ? 'var(--text)' : 'var(--text-muted)', fontWeight: activeTab === 'usuarios' ? 700 : 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                 >
                     <Users size={16} /> Roles y Usuarios
+                </button>
+                <button 
+                    onClick={() => setActiveTab('categorias')}
+                    style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'categorias' ? '2px solid var(--accent)' : '2px solid transparent', padding: '12px 20px', color: activeTab === 'categorias' ? 'var(--text)' : 'var(--text-muted)', fontWeight: activeTab === 'categorias' ? 700 : 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                >
+                    <Layers size={16} /> Categorías Sidebar
                 </button>
             </div>
 
@@ -313,6 +348,23 @@ export default function PermisosEmpresa() {
                                                                 })}
                                                                 {rolesDinamicos.length === 0 && <span className="muted" style={{fontSize:'0.8rem'}}>No hay roles creados.</span>}
                                                             </div>
+                                                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed var(--border)' }}>
+                                                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>Categoría del Sidebar</label>
+                                                                <select 
+                                                                    className="input premium-input"
+                                                                    style={{ width: '100%', fontSize: '0.8rem', height: '32px', padding: '0 8px', cursor: isEnabled ? 'pointer' : 'not-allowed' }}
+                                                                    value={localPageGroups[page.to] || page.group}
+                                                                    disabled={!isEnabled}
+                                                                    onChange={e => {
+                                                                        setLocalPageGroups(prev => ({ ...prev, [page.to]: e.target.value }));
+                                                                        setDirty(true);
+                                                                    }}
+                                                                >
+                                                                    {localSidebarGroups.map(grp => (
+                                                                        <option key={grp} value={grp}>{grp}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
                                                             {!isEnabled && <div style={{ position: 'absolute', inset: 0, zIndex: 5, cursor: 'not-allowed' }} title="Habilita el módulo primero"></div>}
                                                         </div>
                                                     </div>
@@ -379,6 +431,152 @@ export default function PermisosEmpresa() {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* TAB: CATEGORÍAS */}
+                    {activeTab === 'categorias' && (
+                        <div className="categorias-management-grid" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            <div style={{ background: 'var(--bg-elevated)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><Layers size={18} /> Gestionar Categorías del Sidebar</h3>
+                                <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>Agregá, renombrá, reordená o eliminá las secciones que agrupan los accesos en el menú lateral.</p>
+                                
+                                <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '600px' }}>
+                                    {localSidebarGroups.map((groupName, index) => (
+                                        <div key={groupName} className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                                                <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{groupName}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                {/* Reordenar */}
+                                                <button 
+                                                    className="btn-secundario" 
+                                                    style={{ padding: '6px', minWidth: 'auto' }} 
+                                                    disabled={index === 0}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updated = [...localSidebarGroups];
+                                                        const temp = updated[index];
+                                                        updated[index] = updated[index - 1];
+                                                        updated[index - 1] = temp;
+                                                        setLocalSidebarGroups(updated);
+                                                        setDirty(true);
+                                                    }}
+                                                    title="Mover arriba"
+                                                >
+                                                    <ChevronDown size={14} style={{ transform: 'rotate(180deg)' }} />
+                                                </button>
+                                                <button 
+                                                    className="btn-secundario" 
+                                                    style={{ padding: '6px', minWidth: 'auto' }} 
+                                                    disabled={index === localSidebarGroups.length - 1}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updated = [...localSidebarGroups];
+                                                        const temp = updated[index];
+                                                        updated[index] = updated[index + 1];
+                                                        updated[index + 1] = temp;
+                                                        setLocalSidebarGroups(updated);
+                                                        setDirty(true);
+                                                    }}
+                                                    title="Mover abajo"
+                                                >
+                                                    <ChevronDown size={14} />
+                                                </button>
+
+                                                {/* Renombrar */}
+                                                <button 
+                                                    className="btn-secundario" 
+                                                    style={{ padding: '6px', minWidth: 'auto' }}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newName = prompt('Ingresá el nuevo nombre para la categoría:', groupName);
+                                                        if (newName && newName.trim() && newName.trim() !== groupName) {
+                                                            const trimName = newName.trim();
+                                                            setLocalSidebarGroups(prev => prev.map(g => g === groupName ? trimName : g));
+                                                            setLocalPageGroups(prev => {
+                                                                const updated = { ...prev };
+                                                                Object.keys(updated).forEach(k => {
+                                                                    if (updated[k] === groupName) {
+                                                                        updated[k] = trimName;
+                                                                    }
+                                                                });
+                                                                return updated;
+                                                            });
+                                                            setDirty(true);
+                                                        }
+                                                    }}
+                                                    title="Renombrar"
+                                                >
+                                                    <Edit2 size={14} />
+                                                </button>
+
+                                                {/* Eliminar */}
+                                                <button 
+                                                    className="btn-secundario danger-hover" 
+                                                    style={{ padding: '6px', minWidth: 'auto' }}
+                                                    disabled={localSidebarGroups.length <= 1}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (confirm(`¿Estás seguro de eliminar la categoría "${groupName}"? Las páginas en esta categoría volverán a su grupo predeterminado.`)) {
+                                                            setLocalSidebarGroups(prev => prev.filter(g => g !== groupName));
+                                                            setLocalPageGroups(prev => {
+                                                                const updated = { ...prev };
+                                                                Object.keys(updated).forEach(k => {
+                                                                    if (updated[k] === groupName) {
+                                                                        delete updated[k];
+                                                                    }
+                                                                });
+                                                                return updated;
+                                                            });
+                                                            setDirty(true);
+                                                        }
+                                                    }}
+                                                    title="Eliminar"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{ marginTop: '24px', display: 'flex', gap: '12px', maxWidth: '500px' }}>
+                                    <input 
+                                        type="text" 
+                                        id="new-category-input"
+                                        className="input premium-input" 
+                                        placeholder="Nueva categoría..." 
+                                        style={{ flex: 1, height: '40px' }} 
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                const val = e.currentTarget.value.trim();
+                                                if (val && !localSidebarGroups.includes(val)) {
+                                                    setLocalSidebarGroups(prev => [...prev, val]);
+                                                    e.currentTarget.value = '';
+                                                    setDirty(true);
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <button 
+                                        className="btn-primario" 
+                                        style={{ height: '40px', padding: '0 16px' }}
+                                        type="button"
+                                        onClick={() => {
+                                            const input = document.getElementById('new-category-input');
+                                            const val = input?.value.trim();
+                                            if (val && !localSidebarGroups.includes(val)) {
+                                                setLocalSidebarGroups(prev => [...prev, val]);
+                                                input.value = '';
+                                                setDirty(true);
+                                            }
+                                        }}
+                                    >
+                                        <Plus size={16} style={{ marginRight: 6 }} /> Agregar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -457,7 +655,7 @@ export default function PermisosEmpresa() {
 
             {/* Sticky Bottom Bar for Save Modulos */}
             <AnimatePresence>
-                {dirty && activeTab === 'modulos' && (
+                {dirty && (activeTab === 'modulos' || activeTab === 'categorias') && (
                     <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="sticky-save-bar">
                         <div className="save-bar-content glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderRadius: '16px', border: '1px solid var(--accent)', boxShadow: '0 20px 40px rgba(124, 58, 237, 0.2)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
