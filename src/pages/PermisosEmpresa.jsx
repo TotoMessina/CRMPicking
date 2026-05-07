@@ -15,9 +15,12 @@ export default function PermisosEmpresa() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
-    const [activeTab, setActiveTab] = useState('modulos'); // 'modulos' | 'usuarios' | 'categorias'
+    const [activeTab, setActiveTab] = useState('modulos'); // 'modulos' | 'usuarios' | 'categorias' | 'campos'
     const [localSidebarGroups, setLocalSidebarGroups] = useState([]);
     const [localPageGroups, setLocalPageGroups] = useState({});
+    const [localCustomFields, setLocalCustomFields] = useState([]);
+    const [localFormLayout, setLocalFormLayout] = useState(null);
+    const [editingFieldKey, setEditingFieldKey] = useState(null);
 
     // Nuevos Estados Dinámicos
     const [rolesDinamicos, setRolesDinamicos] = useState([]);
@@ -101,6 +104,70 @@ export default function PermisosEmpresa() {
             setLocalSidebarGroups(configGroups);
             setLocalPageGroups(configPageGroups);
 
+            // 5. Cargar Configuración de Campos Personalizados
+            const configCustomFields = selectedEmpresa?.config?.customFields || [];
+            setLocalCustomFields(configCustomFields);
+
+            // 6. Cargar Configuración de Layout del Formulario
+            let configFormLayout = selectedEmpresa?.config?.formLayout || null;
+            if (configFormLayout && Array.isArray(configFormLayout)) {
+                configFormLayout = { steps: configFormLayout };
+            }
+            if (!configFormLayout || !configFormLayout.steps || configFormLayout.steps.length === 0) {
+                configFormLayout = {
+                    steps: [
+                        {
+                            id: 1,
+                            title: '1. Datos del Local y Contacto',
+                            fields: [
+                                { key: 'nombre_local', label: 'Nombre del Local', type: 'text', isStandard: true, required: true },
+                                { key: 'direccion', label: 'Dirección', type: 'text', isStandard: true, required: true },
+                                { key: 'nombre', label: 'Nombre del Contacto', type: 'text', isStandard: true, required: true },
+                                { key: 'telefono', label: 'Teléfono', type: 'text', isStandard: true, required: true },
+                                { key: 'mail', label: 'Mail', type: 'email', isStandard: true },
+                                { key: 'cuit', label: 'CUIT', type: 'text', isStandard: true },
+                                { key: 'horarios_atencion', label: 'Horarios de Atención', type: 'text', isStandard: true },
+                                { key: 'estilo_contacto', label: 'Estilo de Contacto', type: 'select', isStandard: true },
+                                { key: 'tipo_contacto', label: 'Tipo de Contacto', type: 'select', isStandard: true },
+                                { key: 'responsable', label: 'Responsable', type: 'select', isStandard: true }
+                            ]
+                        },
+                        {
+                            id: 2,
+                            title: '2. Clasificación del Cliente',
+                            fields: [
+                                { key: 'rubro', label: 'Rubro', type: 'select', isStandard: true, required: true },
+                                { key: 'estado', label: 'Estado', type: 'select', isStandard: true },
+                                { key: 'interes', label: 'Nivel de Interés', type: 'interes_bar', isStandard: true },
+                                { key: 'venta_digital', label: '¿Venta Digital?', type: 'venta_digital', isStandard: true },
+                                { key: 'grupos', label: 'Grupos / Etiquetas', type: 'grupos', isStandard: true },
+                                { key: 'situacion', label: 'Situación', type: 'situacion', isStandard: true }
+                            ]
+                        },
+                        {
+                            id: 3,
+                            title: '3. Agenda y Notas',
+                            fields: [
+                                { key: 'fecha_proximo_contacto', label: 'Próxima Visita', type: 'agenda', isStandard: true },
+                                { key: 'notas', label: 'Notas', type: 'textarea', isStandard: true }
+                            ]
+                        }
+                    ]
+                };
+                // Automatically append any custom fields
+                const configCustomFields = selectedEmpresa?.config?.customFields || [];
+                configCustomFields.forEach(cf => {
+                    if (!configFormLayout.steps[0].fields.some(f => f.key === cf.key)) {
+                        configFormLayout.steps[0].fields.push({ key: cf.key, label: cf.label, type: cf.type, isStandard: false });
+                    }
+                });
+            } else {
+                configFormLayout.steps.forEach((s, idx) => {
+                    if (!s.id) s.id = idx + 1;
+                });
+            }
+            setLocalFormLayout(configFormLayout);
+
         } catch (error) {
             toast.error("Error al sincronizar datos");
         } finally {
@@ -137,7 +204,9 @@ export default function PermisosEmpresa() {
         const updatedConfig = {
             ...(selectedEmpresa.config || {}),
             sidebarGroups: localSidebarGroups,
-            pageGroups: localPageGroups
+            pageGroups: localPageGroups,
+            customFields: localCustomFields,
+            formLayout: localFormLayout
         };
 
         const { error: configError } = await supabase.rpc('update_empresa_config', {
@@ -225,6 +294,61 @@ export default function PermisosEmpresa() {
 
     return (
         <div className="container" style={{ padding: '20px', paddingBottom: '90px' }}>
+            <style>{`
+                /* Responsive Grids */
+                .permisos-cards-grid {
+                    display: grid !important;
+                    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)) !important;
+                    gap: 16px !important;
+                }
+                
+                /* Custom Fields row responsiveness */
+                .custom-field-row {
+                    display: grid !important;
+                    grid-template-columns: 1fr !important;
+                    gap: 16px !important;
+                    align-items: end !important;
+                    padding: 16px !important;
+                    border-radius: 12px !important;
+                    border: 1px solid var(--border) !important;
+                }
+                
+                @media (min-width: 768px) {
+                    .custom-field-row {
+                        grid-template-columns: 1fr 160px 1fr auto !important;
+                    }
+                }
+
+                /* Responsive header */
+                @media (max-width: 600px) {
+                    .permisos-header {
+                        flex-direction: column !important;
+                        align-items: stretch !important;
+                    }
+                    .actions-section {
+                        align-items: stretch !important;
+                    }
+                    .select-empresa-wrapper {
+                        max-width: 100% !important;
+                    }
+                }
+
+                /* Tables responsiveness */
+                .table-container {
+                    width: 100% !important;
+                    overflow-x: auto !important;
+                    -webkit-overflow-scrolling: touch !important;
+                }
+
+                /* Tab bar responsive scroll indicator */
+                .tabs-bar::-webkit-scrollbar {
+                    height: 4px;
+                }
+                .tabs-bar::-webkit-scrollbar-thumb {
+                    background: var(--border);
+                    border-radius: 4px;
+                }
+            `}</style>
             {/* Cabecera Principal */}
             <div className="permisos-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '24px' }}>
                 <div className="title-section" style={{ flex: '1 1 300px' }}>
@@ -256,7 +380,7 @@ export default function PermisosEmpresa() {
             </div>
 
             {/* Pestañas de Navegación */}
-            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', marginBottom: '24px', overflowX: 'auto' }}>
+            <div className="tabs-bar" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', marginBottom: '24px', overflowX: 'auto' }}>
                 <button 
                     onClick={() => setActiveTab('modulos')}
                     style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'modulos' ? '2px solid var(--accent)' : '2px solid transparent', padding: '12px 20px', color: activeTab === 'modulos' ? 'var(--text)' : 'var(--text-muted)', fontWeight: activeTab === 'modulos' ? 700 : 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
@@ -274,6 +398,12 @@ export default function PermisosEmpresa() {
                     style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'categorias' ? '2px solid var(--accent)' : '2px solid transparent', padding: '12px 20px', color: activeTab === 'categorias' ? 'var(--text)' : 'var(--text-muted)', fontWeight: activeTab === 'categorias' ? 700 : 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                 >
                     <Layers size={16} /> Categorías Sidebar
+                </button>
+                <button 
+                    onClick={() => setActiveTab('campos')}
+                    style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'campos' ? '2px solid var(--accent)' : '2px solid transparent', padding: '12px 20px', color: activeTab === 'campos' ? 'var(--text)' : 'var(--text-muted)', fontWeight: activeTab === 'campos' ? 700 : 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                >
+                    <Plus size={16} /> Campos de Clientes
                 </button>
             </div>
 
@@ -580,6 +710,651 @@ export default function PermisosEmpresa() {
                             </div>
                         </div>
                     )}
+
+                    {/* TAB: CAMPOS PERSONALIZADOS */}
+                    {activeTab === 'campos' && (
+                        <div className="custom-fields-management" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            <div style={{ background: 'var(--bg-elevated)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><Edit2 size={18} /> Campos Personalizados de Clientes</h3>
+                                <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>Definí nuevos campos a nivel de empresa para los formularios y fichas de clientes.</p>
+                                
+                                <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {localCustomFields.length === 0 ? (
+                                        <div style={{ padding: '24px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: '12px' }} className="muted">
+                                            No hay campos personalizados creados. Agregá uno abajo.
+                                        </div>
+                                    ) : (
+                                        localCustomFields.map((cf, index) => (
+                                            <div key={cf.key} className="glass-card custom-field-row">
+                                                {/* Etiqueta */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Etiqueta del Campo</label>
+                                                    <input 
+                                                        type="text" 
+                                                        className="input premium-input" 
+                                                        style={{ height: '38px', fontSize: '0.9rem' }}
+                                                        value={cf.label} 
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setLocalCustomFields(prev => prev.map((f, i) => i === index ? { ...f, label: val } : f));
+                                                            setDirty(true);
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {/* Tipo de Entrada */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Tipo</label>
+                                                    <select 
+                                                        className="input premium-input" 
+                                                        style={{ height: '38px', fontSize: '0.9rem', cursor: 'pointer' }}
+                                                        value={cf.type} 
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setLocalCustomFields(prev => prev.map((f, i) => i === index ? { ...f, type: val, options: val === 'select' ? (f.options || []) : undefined } : f));
+                                                            setDirty(true);
+                                                        }}
+                                                    >
+                                                        <option value="text">Texto Corto</option>
+                                                        <option value="number">Número</option>
+                                                        <option value="boolean">Verdadero/Falso (Check)</option>
+                                                        <option value="select">Opciones de Selección</option>
+                                                    </select>
+                                                </div>
+
+                                                {/* Placeholder u Opciones */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    {cf.type === 'select' ? (
+                                                        <>
+                                                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Opciones (separadas por coma)</label>
+                                                            <input 
+                                                                type="text" 
+                                                                className="input premium-input" 
+                                                                style={{ height: '38px', fontSize: '0.9rem' }}
+                                                                placeholder="Ej: Opción A, Opción B"
+                                                                value={cf.options ? cf.options.join(', ') : ''} 
+                                                                onChange={e => {
+                                                                    const val = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                                                    setLocalCustomFields(prev => prev.map((f, i) => i === index ? { ...f, options: val } : f));
+                                                                    setDirty(true);
+                                                                }}
+                                                            />
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Marcador (Placeholder)</label>
+                                                            <input 
+                                                                type="text" 
+                                                                className="input premium-input" 
+                                                                style={{ height: '38px', fontSize: '0.9rem' }}
+                                                                placeholder="Ej: Completar..."
+                                                                value={cf.placeholder || ''} 
+                                                                onChange={e => {
+                                                                    const val = e.target.value;
+                                                                    setLocalCustomFields(prev => prev.map((f, i) => i === index ? { ...f, placeholder: val } : f));
+                                                                    setDirty(true);
+                                                                }}
+                                                            />
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                {/* Acciones */}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '18px' }}>
+                                                    {/* Reordenar */}
+                                                    <button 
+                                                        className="btn-secundario" 
+                                                        style={{ padding: '6px', minWidth: 'auto', height: '38px' }} 
+                                                        disabled={index === 0}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updated = [...localCustomFields];
+                                                            const temp = updated[index];
+                                                            updated[index] = updated[index - 1];
+                                                            updated[index - 1] = temp;
+                                                            setLocalCustomFields(updated);
+                                                            setDirty(true);
+                                                        }}
+                                                        title="Mover arriba"
+                                                    >
+                                                        <ChevronDown size={14} style={{ transform: 'rotate(180deg)' }} />
+                                                    </button>
+                                                    <button 
+                                                        className="btn-secundario" 
+                                                        style={{ padding: '6px', minWidth: 'auto', height: '38px' }} 
+                                                        disabled={index === localCustomFields.length - 1}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updated = [...localCustomFields];
+                                                            const temp = updated[index];
+                                                            updated[index] = updated[index + 1];
+                                                            updated[index + 1] = temp;
+                                                            setLocalCustomFields(updated);
+                                                            setDirty(true);
+                                                        }}
+                                                        title="Mover abajo"
+                                                    >
+                                                        <ChevronDown size={14} />
+                                                    </button>
+
+                                                    {/* Eliminar */}
+                                                    <button 
+                                                        className="btn-secundario danger-hover" 
+                                                        style={{ padding: '6px', minWidth: 'auto', height: '38px' }}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (confirm(`¿Estás seguro de eliminar el campo "${cf.label}"?`)) {
+                                                                setLocalCustomFields(prev => prev.filter((_, i) => i !== index));
+                                                                setDirty(true);
+                                                            }
+                                                        }}
+                                                        title="Eliminar"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <div style={{ marginTop: '24px', display: 'flex', gap: '12px', maxWidth: '500px' }}>
+                                    <input 
+                                        type="text" 
+                                        id="new-field-label"
+                                        className="input premium-input" 
+                                        placeholder="Nueva etiqueta (Ej: Volumen de Compra)..." 
+                                        style={{ flex: 1, height: '40px' }} 
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                const val = e.currentTarget.value.trim();
+                                                if (val) {
+                                                    const key = val.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+                                                    if (!localCustomFields.some(f => f.key === key)) {
+                                                        setLocalCustomFields(prev => [...prev, { key, label: val, type: 'text', placeholder: '' }]);
+                                                        setLocalFormLayout(prev => {
+                                                            if (!prev || !prev.steps) return prev;
+                                                            const updated = [...prev.steps];
+                                                            if (!updated[0].fields.some(f => f.key === key)) {
+                                                                updated[0].fields.push({ key, label: val, type: 'text', isStandard: false });
+                                                            }
+                                                            return { ...prev, steps: updated };
+                                                        });
+                                                        e.currentTarget.value = '';
+                                                        setDirty(true);
+                                                    } else {
+                                                        toast.error('Ya existe un campo similar.');
+                                                    }
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <button 
+                                        className="btn-primario" 
+                                        style={{ height: '40px', padding: '0 16px' }}
+                                        type="button"
+                                        onClick={() => {
+                                            const input = document.getElementById('new-field-label');
+                                            const val = input?.value.trim();
+                                            if (val) {
+                                                const key = val.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+                                                if (!localCustomFields.some(f => f.key === key)) {
+                                                    setLocalCustomFields(prev => [...prev, { key, label: val, type: 'text', placeholder: '' }]);
+                                                    setLocalFormLayout(prev => {
+                                                        if (!prev || !prev.steps) return prev;
+                                                        const updated = [...prev.steps];
+                                                        if (!updated[0].fields.some(f => f.key === key)) {
+                                                            updated[0].fields.push({ key, label: val, type: 'text', isStandard: false });
+                                                        }
+                                                        return { ...prev, steps: updated };
+                                                    });
+                                                    if (input) input.value = '';
+                                                    setDirty(true);
+                                                } else {
+                                                    toast.error('Ya existe un campo similar.');
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <Plus size={16} style={{ marginRight: 6 }} /> Agregar Campo
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ── DISEÑADOR DE PASOS DEL FORMULARIO (WIZARD) ── */}
+                            <div style={{ background: 'var(--bg-elevated)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: 8 }}><Layers size={18} /> Diseñador de Pasos del Formulario (Wizard)</h3>
+                                    {localFormLayout && (
+                                        <button 
+                                            className="btn-secundario danger-hover" 
+                                            style={{ padding: '6px 12px', fontSize: '0.8rem', height: '32px' }}
+                                            type="button"
+                                            onClick={() => {
+                                                if (confirm('¿Restablecer la distribución del formulario por defecto? Perderás las pantallas y configuraciones personalizadas.')) {
+                                                    setLocalFormLayout(null);
+                                                    setDirty(true);
+                                                }
+                                            }}
+                                        >
+                                            Restablecer por defecto
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="muted" style={{ margin: 0, fontSize: '0.85rem', marginBottom: '20px' }}>
+                                    Configurá la cantidad de pantallas (pasos), la distribución de los campos y la obligatoriedad de los datos del cliente.
+                                </p>
+
+                                {!localFormLayout || !localFormLayout.steps ? (
+                                    <div style={{ padding: '32px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: '12px', background: 'rgba(var(--accent-rgb), 0.02)' }}>
+                                        <p className="muted" style={{ marginBottom: '16px', fontSize: '0.95rem' }}>El formulario tiene actualmente la distribución de 3 pasos estándar por defecto.</p>
+                                        <button 
+                                            className="btn-primario" 
+                                            type="button"
+                                            onClick={() => {
+                                                const defaultLayout = {
+                                                    steps: [
+                                                        {
+                                                            id: 1,
+                                                            title: '1. Datos del Local y Contacto',
+                                                            fields: [
+                                                                { key: 'nombre_local', label: 'Nombre del Local', type: 'text', isStandard: true, required: true },
+                                                                { key: 'direccion', label: 'Dirección', type: 'text', isStandard: true, required: true },
+                                                                { key: 'nombre', label: 'Nombre del Contacto', type: 'text', isStandard: true, required: true },
+                                                                { key: 'telefono', label: 'Teléfono', type: 'text', isStandard: true, required: true },
+                                                                { key: 'mail', label: 'Mail', type: 'email', isStandard: true },
+                                                                { key: 'cuit', label: 'CUIT', type: 'text', isStandard: true },
+                                                                { key: 'horarios_atencion', label: 'Horarios de Atención', type: 'text', isStandard: true },
+                                                                { key: 'estilo_contacto', label: 'Estilo de Contacto', type: 'select', isStandard: true },
+                                                                { key: 'tipo_contacto', label: 'Tipo de Contacto', type: 'select', isStandard: true },
+                                                                { key: 'responsable', label: 'Responsable', type: 'select', isStandard: true }
+                                                            ]
+                                                        },
+                                                        {
+                                                            id: 2,
+                                                            title: '2. Clasificación del Cliente',
+                                                            fields: [
+                                                                { key: 'rubro', label: 'Rubro', type: 'select', isStandard: true, required: true },
+                                                                { key: 'estado', label: 'Estado', type: 'select', isStandard: true },
+                                                                { key: 'interes', label: 'Nivel de Interés', type: 'interes_bar', isStandard: true },
+                                                                { key: 'venta_digital', label: '¿Venta Digital?', type: 'venta_digital', isStandard: true },
+                                                                { key: 'grupos', label: 'Grupos / Etiquetas', type: 'grupos', isStandard: true },
+                                                                { key: 'situacion', label: 'Situación', type: 'situacion', isStandard: true }
+                                                            ]
+                                                        },
+                                                        {
+                                                            id: 3,
+                                                            title: '3. Agenda y Notas',
+                                                            fields: [
+                                                                { key: 'fecha_proximo_contacto', label: 'Próxima Visita', type: 'agenda', isStandard: true },
+                                                                { key: 'notas', label: 'Notas', type: 'textarea', isStandard: true }
+                                                            ]
+                                                        }
+                                                    ]
+                                                };
+                                                // Agregar campos personalizados que existan hoy
+                                                localCustomFields.forEach(cf => {
+                                                    defaultLayout.steps[0].fields.push({ key: cf.key, label: cf.label, type: cf.type, isStandard: false });
+                                                });
+                                                setLocalFormLayout(defaultLayout);
+                                                setDirty(true);
+                                                toast.success('Distribución personalizada inicializada con éxito.');
+                                            }}
+                                        >
+                                            <Plus size={16} style={{ marginRight: 6 }} /> Personalizar Distribución de Pantallas
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                        {localFormLayout.steps.map((step, stepIdx) => (
+                                            <div key={stepIdx} className="glass-card" style={{ padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, background: 'var(--accent)', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            {stepIdx + 1}
+                                                        </span>
+                                                        <input 
+                                                            type="text" 
+                                                            className="input premium-input" 
+                                                            style={{ height: '36px', fontSize: '0.95rem', fontWeight: 600, maxWidth: '300px' }}
+                                                            value={step.title} 
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setLocalFormLayout(prev => ({
+                                                                    ...prev,
+                                                                    steps: prev.steps.map((s, idx) => idx === stepIdx ? { ...s, title: val } : s)
+                                                                }));
+                                                                setDirty(true);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        className="btn-secundario danger-hover" 
+                                                        style={{ padding: '4px 10px', fontSize: '0.78rem', height: '28px' }}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (localFormLayout.steps.length <= 1) {
+                                                                toast.error('El formulario debe tener al menos una pantalla.');
+                                                                return;
+                                                            }
+                                                            if (confirm('¿Eliminar esta pantalla? Todos sus campos se moverán a la primera pantalla.')) {
+                                                                const fieldsToMove = step.fields || [];
+                                                                const updated = localFormLayout.steps.filter((_, idx) => idx !== stepIdx);
+                                                                updated[0].fields = [...(updated[0].fields || []), ...fieldsToMove];
+                                                                updated.forEach((s, idx) => { s.id = idx + 1; });
+                                                                setLocalFormLayout({ steps: updated });
+                                                                setDirty(true);
+                                                            }
+                                                        }}
+                                                    >
+                                                        Eliminar Pantalla
+                                                    </button>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                    {(step.fields || []).length === 0 ? (
+                                                        <p className="muted" style={{ margin: 0, fontSize: '0.8rem', padding: '12px', border: '1px dashed var(--border)', borderRadius: '8px', textAlign: 'center' }}>
+                                                            No hay campos en esta pantalla. Arrastrá o asigná campos disponibles.
+                                                        </p>
+                                                    ) : (
+                                                        step.fields.map((cf, cfIdx) => {
+                                                            const isEditing = editingFieldKey === cf.key;
+                                                            return (
+                                                                <div key={cf.key} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{cf.label}</span>
+                                                                            <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: cf.isStandard ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)', color: cf.isStandard ? 'var(--accent)' : '#10b981' }}>
+                                                                                {cf.isStandard ? 'Estándar' : 'Personalizado'}
+                                                                            </span>
+                                                                        </div>
+
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                                            <button 
+                                                                                style={{ background: 'none', border: 'none', color: isEditing ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 600 }}
+                                                                                type="button"
+                                                                                onClick={() => setEditingFieldKey(isEditing ? null : cf.key)}
+                                                                            >
+                                                                                <Edit2 size={13} /> {isEditing ? 'Cerrar' : 'Configurar'}
+                                                                            </button>
+
+                                                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', cursor: 'pointer', userSelect: 'none' }}>
+                                                                                <input 
+                                                                                    type="checkbox" 
+                                                                                    checked={Boolean(cf.required)} 
+                                                                                    onChange={e => {
+                                                                                        const checked = e.target.checked;
+                                                                                        setLocalFormLayout(prev => ({
+                                                                                            ...prev,
+                                                                                            steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
+                                                                                                ...s,
+                                                                                                fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, required: checked } : f)
+                                                                                            } : s)
+                                                                                        }));
+                                                                                        setDirty(true);
+                                                                                    }}
+                                                                                    style={{ width: '15px', height: '15px', accentColor: 'var(--accent)' }}
+                                                                                />
+                                                                                Obligatorio
+                                                                            </label>
+
+                                                                            <select 
+                                                                                style={{ height: '28px', fontSize: '0.8rem', padding: '0 8px', borderRadius: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', cursor: 'pointer' }}
+                                                                                value={stepIdx}
+                                                                                onChange={e => {
+                                                                                    const targetIdx = Number(e.target.value);
+                                                                                    if (targetIdx === stepIdx) return;
+                                                                                    setLocalFormLayout(prev => {
+                                                                                        const updated = [...prev.steps];
+                                                                                        const [movedField] = updated[stepIdx].fields.splice(cfIdx, 1);
+                                                                                        updated[targetIdx].fields.push(movedField);
+                                                                                        return { ...prev, steps: updated };
+                                                                                    });
+                                                                                    setDirty(true);
+                                                                                }}
+                                                                            >
+                                                                                {localFormLayout.steps.map((_, idx) => (
+                                                                                    <option key={idx} value={idx}>Mover a paso {idx + 1}</option>
+                                                                                ))}
+                                                                            </select>
+
+                                                                            <button 
+                                                                                style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    setLocalFormLayout(prev => ({
+                                                                                        ...prev,
+                                                                                        steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
+                                                                                            ...s,
+                                                                                            fields: s.fields.filter((_, fIdx) => fIdx !== cfIdx)
+                                                                                        } : s)
+                                                                                    }));
+                                                                                    setDirty(true);
+                                                                                }}
+                                                                                title="Quitar del formulario"
+                                                                            >
+                                                                                <X size={14} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {isEditing && (
+                                                                        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Etiqueta de Pregunta / Campo</label>
+                                                                                <input 
+                                                                                    type="text"
+                                                                                    className="input premium-input"
+                                                                                    style={{ height: '32px', fontSize: '0.85rem' }}
+                                                                                    value={cf.label || ''}
+                                                                                    onChange={e => {
+                                                                                        const val = e.target.value;
+                                                                                        setLocalFormLayout(prev => ({
+                                                                                            ...prev,
+                                                                                            steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
+                                                                                                ...s,
+                                                                                                fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, label: val } : f)
+                                                                                            } : s)
+                                                                                        }));
+                                                                                        setDirty(true);
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+
+                                                                                                                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Tipo de Campo</label>
+                                                                                 <select 
+                                                                                     className="input premium-input"
+                                                                                     style={{ height: '32px', fontSize: '0.85rem', cursor: 'pointer' }}
+                                                                                     value={cf.type || 'text'}
+                                                                                     onChange={e => {
+                                                                                         const val = e.target.value;
+                                                                                         setLocalFormLayout(prev => ({
+                                                                                             ...prev,
+                                                                                             steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
+                                                                                                 ...s,
+                                                                                                 fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, type: val } : f)
+                                                                                             } : s)
+                                                                                         }));
+                                                                                         setDirty(true);
+                                                                                     }}
+                                                                                 >
+                                                                                     <option value="text">Texto Corto</option>
+                                                                                     <option value="number">Número</option>
+                                                                                     <option value="boolean">Verdadero/Falso (Check)</option>
+                                                                                     <option value="select">Lista Desplegable (Dropdown)</option>
+                                                                                     <option value="groups">Selección Múltiple (Checkboxes/Botones)</option>
+                                                                                     <option value="textarea">Texto Largo (Textarea)</option>
+                                                                                     <option value="interes_bar">Barra de Interés</option>
+                                                                                     <option value="venta_digital">Venta Digital (Sí/No + Cuál)</option>
+                                                                                     <option value="agenda">Calendario de Próxima Visita</option>
+                                                                                 </select>
+                                                                             </div>
+
+                                                                             {(cf.type === 'select' || cf.type === 'groups') && (
+                                                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                                     <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Origen de Datos</label>
+                                                                                     <select 
+                                                                                         className="input premium-input"
+                                                                                         style={{ height: '32px', fontSize: '0.85rem', cursor: 'pointer' }}
+                                                                                         value={cf.source || 'custom'}
+                                                                                         onChange={e => {
+                                                                                             const val = e.target.value;
+                                                                                             setLocalFormLayout(prev => ({
+                                                                                                 ...prev,
+                                                                                                 steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
+                                                                                                     ...s,
+                                                                                                     fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, source: val === 'custom' ? undefined : val } : f)
+                                                                                                 } : s)
+                                                                                             }));
+                                                                                             setDirty(true);
+                                                                                         }}
+                                                                                     >
+                                                                                         <option value="custom">Opciones Personalizadas (Escritas a mano)</option>
+                                                                                         <option value="responsables">Responsables (Usuarios Activos)</option>
+                                                                                         <option value="rubros">Rubros creados en la empresa</option>
+                                                                                         <option value="estados">Estados de prospectos</option>
+                                                                                         <option value="tipos_contacto">Tipos de Contacto (Fijos)</option>
+                                                                                         <option value="estilos_contacto">Estilos de Contacto (Fijos)</option>
+                                                                                     </select>
+                                                                                 </div>
+                                                                             )}
+
+                                                                             {(cf.type === 'select' || cf.type === 'groups') && (!cf.source || cf.source === 'custom') ? (
+                                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Opciones Personalizadas (separadas por coma)</label>
+                                                                                    <input 
+                                                                                        type="text"
+                                                                                        className="input premium-input"
+                                                                                        style={{ height: '32px', fontSize: '0.85rem' }}
+                                                                                        placeholder="Ej: Opción A, Opción B"
+                                                                                        value={cf.options ? cf.options.join(', ') : ''}
+                                                                                        onChange={e => {
+                                                                                            const val = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                                                                            setLocalFormLayout(prev => ({
+                                                                                                ...prev,
+                                                                                                steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
+                                                                                                    ...s,
+                                                                                                    fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, options: val } : f)
+                                                                                                } : s)
+                                                                                            }));
+                                                                                            setDirty(true);
+                                                                                        }}
+                                                                                    />
+                                                                                </div>
+                                                                            ) : (cf.type !== 'select' && cf.type !== 'groups' && cf.type !== 'boolean' && cf.type !== 'interes_bar' && cf.type !== 'venta_digital') && (
+                                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Marcador (Placeholder)</label>
+                                                                                    <input 
+                                                                                        type="text"
+                                                                                        className="input premium-input"
+                                                                                        style={{ height: '32px', fontSize: '0.85rem' }}
+                                                                                        placeholder="Ej: Completar..."
+                                                                                        value={cf.placeholder || ''}
+                                                                                        onChange={e => {
+                                                                                            const val = e.target.value;
+                                                                                            setLocalFormLayout(prev => ({
+                                                                                                ...prev,
+                                                                                                steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
+                                                                                                    ...s,
+                                                                                                    fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, placeholder: val } : f)
+                                                                                                } : s)
+                                                                                            }));
+                                                                                            setDirty(true);
+                                                                                        }}
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        <div style={{ display: 'flex', gap: '12px' }}>
+                                            <button 
+                                                className="btn-secundario" 
+                                                style={{ height: '36px', padding: '0 16px' }}
+                                                type="button"
+                                                onClick={() => {
+                                                    setLocalFormLayout(prev => ({
+                                                        ...prev,
+                                                        steps: [...prev.steps, { id: prev.steps.length + 1, title: `Paso ${prev.steps.length + 1}`, fields: [] }]
+                                                    }));
+                                                    setDirty(true);
+                                                }}
+                                            >
+                                                <Plus size={14} style={{ marginRight: 6 }} /> Agregar Nueva Pantalla
+                                            </button>
+                                        </div>
+
+                                        {/* Campos No Colocados (Disponibles) */}
+                                        {(() => {
+                                            const placedKeys = new Set(localFormLayout.steps.flatMap(s => s.fields.map(f => f.key)));
+                                            const availableFields = [
+                                                { key: 'nombre_local', label: 'Nombre del Local', type: 'text', isStandard: true },
+                                                { key: 'direccion', label: 'Dirección', type: 'text', isStandard: true },
+                                                { key: 'nombre', label: 'Nombre del Contacto', type: 'text', isStandard: true },
+                                                { key: 'telefono', label: 'Teléfono', type: 'text', isStandard: true },
+                                                { key: 'mail', label: 'Mail', type: 'email', isStandard: true },
+                                                { key: 'cuit', label: 'CUIT', type: 'text', isStandard: true },
+                                                { key: 'horarios_atencion', label: 'Horarios de Atención', type: 'text', isStandard: true },
+                                                { key: 'estilo_contacto', label: 'Estilo de Contacto', type: 'select', isStandard: true },
+                                                { key: 'tipo_contacto', label: 'Tipo de Contacto', type: 'select', isStandard: true },
+                                                { key: 'responsable', label: 'Responsable', type: 'select', isStandard: true },
+                                                { key: 'rubro', label: 'Rubro', type: 'select', isStandard: true },
+                                                { key: 'estado', label: 'Estado', type: 'select', isStandard: true },
+                                                { key: 'interes', label: 'Nivel de Interés', type: 'interes_bar', isStandard: true },
+                                                { key: 'venta_digital', label: '¿Venta Digital?', type: 'venta_digital', isStandard: true },
+                                                { key: 'grupos', label: 'Grupos / Etiquetas', type: 'grupos', isStandard: true },
+                                                { key: 'situacion', label: 'Situación', type: 'situacion', isStandard: true },
+                                                { key: 'fecha_proximo_contacto', label: 'Próxima Visita (Fecha)', type: 'agenda', isStandard: true },
+                                                { key: 'notas', label: 'Notas', type: 'textarea', isStandard: true },
+                                                ...localCustomFields.map(f => ({ key: f.key, label: f.label, type: f.type, isStandard: false }))
+                                            ].filter(f => !placedKeys.has(f.key));
+
+                                            if (availableFields.length === 0) return null;
+
+                                            return (
+                                                <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(var(--accent-rgb), 0.03)', border: '1px dashed var(--border)', borderRadius: '12px' }}>
+                                                    <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700 }}>📥 Campos Disponibles No Asignados ({availableFields.length})</h4>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                        {availableFields.map(cf => (
+                                                            <div key={cf.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.8rem' }}>
+                                                                <span>{cf.label}</span>
+                                                                <select 
+                                                                    style={{ height: '22px', fontSize: '0.75rem', padding: '0 4px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer' }}
+                                                                    value=""
+                                                                    onChange={e => {
+                                                                        const targetIdx = Number(e.target.value);
+                                                                        setLocalFormLayout(prev => {
+                                                                            const updated = [...prev.steps];
+                                                                            updated[targetIdx].fields.push(cf);
+                                                                            return { ...prev, steps: updated };
+                                                                        });
+                                                                        setDirty(true);
+                                                                    }}
+                                                                >
+                                                                    <option value="" disabled>Añadir a...</option>
+                                                                    {localFormLayout.steps.map((_, idx) => (
+                                                                        <option key={idx} value={idx}>Paso {idx + 1}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -655,7 +1430,7 @@ export default function PermisosEmpresa() {
 
             {/* Sticky Bottom Bar for Save Modulos */}
             <AnimatePresence>
-                {dirty && (activeTab === 'modulos' || activeTab === 'categorias') && (
+                {dirty && (activeTab === 'modulos' || activeTab === 'categorias' || activeTab === 'campos') && (
                     <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="sticky-save-bar">
                         <div className="save-bar-content glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderRadius: '16px', border: '1px solid var(--accent)', boxShadow: '0 20px 40px rgba(124, 58, 237, 0.2)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

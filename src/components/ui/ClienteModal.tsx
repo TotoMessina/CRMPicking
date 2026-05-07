@@ -69,11 +69,46 @@ const FieldError: React.FC<{ msg?: string }> = ({ msg }) => {
     );
 }
 
-// Fields that live on each step (used to auto-navigate to first error)
-const STEP_FIELDS: Record<number, string[]> = {
-    1: ['nombre_local', 'direccion', 'nombre', 'telefono'],
-    2: ['rubro'],
-    3: [],
+// Fallback Form Layout (Backwards Compatibility)
+const DEFAULT_FORM_LAYOUT = {
+    steps: [
+        {
+            id: 1,
+            title: "1. Datos del Local y Contacto",
+            fields: [
+                { key: 'nombre_local', label: 'Nombre del Local', type: 'text', required: true, isStandard: true },
+                { key: 'direccion', label: 'Dirección', type: 'text', required: true, isStandard: true },
+                { key: 'nombre', label: 'Nombre del Contacto', type: 'text', required: true, isStandard: true },
+                { key: 'telefono', label: 'Teléfono', type: 'text', required: true, isStandard: true },
+                { key: 'mail', label: 'Mail', type: 'text', required: false, isStandard: true },
+                { key: 'cuit', label: 'CUIT', type: 'text', required: false, isStandard: true },
+                { key: 'horarios_atencion', label: 'Horarios de Atención', type: 'text', required: false, isStandard: true },
+                { key: 'estilo_contacto', label: 'Estilo de Contacto', type: 'select', required: false, isStandard: true, source: 'estilos_contacto' },
+                { key: 'tipo_contacto', label: 'Tipo de Contacto', type: 'select', required: false, isStandard: true, source: 'tipos_contacto' },
+                { key: 'responsable', label: 'Responsable', type: 'select', required: false, isStandard: true, source: 'responsables' }
+            ]
+        },
+        {
+            id: 2,
+            title: "2. Clasificación del Cliente",
+            fields: [
+                { key: 'rubro', label: 'Rubro', type: 'select', required: true, isStandard: true, source: 'rubros' },
+                { key: 'estado', label: 'Estado', type: 'select', required: false, isStandard: true, source: 'estados' },
+                { key: 'interes', label: 'Interés', type: 'interes_bar', required: false, isStandard: true },
+                { key: 'venta_digital', label: '¿Venta Digital?', type: 'venta_digital', required: false, isStandard: true },
+                { key: 'grupos', label: 'Grupos / Etiquetas', type: 'grupos', required: false, isStandard: true },
+                { key: 'situacion', label: 'Situación', type: 'situacion', required: false, isStandard: true }
+            ]
+        },
+        {
+            id: 3,
+            title: "3. Agenda y Notas",
+            fields: [
+                { key: 'fecha_proximo_contacto', label: 'Próxima Visita', type: 'agenda', required: false, isStandard: true },
+                { key: 'notas', label: 'Notas', type: 'textarea', required: false, isStandard: true }
+            ]
+        }
+    ]
 };
 
 const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
@@ -98,6 +133,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     // Grupos
     const { data: gruposDB = [] } = useGrupos(empresaActiva?.id);
     const [selectedGrupos, setSelectedGrupos] = useState<string[]>([]);
+
+    const layout = empresaActiva?.config?.formLayout || DEFAULT_FORM_LAYOUT;
+    const dynamicStepFields: Record<number, string[]> = {};
+    layout.steps.forEach((s: any) => {
+        dynamicStepFields[s.id] = s.fields.map((f: any) => f.key);
+    });
+    const totalSteps = layout.steps.length;
     const updateGruposMutation = useUpdateClienteGrupos();
 
     const handleClose = () => {
@@ -120,6 +162,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         fecha_proximo_contacto: '', hora_proximo_contacto: '',
         lat: null, lng: null,
         registrar_visita: 'true',
+        metadata: {},
         ...overrides,
     });
 
@@ -307,7 +350,8 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     tipo_contacto: (ecData as any).tipo_contacto || rawClientes.tipo_contacto || 'Visita Presencial',
                     fecha_proximo_contacto: (ecData as any).fecha_proximo_contacto || rawClientes.fecha_proximo_contacto || '',
                     hora_proximo_contacto: (ecData as any).hora_proximo_contacto || rawClientes.hora_proximo_contacto || '',
-                    venta_digital: ((ecData as any).venta_digital || rawClientes.venta_digital) ? 'true' : 'false'
+                    venta_digital: ((ecData as any).venta_digital || rawClientes.venta_digital) ? 'true' : 'false',
+                    metadata: (ecData as any).metadata || {}
                 };
 
                 // Track the initial address to avoid redundant geocoding if it doesn't change
@@ -379,11 +423,16 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     // Validate all fields and return errors object
     const validate = () => {
         const errs: Record<string, string> = {};
-        if (!formData.nombre_local?.trim()) errs.nombre_local = 'El nombre del local es requerido';
-        if (!formData.direccion?.trim()) errs.direccion = 'La dirección es requerida';
-        if (!formData.nombre?.trim()) errs.nombre = 'El nombre del contacto es requerido';
-        if (!formData.telefono?.trim()) errs.telefono = 'El teléfono es requerido';
-        if (!formData.rubro?.trim()) errs.rubro = 'El rubro es requerido';
+        layout.steps.forEach((s: any) => {
+            s.fields.forEach((f: any) => {
+                if (f.required) {
+                    const val = f.isStandard ? formData[f.key] : formData.metadata?.[f.key];
+                    if (typeof val === 'string' ? !val.trim() : (val === undefined || val === null || val === '')) {
+                        errs[f.key] = `El campo "${f.label}" es requerido`;
+                    }
+                }
+            });
+        });
         return errs;
     };
 
@@ -392,8 +441,9 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         const errs = validate();
         if (Object.keys(errs).length > 0) {
             setErrors(errs);
-            for (const [s, fields] of Object.entries(STEP_FIELDS)) {
-                if (fields.some(f => errs[f])) { handleStepChange(Number(s)); break; }
+            for (const s of layout.steps.map((st: any) => st.id)) {
+                const fields = dynamicStepFields[s] || [];
+                if (fields.some(f => errs[f])) { handleStepChange(s); break; }
             }
         } else {
             handleStepChange(step + 1);
@@ -403,7 +453,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const handleFormKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
             e.preventDefault();
-            if (step < 3) handleNextPhase(e);
+            if (step < totalSteps) handleNextPhase(e);
             else handleSubmit(e as any);
         }
     };
@@ -514,6 +564,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     fecha_proximo_contacto: payload.fecha_proximo_contacto,
                     hora_proximo_contacto: payload.hora_proximo_contacto,
                     activador_cierre: payload.activador_cierre,
+                    metadata: formData.metadata || {}
                 };
 
                 // 1. First update company-specific record (stato/situacion - critical)
@@ -594,7 +645,8 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                         tipo_contacto: payload.tipo_contacto,
                         p_fecha_proximo_contacto: payload.fecha_proximo_contacto,
                         p_hora_proximo_contacto: payload.hora_proximo_contacto,
-                        p_creado_por: creadoPor
+                        p_creado_por: creadoPor,
+                        metadata: formData.metadata || {}
                     }
                 });
 
@@ -676,6 +728,301 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         ...extra,
     });
 
+    const activeStepObj = layout.steps.find((st: any) => st.id === step);
+
+    const renderDynamicField = (cf: any) => {
+        const isStandard = cf.isStandard;
+        const val = isStandard ? (formData[cf.key] ?? '') : (formData.metadata?.[cf.key] ?? '');
+        const hasError = errors[cf.key];
+
+        const handleFieldChange = (eVal: any) => {
+            setFormData(prev => {
+                if (isStandard) {
+                    return { ...prev, [cf.key]: eVal };
+                } else {
+                    return {
+                        ...prev,
+                        metadata: {
+                            ...(prev.metadata || {}),
+                            [cf.key]: eVal
+                        }
+                    };
+                }
+            });
+            setIsDirty(true);
+            if (errors[cf.key]) setErrors(prev => { const n = { ...prev }; delete n[cf.key]; return n; });
+        };
+
+        const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+            let eVal: any = e.target.value;
+            if (e.target.type === 'checkbox') {
+                eVal = (e.target as HTMLInputElement).checked;
+            }
+            handleFieldChange(eVal);
+        };
+
+        return (
+            <div key={cf.key} className="field" style={{ gridColumn: cf.type === 'textarea' || cf.type === 'select' || cf.type === 'groups' || cf.type === 'venta_digital' ? '1 / -1' : 'auto' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{cf.label} {cf.required ? '*' : ''}</span>
+                    {cf.key === 'nombre_local' && (
+                        <button 
+                            type="button" 
+                            onClick={handleMagicFill}
+                            disabled={isMagicThinking}
+                            className={`ai-button ${isMagicThinking ? 'thinking' : ''}`}
+                            style={{ 
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                fontSize: '0.65rem', fontWeight: 800, 
+                                padding: '2px 8px', borderRadius: '6px', 
+                                textTransform: 'uppercase', letterSpacing: '0.05em'
+                            }}
+                        >
+                            {isMagicThinking ? <Sparkles size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                            {isMagicThinking ? 'Analizando...' : 'Magic Fill'}
+                        </button>
+                    )}
+                    {cf.key === 'direccion' && (
+                        <button 
+                            type="button" 
+                            onClick={handleGeocode}
+                            disabled={isGeocoding}
+                            style={{ 
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                fontSize: '0.75rem', fontWeight: 600, 
+                                color: lastGeocodedAddress === (formData.direccion?.trim()) ? 'var(--text-muted)' : 'var(--accent)',
+                                background: 'none', border: 'none', 
+                                cursor: lastGeocodedAddress === (formData.direccion?.trim()) ? 'default' : 'pointer',
+                                padding: '2px 6px', borderRadius: '4px', transition: 'all 0.2s',
+                                opacity: isGeocoding ? 0.6 : 1
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.1)'}
+                            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                        >
+                            {isGeocoding ? <RefreshCw size={12} className="animate-spin" /> : <MapPin size={12} />}
+                            {isGeocoding ? 'Buscando...' : 'Ubicar en mapa'}
+                        </button>
+                    )}
+                </label>
+
+                {cf.type === 'interes_bar' ? (
+                    (() => {
+                        const levels = [
+                            { value: 'Bajo', color: '#94a3b8', label: 'Bajo' },
+                            { value: 'Medio', color: '#f59e0b', label: 'Medio' },
+                            { value: 'Alto', color: '#10b981', label: 'Alto' },
+                        ];
+                        const activeIdx = levels.findIndex(l => l.value === (val || 'Bajo'));
+                        const activeColor = levels[activeIdx]?.color || '#94a3b8';
+                        return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div style={{ display: 'flex', gap: '4px', height: '10px' }}>
+                                    {levels.map((l, i) => (
+                                        <div key={l.value} onClick={() => handleFieldChange(l.value)}
+                                            style={{ flex: 1, borderRadius: '99px', cursor: 'pointer', background: i <= activeIdx ? activeColor : 'var(--border)', transition: 'background 0.25s ease', opacity: i <= activeIdx ? 1 : 0.4 }} />
+                                    ))}
+                                </div>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    {levels.map((l, i) => (
+                                        <button key={l.value} type="button" onClick={() => handleFieldChange(l.value)}
+                                            style={{ flex: 1, padding: '6px 4px', fontSize: '0.78rem', fontWeight: 600, borderRadius: '8px', cursor: 'pointer', border: '1px solid', background: i <= activeIdx ? `${activeColor}18` : 'var(--bg)', color: i <= activeIdx ? activeColor : 'var(--text-muted)', borderColor: i <= activeIdx ? `${activeColor}60` : 'var(--border)', transition: 'all 0.2s ease' }}>
+                                            {l.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()
+                ) : cf.type === 'venta_digital' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', cursor: 'pointer', fontWeight: 500 }}>
+                            <input type="checkbox" checked={val === 'true' || val === true} onChange={e => handleFieldChange(e.target.checked ? 'true' : 'false')}
+                                style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }} />
+                            {(val === 'true' || val === true) ? 'Sí, tiene venta digital' : 'No tiene venta digital'}
+                        </label>
+                        {(val === 'true' || val === true) && (
+                            <input type="text" placeholder="¿Cuál? Ej: Pedidos Ya, Rappi..." value={formData.venta_digital_cual || ''} onChange={e => setFormData(p => ({ ...p, venta_digital_cual: e.target.value }))} style={{ marginTop: '4px' }} />
+                        )}
+                    </div>
+                ) : cf.type === 'grupos' ? (
+                    gruposDB.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                            {gruposDB.map(g => {
+                                const isSelected = selectedGrupos.includes(g.id.toString());
+                                return (
+                                    <button
+                                        key={g.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedGrupos(prev => 
+                                                isSelected 
+                                                    ? prev.filter(id => id !== g.id.toString())
+                                                    : [...prev, g.id.toString()]
+                                            );
+                                            setIsDirty(true);
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: '99px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            border: '2px solid',
+                                            background: isSelected ? g.color : 'transparent',
+                                            color: isSelected ? '#fff' : g.color,
+                                            borderColor: g.color,
+                                            opacity: isSelected ? 1 : 0.6
+                                        }}
+                                    >
+                                        {g.nombre}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )
+                ) : cf.type === 'groups' ? (
+                    (() => {
+                        let items: string[] = [];
+                        if (cf.source === 'responsables') {
+                            items = [...new Set([...responsablesDB, formData.responsable])].filter(Boolean);
+                        } else if (cf.source === 'rubros') {
+                            items = rubrosDB;
+                        } else if (cf.source === 'estados') {
+                            items = COLUMNS.map(col => col.label);
+                        } else if (cf.source === 'tipos_contacto') {
+                            items = ['Visita Presencial', 'Llamada'];
+                        } else if (cf.source === 'estilos_contacto') {
+                            items = ['Sin definir', 'Dueño', 'Empleado', 'Cerrado'];
+                        } else if (cf.options && cf.options.length > 0) {
+                            items = cf.options;
+                        }
+
+                        const currentList: string[] = typeof val === 'string' 
+                            ? val.split(',').map(s => s.trim()).filter(Boolean) 
+                            : (Array.isArray(val) ? val : []);
+
+                        return (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                                {items.map((item: string) => {
+                                    const isSelected = currentList.includes(item);
+                                    return (
+                                        <button
+                                            key={item}
+                                            type="button"
+                                            onClick={() => {
+                                                const newList = isSelected
+                                                    ? currentList.filter(v => v !== item)
+                                                    : [...currentList, item];
+                                                handleFieldChange(newList.join(', '));
+                                            }}
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '99px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                border: '1px solid',
+                                                background: isSelected ? 'var(--accent)' : 'transparent',
+                                                color: isSelected ? '#fff' : 'var(--text-muted)',
+                                                borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
+                                                opacity: isSelected ? 1 : 0.7
+                                            }}
+                                        >
+                                            {item}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()
+                ) : cf.type === 'situacion' ? (
+                    (clienteId || esEstadoFinal(formData.estado)) && (
+                        <select name="situacion" value={formData.situacion || defaultSituation || SITUACION_SIN_COMUNICACION} onChange={handleInputChange}>
+                            {SITUACIONES
+                                .filter(s => !s.estados_visibles || s.estados_visibles.length === 0 || s.estados_visibles.includes(formData.estado))
+                                .map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.label}
+                                    </option>
+                                ))}
+                        </select>
+                    )
+                ) : cf.type === 'agenda' ? (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input type="date" value={val || ''} onChange={handleInputChange} style={{ flex: 1 }} />
+                        {val && (
+                            <button type="button" onClick={() => handleFieldChange('')} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)', color: 'var(--danger)', cursor: 'pointer' }}>✕</button>
+                        )}
+                    </div>
+                ) : cf.type === 'boolean' ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '10px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border)', fontWeight: 500, fontSize: '0.9rem' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={Boolean(val)} 
+                            onChange={e => handleFieldChange(e.target.checked)}
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
+                        />
+                        {cf.label}
+                    </label>
+                ) : cf.type === 'select' ? (
+                    <select value={val || ''} onChange={handleInputChange} style={hasError ? ERR_STYLE : {}}>
+                        <option value="">Seleccionar...</option>
+                        {cf.options && cf.options.length > 0 ? (
+                            cf.options.map((o: string) => <option key={o} value={o}>{o}</option>)
+                        ) : cf.source === 'rubros' ? (
+                            rubrosDB.map((r: string) => <option key={r} value={r}>{r}</option>)
+                        ) : cf.source === 'estados' ? (
+                            COLUMNS.map((col, idx) => (
+                                <option key={col.id} value={col.id}>
+                                    {idx + 1} - {col.label}
+                                </option>
+                            ))
+                        ) : cf.source === 'responsables' ? (
+                            [...new Set([...responsablesDB, formData.responsable])].filter(Boolean).map((r: any) => (
+                                <option key={r} value={r}>{r}</option>
+                            ))
+                        ) : cf.source === 'tipos_contacto' ? (
+                            <>
+                                <option value="Visita Presencial">Visita Presencial</option>
+                                <option value="Llamada">Llamada</option>
+                            </>
+                        ) : cf.source === 'estilos_contacto' ? (
+                            <>
+                                <option value="Sin definir">Sin definir</option>
+                                <option value="Dueño">Dueño</option>
+                                <option value="Empleado">Empleado</option>
+                                <option value="Cerrado">Cerrado</option>
+                            </>
+                        ) : null}
+                    </select>
+                ) : cf.type === 'textarea' ? (
+                    <textarea value={val || ''} onChange={handleInputChange} style={hasError ? ERR_STYLE : {}} rows={3} />
+                ) : (
+                    <div style={{ position: 'relative' }}>
+                        <input 
+                            type={cf.type === 'number' ? 'number' : 'text'} 
+                            value={val || ''} 
+                            onChange={handleInputChange} 
+                            style={{
+                                ...(hasError ? ERR_STYLE : {}),
+                                ...(cf.key === 'direccion' ? { paddingRight: '35px' } : {})
+                            }}
+                            placeholder={cf.placeholder || 'Completar...'}
+                        />
+                        {cf.key === 'direccion' && formData.lat && formData.lng && !isGeocoding && (
+                            <div title="Ubicación fijada" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}>
+                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.3)' }} />
+                            </div>
+                        )}
+                    </div>
+                )}
+                <FieldError msg={hasError} />
+            </div>
+        );
+    };
+
     return createPortal(
         <AnimatePresence>
             {isOpen && (
@@ -700,15 +1047,16 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 {/* Step indicators */}
                 {step > 0 && (
                 <div className="wizard-steps" style={{ marginBottom: '24px' }}>
-                    {[1, 2, 3].map(s => (
+                    {layout.steps.map((st: any) => (
                         <div
-                            key={s}
-                            className={`step-indicator ${step === s ? 'active' : ''} ${Object.keys(STEP_FIELDS[s] || []).some(f => errors[f]) ? 'error' : ''}`}
-                            onClick={() => handleStepChange(s)}
+                            key={st.id}
+                            className={`step-indicator ${step === st.id ? 'active' : ''} ${(dynamicStepFields[st.id] || []).some(f => errors[f]) ? 'error' : ''}`}
+                            onClick={() => handleStepChange(st.id)}
                             style={{
                                 cursor: 'pointer',
-                                ...(STEP_FIELDS[s]?.some(f => errors[f]) ? { background: '#ef4444', opacity: 1 } : {})
+                                ...((dynamicStepFields[st.id] || []).some(f => errors[f]) ? { background: '#ef4444', opacity: 1 } : {})
                             }}
+                            title={st.title}
                         />
                     ))}
                 </div>
@@ -752,307 +1100,18 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                         </div>
                     )}
 
-                    {/* ── STEP 1 ── */}
-                    {step === 1 && (
+                    {/* Dynamic step rendering */}
+                    {step > 0 && activeStepObj && (
                         <div>
-                            <h3 style={{ marginBottom: '16px' }}>1. Datos del Local y Contacto</h3>
+                            <h3 style={{ marginBottom: '16px' }}>{activeStepObj.title}</h3>
                             <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                <div className="field">
-                                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>Nombre del Local *</span>
-                                        <button 
-                                            type="button" 
-                                            onClick={handleMagicFill}
-                                            disabled={isMagicThinking}
-                                            className={`ai-button ${isMagicThinking ? 'thinking' : ''}`}
-                                            style={{ 
-                                                display: 'flex', alignItems: 'center', gap: '4px',
-                                                fontSize: '0.65rem', fontWeight: 800, 
-                                                padding: '2px 8px', borderRadius: '6px', 
-                                                textTransform: 'uppercase', letterSpacing: '0.05em'
-                                            }}
-                                        >
-                                            {isMagicThinking ? <Sparkles size={12} className="animate-spin" /> : <Wand2 size={12} />}
-                                            {isMagicThinking ? 'Analizando...' : 'Magic Fill'}
-                                        </button>
-                                    </label>
-                                    <input type="text" {...inp('nombre_local')} />
-                                    <FieldError msg={errors.nombre_local} />
-                                </div>
-                                <div className="field">
-                                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>Dirección *</span>
-                                        <button 
-                                            type="button" 
-                                            onClick={handleGeocode}
-                                            disabled={isGeocoding}
-                                            style={{ 
-                                                display: 'flex', alignItems: 'center', gap: '4px',
-                                                fontSize: '0.75rem', fontWeight: 600, 
-                                                color: lastGeocodedAddress === (formData.direccion?.trim()) ? 'var(--text-muted)' : 'var(--accent)',
-                                                background: 'none', border: 'none', 
-                                                cursor: lastGeocodedAddress === (formData.direccion?.trim()) ? 'default' : 'pointer',
-                                                padding: '2px 6px', borderRadius: '4px', transition: 'all 0.2s',
-                                                opacity: isGeocoding ? 0.6 : 1
-                                            }}
-                                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.1)'}
-                                            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-                                        >
-                                            {isGeocoding ? <RefreshCw size={12} className="animate-spin" /> : <MapPin size={12} />}
-                                            {isGeocoding ? 'Buscando...' : 'Ubicar en mapa'}
-                                        </button>
-                                    </label>
-                                    <div style={{ position: 'relative' }}>
-                                        <input type="text" {...inp('direccion')} style={{ ...inp('direccion').style, paddingRight: '35px' }} placeholder="Ej: Av. Rivadavia 1234, CABA" />
-                                        {formData.lat && formData.lng && !isGeocoding && (
-                                            <div title="Ubicación fijada" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}>
-                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.3)' }} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <FieldError msg={errors.direccion} />
-                                </div>
-                                <div className="field">
-                                    <label>Nombre del Contacto *</label>
-                                    <input type="text" {...inp('nombre')} />
-                                    <FieldError msg={errors.nombre} />
-                                </div>
-                                <div className="field">
-                                    <label>Teléfono *</label>
-                                    <input type="text" {...inp('telefono')} />
-                                    <FieldError msg={errors.telefono} />
-                                </div>
-                                <div className="field">
-                                    <label>Mail</label>
-                                    <input type="email" {...inp('mail')} />
-                                </div>
-                                <div className="field">
-                                    <label>CUIT</label>
-                                    <input type="text" {...inp('cuit', { placeholder: 'XX-XXXXXXXX-X' })} />
-                                </div>
-                                <div className="field">
-                                    <label>Horarios de Atención</label>
-                                    <input type="text" {...inp('horarios_atencion', { placeholder: 'Ej: Lun-Vie 9-18' })} />
-                                </div>
-                                <div className="field">
-                                    <label>Estilo de Contacto</label>
-                                    <select name="estilo_contacto" value={formData.estilo_contacto || 'Sin definir'} onChange={handleChange}>
-                                        <option value="Sin definir">Sin definir</option>
-                                        <option value="Dueño">Dueño</option>
-                                        <option value="Empleado">Empleado</option>
-                                        <option value="Cerrado">Cerrado</option>
-                                    </select>
-                                </div>
-                                <div className="field">
-                                    <label>Tipo de Contacto</label>
-                                    <select name="tipo_contacto" value={formData.tipo_contacto || 'Visita Presencial'} onChange={handleChange}>
-                                        <option value="Visita Presencial">Visita Presencial</option>
-                                        <option value="Llamada">Llamada</option>
-                                    </select>
-                                </div>
-                                <div className="field" style={{ gridColumn: '1 / -1' }}>
-                                    <label>Responsable</label>
-                                    <select
-                                        name="responsable"
-                                        value={formData.responsable || ''}
-                                        onChange={handleChange}
-                                        style={{ background: 'var(--bg-elevated)', fontWeight: 500 }}
-                                    >
-                                        <option value="">Seleccionar responsable...</option>
-                                        {[...new Set([...responsablesDB, formData.responsable])].filter(Boolean).map((r: any) => (
-                                            <option key={r} value={r}>{r}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                {activeStepObj.fields.map((cf: any) => renderDynamicField(cf))}
                             </div>
                         </div>
                     )}
 
-                    {/* ── STEP 2 ── */}
-                    {step === 2 && (
-                        <div>
-                            <h3 style={{ marginBottom: '16px' }}>2. Clasificación del Cliente</h3>
-                            <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                <div className="field">
-                                    <label>Rubro *</label>
-                                    <select {...inp('rubro')}>
-                                        <option value="">Seleccionar rubro...</option>
-                                        {rubrosDB.map((r: string) => (
-                                            <option key={r} value={r}>{r}</option>
-                                        ))}
-                                    </select>
-                                    <FieldError msg={errors.rubro} />
-                                </div>
-                                <div className="field">
-                                    <label>Estado</label>
-                                    <select name="estado" value={formData.estado || ''} onChange={handleChange}>
-                                        {COLUMNS.map((col, idx) => (
-                                            <option key={col.id} value={col.id}>
-                                                {idx + 1} - {col.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
 
-                                {/* Conditional Visit Checkbox */}
-                                <div className="field" style={{ gridColumn: '1 / -1', marginTop: '4px' }}>
-                                    {formData.estado === ESTADO_RELEVADO ? (
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '10px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                                            <input 
-                                                type="checkbox" 
-                                                name="registrar_visita" 
-                                                checked={formData.registrar_visita === 'true'} 
-                                                onChange={handleChange}
-                                                style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
-                                            />
-                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Registrar visita inicial</span>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Márcalo si ya estuviste físicamente en el local.</span>
-                                            </div>
-                                        </label>
-                                    ) : (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#059669' }}>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
-                                                <span style={{ fontSize: '1.2rem' }}>✅</span>
-                                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Se registrará una visita automáticamente por el estado seleccionado.</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
 
-                                {/* Interés bar */}
-                                <div className="field" style={{ gridColumn: '1 / -1' }}>
-                                    <label>Interés</label>
-                                    {(() => {
-                                        const levels = [
-                                            { value: 'Bajo', color: '#94a3b8', label: 'Bajo' },
-                                            { value: 'Medio', color: '#f59e0b', label: 'Medio' },
-                                            { value: 'Alto', color: '#10b981', label: 'Alto' },
-                                        ];
-                                        const activeIdx = levels.findIndex(l => l.value === (formData.interes || 'Bajo'));
-                                        const activeColor = levels[activeIdx]?.color || '#94a3b8';
-                                        return (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                                <div style={{ display: 'flex', gap: '4px', height: '10px' }}>
-                                                    {levels.map((l, i) => (
-                                                        <div key={l.value} onClick={() => { setFormData(prev => ({ ...prev, interes: l.value })); setIsDirty(true); }}
-                                                            style={{ flex: 1, borderRadius: '99px', cursor: 'pointer', background: i <= activeIdx ? activeColor : 'var(--border)', transition: 'background 0.25s ease', opacity: i <= activeIdx ? 1 : 0.4 }} />
-                                                    ))}
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '4px' }}>
-                                                    {levels.map((l, i) => (
-                                                        <button key={l.value} type="button" onClick={() => { setFormData(prev => ({ ...prev, interes: l.value })); setIsDirty(true); }}
-                                                            style={{ flex: 1, padding: '6px 4px', fontSize: '0.78rem', fontWeight: 600, borderRadius: '8px', cursor: 'pointer', border: '1px solid', background: i <= activeIdx ? `${activeColor}18` : 'var(--bg)', color: i <= activeIdx ? activeColor : 'var(--text-muted)', borderColor: i <= activeIdx ? `${activeColor}60` : 'var(--border)', transition: 'all 0.2s ease' }}>
-                                                            {l.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-
-                                {/* Venta digital */}
-                                <div className="field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <label>¿Venta Digital?</label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', cursor: 'pointer', fontWeight: 500 }}>
-                                        <input type="checkbox" name="venta_digital" checked={formData.venta_digital === 'true'} onChange={handleChange}
-                                            style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }} />
-                                        {formData.venta_digital === 'true' ? 'Sí, tiene venta digital' : 'No tiene venta digital'}
-                                    </label>
-                                    {formData.venta_digital === 'true' && (
-                                        <input type="text" name="venta_digital_cual" placeholder="¿Cuál? Ej: Pedidos Ya, Rappi..." value={formData.venta_digital_cual || ''} onChange={handleChange} style={{ marginTop: '4px' }} />
-                                    )}
-                                </div>
-
-                                {/* Grupos selection */}
-                                {gruposDB.length > 0 && (
-                                    <div className="field" style={{ gridColumn: '1 / -1' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <TagIcon size={14} /> Grupos / Etiquetas
-                                        </label>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
-                                            {gruposDB.map(g => {
-                                                const isSelected = selectedGrupos.includes(g.id.toString());
-                                                return (
-                                                    <button
-                                                        key={g.id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setSelectedGrupos(prev => 
-                                                                isSelected 
-                                                                    ? prev.filter(id => id !== g.id.toString())
-                                                                    : [...prev, g.id.toString()]
-                                                            );
-                                                            setIsDirty(true);
-                                                        }}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            borderRadius: '99px',
-                                                            fontSize: '0.8rem',
-                                                            fontWeight: 600,
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.2s ease',
-                                                            border: '2px solid',
-                                                            background: isSelected ? g.color : 'transparent',
-                                                            color: isSelected ? '#fff' : g.color,
-                                                            borderColor: g.color,
-                                                            opacity: isSelected ? 1 : 0.6
-                                                        }}
-                                                    >
-                                                        {g.nombre}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Situación: visible siempre al editar, o cuando el estado es final al crear */}
-                            {(clienteId || esEstadoFinal(formData.estado)) && (
-                                <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginTop: '16px' }}>
-                                    <div className="field">
-                                        <label>Situación</label>
-                                        <select name="situacion" value={formData.situacion || defaultSituation || SITUACION_SIN_COMUNICACION} onChange={handleChange}>
-                                            {SITUACIONES
-                                                .filter(s => !s.estados_visibles || s.estados_visibles.length === 0 || s.estados_visibles.includes(formData.estado))
-                                                .map(s => (
-                                                    <option key={s.id} value={s.id}>
-                                                        {s.label}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* ── STEP 3 ── */}
-                    {step === 3 && (
-                        <div>
-                            <h3 style={{ marginBottom: '16px' }}>3. Agenda y Notas</h3>
-                            <div className="grid" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <div className="field">
-                                    <label>Próxima Visita</label>
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <input type="date" name="fecha_proximo_contacto" value={formData.fecha_proximo_contacto || ''} onChange={handleChange} style={{ flex: 1 }} />
-                                        {formData.fecha_proximo_contacto && (
-                                            <button type="button"
-                                                onClick={() => { setFormData(prev => ({ ...prev, fecha_proximo_contacto: '' })); setIsDirty(true); }}
-                                                style={{ padding: '8px 14px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                                            >✕ Sin fecha</button>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="field">
-                                    <label>Notas</label>
-                                    <textarea name="notas" rows={3} value={formData.notas || ''} onChange={handleChange}></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                      </motion.div>
                     )}
                     </AnimatePresence>
@@ -1064,7 +1123,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                         </Button>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <Button variant="secondary" type="button" onClick={handleClose}>Cancelar</Button>
-                            {step < 3 ? (
+                            {step < totalSteps ? (
                                 <Button key="siguiente" variant="primary" type="button" onClick={handleNextPhase}>Siguiente</Button>
                             ) : (
                                 <Button key="guardar" variant="primary" type="submit" disabled={loading}>

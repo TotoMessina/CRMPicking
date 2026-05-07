@@ -65,7 +65,7 @@ export const ClienteCard = memo<Props>(({
     onRegistrarLlamada,
     onOpenActivity
 }) => {
-    const { isDemoMode } = useAuth();
+    const { isDemoMode, empresaActiva }: any = useAuth();
     const [aiResult, setAiResult] = useState<any>(null);
     const [isSummarizing, setIsSummarizing] = useState(false);
 
@@ -147,6 +147,19 @@ export const ClienteCard = memo<Props>(({
                                 {c.hora_proximo_contacto ? ` a las ${c.hora_proximo_contacto.slice(0, 5)}` : ""}
                             </div>
                         )}
+
+                        {/* Campos Personalizados */}
+                        {empresaActiva?.config?.customFields?.map((cf: any) => {
+                            const val = c.metadata?.[cf.key];
+                            if (val === undefined || val === null || val === '') return null;
+                            const displayVal = typeof val === 'boolean' ? (val ? 'Sí' : 'No') : val;
+                            return (
+                                <div key={cf.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--text)' }}>
+                                    <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{cf.label}:</span>
+                                    <span>{displayVal}</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -433,6 +446,7 @@ export const ClienteCard = memo<Props>(({
         prevProps.cliente.direccion === nextProps.cliente.direccion &&
         prevProps.cliente.updated_at === nextProps.cliente.updated_at &&
         prevProps.cliente.clientes?.created_at === nextProps.cliente.clientes?.created_at &&
-        prevProps.cliente.grupos?.length === nextProps.cliente.grupos?.length
+        prevProps.cliente.grupos?.length === nextProps.cliente.grupos?.length &&
+        JSON.stringify(prevProps.cliente.metadata) === JSON.stringify(nextProps.cliente.metadata)
     );
 });

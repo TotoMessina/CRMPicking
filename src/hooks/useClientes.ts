@@ -209,6 +209,7 @@ export function useClientes(params: UseClientesParams) {
                     created_at: row.ec_created_at,
                     updated_at: row.ec_updated_at,
                     ultima_actividad: row.ultima_actividad,
+                    metadata: row.metadata || {},
                     grupos: row.grupos || []
                 }));
 
@@ -250,6 +251,7 @@ export function useClientes(params: UseClientesParams) {
                         ultima_actividad: row.ultima_actividad,
                         created_at: row.created_at,
                         updated_at: row.updated_at,
+                        metadata: row.metadata || {},
                         grupos: (c.cliente_grupos || []).map((cg: any) => cg.grupos).filter(Boolean)
                     };
                 });
