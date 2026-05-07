@@ -21,6 +21,9 @@ export default function PermisosEmpresa() {
     const [localCustomFields, setLocalCustomFields] = useState([]);
     const [localFormLayout, setLocalFormLayout] = useState(null);
     const [editingFieldKey, setEditingFieldKey] = useState(null);
+    const [localBrandColor, setLocalBrandColor] = useState('#7c3aded');
+    const [localLogoUrl, setLocalLogoUrl] = useState('');
+    const [localSystemName, setLocalSystemName] = useState('PickingUp CRM');
 
     // Nuevos Estados Dinámicos
     const [rolesDinamicos, setRolesDinamicos] = useState([]);
@@ -158,7 +161,7 @@ export default function PermisosEmpresa() {
                 const configCustomFields = selectedEmpresa?.config?.customFields || [];
                 configCustomFields.forEach(cf => {
                     if (!configFormLayout.steps[0].fields.some(f => f.key === cf.key)) {
-                        configFormLayout.steps[0].fields.push({ key: cf.key, label: cf.label, type: cf.type, isStandard: false });
+                        configFormLayout.steps[0].fields.push({ key: cf.key, label: cf.label, type: cf.type, options: cf.options, placeholder: cf.placeholder, isStandard: false });
                     }
                 });
             } else {
@@ -167,6 +170,10 @@ export default function PermisosEmpresa() {
                 });
             }
             setLocalFormLayout(configFormLayout);
+            
+            setLocalBrandColor(selectedEmpresa?.config?.brandColor || '#7c3aded');
+            setLocalLogoUrl(selectedEmpresa?.config?.logoUrl || '');
+            setLocalSystemName(selectedEmpresa?.config?.systemName || 'PickingUp CRM');
 
         } catch (error) {
             toast.error("Error al sincronizar datos");
@@ -206,7 +213,10 @@ export default function PermisosEmpresa() {
             sidebarGroups: localSidebarGroups,
             pageGroups: localPageGroups,
             customFields: localCustomFields,
-            formLayout: localFormLayout
+            formLayout: localFormLayout,
+            brandColor: localBrandColor,
+            logoUrl: localLogoUrl,
+            systemName: localSystemName
         };
 
         const { error: configError } = await supabase.rpc('update_empresa_config', {
@@ -217,7 +227,8 @@ export default function PermisosEmpresa() {
         if (configError) {
             toast.error('Error al guardar configuración de categorías');
         } else {
-            toast.success('Permisos y categorías actualizados');
+            toast.success('Permisos y configuración de marca guardados');
+            document.documentElement.style.setProperty('--accent', localBrandColor);
             setEmpresas(prev => prev.map(emp => emp.id === selectedEmpresa.id ? { ...emp, config: updatedConfig } : emp));
             setSelectedEmpresa(prev => ({ ...prev, config: updatedConfig }));
             setDirty(false);
@@ -404,6 +415,12 @@ export default function PermisosEmpresa() {
                     style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'campos' ? '2px solid var(--accent)' : '2px solid transparent', padding: '12px 20px', color: activeTab === 'campos' ? 'var(--text)' : 'var(--text-muted)', fontWeight: activeTab === 'campos' ? 700 : 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                 >
                     <Plus size={16} /> Campos de Clientes
+                </button>
+                <button 
+                    onClick={() => setActiveTab('personalizacion')}
+                    style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'personalizacion' ? '2px solid var(--accent)' : '2px solid transparent', padding: '12px 20px', color: activeTab === 'personalizacion' ? 'var(--text)' : 'var(--text-muted)', fontWeight: activeTab === 'personalizacion' ? 700 : 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                >
+                    🎨 Marca Blanca / Estilos
                 </button>
             </div>
 
@@ -772,11 +789,15 @@ export default function PermisosEmpresa() {
                                                                 className="input premium-input" 
                                                                 style={{ height: '38px', fontSize: '0.9rem' }}
                                                                 placeholder="Ej: Opción A, Opción B"
-                                                                value={cf.options ? cf.options.join(', ') : ''} 
+                                                                value={cf.options_raw !== undefined ? cf.options_raw : (cf.options ? cf.options.join(', ') : '')} 
                                                                 onChange={e => {
-                                                                    const val = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                                                                    setLocalCustomFields(prev => prev.map((f, i) => i === index ? { ...f, options: val } : f));
+                                                                    const raw = e.target.value;
+                                                                    const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
+                                                                    setLocalCustomFields(prev => prev.map((f, i) => i === index ? { ...f, options: parsed, options_raw: raw } : f));
                                                                     setDirty(true);
+                                                                }}
+                                                                onBlur={() => {
+                                                                    setLocalCustomFields(prev => prev.map((f, i) => i === index ? { ...f, options_raw: undefined } : f));
                                                                 }}
                                                             />
                                                         </>
@@ -994,7 +1015,7 @@ export default function PermisosEmpresa() {
                                                 };
                                                 // Agregar campos personalizados que existan hoy
                                                 localCustomFields.forEach(cf => {
-                                                    defaultLayout.steps[0].fields.push({ key: cf.key, label: cf.label, type: cf.type, isStandard: false });
+                                                    defaultLayout.steps[0].fields.push({ key: cf.key, label: cf.label, type: cf.type, options: cf.options, placeholder: cf.placeholder, isStandard: false });
                                                 });
                                                 setLocalFormLayout(defaultLayout);
                                                 setDirty(true);
@@ -1228,17 +1249,27 @@ export default function PermisosEmpresa() {
                                                                                         className="input premium-input"
                                                                                         style={{ height: '32px', fontSize: '0.85rem' }}
                                                                                         placeholder="Ej: Opción A, Opción B"
-                                                                                        value={cf.options ? cf.options.join(', ') : ''}
+                                                                                        value={cf.options_raw !== undefined ? cf.options_raw : (cf.options ? cf.options.join(', ') : '')}
                                                                                         onChange={e => {
-                                                                                            const val = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                                                                            const raw = e.target.value;
+                                                                                            const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
                                                                                             setLocalFormLayout(prev => ({
                                                                                                 ...prev,
                                                                                                 steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
                                                                                                     ...s,
-                                                                                                    fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, options: val } : f)
+                                                                                                    fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, options: parsed, options_raw: raw } : f)
                                                                                                 } : s)
                                                                                             }));
                                                                                             setDirty(true);
+                                                                                        }}
+                                                                                        onBlur={() => {
+                                                                                            setLocalFormLayout(prev => ({
+                                                                                                ...prev,
+                                                                                                steps: prev.steps.map((s, sIdx) => sIdx === stepIdx ? {
+                                                                                                    ...s,
+                                                                                                    fields: s.fields.map((f, fIdx) => fIdx === cfIdx ? { ...f, options_raw: undefined } : f)
+                                                                                                } : s)
+                                                                                            }));
                                                                                         }}
                                                                                     />
                                                                                 </div>
@@ -1352,6 +1383,103 @@ export default function PermisosEmpresa() {
                                         })()}
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'personalizacion' && (
+                        <div className="personalizacion-management" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            <div className="glass-card" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>🎨 Personalización Visual y Marca Blanca</h3>
+                                <p className="muted" style={{ margin: 0, fontSize: '0.85rem', marginBottom: '24px' }}>
+                                    Configurá los colores corporativos, logos e identidad de tu empresa para white-labelizar todo el CRM de forma automática.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                    {/* 1. Selector de Color */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Color de Acento Corporativo</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                            <input 
+                                                type="color" 
+                                                style={{ width: '60px', height: '42px', border: 'none', borderRadius: '8px', padding: 0, cursor: 'pointer', background: 'transparent' }} 
+                                                value={localBrandColor} 
+                                                onChange={e => { setLocalBrandColor(e.target.value); setDirty(true); }} 
+                                            />
+                                            <input 
+                                                type="text" 
+                                                className="input premium-input" 
+                                                style={{ width: '120px', height: '42px', textTransform: 'uppercase', textAlign: 'center' }} 
+                                                value={localBrandColor} 
+                                                onChange={e => { setLocalBrandColor(e.target.value); setDirty(true); }} 
+                                            />
+                                        </div>
+                                        
+                                        {/* Recomendados */}
+                                        <div style={{ marginTop: '8px' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Paletas Recomendadas:</span>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                {[
+                                                    { name: 'PickingUp Violeta', color: '#7c3aded' },
+                                                    { name: 'Azul Eléctrico', color: '#3b82f6' },
+                                                    { name: 'Esmeralda Natural', color: '#10b981' },
+                                                    { name: 'Oro Oscuro', color: '#d97706' },
+                                                    { name: 'Rojo Carmesí', color: '#ef4444' },
+                                                    { name: 'Gris Grafito', color: '#4b5563' }
+                                                ].map(preset => (
+                                                    <button
+                                                        key={preset.color}
+                                                        type="button"
+                                                        onClick={() => { setLocalBrandColor(preset.color); setDirty(true); }}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', border: '1px solid var(--border)', borderRadius: '20px', background: 'var(--bg)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                                                    >
+                                                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: preset.color, display: 'inline-block' }}></span>
+                                                        {preset.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr style={{ border: 0, borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+
+                                    {/* 2. Logo URL */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>URL del Logo de la Empresa</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="https://ejemplo.com/mi-logo.png" 
+                                            className="input premium-input" 
+                                            style={{ height: '42px' }} 
+                                            value={localLogoUrl} 
+                                            onChange={e => { setLocalLogoUrl(e.target.value); setDirty(true); }} 
+                                        />
+                                        <p className="muted" style={{ margin: 0, fontSize: '0.75rem' }}>Ingresá una URL de imagen con fondo transparente.</p>
+                                        
+                                        {localLogoUrl && (
+                                            <div style={{ marginTop: '8px', padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: '12px', maxWidth: '300px' }}>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Previsualización:</span>
+                                                <img src={localLogoUrl} alt="Logo" style={{ maxHeight: '36px', maxWidth: '140px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <hr style={{ border: 0, borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+
+                                    {/* 3. Nombre Comercial */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Nombre Personalizado del CRM</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="PickingUp CRM" 
+                                            className="input premium-input" 
+                                            style={{ height: '42px', maxWidth: '350px' }} 
+                                            value={localSystemName} 
+                                            onChange={e => { setLocalSystemName(e.target.value); setDirty(true); }} 
+                                        />
+                                        <p className="muted" style={{ margin: 0, fontSize: '0.75rem' }}>Personaliza el nombre de la plataforma en la barra lateral.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

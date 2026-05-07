@@ -9,20 +9,32 @@ import { LogOut, Sun, Moon, Bell, Building2, ChevronDown, Navigation, Bot } from
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTenant } from '../../contexts/TenantContext';
 
-const SidebarBrand = ({ setIsMobileMenuOpen }) => {
+const SidebarBrand = ({ setIsMobileMenuOpen, empresaActiva }) => {
     const { tenantConfig } = useTenant();
+    const logoUrl = empresaActiva?.config?.logoUrl || tenantConfig.app.logoUrl;
+    const systemName = empresaActiva?.config?.systemName || tenantConfig.app.shortName;
     return (
     <div className="sidebar-brand">
-        <img
-            src={tenantConfig.app.logoUrl}
-            alt={tenantConfig.app.name}
-            className="sidebar-logo-img"
-            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
-        />
+        {logoUrl ? (
+            <img
+                src={logoUrl}
+                alt={systemName}
+                className="sidebar-logo-img"
+                style={{ maxHeight: '40px', objectFit: 'contain' }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
+            />
+        ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="sidebar-logo" style={{ background: 'var(--accent)', color: '#fff', width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                    {systemName.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="sidebar-title" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{systemName}</div>
+            </div>
+        )}
         <div className="sidebar-brand-text" style={{ display: 'none' }}>
             <div className="logo-pu">
-                <div className="sidebar-logo">{tenantConfig.app.shortName.substring(0,2).toUpperCase()}</div>
-                <div className="sidebar-title">{tenantConfig.app.shortName}</div>
+                <div className="sidebar-logo">{systemName.substring(0,2).toUpperCase()}</div>
+                <div className="sidebar-title">{systemName}</div>
             </div>
         </div>
         <button className="sidebar-close-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Cerrar menú">×</button>
@@ -163,6 +175,14 @@ export function AppShell() {
             return next;
         });
     }, [routerLocation.pathname, navItems, NAV_GROUP_LIST]);
+    
+    useEffect(() => {
+        if (empresaActiva?.config?.brandColor) {
+            document.documentElement.style.setProperty('--accent', empresaActiva.config.brandColor);
+        } else {
+            document.documentElement.style.setProperty('--accent', '#7c3aded');
+        }
+    }, [empresaActiva]);
 
     useEffect(() => {
         const handleOpenGroup = (e) => {
@@ -205,7 +225,7 @@ export function AppShell() {
 
                 {/* ── HEADER ──────────────────────────── */}
                 <div className="sidebar-header">
-                    <SidebarBrand setIsMobileMenuOpen={setIsMobileMenuOpen} />
+                    <SidebarBrand setIsMobileMenuOpen={setIsMobileMenuOpen} empresaActiva={empresaActiva} />
                     <UserInfo
                         userName={userName}
                         email={user?.email}
