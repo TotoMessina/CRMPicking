@@ -531,6 +531,32 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 return;
             }
 
+            // --- SaaS NO-CODE AUTOMATIONS ENGINE ---
+            const automations = empresaActiva?.config?.automations || [];
+            if (automations.length > 0) {
+                automations.forEach((rule: any) => {
+                    if (rule.trigger === 'state_changed') {
+                        const oldState = originalData?.estado || null;
+                        const newState = payload.estado || null;
+                        
+                        const isMatch = (!clienteId && newState === rule.value) || 
+                                        (clienteId && oldState !== newState && newState === rule.value);
+                                        
+                        if (isMatch) {
+                            if (rule.action === 'assign_responsible') {
+                                payload.responsable = rule.target;
+                                formData.responsable = rule.target;
+                                console.log(`[AUTOMATION] Triggered 'state_changed' to ${rule.value}. Action: assigned to ${rule.target}`);
+                            } else if (rule.action === 'change_situation') {
+                                payload.situacion = rule.target;
+                                formData.situacion = rule.target;
+                                console.log(`[AUTOMATION] Triggered 'state_changed' to ${rule.value}. Action: changed situation to ${rule.target}`);
+                            }
+                        }
+                    }
+                });
+            }
+
             let finalErr;
             let resultId: string | number | null = clienteId;
 

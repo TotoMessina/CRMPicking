@@ -8,6 +8,7 @@ import { EmpresaSelector } from '../ui/EmpresaSelector';
 import { LogOut, Sun, Moon, Bell, Building2, ChevronDown, Navigation, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTenant } from '../../contexts/TenantContext';
+import { applyBrandingToDOM } from '../../hooks/useBranding';
 
 const SidebarBrand = ({ setIsMobileMenuOpen, empresaActiva }) => {
     const { tenantConfig } = useTenant();
@@ -176,12 +177,10 @@ export function AppShell() {
         });
     }, [routerLocation.pathname, navItems, NAV_GROUP_LIST]);
     
+    // Aplica el branding de la empresa activa al CSS del documento.
+    // La lógica centralizada vive en useBranding.ts → applyBrandingToDOM().
     useEffect(() => {
-        if (empresaActiva?.config?.brandColor) {
-            document.documentElement.style.setProperty('--accent', empresaActiva.config.brandColor);
-        } else {
-            document.documentElement.style.setProperty('--accent', '#7c3aded');
-        }
+        applyBrandingToDOM(empresaActiva?.config || {});
     }, [empresaActiva]);
 
     useEffect(() => {
