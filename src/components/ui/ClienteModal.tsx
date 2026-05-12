@@ -470,7 +470,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         if (Object.keys(errs).length > 0) {
             setErrors(errs);
             // Navigate to first step that has an error
-            for (const [s, fields] of Object.entries(STEP_FIELDS)) {
+            for (const [s, fields] of Object.entries(dynamicStepFields)) {
                 if (fields.some(f => errs[f])) { handleStepChange(Number(s)); break; }
             }
             return;
@@ -531,27 +531,57 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 return;
             }
 
-            // --- SaaS NO-CODE AUTOMATIONS ENGINE ---
+            // --- SaaS NO-CODE AUTOMATIONS ENGINE 2.0 ---
             const automations = empresaActiva?.config?.automations || [];
             if (automations.length > 0) {
                 automations.forEach((rule: any) => {
+                    let isMatch = false;
+                    
+                    // 1. Trigger Detection Logic
                     if (rule.trigger === 'state_changed') {
                         const oldState = originalData?.estado || null;
                         const newState = payload.estado || null;
-                        
-                        const isMatch = (!clienteId && newState === rule.value) || 
-                                        (clienteId && oldState !== newState && newState === rule.value);
+                        isMatch = !!((!clienteId && newState === rule.value) || 
+                                    (clienteId && oldState !== newState && newState === rule.value));
+                    } else if (rule.trigger === 'interest_changed') {
+                        const oldVal = originalData?.interes || null;
+                        const newVal = payload.interes || null;
+                        isMatch = !!((!clienteId && newVal === rule.value) || 
+                                    (clienteId && oldVal !== newVal && newVal === rule.value));
+                    }
                                         
-                        if (isMatch) {
-                            if (rule.action === 'assign_responsible') {
-                                payload.responsable = rule.target;
-                                formData.responsable = rule.target;
-                                console.log(`[AUTOMATION] Triggered 'state_changed' to ${rule.value}. Action: assigned to ${rule.target}`);
-                            } else if (rule.action === 'change_situation') {
-                                payload.situacion = rule.target;
-                                formData.situacion = rule.target;
-                                console.log(`[AUTOMATION] Triggered 'state_changed' to ${rule.value}. Action: changed situation to ${rule.target}`);
-                            }
+                    // 2. Action Execution Logic
+                    if (isMatch) {
+                        console.log(`[AUTOMATION] Matched trigger '${rule.trigger}' with value '${rule.value}'`);
+                        
+                        if (rule.action === 'assign_responsible') {
+                            payload.responsable = rule.target;
+                            formData.responsable = rule.target;
+                            console.log(`[AUTOMATION] Action executed: assigned responsibility to ${rule.target}`);
+                        } else if (rule.action === 'change_situation') {
+                            payload.situacion = rule.target;
+                            formData.situacion = rule.target;
+                            console.log(`[AUTOMATION] Action executed: changed situation to ${rule.target}`);
+                        } else if (rule.action === 'auto_schedule') {
+                            const daysToAdd = parseInt(rule.target) || 7;
+                            const futureDate = new Date();
+                            futureDate.setDate(futureDate.getDate() + daysToAdd);
+                            const dateString = futureDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                            
+                            payload.fecha_proximo_contacto = dateString;
+                            formData.fecha_proximo_contacto = dateString;
+                            console.log(`[AUTOMATION] Action executed: auto-scheduled contact in ${daysToAdd} days (${dateString})`);
+                        } else if (rule.action === 'add_note') {
+                            const noteText = rule.target || 'Nota automática';
+                            const currentNotes = payload.notas || '';
+                            const timestamp = new Date().toLocaleDateString();
+                            const finalNote = currentNotes 
+                                ? `${currentNotes}\n\n[🤖 ${timestamp}]: ${noteText}` 
+                                : `[🤖 ${timestamp}]: ${noteText}`;
+                                
+                            payload.notas = finalNote;
+                            formData.notas = finalNote;
+                            console.log(`[AUTOMATION] Action executed: appended automatic note`);
                         }
                     }
                 });

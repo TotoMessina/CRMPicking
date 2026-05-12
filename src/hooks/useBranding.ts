@@ -5,7 +5,7 @@ import type { BrandingConfig, ShadowStyle } from '../types/permisos';
 // Valores por defecto del sistema
 // ─────────────────────────────────────────────────────────────────────────────
 const DEFAULT_BRANDING: BrandingConfig = {
-    brandColor: '#7c3aded',
+    brandColor: '#7c3aed',
     logoUrl: '',
     systemName: 'PickingUp CRM',
     bgColor: '',

@@ -28,6 +28,9 @@ export interface Client {
         created_at: string;
     };
     grupos?: Group[]; // Added for group support
+    metadata?: Record<string, any>; // Critical: Added for dynamic custom fields
+    cuit?: string;
+    venta_digital?: boolean;
 }
 
 export interface ClientActivity {

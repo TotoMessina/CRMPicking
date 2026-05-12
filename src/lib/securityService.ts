@@ -15,7 +15,7 @@ export const securityService = {
         nivelRiesgo: RiskLevel = 'bajo'
     ) {
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from('security_logs')
                 .insert({
                     usuario_email: email,

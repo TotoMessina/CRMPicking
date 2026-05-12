@@ -277,9 +277,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     .maybeSingle();
                 if (data) {
                     const updated = {
-                        ...empresaActiva,
-                        ...data
-                    };
+                        ...(empresaActiva || {}),
+                        ...(data as any)
+                    } as any;
                     setEmpresaActiva(updated);
                 }
             }

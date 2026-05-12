@@ -128,8 +128,12 @@ export default function PermisosEmpresa() {
               setLocalPageGroups={state.setLocalPageGroups} setDirty={state.setDirty} />
           )}
           {activeTab === 'campos' && (
-            <TabCampos localCustomFields={state.localCustomFields} setLocalCustomFields={state.setLocalCustomFields}
-              localFormLayout={state.localFormLayout} setLocalFormLayout={state.setLocalFormLayout} setDirty={state.setDirty} />
+            <TabCampos 
+              localCustomFields={state.localCustomFields} setLocalCustomFields={state.setLocalCustomFields}
+              localFormLayout={state.localFormLayout} setLocalFormLayout={state.setLocalFormLayout} 
+              localRubros={state.localRubros} setLocalRubros={state.setLocalRubros}
+              setDirty={state.setDirty} 
+            />
           )}
           {activeTab === 'personalizacion' && (
             <TabMarcaBlanca branding={branding} updateBranding={updateBranding} setDirty={state.setDirty} />

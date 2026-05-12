@@ -7,7 +7,7 @@ interface TabMarcaBlancaProps {
 }
 
 const COLOR_PRESETS = [
-    { name: 'PickingUp Violeta', color: '#7c3aded' },
+    { name: 'PickingUp Violeta', color: '#7c3aed' },
     { name: 'Azul Eléctrico',   color: '#3b82f6' },
     { name: 'Esmeralda Natural', color: '#10b981' },
     { name: 'Oro Oscuro',        color: '#d97706' },

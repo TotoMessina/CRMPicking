@@ -24,8 +24,8 @@ export interface UsuarioEmpresa {
     avatar_emoji?: string;
 }
 
-export type AutomationTrigger = 'state_changed';
-export type AutomationAction = 'assign_responsible' | 'change_situation';
+export type AutomationTrigger = 'state_changed' | 'interest_changed';
+export type AutomationAction = 'assign_responsible' | 'change_situation' | 'auto_schedule' | 'add_note';
 
 export interface AutomationRule {
     trigger: AutomationTrigger;

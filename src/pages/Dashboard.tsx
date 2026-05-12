@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-    Activity, Shield, Zap, Target, ArrowRight, Truck, Users, CheckCircle
+    Activity, Shield, Zap, Target, ArrowRight, Truck, Users, CheckCircle,
+    Search, Plus, MessageSquare, Calendar, MapPin
 } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { LiveOperationStream } from '../components/ui/LiveOperationStream';
@@ -59,6 +60,50 @@ export default function Dashboard() {
         localesMapa: [],
         topChurn: []
     });
+
+    // Búsqueda Rápida en Dashboard
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searching, setSearching] = useState(false);
+
+    const handleSearch = async (val: string) => {
+        setSearchQuery(val);
+        if (!val.trim() || !empresaActiva?.id) {
+            setSearchResults([]);
+            return;
+        }
+        setSearching(true);
+        try {
+            // Primero buscamos los IDs de clientes de esta empresa
+            const { data: clientIds } = await supabase
+                .from('empresa_cliente')
+                .select('cliente_id')
+                .eq('empresa_id', empresaActiva.id)
+                .eq('activo', true)
+                .limit(50);
+
+            if (!clientIds || clientIds.length === 0) {
+                setSearchResults([]);
+                return;
+            }
+
+            const ids = clientIds.map(c => c.cliente_id).filter((id): id is number => id !== null);
+
+            // Luego buscamos los detalles en la tabla maestra de clientes
+            const { data } = await supabase
+                .from('clientes')
+                .select('id, nombre_local, direccion')
+                .in('id', ids)
+                .ilike('nombre_local', `%${val}%`)
+                .limit(5);
+
+            setSearchResults(data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSearching(false);
+        }
+    };
 
     const loadDashboardData = async () => {
         if (!empresaActiva?.id || !COLUMNS || COLUMNS.length === 0) return;
@@ -204,223 +249,270 @@ export default function Dashboard() {
         </div>
     );
 
+    const getMapCenter = (): [number, number] => {
+        if (!stats.localesMapa || stats.localesMapa.length === 0) return [-34.6, -58.4];
+        const valid = stats.localesMapa.filter(l => l.clientes?.lat && l.clientes?.lng);
+        if (valid.length === 0) return [-34.6, -58.4];
+        const sumLat = valid.reduce((acc, curr) => acc + Number(curr.clientes.lat), 0);
+        const sumLng = valid.reduce((acc, curr) => acc + Number(curr.clientes.lng), 0);
+        return [sumLat / valid.length, sumLng / valid.length];
+    };
+
+    const mapCenter = getMapCenter();
+
     return (
-        <motion.div 
-            className="dashboard-mission-control"
+        <motion.div
+            className="db-shell"
             initial="hidden"
             animate="visible"
             variants={containerVariants}
         >
-            <motion.div className="hero-section-pro" variants={itemVariants}>
-                <div className="hero-content">
-                    <div className="hero-subtitle-pro">
-                        <Activity size={16} style={{ color: 'var(--accent)' }} /> 
-                        SISTEMA OPERATIVO ACTIVO
-                    </div>
-                    <h1 className="hero-title-pro">HOLA, {userName?.split(' ')[0] || 'ADMIN'}</h1>
-                    <p className="muted" style={{ fontSize: '1.1rem', marginBottom: '24px' }}>
-                        Supervisando **{empresaActiva?.nombre}**. Tenés {stats.nuevosHoy} actualizaciones críticas hoy.
-                    </p>
-                    
-                    <div className="hero-stats-quick">
-                        <div className="stat-inline">
-                            <span className="stat-inline-val">{stats.clientesTotal}</span>
-                            <span className="stat-inline-label">Puntos de Venta</span>
+            {/* ── ROW 1: HERO + 4 KPI CARDS ── */}
+            <div className="db-row-1">
+
+                {/* HERO */}
+                <motion.div className="db-hero" variants={itemVariants}>
+                    {/* Decorative glow blobs */}
+                    <div className="db-hero-blob blob-1" />
+                    <div className="db-hero-blob blob-2" />
+
+                    <div className="db-hero-inner">
+                        <div className="db-badge">
+                            <span className="db-badge-dot" />
+                            Sistema Activo
                         </div>
-                        <div className="stat-inline" style={{ borderLeft: '1px solid var(--border)', paddingLeft: '32px' }}>
-                            <span className="stat-inline-val">{stats.repartidores}</span>
-                            <span className="stat-inline-label">Unidades en Campo</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="hero-deco deco-1"></div>
-                <div className="hero-deco deco-2"></div>
-            </motion.div>
 
-            <div className="metrics-row">
-                <motion.div 
-                    className="glass-card-pro metric-card-pro cursor-pointer" 
-                    variants={itemVariants}
-                    onClick={() => window.location.hash = '#/clientes'}
-                    style={{ cursor: 'pointer' }}
-                >
-                    <div className="flex justify-between items-start" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div className="metric-icon-box"><Target size={24} /></div>
-                        <div className="metric-trend trend-up-pro">+{stats.nuevosHoy} Hoy</div>
-                    </div>
-                    <div className="metric-val-large">{stats.clientesTotal}</div>
-                    <div className="stat-inline-label">Alcance Global</div>
-                </motion.div>
+                        <h1 className="db-hero-title">
+                            Hola, {userName?.split(' ')[0] || 'Operador'} 👋
+                        </h1>
+                        <p className="db-hero-sub">
+                            Gestionando <strong>{empresaActiva?.nombre}</strong> · {stats.nuevosHoy > 0 ? <><strong style={{ color: 'var(--accent)' }}>+{stats.nuevosHoy}</strong> nuevos hoy</> : 'Sin novedades hoy'}
+                        </p>
 
-                <motion.div 
-                    className="glass-card-pro metric-card-pro" 
-                    variants={itemVariants}
-                    onClick={() => window.location.hash = '#/repartidores'}
-                    style={{ cursor: 'pointer' }}
-                >
-                    <div className="flex justify-between items-start" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div className="metric-icon-box"><Truck size={24} /></div>
-                    </div>
-                    <div className="metric-val-large">{stats.repartidores}</div>
-                    <div className="stat-inline-label">Operadores Activos</div>
-                </motion.div>
-
-                <motion.div 
-                    className="glass-card-pro metric-card-pro" 
-                    variants={itemVariants}
-                    onClick={() => window.location.hash = '#/consumidores'}
-                    style={{ cursor: 'pointer' }}
-                >
-                    <div className="flex justify-between items-start" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div className="metric-icon-box"><Users size={24} /></div>
-                    </div>
-                    <div className="metric-val-large">{stats.consumidores >= 1000 ? `${(stats.consumidores / 1000).toFixed(1)}K` : stats.consumidores}</div>
-                    <div className="stat-inline-label">Comunidad B2C</div>
-                </motion.div>
-
-                <motion.div 
-                    className="glass-card-pro metric-card-pro" 
-                    variants={itemVariants}
-                    onClick={() => window.location.hash = '#/pipeline'}
-                    style={{ cursor: 'pointer' }}
-                >
-                    <div className="flex justify-between items-start" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div className="metric-icon-box" style={{ color: '#ef4444' }}><Shield size={24} /></div>
-                        <div className="metric-trend trend-down-pro" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>Crítico</div>
-                    </div>
-                    <div className="metric-val-large">{stats.topChurn.length}</div>
-                    <div className="stat-inline-label">Fugas Detectadas</div>
-                </motion.div>
-            </div>
-
-            <div className="ops-main-grid">
-                <div className="intelligence-hub">
-                    <motion.div className="glass-card-pro" variants={itemVariants}>
-                        <div className="section-header-pro">
-                            <h2 className="section-title-pro">Cobertura Geográfica Inteligente</h2>
-                            <Link to="/mapa" className="btn-link" style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                MAPA COMPLETO <ArrowRight size={14}/>
-                            </Link>
-                        </div>
-                        <div className="map-container-pro">
-                            <MapContainer center={[-34.6, -58.4]} zoom={11} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                {stats.localesMapa.map(l => (
-                                    <CircleMarker 
-                                        key={l.id} 
-                                        center={[l.clientes.lat, l.clientes.lng]} 
-                                        radius={5} 
-                                        fillOpacity={0.8} 
-                                        color="var(--accent)" 
-                                        stroke={true}
-                                        weight={2}
-                                    >
-                                        <Popup>{l.clientes?.nombre_local || 'Local'}</Popup>
-                                    </CircleMarker>
-                                ))}
-                            </MapContainer>
-                            <div className="map-pro-overlay">
-                                <div className="badge-live" style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: '800' }}>
-                                    {stats.localesMapa.length} NODOS ACTIVOS
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                        <motion.div className="glass-card-pro" variants={itemVariants} style={{ height: '280px' }}>
-                            <div className="section-header-pro" style={{ marginBottom: '12px' }}>
-                                <h2 className="section-title-pro">Performance de Crecimiento</h2>
-                            </div>
-                            <div style={{ height: '180px' }}>
-                                <Bar data={stats.crecimientoDiario as any} options={chartOptions as any} />
-                            </div>
-                        </motion.div>
-
-                        <motion.div className="glass-card-pro" variants={itemVariants} style={{ height: '280px' }}>
-                            <div className="section-header-pro" style={{ marginBottom: '12px' }}>
-                                <h2 className="section-title-pro">Mix de Cartera</h2>
-                            </div>
-                            <div style={{ height: '180px' }}>
-                                <Doughnut 
-                                    data={stats.distribucionCartera as any} 
-                                    options={{ ...chartOptions, plugins: { legend: { display: true, position: 'right', labels: { boxWidth: 8, font: { size: 9, weight: '700' }, color: 'var(--text-muted)' } } } } as any} 
-                                />
-                            </div>
-                        </motion.div>
-                    </div>
-                </div>
-
-                <div className="ops-sidebar">
-                    <motion.div className="glass-card-pro" variants={itemVariants} style={{ padding: 0, overflow: 'hidden', height: '100%', minHeight: '400px' }}>
-                        <LiveOperationStream />
-                    </motion.div>
-
-                    <motion.div className="glass-card-pro" variants={itemVariants}>
-                        <div className="section-header-pro" style={{ marginBottom: '12px' }}>
-                            <h2 className="section-title-pro">Riesgo de Abandono</h2>
-                        </div>
-                        <div style={{ maxHeight: '200px', overflowY: 'auto' }} className="hide-scrollbar">
-                            <table className="table-pro">
-                                <thead>
-                                    <tr>
-                                        <th>Local</th>
-                                        <th style={{ textAlign: 'right' }}>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stats.topChurn.map(c => (
-                                        <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => window.location.hash = `#/clientes?id=${c.cliente_id}`}>
-                                            <td style={{ fontSize: '0.8rem', fontWeight: '700' }}>{c.clientes?.nombre_local}</td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                <span className="trend-down-pro" style={{ fontSize: '9px', fontWeight: '800' }}>
-                                                    {c.risk.diasSinContacto > 1000 ? 'N/D' : c.risk.diasSinContacto + 'd'}
-                                                </span>
-                                            </td>
-                                        </tr>
+                        {/* Search */}
+                        <div className="db-search-wrap">
+                            <Search className="db-search-icon" size={18} />
+                            <input
+                                type="text"
+                                className="db-search-input"
+                                placeholder="Buscar punto de venta..."
+                                value={searchQuery}
+                                onChange={(e) => handleSearch(e.target.value)}
+                            />
+                            {searchResults.length > 0 && (
+                                <div className="db-search-results">
+                                    {searchResults.map(item => (
+                                        <Link key={item.id} to={`/clientes?id=${item.id}`} className="db-search-item" onClick={() => setSearchResults([])}>
+                                            <div className="db-search-item-icon"><MapPin size={14} /></div>
+                                            <div>
+                                                <div className="db-search-item-name">{item.nombre_local}</div>
+                                                <div className="db-search-item-addr">{item.direccion || 'Sin dirección'}</div>
+                                            </div>
+                                        </Link>
                                     ))}
-                                    {stats.topChurn.length === 0 && (
-                                        <tr><td colSpan={2} className="text-center py-4 muted" style={{ fontSize: '0.7rem' }}>Sin alertas críticas</td></tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                </div>
+                            )}
                         </div>
-                    </motion.div>
-                </div>
 
+                        {/* Quick Stats Row */}
+                        <div className="db-hero-stats">
+                            <div className="db-hs">
+                                <span className="db-hs-num">{stats.clientesTotal}</span>
+                                <span className="db-hs-lbl">Clientes</span>
+                            </div>
+                            <div className="db-hs-div" />
+                            <div className="db-hs">
+                                <span className="db-hs-num">{stats.repartidores}</span>
+                                <span className="db-hs-lbl">En Campo</span>
+                            </div>
+                            <div className="db-hs-div" />
+                            <div className="db-hs">
+                                <span className="db-hs-num">{stats.consumidores >= 1000 ? `${(stats.consumidores/1000).toFixed(1)}K` : stats.consumidores}</span>
+                                <span className="db-hs-lbl">Consumidores</span>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* KPI CARDS */}
+                <div className="db-kpi-grid">
+                    {[
+                        { to: '/clientes', icon: <Target size={22} />, val: stats.clientesTotal, lbl: 'Puntos de Venta', badge: `+${stats.nuevosHoy}`, badgeColor: '#10b981', accent: 'var(--accent)' },
+                        { to: '/repartidores', icon: <Truck size={22} />, val: stats.repartidores, lbl: 'Repartidores', badge: 'Activos', badgeColor: '#3b82f6', accent: '#3b82f6' },
+                        { to: '/consumidores', icon: <Users size={22} />, val: stats.consumidores >= 1000 ? `${(stats.consumidores/1000).toFixed(1)}K` : stats.consumidores, lbl: 'Consumidores', badge: 'B2C', badgeColor: '#8b5cf6', accent: '#8b5cf6' },
+                        { to: '/pipeline', icon: <Shield size={22} />, val: stats.topChurn.length, lbl: 'Fugas Detectadas', badge: stats.topChurn.length > 0 ? '⚠ Alerta' : '✓ OK', badgeColor: stats.topChurn.length > 0 ? '#ef4444' : '#10b981', accent: '#ef4444' },
+                    ].map((card, i) => (
+                        <motion.div key={i} variants={itemVariants}>
+                            <Link to={card.to} className="db-kpi-card" style={{ '--kpi-accent': card.accent } as any}>
+                                <div className="db-kpi-top">
+                                    <div className="db-kpi-icon">{card.icon}</div>
+                                    <span className="db-kpi-badge" style={{ background: `${card.badgeColor}18`, color: card.badgeColor }}>{card.badge}</span>
+                                </div>
+                                <div className="db-kpi-val">{card.val}</div>
+                                <div className="db-kpi-lbl">{card.lbl}</div>
+                                <div className="db-kpi-glow" style={{ background: card.accent }} />
+                            </Link>
+                        </motion.div>
+                    ))}
+                </div>
             </div>
 
-            <motion.div className="glass-card-pro" variants={itemVariants}>
-                <div className="section-header-pro">
-                    <h2 className="section-title-pro">Actividad Reciente del Staff</h2>
-                    <Zap size={16} style={{ color: 'var(--accent)' }} />
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="table-pro">
-                        <thead>
-                            <tr>
-                                <th>Punto de Venta</th>
-                                <th>Timestamp</th>
-                                <th>Operador</th>
-                                <th style={{ textAlign: 'right' }}>Verificación</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {stats.ultimasVisitas.map(v => (
-                                <tr key={v.id} style={{ cursor: 'pointer' }} onClick={() => window.location.hash = `#/clientes?id=${v.cliente_id}`}>
-                                    <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }}></div>
-                                        <strong>{v.clientes?.nombre_local || 'Desconocido'}</strong>
-                                    </div></td>
-                                    <td className="muted" style={{ fontSize: '0.8rem' }}>{v.fecha ? format(new Date(v.fecha), 'HH:mm', { locale: es }) : '--:--'}hs</td>
-                                    <td style={{ fontSize: '0.85rem', fontWeight: '500' }}>{v.usuario || 'Operador'}</td>
-                                    <td style={{ textAlign: 'right' }}><CheckCircle size={14} style={{ color: 'var(--success)' }} /></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {/* ── ROW 2: ACTION HUB ── */}
+            <motion.div className="db-actions-row" variants={itemVariants}>
+                <p className="db-actions-label">Acciones Rápidas</p>
+                <div className="db-actions-grid">
+                    {[
+                        { to: '/clientes', icon: <Plus size={20} />, label: 'Nuevo Cliente', desc: 'Cargar punto de venta', color: 'var(--accent)' },
+                        { to: '/ruta', icon: <MapPin size={20} />, label: 'Ruta del Día', desc: 'Planificar logística', color: '#3b82f6' },
+                        { to: '/calendario', icon: <Calendar size={20} />, label: 'Agenda', desc: 'Programar visitas', color: '#8b5cf6' },
+                        { to: '/chat', icon: <MessageSquare size={20} />, label: 'Chat Interno', desc: 'Comunicar al staff', color: '#10b981' },
+                        { to: '/ia-interna', icon: <Zap size={20} />, label: 'IA Interna', desc: 'Análisis con IA', color: '#f59e0b' },
+                        { to: '/pipeline', icon: <Target size={20} />, label: 'Pipeline', desc: 'Seguimiento de ventas', color: '#ef4444' },
+                    ].map((act, i) => (
+                        <Link key={i} to={act.to} className="db-action-chip" style={{ '--chip-color': act.color } as any}>
+                            <div className="db-action-chip-icon" style={{ background: `${act.color}15`, color: act.color }}>
+                                {act.icon}
+                            </div>
+                            <div className="db-action-chip-text">
+                                <span className="db-action-chip-label">{act.label}</span>
+                                <span className="db-action-chip-desc">{act.desc}</span>
+                            </div>
+                            <ArrowRight size={14} className="db-action-chip-arrow" />
+                        </Link>
+                    ))}
                 </div>
             </motion.div>
+
+            {/* ── ROW 3: MAP + FEED ── */}
+            <div className="db-row-3">
+                {/* MAP */}
+                <motion.div className="db-panel db-map-panel" variants={itemVariants}>
+                    <div className="db-panel-hdr">
+                        <div className="db-panel-title">
+                            <span className="db-title-dot" />
+                            Cobertura Geográfica
+                        </div>
+                        <Link to="/mapa" className="db-panel-link">
+                            Ver todo <ArrowRight size={12} />
+                        </Link>
+                    </div>
+                    <div className="db-map-body">
+                        <MapContainer center={mapCenter} zoom={11} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                            {stats.localesMapa.map(l => (
+                                <CircleMarker
+                                    key={l.id}
+                                    center={[l.clientes.lat, l.clientes.lng]}
+                                    radius={7}
+                                    fillOpacity={0.85}
+                                    color="var(--accent)"
+                                    stroke={true}
+                                    weight={2}
+                                >
+                                    <Popup>{l.clientes?.nombre_local || 'Local'}</Popup>
+                                </CircleMarker>
+                            ))}
+                        </MapContainer>
+                        <div className="db-map-badge">{stats.localesMapa.length} nodos activos</div>
+                    </div>
+                </motion.div>
+
+                {/* LIVE FEED */}
+                <motion.div className="db-panel db-feed-panel" variants={itemVariants}>
+                    <div className="db-panel-hdr">
+                        <div className="db-panel-title">
+                            <span className="db-title-dot" style={{ background: 'var(--success)' }} />
+                            Monitor de Flota
+                        </div>
+                        <span className="db-live-badge">LIVE</span>
+                    </div>
+                    <div className="db-feed-body">
+                        <LiveOperationStream />
+                    </div>
+                </motion.div>
+
+                {/* CHURN */}
+                <motion.div className="db-panel db-churn-panel" variants={itemVariants}>
+                    <div className="db-panel-hdr">
+                        <div className="db-panel-title">
+                            <span className="db-title-dot" style={{ background: '#ef4444' }} />
+                            Riesgo Abandono
+                        </div>
+                    </div>
+                    <div className="db-churn-list">
+                        {stats.topChurn.length === 0 ? (
+                            <div className="db-empty">
+                                <CheckCircle size={28} style={{ color: 'var(--success)', opacity: 0.6 }} />
+                                <p>Sin alertas críticas</p>
+                            </div>
+                        ) : stats.topChurn.map(c => (
+                            <Link key={c.id} to={`/clientes?id=${c.cliente_id}`} className="db-churn-row">
+                                <div className="db-churn-dot" style={{ background: c.risk.level === 'alto' ? '#ef4444' : '#f59e0b' }} />
+                                <div className="db-churn-name">{c.clientes?.nombre_local}</div>
+                                <div className="db-churn-days" style={{ color: c.risk.level === 'alto' ? '#ef4444' : '#f59e0b' }}>
+                                    {c.risk.diasSinContacto > 1000 ? 'N/D' : `${c.risk.diasSinContacto}d`}
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* ── ROW 4: CHARTS ── */}
+            <div className="db-row-4">
+                <motion.div className="db-panel" variants={itemVariants}>
+                    <div className="db-panel-hdr">
+                        <div className="db-panel-title">
+                            <span className="db-title-dot" />
+                            Crecimiento Semanal
+                        </div>
+                    </div>
+                    <div style={{ height: 200 }}>
+                        <Bar data={stats.crecimientoDiario as any} options={chartOptions as any} />
+                    </div>
+                </motion.div>
+
+                <motion.div className="db-panel" variants={itemVariants}>
+                    <div className="db-panel-hdr">
+                        <div className="db-panel-title">
+                            <span className="db-title-dot" style={{ background: '#8b5cf6' }} />
+                            Mix de Cartera
+                        </div>
+                    </div>
+                    <div style={{ height: 200, display: 'flex', justifyContent: 'center' }}>
+                        <Doughnut
+                            data={stats.distribucionCartera as any}
+                            options={{ ...chartOptions, plugins: { legend: { display: true, position: 'right' as const, labels: { usePointStyle: true, boxWidth: 6, font: { size: 9 }, color: 'var(--text-muted)' } } } } as any}
+                        />
+                    </div>
+                </motion.div>
+
+                {/* ACTIVITY TABLE */}
+                <motion.div className="db-panel db-activity-panel" variants={itemVariants}>
+                    <div className="db-panel-hdr">
+                        <div className="db-panel-title">
+                            <span className="db-title-dot" style={{ background: '#10b981' }} />
+                            Actividad Reciente
+                        </div>
+                    </div>
+                    {stats.ultimasVisitas.length === 0 ? (
+                        <div className="db-empty"><p>Sin visitas recientes</p></div>
+                    ) : (
+                        <div className="db-activity-list">
+                            {stats.ultimasVisitas.map(v => (
+                                <Link key={v.id} to={`/clientes?id=${v.cliente_id}`} className="db-activity-row">
+                                    <div className="db-activity-dot" />
+                                    <div className="db-activity-info">
+                                        <span className="db-activity-name">{v.clientes?.nombre_local || 'Desconocido'}</span>
+                                        <span className="db-activity-meta">{v.fecha ? format(new Date(v.fecha), 'HH:mm', { locale: es }) : '--:--'} · {v.usuario || 'Operador'}</span>
+                                    </div>
+                                    <CheckCircle size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </motion.div>
+            </div>
 
         </motion.div>
     );

@@ -96,6 +96,9 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
 
     // ── Automatizaciones ──────────────────────────────────────────────────────
     const [localAutomations, setLocalAutomations] = useState<AutomationRule[]>([]);
+    
+    // ── Listados Maestros (Rubros) ────────────────────────────────────────────
+    const [localRubros, setLocalRubros] = useState<string[]>([]);
 
     // ── UI State ──────────────────────────────────────────────────────────────
     const [loading, setLoading] = useState(false);
@@ -205,6 +208,9 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
             // 7. Automatizaciones
             setLocalAutomations(selectedEmpresa?.config?.automations || []);
 
+            // 8. Rubros
+            setLocalRubros(selectedEmpresa?.config?.rubros || []);
+
         } catch (error) {
             toast.error('Error al sincronizar datos');
         } finally {
@@ -247,6 +253,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
             pageGroups: localPageGroups,
             customFields: localCustomFields,
             formLayout: localFormLayout,
+            rubros: localRubros,
             brandColor:       branding.brandColor,
             logoUrl:          branding.logoUrl,
             systemName:       branding.systemName,
@@ -358,6 +365,8 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         localFormLayout, setLocalFormLayout,
         // Automatizaciones
         localAutomations, setLocalAutomations,
+        // Rubros
+        localRubros, setLocalRubros,
         // UI
         loading, saving, dirty, setDirty,
         // Helpers
