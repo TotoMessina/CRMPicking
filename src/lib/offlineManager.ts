@@ -7,7 +7,7 @@ import { TenantStore } from '../config/tenant';
  * Motor de sincronización Offline-First.
  */
 
-const DB_NAME = 'pickingup-offline-v1';
+const DB_NAME = 'insideup-offline-v1';
 const DB_VERSION = 2;
 
 const STORES = {

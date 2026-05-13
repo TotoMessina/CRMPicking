@@ -43,7 +43,7 @@ serve(async (req) => {
 
         // Initialize pure Deno Web Push Server
         const appServer = new ApplicationServer({
-            contact: 'mailto:soporte@pickingup.com',
+            contact: 'mailto:soporte@insideup.com',
             vapidKeys: {
                 publicKey: Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
                 privateKey: Deno.env.get('VAPID_PRIVATE_KEY') ?? ''

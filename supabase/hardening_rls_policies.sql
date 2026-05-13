@@ -1,5 +1,5 @@
 -- ============================================================
--- PickingUp CRM - BLINDAJE MULTI-TENANT (RLS)
+-- InsideUp CRM - BLINDAJE MULTI-TENANT (RLS)
 -- ============================================================
 -- Este script activa Row Level Security (RLS) en las tablas
 -- críticas para asegurar que ninguna empresa vea datos de otra.

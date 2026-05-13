@@ -23,10 +23,10 @@ export interface TenantConfig {
 
 export const defaultTenantConfig: TenantConfig = {
     app: {
-        name: "PickingUp CRM",
-        shortName: "PickingUp",
+        name: "InsideUp CRM",
+        shortName: "InsideUp",
         productName: "App Rosa", 
-        logoUrl: "/picking-logo.png", 
+        logoUrl: "/inside-logo.png", 
     },
     ai: {
         name: "CoqueBot",
@@ -90,11 +90,14 @@ export const TenantStore = {
  */
 export function injectTenantTheme(config: TenantConfig = currentConfig) {
     const root = document.documentElement;
-    root.style.setProperty('--color-primary', config.theme.colors.primary);
-    root.style.setProperty('--color-primary-light', config.theme.colors.primaryLight);
-    root.style.setProperty('--color-primary-dark', config.theme.colors.primaryDark);
-    root.style.setProperty('--color-accent', config.theme.colors.accent);
-    document.title = config.app.name;
+    const colors = config?.theme?.colors || defaultTenantConfig.theme.colors;
+    const appName = config?.app?.name || defaultTenantConfig.app.name;
+
+    root.style.setProperty('--color-primary', colors.primary);
+    root.style.setProperty('--color-primary-light', colors.primaryLight);
+    root.style.setProperty('--color-primary-dark', colors.primaryDark);
+    root.style.setProperty('--color-accent', colors.accent);
+    document.title = appName;
 }
 
 // Para compatibilidad hacia atrás durante la migración, exportamos un proxy o referenciamos directamente a la función si se usa estáticamente, pero es mejor que los archivos usen TenantStore.getConfig()

@@ -142,11 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (empresaActiva?.config) {
             TenantStore.setConfig(empresaActiva.config);
-            injectTenantTheme(empresaActiva.config);
         } else {
             // Reset to default
-            TenantStore.setConfig(null as any);
-            injectTenantTheme();
+            TenantStore.setConfig(null);
         }
     }, [empresaActiva]);
 

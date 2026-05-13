@@ -169,7 +169,7 @@ export const aiProvider = {
         // Prioridad 5: Personalidad / Respuestas Rápidas
         if (intentScores.personality > 2 || msg === 'hola' || msg.includes('quien sos')) {
             if (msg.includes('hola')) return { text: "¡Buenas, buenas! Acá CoqueBot al habla. 🦾 Tu copiloto de ventas y enciclopedia del CRM. ¿A qué local vamos a digitalizar hoy?" };
-            if (msg.includes('quien sos')) return { text: "Soy CoqueBot, el primer modelo de IA entrenado específicamente para el CRM PickingUp. Mi misión es ayudarte a cerrar más locales y que no se te escape ningún dato." };
+            if (msg.includes('quien sos')) return { text: "Soy CoqueBot, el primer modelo de IA entrenado específicamente para el CRM InsideUp. Mi misión es ayudarte a cerrar más locales y que no se te escape ningún dato." };
             if (msg.includes('gracias')) return { text: "¡De nada, fiera! A romperla en la calle. 🚀" };
             if (msg.includes('mal') || msg.includes('tonto') || msg.includes('feo')) return { text: "¡Epa! Perdón si te fallé, che. Todavía estoy aprendiendo los modismos de la calle. Si me preguntás algo más específico del CRM seguro te ayudo mejor. 😅" };
         }
@@ -474,6 +474,52 @@ export const aiProvider = {
             '6': 'Estos nos sacaron cagando o no les interesa por ahora. 🚫'
         };
         return comments[state] || '';
+    },
+
+    async summarizePost(content: string): Promise<string> {
+        await new Promise(resolve => setTimeout(resolve, 900));
+        const normalized = content.toLowerCase();
+        
+        // Detección de Eje Central (Foco)
+        let emoji = '📝';
+        let focus = 'Comunicado General';
+        if (normalized.includes('reunion') || normalized.includes('junta') || normalized.includes('meet') || normalized.includes('convoca')) {
+            emoji = '📅'; focus = 'Reunión / Convocatoria';
+        } else if (normalized.includes('horario') || normalized.includes('cronograma') || normalized.includes('turno') || normalized.includes('calendario')) {
+            emoji = '⏰'; focus = 'Cambios de Cronograma';
+        } else if (normalized.includes('capacita') || normalized.includes('curso') || normalized.includes('entrena') || normalized.includes('taller')) {
+            emoji = '🎓'; focus = 'Capacitación / Formación';
+        } else if (normalized.includes('festej') || normalized.includes('cumple') || normalized.includes('aniversario') || normalized.includes('celebr')) {
+            emoji = '🎉'; focus = 'Social / Celebración';
+        } else if (normalized.includes('urge') || normalized.includes('importante') || normalized.includes('atencion') || normalized.includes('cuidado')) {
+            emoji = '⚠️'; focus = 'Aviso Crítico / Importante';
+        } else if (normalized.includes('ventas') || normalized.includes('factura') || normalized.includes('objetivo') || normalized.includes('comision') || normalized.includes('rendimiento')) {
+            emoji = '📈'; focus = 'Resultados Comerciales';
+        }
+
+        // Síntesis Heurística - Separamos frases
+        const sentences = content.split(/[.!?\n]+/).map(s => s.trim()).filter(s => s.length > 10);
+        let keyPoints: string[] = [];
+
+        if (sentences.length <= 3) {
+            keyPoints = sentences;
+        } else {
+            // Tomamos Introducción (primera), Desarrollo (la más larga del medio) y Conclusión (última)
+            keyPoints.push(sentences[0]);
+            const sub = sentences.slice(1, sentences.length - 1);
+            const longestMiddle = sub.reduce((a, b) => a.length > b.length ? a : b, sub[0] || '');
+            if (longestMiddle) keyPoints.push(longestMiddle);
+            keyPoints.push(sentences[sentences.length - 1]);
+        }
+
+        // Construir string final optimizado con Markdown
+        let summary = `🤖 **Resumen de InsideBot** (${focus} ${emoji}):\n\n`;
+        keyPoints.forEach((p) => {
+            summary += `🔹 ${p}${p.endsWith('.') ? '' : '.'}\n`;
+        });
+        summary += `\n💡 *¡Ahorrá tiempo y andá al grano!* ⚡`;
+
+        return summary;
     }
 };
 

@@ -1,5 +1,5 @@
 -- ============================================================
--- PickingUp CRM - SINCRONIZACIÓN EN CASCADA DE NOMBRES
+-- InsideUp CRM - SINCRONIZACIÓN EN CASCADA DE NOMBRES
 -- ============================================================
 
 -- 1. FUNCIÓN DE SINCRONIZACIÓN PARA ETAPAS (ESTADOS)

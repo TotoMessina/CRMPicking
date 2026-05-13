@@ -12,8 +12,8 @@ export default defineConfig({
       filename: 'custom-sw.js',
       includeAssets: ['icon-512.png', 'icon-192.png'],
       manifest: {
-        name: 'PickingUp CRM',
-        short_name: 'PickingUp',
+        name: 'InsideUp CRM',
+        short_name: 'InsideUp',
         description: 'CRM para gestión de clientes, activadores y estadísticas.',
         theme_color: '#0f172a',
         background_color: '#0f172a',

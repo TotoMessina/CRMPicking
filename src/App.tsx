@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+﻿import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { NetworkStatusHandler } from './components/ui/NetworkStatusHandler';
@@ -8,6 +8,7 @@ import { GlobalLoader } from './components/ui/GlobalLoader';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
+const Novedades = lazy(() => import('./pages/Novedades'));
 import InternalAI from './pages/InternalAI';
 import { CoqueBot } from './components/ui/CoqueBot';
 import { useSecurityMonitor } from './hooks/useSecurityMonitor';
@@ -47,7 +48,7 @@ function SecurityMonitorHelper() {
 }
 
 function App(): React.JSX.Element {
-  // Interceptar recuperación de contraseña si Supabase nos mandó a la raíz
+  // Interceptar recuperaciÃ³n de contraseÃ±a si Supabase nos mandÃ³ a la raÃ­z
   useEffect(() => {
     if (window.location.hash && window.location.hash.includes("type=recovery") && window.location.pathname !== '/update-password') {
       window.location.replace('/update-password' + window.location.hash);
@@ -83,6 +84,7 @@ function App(): React.JSX.Element {
             <Route path="/calendario" element={<Suspense fallback={<GlobalLoader />}><Calendario /></Suspense>} />
             <Route path="/horarios" element={<Suspense fallback={<GlobalLoader />}><Horarios /></Suspense>} />
             <Route path="/historial" element={<Suspense fallback={<GlobalLoader />}><Historial /></Suspense>} />
+            <Route path="/novedades" element={<Suspense fallback={<GlobalLoader />}><Novedades /></Suspense>} />
             <Route path="/ruta" element={<Suspense fallback={<GlobalLoader />}><RutaDiaria /></Suspense>} />
             <Route path="/asignador-rutas" element={<Suspense fallback={<GlobalLoader />}><AsignadorRutas /></Suspense>} />
             <Route path="/mapa" element={<Suspense fallback={<GlobalLoader />}><MapaClientes /></Suspense>} />
@@ -110,3 +112,4 @@ function App(): React.JSX.Element {
 }
 
 export default App;
+

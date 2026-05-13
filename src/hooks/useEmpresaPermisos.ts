@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, authClient } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { ALL_PAGES, GROUPS } from '../constants/pages';
 import { applyBrandingToDOM } from './useBranding';
@@ -111,6 +111,8 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
     const [editUserForm, setEditUserForm] = useState({ role: '', activo: true });
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
     const [newRoleForm, setNewRoleForm] = useState({ nombre: '', color_hex: '#0c0c0c' });
+    const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
+    const [createUserForm, setCreateUserForm] = useState({ nombre: '', email: '', role: '', password: '' });
 
     // ── Cargar lista de empresas (solo al montar) ─────────────────────────────
     useEffect(() => {
@@ -181,18 +183,44 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
                 .order('created_at', { ascending: true });
 
             if (!rolesError) {
-                setRolesDinamicos(rolesData || []);
+                const disabledRoles = selectedEmpresa.config?.disabledRoles || [];
+                const activeRoles = (rolesData || []).filter((r: any) => 
+                    !disabledRoles.includes(r.nombre.toLowerCase())
+                );
+                setRolesDinamicos(activeRoles);
             } else {
                 console.error('Error cargando crm_roles (Ignorar si la tabla no existe aún)', rolesError);
-                setRolesDinamicos(FALLBACK_ROLES);
+                const disabledRoles = selectedEmpresa.config?.disabledRoles || [];
+                const activeRoles = FALLBACK_ROLES.filter(r => 
+                    !disabledRoles.includes(r.nombre.toLowerCase())
+                );
+                setRolesDinamicos(activeRoles);
             }
 
-            // 3. Usuarios
-            const { data: usersData } = await supabase
-                .from('usuarios')
-                .select('*')
-                .order('nombre', { ascending: true });
-            setUsuariosEmpresa((usersData || []) as UsuarioEmpresa[]);
+            // 3. Usuarios de la Empresa (Filtrado multi-tenant)
+            const { data: relData } = await supabase
+                .from('empresa_usuario')
+                .select(`
+                    role,
+                    user:usuarios!fk_empresa_usuario_usuarios (
+                        id, nombre, email, activo, avatar_emoji
+                    )
+                `)
+                .eq('empresa_id', selectedEmpresa.id);
+
+            const formattedUsers = (relData || [])
+                .filter((row: any) => row.user)
+                .map((row: any) => ({
+                    id: row.user.id,
+                    nombre: row.user.nombre,
+                    email: row.user.email,
+                    role: row.role, // Rol específico en esta empresa
+                    activo: row.user.activo,
+                    avatar_emoji: row.user.avatar_emoji
+                }))
+                .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+            setUsuariosEmpresa(formattedUsers as UsuarioEmpresa[]);
 
             // 4. Configuración de Categorías
             setLocalSidebarGroups(selectedEmpresa?.config?.sidebarGroups || GROUPS);
@@ -292,19 +320,62 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
     // ── Guardar rol de usuario ─────────────────────────────────────────────────
     const handleSaveUser = async (e: React.FormEvent, isDemoMode: boolean) => {
         e.preventDefault();
-        if (!selectedUser || isDemoMode) return;
+        if (!selectedUser || isDemoMode || !selectedEmpresa) return;
         setSaving(true);
         try {
-            const { error } = await supabase
+            // 1. Actualizar rol específico en la relación de la empresa
+            const { error: relError } = await supabase
+                .from('empresa_usuario')
+                .update({ role: editUserForm.role })
+                .eq('empresa_id', selectedEmpresa.id)
+                .eq('usuario_email', selectedUser.email);
+            
+            if (relError) throw relError;
+
+            // 2. Actualizar estado activo global (opcional, pero mantenido del comportamiento original)
+            const { error: userError } = await supabase
                 .from('usuarios')
-                .update({ role: editUserForm.role, activo: editUserForm.activo })
+                .update({ activo: editUserForm.activo })
                 .eq('id', selectedUser.id);
-            if (error) throw error;
+
+            if (userError) throw userError;
+
             toast.success('Rol de usuario actualizado');
             setIsUserModalOpen(false);
             fetchCoreData();
         } catch {
             toast.error('Error actualizando usuario');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // ── Eliminar / Desvincular usuario de la empresa ────────────────────────────
+    const handleDeleteUser = async (userEmail: string, isDemoMode: boolean) => {
+        if (!selectedEmpresa) return;
+        if (isDemoMode) {
+            toast.error('Acción no permitida en el modo Demo.');
+            return;
+        }
+
+        const confirm = window.confirm(`¿Estás seguro de que deseas eliminar el acceso de "${userEmail}" a esta empresa?\n\nEsta acción revoca todos sus privilegios inmediatamente.`);
+        if (!confirm) return;
+
+        setSaving(true);
+        try {
+            const { error } = await supabase
+                .from('empresa_usuario')
+                .delete()
+                .eq('empresa_id', selectedEmpresa.id)
+                .eq('usuario_email', userEmail);
+
+            if (error) throw error;
+
+            toast.success('Usuario desvinculado exitosamente de la empresa.', { icon: '🗑️' });
+            fetchCoreData();
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            toast.error('Ocurrió un error al desvincular el usuario.');
         } finally {
             setSaving(false);
         }
@@ -331,6 +402,114 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         } finally {
             setSaving(false);
         }
+    };
+
+    // ── Eliminar rol dinámico o desactivar base ──────────────────────────────────
+    const handleDeleteRole = async (roleName: string, isDemoMode: boolean) => {
+        if (!selectedEmpresa) return;
+        if (isDemoMode) {
+            toast.error('Acción no permitida en el modo Demo.');
+            return;
+        }
+
+        const normalizedRole = roleName.trim().toLowerCase();
+
+        // Bloqueo de seguridad definitivo
+        if (normalizedRole === 'admin') {
+            toast.error('Por seguridad estructural, el rol primordial "ADMIN" no puede ser eliminado.');
+            return;
+        }
+
+        // Verificar si hay usuarios usándolo actualmente
+        const usersUsingRole = usuariosEmpresa.filter(u => u.role?.toLowerCase() === normalizedRole);
+        if (usersUsingRole.length > 0) {
+            toast.error(`No podés eliminar el rol "${roleName.toUpperCase()}" porque hay ${usersUsingRole.length} usuario(s) utilizándolo. Reasígnale otro rol a esos usuarios primero.`);
+            return;
+        }
+
+        // Identificar si es un rol del sistema base (empresa_id = null)
+        const targetRoleObj = rolesDinamicos.find(r => r.nombre.toLowerCase() === normalizedRole);
+        const isSystemBaseRole = !targetRoleObj || !targetRoleObj.empresa_id;
+
+        const confirmMsg = isSystemBaseRole 
+            ? `¿Estás seguro de que deseas remover el rol base "${roleName.toUpperCase()}" para tu empresa?\n\nDejará de aparecer en el listado de creación de usuarios.`
+            : `¿Estás seguro de que deseas eliminar definitivamente el rol dinámico "${roleName.toUpperCase()}"?\n\nEsta acción no se puede deshacer.`;
+
+        const confirm = window.confirm(confirmMsg);
+        if (!confirm) return;
+
+        setSaving(true);
+        try {
+            if (isSystemBaseRole) {
+                // Caso A: Desactivar rol base a nivel de configuración de empresa (Soft-Delete Multi-tenant)
+                const currentConfig = selectedEmpresa.config || {};
+                const disabledRoles = Array.isArray(currentConfig.disabledRoles) ? [...currentConfig.disabledRoles] : [];
+                
+                if (!disabledRoles.includes(normalizedRole)) {
+                    disabledRoles.push(normalizedRole);
+                }
+
+                const updatedConfig = { ...currentConfig, disabledRoles };
+
+                const { error: configError } = await (supabase as any).rpc('update_empresa_config', {
+                    p_empresa_id: selectedEmpresa.id,
+                    p_config: updatedConfig,
+                });
+
+                if (configError) throw configError;
+
+                // Actualizar memoria de React
+                setEmpresas(prev => prev.map(emp =>
+                    emp.id === selectedEmpresa.id ? { ...emp, config: updatedConfig } : emp
+                ));
+                setSelectedEmpresa((prev: any) => ({ ...prev, config: updatedConfig }));
+                toast.success(`Rol base "${roleName.toUpperCase()}" removido de tu empresa.`, { icon: '🗑️' });
+            } else {
+                // Caso B: Eliminar fila real de crm_roles
+                const { error } = await supabase
+                    .from('crm_roles')
+                    .delete()
+                    .eq('empresa_id', selectedEmpresa.id)
+                    .eq('nombre', normalizedRole);
+
+                if (error) throw error;
+
+                toast.success(`Rol personalizado "${roleName.toUpperCase()}" eliminado correctamente.`, { icon: '🗑️' });
+            }
+
+            fetchCoreData();
+        } catch (err) {
+            console.error('Error deleting role:', err);
+            toast.error('Ocurrió un error al procesar la eliminación del rol.');
+        } finally {
+            setSaving(false);
+        }
+    };
+    
+    // ── Crear nuevo usuario (Flujo 100% DB Seguro: Anti-429 y Aislado) ──────────
+    const handleCreateUser = async (userData: { nombre: string; email: string; role: string; password?: string }, isDemoMode: boolean) => {
+        if (!selectedEmpresa) throw new Error('No hay una empresa activa seleccionada.');
+        if (isDemoMode) throw new Error('Acción no permitida en el modo Demo.');
+        
+        const password = userData.password || 'Inside' + Math.random().toString(36).slice(-6) + '!'; 
+
+        // Invocar la RPC todo-en-uno que crea el usuario en Auth+Identities e ignora límites de API (429)
+        const { data: newUserId, error: rpcError } = await supabase.rpc('admin_create_user', {
+            p_email: userData.email.trim(),
+            p_password: password,
+            p_nombre: userData.nombre.trim(),
+            p_role: userData.role.trim().toLowerCase(),
+            p_empresa_id: selectedEmpresa.id
+        });
+
+        if (rpcError) {
+            if (rpcError.message?.includes('does not exist')) {
+                throw new Error('La función maestra de creación no existe en la DB. Reinstala "admin_create_user" en tu SQL Editor.');
+            }
+            throw rpcError;
+        }
+        
+        return { id: newUserId || null, password };
     };
 
     // ── Páginas agrupadas por categoría (memoizado) ───────────────────────────
@@ -372,12 +551,14 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         // Helpers
         fetchCoreData, groupedPages,
         // Handlers
-        handleSavePermisos, handleSaveUser, handleCreateRole,
+        handleSavePermisos, handleSaveUser, handleDeleteUser, handleCreateRole, handleDeleteRole, handleCreateUser,
         // Modales
         selectedUser, setSelectedUser,
         isUserModalOpen, setIsUserModalOpen,
         editUserForm, setEditUserForm,
         isRoleModalOpen, setIsRoleModalOpen,
         newRoleForm, setNewRoleForm,
+        isCreateUserModalOpen, setIsCreateUserModalOpen,
+        createUserForm, setCreateUserForm,
     };
 }

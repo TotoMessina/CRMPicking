@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Building2, ChevronDown, Layers, Users, Plus, Save, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,12 +25,18 @@ export default function PermisosEmpresa() {
   const { role, empresaActiva, paginasPermitidas, isDemoMode } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>('modulos');
 
-  const { branding, updateBranding } = useBranding();
+  const { branding, updateBranding, loadBrandingFromConfig } = useBranding();
 
   const state = useEmpresaPermisos({ branding });
 
   // Load branding when empresa changes
   const { selectedEmpresa } = state;
+
+  useEffect(() => {
+    if (selectedEmpresa && selectedEmpresa.config) {
+      loadBrandingFromConfig(selectedEmpresa.config);
+    }
+  }, [selectedEmpresa, loadBrandingFromConfig]);
 
   const isSuperAdmin = role === 'super-admin';
   const effectiveRole = isSuperAdmin ? 'super-admin' : (empresaActiva?.role_en_empresa?.toLowerCase() || role || '');
@@ -121,7 +127,12 @@ export default function PermisosEmpresa() {
               handleSaveUser={e => state.handleSaveUser(e, isDemoMode)}
               isRoleModalOpen={state.isRoleModalOpen} setIsRoleModalOpen={state.setIsRoleModalOpen}
               newRoleForm={state.newRoleForm} setNewRoleForm={state.setNewRoleForm}
-              handleCreateRole={e => state.handleCreateRole(e, isDemoMode)} />
+              handleCreateRole={e => state.handleCreateRole(e, isDemoMode)}
+              handleDeleteRole={(name, isDemo) => state.handleDeleteRole(name, isDemo)}
+              isCreateUserModalOpen={state.isCreateUserModalOpen} setIsCreateUserModalOpen={state.setIsCreateUserModalOpen}
+              createUserForm={state.createUserForm} setCreateUserForm={state.setCreateUserForm}
+              handleCreateUser={state.handleCreateUser} handleDeleteUser={state.handleDeleteUser} fetchCoreData={state.fetchCoreData}
+              isDemoMode={isDemoMode} />
           )}
           {activeTab === 'categorias' && (
             <TabCategorias localSidebarGroups={state.localSidebarGroups} setLocalSidebarGroups={state.setLocalSidebarGroups}
@@ -136,7 +147,7 @@ export default function PermisosEmpresa() {
             />
           )}
           {activeTab === 'personalizacion' && (
-            <TabMarcaBlanca branding={branding} updateBranding={updateBranding} setDirty={state.setDirty} />
+            <TabMarcaBlanca branding={branding} updateBranding={updateBranding} setDirty={state.setDirty} empresaId={selectedEmpresa?.id} />
           )}
           {activeTab === 'automatizaciones' && (
             <TabAutomatizaciones automations={state.localAutomations} setAutomations={state.setLocalAutomations}

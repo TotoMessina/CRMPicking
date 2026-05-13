@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserCircle, X, MessageCircle, Send, ClipboardList, Check, CheckCheck, Calendar, ArrowUpRight, Link as LinkIcon, Users, User, Route } from 'lucide-react';
+import { UserCircle, X, MessageCircle, Send, ClipboardList, Check, CheckCheck, Calendar, ArrowUpRight, Link as LinkIcon, Users, User, Route, Newspaper } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatToLocal } from '../../utils/dateUtils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,6 +46,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         if (text?.startsWith('[TAREA_ASIGNADA]|')) {
             const parts = text.split('|');
             return { type: 'task', title: parts[1], desc: parts[2], date: parts[3] };
+        }
+        if (text?.startsWith('[POST_NOVEDADES]|')) {
+            const parts = text.split('|');
+            return { type: 'novedad', id: parts[1], creador: parts[2], preview: parts[3] };
         }
         if (text?.startsWith('[CONTEXT:')) {
             const match = text.match(/\[CONTEXT:(.*?):(.*?):(.*?)\]\|(.*)/);
@@ -186,6 +190,31 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                             </div>
                                         )}
                                         <Link to="/tablero" style={{ textAlign: 'center', padding: '10px', background: 'var(--accent)', borderRadius: '12px', color: '#fff', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 700, marginTop: '4px' }}>Ver en Tablero</Link>
+                                    </div>
+                                ) : parsed.type === 'novedad' ? (
+                                    <div style={{ 
+                                        background: 'var(--bg-elevated)', 
+                                        border: `1px solid ${isMe ? 'var(--accent)' : 'var(--border)'}`, 
+                                        borderRadius: '20px', padding: '16px', 
+                                        width: isMobile ? '230px' : '280px', 
+                                        display: 'flex', flexDirection: 'column', gap: '10px',
+                                        boxShadow: 'var(--shadow-sm)'
+                                    } as React.CSSProperties}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}>
+                                            <Newspaper size={18} />
+                                            <span style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Post Compartido</span>
+                                        </div>
+                                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Publicado por <strong>{(parsed as any).creador}</strong></div>
+                                        <div style={{ fontSize: '0.88rem', fontStyle: 'italic', color: 'var(--text)', background: 'var(--bg-card)', padding: '8px 12px', borderRadius: '10px', borderLeft: '3px solid var(--accent)' }}>
+                                            "{(parsed as any).preview}"
+                                        </div>
+                                        <Link to="/novedades" style={{ textAlign: 'center', padding: '10px', background: 'var(--accent)', borderRadius: '12px', color: '#fff', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 700, marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                            Ver en Novedades <ArrowUpRight size={14} />
+                                        </Link>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                            {formatTime(msg.created_at)}
+                                            {isMe && !msg.isOptimistic && (msg.leido ? <CheckCheck size={12} color="#10b981" /> : <Check size={12} />)}
+                                        </div>
                                     </div>
                                 ) : (
                                     <div style={{

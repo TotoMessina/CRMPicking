@@ -158,24 +158,35 @@ export function AppShell() {
     const routerLocation = useLocation();
     const { tenantConfig } = useTenant();
     
-    const NAV_GROUP_LIST = tenantConfig?.sidebarGroups || NAV_GROUP_ORDER;
+    const NAV_GROUP_LIST = (tenantConfig?.sidebarGroups && tenantConfig.sidebarGroups.length > 0) 
+        ? tenantConfig.sidebarGroups 
+        : NAV_GROUP_ORDER;
+
+    // EVITAR PÁGINAS HUÉRFANAS:
+    // Si el usuario renombró o borró categorías, las páginas que apuntan a grupos que ya no existen
+    // se reubican automáticamente en el primer grupo visible de la lista para que nunca se pierdan!
+    const activeGroupsSet = new Set(NAV_GROUP_LIST);
+    const finalNavItems = navItems.map(item => {
+        if (activeGroupsSet.has(item.group)) return item;
+        return { ...item, group: NAV_GROUP_LIST[0] || 'Activaciones' };
+    });
 
     const [openGroups, setOpenGroups] = useState(() => {
         const defaultGroup = NAV_GROUP_LIST[0] || 'Activaciones';
-        const active = getActiveGroup(routerLocation.pathname, navItems, defaultGroup);
+        const active = getActiveGroup(routerLocation.pathname, finalNavItems, defaultGroup);
         return new Set([active]);
     });
 
     useEffect(() => {
         const defaultGroup = NAV_GROUP_LIST[0] || 'Activaciones';
-        const active = getActiveGroup(routerLocation.pathname, navItems, defaultGroup);
+        const active = getActiveGroup(routerLocation.pathname, finalNavItems, defaultGroup);
         setOpenGroups(prev => {
             if (prev.has(active)) return prev;
             const next = new Set(prev);
             next.add(active);
             return next;
         });
-    }, [routerLocation.pathname, navItems, NAV_GROUP_LIST]);
+    }, [routerLocation.pathname, finalNavItems, NAV_GROUP_LIST]);
     
     // Aplica el branding de la empresa activa al CSS del documento.
     // La lógica centralizada vive en useBranding.ts → applyBrandingToDOM().
@@ -239,7 +250,7 @@ export function AppShell() {
                 <nav className="sidebar-nav" aria-label="Navegación principal">
                     <ul className="sidebar-menu">
                         {NAV_GROUP_LIST.map(groupName => {
-                            const items = navItems.filter(item => item.group === groupName);
+                            const items = finalNavItems.filter(item => item.group === groupName);
                             if (items.length === 0) return null;
                             return (
                                 <NavGroup
@@ -269,7 +280,7 @@ export function AppShell() {
                         }}
                         onClick={() => {
                             // Disparar el evento para abrir el chat
-                            window.dispatchEvent(new CustomEvent('open-pickingbot'));
+                            window.dispatchEvent(new CustomEvent('open-insidebot'));
                         }}
                     >
                         <Bot size={14} />

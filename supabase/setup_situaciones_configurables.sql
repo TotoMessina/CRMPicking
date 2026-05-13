@@ -1,5 +1,5 @@
 -- ============================================================
--- PickingUp CRM - CONFIGURACIÓN DE SITUACIONES DINÁMICAS
+-- InsideUp CRM - CONFIGURACIÓN DE SITUACIONES DINÁMICAS
 -- ============================================================
 
 -- 1. Crear la tabla de situaciones

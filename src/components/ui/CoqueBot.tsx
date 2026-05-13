@@ -58,7 +58,7 @@ export const CoqueBot: React.FC = () => {
 
     useEffect(() => {
         const handleOpen = () => setIsOpen(true);
-        window.addEventListener('open-pickingbot', handleOpen);
+        window.addEventListener('open-insidebot', handleOpen);
         
         const handleStartTutorial = (e: any) => {
             const { tutorialId } = e.detail;
@@ -79,7 +79,7 @@ export const CoqueBot: React.FC = () => {
         window.addEventListener('coque-start-tutorial', handleStartTutorial);
 
         return () => {
-            window.removeEventListener('open-pickingbot', handleOpen);
+            window.removeEventListener('open-insidebot', handleOpen);
             window.removeEventListener('coque-start-tutorial', handleStartTutorial);
         };
     }, []);

@@ -79,7 +79,7 @@ self.addEventListener('push', function (event) {
 
     const title = data.title || 'Nueva Notificación';
     const options = {
-        body: data.body || 'Tienes un nuevo mensaje en el CRM PickingUp',
+        body: data.body || 'Tienes un nuevo mensaje en el CRM InsideUp',
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         vibrate: [200, 100, 200],

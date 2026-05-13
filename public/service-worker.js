@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pickingup-crm-v2';
+const CACHE_NAME = 'insideup-crm-v2';
 const urlsToCache = [
   '/',
   '/index.html',

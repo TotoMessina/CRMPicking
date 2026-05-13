@@ -1,11 +1,11 @@
-# PickingUp CRM (Logistics & CRM Hybrid) 🚀
+# InsideUp CRM (Logistics & CRM Hybrid) 🚀
 
 [![React](https://img.shields.io/badge/React-19-blue.svg)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-purple.svg)](https://vitejs.dev/)
 [![Supabase](https://img.shields.io/badge/Supabase-Backend-green.svg)](https://supabase.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**PickingUp CRM** es una plataforma web moderna y escalable diseñada para resolver la brecha entre la gestión de relaciones con clientes y la logística de última milla. Adopta un ecosistema basado en **React 19**, **Vite** y **Supabase** para ofrecer una experiencia ultra-rápida y en tiempo real.
+**InsideUp CRM** es una plataforma web moderna y escalable diseñada para resolver la brecha entre la gestión de relaciones con clientes y la logística de última milla. Adopta un ecosistema basado en **React 19**, **Vite** y **Supabase** para ofrecer una experiencia ultra-rápida y en tiempo real.
 
 ---
 

@@ -7,7 +7,7 @@ import type { BrandingConfig, ShadowStyle } from '../types/permisos';
 const DEFAULT_BRANDING: BrandingConfig = {
     brandColor: '#7c3aed',
     logoUrl: '',
-    systemName: 'PickingUp CRM',
+    systemName: 'InsideUp CRM',
     bgColor: '',
     bgElevatedColor: '',
     textColor: '',
