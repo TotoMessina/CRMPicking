@@ -1,5 +1,6 @@
-﻿import React, { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { NetworkStatusHandler } from './components/ui/NetworkStatusHandler';
 import { UpdateNotifier } from './components/ui/UpdateNotifier';
@@ -47,6 +48,17 @@ function SecurityMonitorHelper() {
   return null;
 }
 
+function HomeRedirect() {
+  const { empresaActiva } = useAuth();
+  const landingPage = empresaActiva?.config?.landingPage;
+
+  if (landingPage && landingPage !== '/') {
+    return <Navigate to={landingPage} replace />;
+  }
+
+  return <Dashboard />;
+}
+
 function App(): React.JSX.Element {
   // Interceptar recuperaciÃ³n de contraseÃ±a si Supabase nos mandÃ³ a la raÃ­z
   useEffect(() => {
@@ -73,7 +85,8 @@ function App(): React.JSX.Element {
           <Route path="/update-password" element={<UpdatePassword />} />
 
           <Route element={<AppShell />}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<HomeRedirect />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/chat" element={<Suspense fallback={<GlobalLoader />}><Chat /></Suspense>} />
             <Route path="/tablero" element={<Suspense fallback={<GlobalLoader />}><TableroTareas /></Suspense>} />
             <Route path="/clientes" element={<Suspense fallback={<GlobalLoader />}><Clientes /></Suspense>} />

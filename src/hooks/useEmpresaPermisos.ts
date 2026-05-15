@@ -97,6 +97,13 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
     // ── Automatizaciones ──────────────────────────────────────────────────────
     const [localAutomations, setLocalAutomations] = useState<AutomationRule[]>([]);
     
+    // ── Configuración General ────────────────────────────────────────────────
+    const [localLandingPage, setLocalLandingPage] = useState<string>('/');
+    const [localDashboardWidgets, setLocalDashboardWidgets] = useState<Record<string, boolean>>({
+        kpis: true, actions: true, map: true, fleet: true, 
+        churn: true, growth: true, mix: true, activity: true
+    });
+
     // ── Listados Maestros (Rubros) ────────────────────────────────────────────
     const [localRubros, setLocalRubros] = useState<string[]>([]);
 
@@ -239,6 +246,15 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
             // 8. Rubros
             setLocalRubros(selectedEmpresa?.config?.rubros || []);
 
+            // 9. Página de Inicio
+            setLocalLandingPage(selectedEmpresa?.config?.landingPage || '/');
+
+            // 10. Dashboard Widgets
+            setLocalDashboardWidgets(selectedEmpresa?.config?.dashboardWidgets || {
+                kpis: true, actions: true, map: true, fleet: true, 
+                churn: true, growth: true, mix: true, activity: true
+            });
+
         } catch (error) {
             toast.error('Error al sincronizar datos');
         } finally {
@@ -294,6 +310,8 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
             fontFamily:       branding.fontFamily,
             shadowStyle:      branding.shadowStyle,
             automations:      localAutomations,
+            landingPage:      localLandingPage,
+            dashboardWidgets: localDashboardWidgets,
         };
 
         const { error: configError } = await (supabase as any).rpc('update_empresa_config', {
@@ -552,6 +570,9 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         fetchCoreData, groupedPages,
         // Handlers
         handleSavePermisos, handleSaveUser, handleDeleteUser, handleCreateRole, handleDeleteRole, handleCreateUser,
+        // Config Gral
+        localLandingPage, setLocalLandingPage,
+        localDashboardWidgets, setLocalDashboardWidgets,
         // Modales
         selectedUser, setSelectedUser,
         isUserModalOpen, setIsUserModalOpen,

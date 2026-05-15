@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { BrandingConfig, ShadowStyle } from '../types/permisos';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -129,12 +129,12 @@ export function useBranding() {
     const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING);
 
     /** Actualiza un campo individual del branding */
-    function updateBranding<K extends keyof BrandingConfig>(key: K, value: BrandingConfig[K]) {
+    const updateBranding = useCallback(<K extends keyof BrandingConfig>(key: K, value: BrandingConfig[K]) => {
         setBranding(prev => ({ ...prev, [key]: value }));
-    }
+    }, []);
 
     /** Carga el branding desde la config de una empresa */
-    function loadBrandingFromConfig(config: Record<string, any> | null | undefined) {
+    const loadBrandingFromConfig = useCallback((config: Record<string, any> | null | undefined) => {
         setBranding({
             brandColor: config?.brandColor ?? DEFAULT_BRANDING.brandColor,
             logoUrl: config?.logoUrl ?? DEFAULT_BRANDING.logoUrl,
@@ -148,7 +148,7 @@ export function useBranding() {
             fontFamily: config?.fontFamily ?? DEFAULT_BRANDING.fontFamily,
             shadowStyle: (config?.shadowStyle ?? DEFAULT_BRANDING.shadowStyle) as ShadowStyle,
         });
-    }
+    }, []);
 
     return {
         branding,

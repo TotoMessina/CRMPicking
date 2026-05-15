@@ -1,4 +1,4 @@
-import { AppWindow, Layers, Check, Lock, Unlock } from 'lucide-react';
+import { AppWindow, Layers, Check, Lock, Unlock, LayoutDashboard, Target, Zap, Map as MapIcon, Truck, Users, Activity, CheckCircle } from 'lucide-react';
 import { ALL_PAGES } from '../../constants/pages';
 import type { CrmRole } from '../../types/permisos';
 
@@ -10,6 +10,10 @@ interface TabModulosProps {
     localSidebarGroups: string[];
     localPageGroups: Record<string, string>;
     setLocalPageGroups: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+    localLandingPage: string;
+    setLocalLandingPage: (v: string) => void;
+    localDashboardWidgets: Record<string, boolean>;
+    setLocalDashboardWidgets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     setDirty: (v: boolean) => void;
 }
 
@@ -21,10 +25,75 @@ export function TabModulos({
     localSidebarGroups,
     localPageGroups,
     setLocalPageGroups,
+    localLandingPage,
+    setLocalLandingPage,
+    localDashboardWidgets,
+    setLocalDashboardWidgets,
     setDirty,
 }: TabModulosProps) {
     return (
         <div className="permisos-grupos-grid" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'display', gridTemplateColumns: '1fr 1fr', gap: '20px' }} className="permisos-cards-grid">
+                {/* Landing Page */}
+                <div style={{ background: 'var(--bg-elevated)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>📍 Pantalla de Inicio</h3>
+                    <p className="muted" style={{ margin: '4px 0 12px 0', fontSize: '0.85rem' }}>Página predeterminada al ingresar.</p>
+                    <select 
+                        className="input premium-input" 
+                        value={localLandingPage} 
+                        onChange={e => { setLocalLandingPage(e.target.value); setDirty(true); }}
+                        style={{ width: '100%', height: '42px', fontSize: '0.9rem' }}
+                    >
+                        {ALL_PAGES.filter(p => p.to).map(p => (
+                            <option key={p.to} value={p.to}>{p.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Dashboard Modular */}
+                <div style={{ background: 'var(--bg-elevated)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>📊 Configuración Dashboard</h3>
+                    <p className="muted" style={{ margin: '4px 0 12px 0', fontSize: '0.85rem' }}>Elegí qué widgets mostrar en la pantalla principal.</p>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        {[
+                            { id: 'kpis',     label: 'KPIs (Totales)', icon: Target },
+                            { id: 'actions',  label: 'Acciones Rápidas', icon: Zap },
+                            { id: 'map',      label: 'Mapa Cobertura', icon: MapIcon },
+                            { id: 'fleet',    label: 'Monitor Flota', icon: Truck },
+                            { id: 'churn',    label: 'Radar de Fuga', icon: Activity },
+                            { id: 'growth',   label: 'Crecimiento Sem', icon: Activity },
+                            { id: 'mix',      label: 'Mix de Cartera', icon: CheckCircle },
+                            { id: 'activity', label: 'Actividad Reciente', icon: CheckCircle },
+                        ].map(w => {
+                            const isEnabled = localDashboardWidgets[w.id];
+                            const Icon = w.icon;
+                            return (
+                                <div 
+                                    key={w.id} 
+                                    onClick={() => {
+                                        setLocalDashboardWidgets(prev => ({ ...prev, [w.id]: !isEnabled }));
+                                        setDirty(true);
+                                    }}
+                                    style={{ 
+                                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: '10px', 
+                                        background: isEnabled ? 'rgba(124, 58, 237, 0.08)' : 'transparent',
+                                        border: '1px solid',
+                                        borderColor: isEnabled ? 'var(--accent)' : 'var(--border)',
+                                        cursor: 'pointer', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Icon size={14} color={isEnabled ? 'var(--accent)' : 'var(--text-muted)'} />
+                                    <span style={{ fontSize: '0.75rem', fontWeight: isEnabled ? 700 : 500, color: isEnabled ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                                        {w.label}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: '-10px' }}>
                 <button
                     className="btn-secundario"

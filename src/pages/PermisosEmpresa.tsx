@@ -117,7 +117,10 @@ export default function PermisosEmpresa() {
           {activeTab === 'modulos' && (
             <TabModulos groupedPages={state.groupedPages} permisos={state.permisos} setPermisos={state.setPermisos}
               rolesDinamicos={state.rolesDinamicos} localSidebarGroups={state.localSidebarGroups}
-              localPageGroups={state.localPageGroups} setLocalPageGroups={state.setLocalPageGroups} setDirty={state.setDirty} />
+              localPageGroups={state.localPageGroups} setLocalPageGroups={state.setLocalPageGroups} 
+              localLandingPage={state.localLandingPage} setLocalLandingPage={state.setLocalLandingPage}
+              localDashboardWidgets={state.localDashboardWidgets} setLocalDashboardWidgets={state.setLocalDashboardWidgets}
+              setDirty={state.setDirty} />
           )}
           {activeTab === 'usuarios' && (
             <TabUsuarios usuariosEmpresa={state.usuariosEmpresa} rolesDinamicos={state.rolesDinamicos} saving={state.saving}

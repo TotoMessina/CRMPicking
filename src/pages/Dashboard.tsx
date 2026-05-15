@@ -260,6 +260,12 @@ export default function Dashboard() {
 
     const mapCenter = getMapCenter();
 
+    const isWidgetEnabled = (key: string) => {
+        const widgets = empresaActiva?.config?.dashboardWidgets;
+        if (!widgets) return true;
+        return widgets[key] !== false;
+    };
+
     return (
         <motion.div
             className="db-shell"
@@ -335,183 +341,199 @@ export default function Dashboard() {
                 </motion.div>
 
                 {/* KPI CARDS */}
-                <div className="db-kpi-grid">
-                    {[
-                        { to: '/clientes', icon: <Target size={22} />, val: stats.clientesTotal, lbl: 'Puntos de Venta', badge: `+${stats.nuevosHoy}`, badgeColor: '#10b981', accent: 'var(--accent)' },
-                        { to: '/repartidores', icon: <Truck size={22} />, val: stats.repartidores, lbl: 'Repartidores', badge: 'Activos', badgeColor: '#3b82f6', accent: '#3b82f6' },
-                        { to: '/consumidores', icon: <Users size={22} />, val: stats.consumidores >= 1000 ? `${(stats.consumidores/1000).toFixed(1)}K` : stats.consumidores, lbl: 'Consumidores', badge: 'B2C', badgeColor: '#8b5cf6', accent: '#8b5cf6' },
-                        { to: '/pipeline', icon: <Shield size={22} />, val: stats.topChurn.length, lbl: 'Fugas Detectadas', badge: stats.topChurn.length > 0 ? '⚠ Alerta' : '✓ OK', badgeColor: stats.topChurn.length > 0 ? '#ef4444' : '#10b981', accent: '#ef4444' },
-                    ].map((card, i) => (
-                        <motion.div key={i} variants={itemVariants}>
-                            <Link to={card.to} className="db-kpi-card" style={{ '--kpi-accent': card.accent } as any}>
-                                <div className="db-kpi-top">
-                                    <div className="db-kpi-icon">{card.icon}</div>
-                                    <span className="db-kpi-badge" style={{ background: `${card.badgeColor}18`, color: card.badgeColor }}>{card.badge}</span>
-                                </div>
-                                <div className="db-kpi-val">{card.val}</div>
-                                <div className="db-kpi-lbl">{card.lbl}</div>
-                                <div className="db-kpi-glow" style={{ background: card.accent }} />
-                            </Link>
-                        </motion.div>
-                    ))}
-                </div>
+                {isWidgetEnabled('kpis') && (
+                    <div className="db-kpi-grid">
+                        {[
+                            { to: '/clientes', icon: <Target size={22} />, val: stats.clientesTotal, lbl: 'Puntos de Venta', badge: `+${stats.nuevosHoy}`, badgeColor: '#10b981', accent: 'var(--accent)' },
+                            { to: '/repartidores', icon: <Truck size={22} />, val: stats.repartidores, lbl: 'Repartidores', badge: 'Activos', badgeColor: '#3b82f6', accent: '#3b82f6' },
+                            { to: '/consumidores', icon: <Users size={22} />, val: stats.consumidores >= 1000 ? `${(stats.consumidores/1000).toFixed(1)}K` : stats.consumidores, lbl: 'Consumidores', badge: 'B2C', badgeColor: '#8b5cf6', accent: '#8b5cf6' },
+                            { to: '/pipeline', icon: <Shield size={22} />, val: stats.topChurn.length, lbl: 'Fugas Detectadas', badge: stats.topChurn.length > 0 ? '⚠ Alerta' : '✓ OK', badgeColor: stats.topChurn.length > 0 ? '#ef4444' : '#10b981', accent: '#ef4444' },
+                        ].map((card, i) => (
+                            <motion.div key={i} variants={itemVariants}>
+                                <Link to={card.to} className="db-kpi-card" style={{ '--kpi-accent': card.accent } as any}>
+                                    <div className="db-kpi-top">
+                                        <div className="db-kpi-icon">{card.icon}</div>
+                                        <span className="db-kpi-badge" style={{ background: `${card.badgeColor}18`, color: card.badgeColor }}>{card.badge}</span>
+                                    </div>
+                                    <div className="db-kpi-val">{card.val}</div>
+                                    <div className="db-kpi-lbl">{card.lbl}</div>
+                                    <div className="db-kpi-glow" style={{ background: card.accent }} />
+                                </Link>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* ── ROW 2: ACTION HUB ── */}
-            <motion.div className="db-actions-row" variants={itemVariants}>
-                <p className="db-actions-label">Acciones Rápidas</p>
-                <div className="db-actions-grid">
-                    {[
-                        { to: '/clientes', icon: <Plus size={20} />, label: 'Nuevo Cliente', desc: 'Cargar punto de venta', color: 'var(--accent)' },
-                        { to: '/ruta', icon: <MapPin size={20} />, label: 'Ruta del Día', desc: 'Planificar logística', color: '#3b82f6' },
-                        { to: '/calendario', icon: <Calendar size={20} />, label: 'Agenda', desc: 'Programar visitas', color: '#8b5cf6' },
-                        { to: '/chat', icon: <MessageSquare size={20} />, label: 'Chat Interno', desc: 'Comunicar al staff', color: '#10b981' },
-                        { to: '/ia-interna', icon: <Zap size={20} />, label: 'IA Interna', desc: 'Análisis con IA', color: '#f59e0b' },
-                        { to: '/pipeline', icon: <Target size={20} />, label: 'Pipeline', desc: 'Seguimiento de ventas', color: '#ef4444' },
-                    ].map((act, i) => (
-                        <Link key={i} to={act.to} className="db-action-chip" style={{ '--chip-color': act.color } as any}>
-                            <div className="db-action-chip-icon" style={{ background: `${act.color}15`, color: act.color }}>
-                                {act.icon}
-                            </div>
-                            <div className="db-action-chip-text">
-                                <span className="db-action-chip-label">{act.label}</span>
-                                <span className="db-action-chip-desc">{act.desc}</span>
-                            </div>
-                            <ArrowRight size={14} className="db-action-chip-arrow" />
-                        </Link>
-                    ))}
-                </div>
-            </motion.div>
-
-            {/* ── ROW 3: MAP + FEED ── */}
-            <div className="db-row-3">
-                {/* MAP */}
-                <motion.div className="db-panel db-map-panel" variants={itemVariants}>
-                    <div className="db-panel-hdr">
-                        <div className="db-panel-title">
-                            <span className="db-title-dot" />
-                            Cobertura Geográfica
-                        </div>
-                        <Link to="/mapa" className="db-panel-link">
-                            Ver todo <ArrowRight size={12} />
-                        </Link>
-                    </div>
-                    <div className="db-map-body">
-                        <MapContainer center={mapCenter} zoom={11} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                            {stats.localesMapa.map(l => (
-                                <CircleMarker
-                                    key={l.id}
-                                    center={[l.clientes.lat, l.clientes.lng]}
-                                    radius={7}
-                                    fillOpacity={0.85}
-                                    color="var(--accent)"
-                                    stroke={true}
-                                    weight={2}
-                                >
-                                    <Popup>{l.clientes?.nombre_local || 'Local'}</Popup>
-                                </CircleMarker>
-                            ))}
-                        </MapContainer>
-                        <div className="db-map-badge">{stats.localesMapa.length} nodos activos</div>
-                    </div>
-                </motion.div>
-
-                {/* LIVE FEED */}
-                <motion.div className="db-panel db-feed-panel" variants={itemVariants}>
-                    <div className="db-panel-hdr">
-                        <div className="db-panel-title">
-                            <span className="db-title-dot" style={{ background: 'var(--success)' }} />
-                            Monitor de Flota
-                        </div>
-                        <span className="db-live-badge">LIVE</span>
-                    </div>
-                    <div className="db-feed-body">
-                        <LiveOperationStream />
-                    </div>
-                </motion.div>
-
-                {/* CHURN */}
-                <motion.div className="db-panel db-churn-panel" variants={itemVariants}>
-                    <div className="db-panel-hdr">
-                        <div className="db-panel-title">
-                            <span className="db-title-dot" style={{ background: '#ef4444' }} />
-                            Riesgo Abandono
-                        </div>
-                    </div>
-                    <div className="db-churn-list">
-                        {stats.topChurn.length === 0 ? (
-                            <div className="db-empty">
-                                <CheckCircle size={28} style={{ color: 'var(--success)', opacity: 0.6 }} />
-                                <p>Sin alertas críticas</p>
-                            </div>
-                        ) : stats.topChurn.map(c => (
-                            <Link key={c.id} to={`/clientes?id=${c.cliente_id}`} className="db-churn-row">
-                                <div className="db-churn-dot" style={{ background: c.risk.level === 'alto' ? '#ef4444' : '#f59e0b' }} />
-                                <div className="db-churn-name">{c.clientes?.nombre_local}</div>
-                                <div className="db-churn-days" style={{ color: c.risk.level === 'alto' ? '#ef4444' : '#f59e0b' }}>
-                                    {c.risk.diasSinContacto > 1000 ? 'N/D' : `${c.risk.diasSinContacto}d`}
+            {isWidgetEnabled('actions') && (
+                <motion.div className="db-actions-row" variants={itemVariants}>
+                    <p className="db-actions-label">Acciones Rápidas</p>
+                    <div className="db-actions-grid">
+                        {[
+                            { to: '/clientes', icon: <Plus size={20} />, label: 'Nuevo Cliente', desc: 'Cargar punto de venta', color: 'var(--accent)' },
+                            { to: '/ruta', icon: <MapPin size={20} />, label: 'Ruta del Día', desc: 'Planificar logística', color: '#3b82f6' },
+                            { to: '/calendario', icon: <Calendar size={20} />, label: 'Agenda', desc: 'Programar visitas', color: '#8b5cf6' },
+                            { to: '/chat', icon: <MessageSquare size={20} />, label: 'Chat Interno', desc: 'Comunicar al staff', color: '#10b981' },
+                            { to: '/ia-interna', icon: <Zap size={20} />, label: 'IA Interna', desc: 'Análisis con IA', color: '#f59e0b' },
+                            { to: '/pipeline', icon: <Target size={20} />, label: 'Pipeline', desc: 'Seguimiento de ventas', color: '#ef4444' },
+                        ].map((act, i) => (
+                            <Link key={i} to={act.to} className="db-action-chip" style={{ '--chip-color': act.color } as any}>
+                                <div className="db-action-chip-icon" style={{ background: `${act.color}15`, color: act.color }}>
+                                    {act.icon}
                                 </div>
+                                <div className="db-action-chip-text">
+                                    <span className="db-action-chip-label">{act.label}</span>
+                                    <span className="db-action-chip-desc">{act.desc}</span>
+                                </div>
+                                <ArrowRight size={14} className="db-action-chip-arrow" />
                             </Link>
                         ))}
                     </div>
                 </motion.div>
+            )}
+
+            {/* ── ROW 3: MAP + FEED ── */}
+            <div className="db-row-3">
+                {/* MAP */}
+                {isWidgetEnabled('map') && (
+                    <motion.div className="db-panel db-map-panel" variants={itemVariants}>
+                        <div className="db-panel-hdr">
+                            <div className="db-panel-title">
+                                <span className="db-title-dot" />
+                                Cobertura Geográfica
+                            </div>
+                            <Link to="/mapa" className="db-panel-link">
+                                Ver todo <ArrowRight size={12} />
+                            </Link>
+                        </div>
+                        <div className="db-map-body">
+                            <MapContainer center={mapCenter} zoom={11} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                {stats.localesMapa.map(l => (
+                                    <CircleMarker
+                                        key={l.id}
+                                        center={[l.clientes.lat, l.clientes.lng]}
+                                        radius={7}
+                                        fillOpacity={0.85}
+                                        color="var(--accent)"
+                                        stroke={true}
+                                        weight={2}
+                                    >
+                                        <Popup>{l.clientes?.nombre_local || 'Local'}</Popup>
+                                    </CircleMarker>
+                                ))}
+                            </MapContainer>
+                            <div className="db-map-badge">{stats.localesMapa.length} nodos activos</div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* LIVE FEED */}
+                {isWidgetEnabled('fleet') && (
+                    <motion.div className="db-panel db-feed-panel" variants={itemVariants}>
+                        <div className="db-panel-hdr">
+                            <div className="db-panel-title">
+                                <span className="db-title-dot" style={{ background: 'var(--success)' }} />
+                                Monitor de Flota
+                            </div>
+                            <span className="db-live-badge">LIVE</span>
+                        </div>
+                        <div className="db-feed-body">
+                            <LiveOperationStream />
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* CHURN */}
+                {isWidgetEnabled('churn') && (
+                    <motion.div className="db-panel db-churn-panel" variants={itemVariants}>
+                        <div className="db-panel-hdr">
+                            <div className="db-panel-title">
+                                <span className="db-title-dot" style={{ background: '#ef4444' }} />
+                                Riesgo Abandono
+                            </div>
+                        </div>
+                        <div className="db-churn-list">
+                            {stats.topChurn.length === 0 ? (
+                                <div className="db-empty">
+                                    <CheckCircle size={28} style={{ color: 'var(--success)', opacity: 0.6 }} />
+                                    <p>Sin alertas críticas</p>
+                                </div>
+                            ) : stats.topChurn.map(c => (
+                                <Link key={c.id} to={`/clientes?id=${c.cliente_id}`} className="db-churn-row">
+                                    <div className="db-churn-dot" style={{ background: c.risk.level === 'alto' ? '#ef4444' : '#f59e0b' }} />
+                                    <div className="db-churn-name">{c.clientes?.nombre_local}</div>
+                                    <div className="db-churn-days" style={{ color: c.risk.level === 'alto' ? '#ef4444' : '#f59e0b' }}>
+                                        {c.risk.diasSinContacto > 1000 ? 'N/D' : `${c.risk.diasSinContacto}d`}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
             </div>
 
             {/* ── ROW 4: CHARTS ── */}
             <div className="db-row-4">
-                <motion.div className="db-panel" variants={itemVariants}>
-                    <div className="db-panel-hdr">
-                        <div className="db-panel-title">
-                            <span className="db-title-dot" />
-                            Crecimiento Semanal
+                {isWidgetEnabled('growth') && (
+                    <motion.div className="db-panel" variants={itemVariants}>
+                        <div className="db-panel-hdr">
+                            <div className="db-panel-title">
+                                <span className="db-title-dot" />
+                                Crecimiento Semanal
+                            </div>
                         </div>
-                    </div>
-                    <div style={{ height: 200 }}>
-                        <Bar data={stats.crecimientoDiario as any} options={chartOptions as any} />
-                    </div>
-                </motion.div>
+                        <div style={{ height: 200 }}>
+                            <Bar data={stats.crecimientoDiario as any} options={chartOptions as any} />
+                        </div>
+                    </motion.div>
+                )}
 
-                <motion.div className="db-panel" variants={itemVariants}>
-                    <div className="db-panel-hdr">
-                        <div className="db-panel-title">
-                            <span className="db-title-dot" style={{ background: '#8b5cf6' }} />
-                            Mix de Cartera
+                {isWidgetEnabled('mix') && (
+                    <motion.div className="db-panel" variants={itemVariants}>
+                        <div className="db-panel-hdr">
+                            <div className="db-panel-title">
+                                <span className="db-title-dot" style={{ background: '#8b5cf6' }} />
+                                Mix de Cartera
+                            </div>
                         </div>
-                    </div>
-                    <div style={{ height: 200, display: 'flex', justifyContent: 'center' }}>
-                        <Doughnut
-                            data={stats.distribucionCartera as any}
-                            options={{ ...chartOptions, plugins: { legend: { display: true, position: 'right' as const, labels: { usePointStyle: true, boxWidth: 6, font: { size: 9 }, color: 'var(--text-muted)' } } } } as any}
-                        />
-                    </div>
-                </motion.div>
+                        <div style={{ height: 200, display: 'flex', justifyContent: 'center' }}>
+                            <Doughnut
+                                data={stats.distribucionCartera as any}
+                                options={{ ...chartOptions, plugins: { legend: { display: true, position: 'right' as const, labels: { usePointStyle: true, boxWidth: 6, font: { size: 9 }, color: 'var(--text-muted)' } } } } as any}
+                            />
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* ACTIVITY TABLE */}
-                <motion.div className="db-panel db-activity-panel" variants={itemVariants}>
-                    <div className="db-panel-hdr">
-                        <div className="db-panel-title">
-                            <span className="db-title-dot" style={{ background: '#10b981' }} />
-                            Actividad Reciente
+                {isWidgetEnabled('activity') && (
+                    <motion.div className="db-panel db-activity-panel" variants={itemVariants}>
+                        <div className="db-panel-hdr">
+                            <div className="db-panel-title">
+                                <span className="db-title-dot" style={{ background: '#10b981' }} />
+                                Actividad Reciente
+                            </div>
                         </div>
-                    </div>
-                    {stats.ultimasVisitas.length === 0 ? (
-                        <div className="db-empty"><p>Sin visitas recientes</p></div>
-                    ) : (
-                        <div className="db-activity-list">
-                            {stats.ultimasVisitas.map(v => (
-                                <Link key={v.id} to={`/clientes?id=${v.cliente_id}`} className="db-activity-row">
-                                    <div className="db-activity-dot" />
-                                    <div className="db-activity-info">
-                                        <span className="db-activity-name">{v.clientes?.nombre_local || 'Desconocido'}</span>
-                                        <span className="db-activity-meta">{v.fecha ? format(new Date(v.fecha), 'HH:mm', { locale: es }) : '--:--'} · {v.usuario || 'Operador'}</span>
-                                    </div>
-                                    <CheckCircle size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </motion.div>
+                        {stats.ultimasVisitas.length === 0 ? (
+                            <div className="db-empty"><p>Sin visitas recientes</p></div>
+                        ) : (
+                            <div className="db-activity-list">
+                                {stats.ultimasVisitas.map(v => (
+                                    <Link key={v.id} to={`/clientes?id=${v.cliente_id}`} className="db-activity-row">
+                                        <div className="db-activity-dot" />
+                                        <div className="db-activity-info">
+                                            <span className="db-activity-name">{v.clientes?.nombre_local || 'Desconocido'}</span>
+                                            <span className="db-activity-meta">{v.fecha ? format(new Date(v.fecha), 'HH:mm', { locale: es }) : '--:--'} · {v.usuario || 'Operador'}</span>
+                                        </div>
+                                        <CheckCircle size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
+                )}
             </div>
 
         </motion.div>
