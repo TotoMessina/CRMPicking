@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { MapPin, RefreshCw, Navigation, Layers } from 'lucide-react';
@@ -16,20 +17,21 @@ import { MapLegend } from '../components/map/MapLegend';
 
 import { RepartidorModal } from '../components/ui/RepartidorModal';
 
-const ESTADOS = [
-    "Documentación sin gestionar",
-    "Cuenta aun no confirmada",
-    "Cuenta confirmada y repartiendo"
-];
-
-const ESTADO_COLOR = {
-    "Documentación sin gestionar": "#ef4444",
-    "Cuenta aun no confirmada": "#f97316",
-    "Cuenta confirmada y repartiendo": "#22c55e"
-};
-
-export default function MapaRepartidores() {
+ export default function MapaRepartidores() {
+    const { t } = useTranslation();
     const { empresaActiva } = useAuth();
+ 
+    const ESTADOS = [
+        t('map_repart.status.unmanaged'),
+        t('map_repart.status.unconfirmed'),
+        t('map_repart.status.active')
+    ];
+ 
+    const ESTADO_COLOR = {
+        [t('map_repart.status.unmanaged')]: "#ef4444",
+        [t('map_repart.status.unconfirmed')]: "#f97316",
+        [t('map_repart.status.active')]: "#22c55e"
+    };
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
     const markersLayerRef = useRef(null);
@@ -78,7 +80,7 @@ export default function MapaRepartidores() {
             .not("lng", "is", null);
 
         if (error) {
-            toast.error("Error al cargar repartidores");
+            toast.error(t('map_repart.toast.load_error'));
         } else {
             const mapped = (data || []).map(r => ({ ...r, lat: Number(r.lat), lng: Number(r.lng) })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
             setRepartidores(mapped);
@@ -177,7 +179,7 @@ export default function MapaRepartidores() {
 
         if (showHeatmap) {
             const points = repartidores
-                .filter(r => r.estado !== "Cuenta aun no confirmada")
+                .filter(r => r.estado !== t('map_repart.status.unconfirmed'))
                 .map(r => [r.lat, r.lng, 1]);
 
             if (points.length) {
@@ -191,7 +193,7 @@ export default function MapaRepartidores() {
                     }).addTo(mapRef.current);
                 } else {
                     console.error("leaflet.heat not loaded on L");
-                    toast.error("No se pudo cargar el mapa de calor");
+                    toast.error(t('map_repart.toast.heat_error'));
                 }
             }
             return;
@@ -223,8 +225,8 @@ export default function MapaRepartidores() {
                        <div>📞 ${rec.telefono || "-"}</div>
                        <div>🏠 ${rec.direccion || "-"}</div>
                     </div>
-                    <div>Resp: <b>${rec.responsable}</b></div>
-                    <button class="btn-popup-edit" style="margin-top: 10px; width: 100%; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Editar Repartidor</button>
+                    <div>${t('map_repart.popup.responsible')}: <b>${rec.responsable}</b></div>
+                    <button class="btn-popup-edit" style="margin-top: 10px; width: 100%; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">${t('map_repart.popup.edit_btn')}</button>
                 </div>
             `);
 
@@ -240,7 +242,7 @@ export default function MapaRepartidores() {
                 }
             });
 
-            if (showCoverage && rec.estado !== "Cuenta aun no confirmada") {
+            if (showCoverage && rec.estado !== t('map_repart.status.unconfirmed')) {
                 L.circle([rec.lat, rec.lng], {
                     radius: 2000, // 2km
                     color: color,
@@ -255,18 +257,18 @@ export default function MapaRepartidores() {
     }, [repartidores, showCoverage, showHeatmap]);
 
     const handleLocateMe = () => {
-        if (!navigator.geolocation) return toast.error("Geolocalización no soportada");
-
-        toast.loading("Buscando ubicación...", { id: 'geo' });
+        if (!navigator.geolocation) return toast.error(t('map_repart.toast.geo_unsupported'));
+ 
+        toast.loading(t('map_repart.toast.locating'), { id: 'geo' });
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                toast.success("Ubicación encontrada", { id: 'geo' });
+                toast.success(t('map_repart.toast.geo_success'), { id: 'geo' });
                 const latlng = [pos.coords.latitude, pos.coords.longitude];
                 setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-
+ 
                 if (mapRef.current) {
                     if (!myMarkerRef.current) {
-                        myMarkerRef.current = L.marker(latlng, { title: "Mi ubicación" }).addTo(mapRef.current);
+                        myMarkerRef.current = L.marker(latlng, { title: t('map_repart.my_location') }).addTo(mapRef.current);
                         myCircleRef.current = L.circle(latlng, { radius: Math.max(pos.coords.accuracy, 20), opacity: 0.5 }).addTo(mapRef.current);
                     } else {
                         myMarkerRef.current.setLatLng(latlng);
@@ -278,10 +280,10 @@ export default function MapaRepartidores() {
             },
             (err) => {
                 console.error("Geo error:", err);
-                let msg = "Error al obtener ubicación";
-                if (err.code === 1) msg = "Permiso de ubicación denegado";
-                else if (err.code === 2) msg = "Posición no disponible (activar GPS)";
-                else if (err.code === 3) msg = "Tiempo de espera agotado";
+                let msg = t('map_repart.toast.geo_error');
+                if (err.code === 1) msg = t('map_repart.toast.geo_denied');
+                else if (err.code === 2) msg = t('map_repart.toast.geo_unavailable');
+                else if (err.code === 3) msg = t('map_repart.toast.geo_timeout');
                 toast.error(msg, { id: 'geo' });
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
@@ -289,7 +291,7 @@ export default function MapaRepartidores() {
     };
 
     const handleRegisterHere = () => {
-        if (!myLocation) return toast.error("Primero debés ubicarte");
+        if (!myLocation) return toast.error(t('map_repart.toast.locate_first'));
         setEditingId(null);
         setSelectedLatLng(myLocation);
         setModalOpen(true);
@@ -306,13 +308,13 @@ export default function MapaRepartidores() {
                 <MapStatsBadge 
                     inView={repartidoresEnZona} 
                     total={totalAbsoluto} 
-                    label="en zona" 
-                    totalLabel="Total Repartidores" 
+                    label={t('map_repart.stats.in_zone')} 
+                    totalLabel={t('map_repart.stats.total')} 
                 />
 
                 {/* OVERLAY: LEGEND */}
                 <MapLegend 
-                    title="Estados"
+                    title={t('map_repart.legend.title')}
                     items={ESTADOS.map(est => ({ label: est, color: ESTADO_COLOR[est] }))}
                     isMobile={isMobile}
                     showMobile={showLegendMobile}
@@ -330,19 +332,19 @@ export default function MapaRepartidores() {
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontWeight: 600, fontSize: '0.8rem'
                         }}
                     >
-                        📋 Ver Leyenda
+                        📋 {t('map_repart.legend.view_btn')}
                     </button>
                 )}
             </div>
 
             {/* BOTTOM CONTROL BAR */}
-            <MapControlBar isMobile={isMobile}>
+             <MapControlBar isMobile={isMobile}>
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                     <Button variant="secondary" onClick={handleLocateMe} style={{ borderRadius: '12px', height: '42px', padding: '0 15px' }}>
-                        <Navigation size={16} /> <span className="hide-mobile">Ubicarme</span>
+                        <Navigation size={16} /> <span className="hide-mobile">{t('map_repart.actions.locate')}</span>
                     </Button>
                     <Button variant="secondary" onClick={handleRegisterHere} disabled={!myLocation} style={{ borderRadius: '12px', height: '42px', padding: '0 15px' }}>
-                        <MapPin size={16} /> <span className="hide-mobile">Registrar Aquí</span>
+                        <MapPin size={16} /> <span className="hide-mobile">{t('map_repart.actions.register')}</span>
                     </Button>
                     <Button variant="secondary" onClick={fetchRepartidores} disabled={loading} style={{ borderRadius: '12px', height: '42px', width: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
@@ -356,7 +358,7 @@ export default function MapaRepartidores() {
                     onClick={handleToggleCoverage}
                     style={{ borderRadius: '14px', height: '42px', flexShrink: 0, padding: '0 16px' }}
                 >
-                    📍 Cobertura
+                    📍 {t('map_repart.actions.coverage')}
                 </Button>
                 
                 <Button 
@@ -364,7 +366,7 @@ export default function MapaRepartidores() {
                     onClick={handleToggleHeatmap}
                     style={{ borderRadius: '14px', height: '42px', flexShrink: 0, padding: '0 16px' }}
                 >
-                    <Layers size={16} /> <span className="hide-mobile">Calor</span>
+                    <Layers size={16} /> <span className="hide-mobile">{t('map_repart.actions.heat')}</span>
                 </Button>
             </MapControlBar>
 

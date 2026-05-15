@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,6 +46,7 @@ interface DashboardStats {
 
 export default function Dashboard() {
     const { empresaActiva, userName } = useAuth();
+    const { t } = useTranslation();
     const { states: COLUMNS, loading: loadingStates } = usePipelineStates(empresaActiva?.id);
     
     const [loading, setLoading] = useState(true);
@@ -181,7 +183,7 @@ export default function Dashboard() {
                 crecimientoDiario: {
                     labels: labelsGrid,
                     datasets: [{
-                        label: 'Nuevos Locales',
+                        label: t('dashboard.charts.new_clients'),
                         data: growthCounts,
                         backgroundColor: '#0c0c0c',
                         borderRadius: 8,
@@ -244,7 +246,7 @@ export default function Dashboard() {
         <div style={{ height: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}>
             <div className="flex flex-col items-center gap-4">
                 <div className="pulse-dot" style={{ width: '20px', height: '20px' }}></div>
-                <span className="font-bold tracking-widest text-xs uppercase muted">Sincronizando Misión Control...</span>
+                <span className="font-bold tracking-widest text-xs uppercase muted">{t('dashboard.sync_mission')}</span>
             </div>
         </div>
     );
@@ -285,14 +287,14 @@ export default function Dashboard() {
                     <div className="db-hero-inner">
                         <div className="db-badge">
                             <span className="db-badge-dot" />
-                            Sistema Activo
+                            {t('dashboard.system_active')}
                         </div>
 
                         <h1 className="db-hero-title">
-                            Hola, {userName?.split(' ')[0] || 'Operador'} 👋
+                            {t('dashboard.welcome_back', { name: userName?.split(' ')[0] || 'Operador' })} 👋
                         </h1>
                         <p className="db-hero-sub">
-                            Gestionando <strong>{empresaActiva?.nombre}</strong> · {stats.nuevosHoy > 0 ? <><strong style={{ color: 'var(--accent)' }}>+{stats.nuevosHoy}</strong> nuevos hoy</> : 'Sin novedades hoy'}
+                            {t('dashboard.managing')} <strong>{empresaActiva?.nombre}</strong> · {stats.nuevosHoy > 0 ? <><strong style={{ color: 'var(--accent)' }}>+{stats.nuevosHoy}</strong> {t('dashboard.new_today')}</> : t('dashboard.no_news_today')}
                         </p>
 
                         {/* Search */}
@@ -301,7 +303,7 @@ export default function Dashboard() {
                             <input
                                 type="text"
                                 className="db-search-input"
-                                placeholder="Buscar punto de venta..."
+                                placeholder={t('dashboard.search_placeholder')}
                                 value={searchQuery}
                                 onChange={(e) => handleSearch(e.target.value)}
                             />
@@ -312,7 +314,7 @@ export default function Dashboard() {
                                             <div className="db-search-item-icon"><MapPin size={14} /></div>
                                             <div>
                                                 <div className="db-search-item-name">{item.nombre_local}</div>
-                                                <div className="db-search-item-addr">{item.direccion || 'Sin dirección'}</div>
+                                                <div className="db-search-item-addr">{item.direccion || t('dashboard.no_address')}</div>
                                             </div>
                                         </Link>
                                     ))}
@@ -324,17 +326,17 @@ export default function Dashboard() {
                         <div className="db-hero-stats">
                             <div className="db-hs">
                                 <span className="db-hs-num">{stats.clientesTotal}</span>
-                                <span className="db-hs-lbl">Clientes</span>
+                                <span className="db-hs-lbl">{t('dashboard.hero.clients')}</span>
                             </div>
                             <div className="db-hs-div" />
                             <div className="db-hs">
                                 <span className="db-hs-num">{stats.repartidores}</span>
-                                <span className="db-hs-lbl">En Campo</span>
+                                <span className="db-hs-lbl">{t('dashboard.hero.in_field')}</span>
                             </div>
                             <div className="db-hs-div" />
                             <div className="db-hs">
                                 <span className="db-hs-num">{stats.consumidores >= 1000 ? `${(stats.consumidores/1000).toFixed(1)}K` : stats.consumidores}</span>
-                                <span className="db-hs-lbl">Consumidores</span>
+                                <span className="db-hs-lbl">{t('dashboard.hero.consumers')}</span>
                             </div>
                         </div>
                     </div>
@@ -344,10 +346,10 @@ export default function Dashboard() {
                 {isWidgetEnabled('kpis') && (
                     <div className="db-kpi-grid">
                         {[
-                            { to: '/clientes', icon: <Target size={22} />, val: stats.clientesTotal, lbl: 'Puntos de Venta', badge: `+${stats.nuevosHoy}`, badgeColor: '#10b981', accent: 'var(--accent)' },
-                            { to: '/repartidores', icon: <Truck size={22} />, val: stats.repartidores, lbl: 'Repartidores', badge: 'Activos', badgeColor: '#3b82f6', accent: '#3b82f6' },
-                            { to: '/consumidores', icon: <Users size={22} />, val: stats.consumidores >= 1000 ? `${(stats.consumidores/1000).toFixed(1)}K` : stats.consumidores, lbl: 'Consumidores', badge: 'B2C', badgeColor: '#8b5cf6', accent: '#8b5cf6' },
-                            { to: '/pipeline', icon: <Shield size={22} />, val: stats.topChurn.length, lbl: 'Fugas Detectadas', badge: stats.topChurn.length > 0 ? '⚠ Alerta' : '✓ OK', badgeColor: stats.topChurn.length > 0 ? '#ef4444' : '#10b981', accent: '#ef4444' },
+                            { to: '/clientes', icon: <Target size={22} />, val: stats.clientesTotal, lbl: t('dashboard.kpis.pos'), badge: `+${stats.nuevosHoy}`, badgeColor: '#10b981', accent: 'var(--accent)' },
+                            { to: '/repartidores', icon: <Truck size={22} />, val: stats.repartidores, lbl: t('dashboard.kpis.delivery'), badge: t('dashboard.kpis.active'), badgeColor: '#3b82f6', accent: '#3b82f6' },
+                            { to: '/consumidores', icon: <Users size={22} />, val: stats.consumidores >= 1000 ? `${(stats.consumidores/1000).toFixed(1)}K` : stats.consumidores, lbl: t('dashboard.kpis.consumers'), badge: 'B2C', badgeColor: '#8b5cf6', accent: '#8b5cf6' },
+                            { to: '/pipeline', icon: <Shield size={22} />, val: stats.topChurn.length, lbl: t('dashboard.kpis.churn'), badge: stats.topChurn.length > 0 ? t('dashboard.kpis.alert') : '✓ OK', badgeColor: stats.topChurn.length > 0 ? '#ef4444' : '#10b981', accent: '#ef4444' },
                         ].map((card, i) => (
                             <motion.div key={i} variants={itemVariants}>
                                 <Link to={card.to} className="db-kpi-card" style={{ '--kpi-accent': card.accent } as any}>
@@ -368,15 +370,15 @@ export default function Dashboard() {
             {/* ── ROW 2: ACTION HUB ── */}
             {isWidgetEnabled('actions') && (
                 <motion.div className="db-actions-row" variants={itemVariants}>
-                    <p className="db-actions-label">Acciones Rápidas</p>
+                    <p className="db-actions-label">{t('dashboard.quick_actions')}</p>
                     <div className="db-actions-grid">
                         {[
-                            { to: '/clientes', icon: <Plus size={20} />, label: 'Nuevo Cliente', desc: 'Cargar punto de venta', color: 'var(--accent)' },
-                            { to: '/ruta', icon: <MapPin size={20} />, label: 'Ruta del Día', desc: 'Planificar logística', color: '#3b82f6' },
-                            { to: '/calendario', icon: <Calendar size={20} />, label: 'Agenda', desc: 'Programar visitas', color: '#8b5cf6' },
-                            { to: '/chat', icon: <MessageSquare size={20} />, label: 'Chat Interno', desc: 'Comunicar al staff', color: '#10b981' },
-                            { to: '/ia-interna', icon: <Zap size={20} />, label: 'IA Interna', desc: 'Análisis con IA', color: '#f59e0b' },
-                            { to: '/pipeline', icon: <Target size={20} />, label: 'Pipeline', desc: 'Seguimiento de ventas', color: '#ef4444' },
+                            { to: '/clientes', icon: <Plus size={20} />, label: t('dashboard.actions.new_client'), desc: t('dashboard.actions.new_client_desc'), color: 'var(--accent)' },
+                            { to: '/ruta', icon: <MapPin size={20} />, label: t('dashboard.actions.route'), desc: t('dashboard.actions.route_desc'), color: '#3b82f6' },
+                            { to: '/calendario', icon: <Calendar size={20} />, label: t('dashboard.actions.agenda'), desc: t('dashboard.actions.agenda_desc'), color: '#8b5cf6' },
+                            { to: '/chat', icon: <MessageSquare size={20} />, label: t('dashboard.actions.chat'), desc: t('dashboard.actions.chat_desc'), color: '#10b981' },
+                            { to: '/ia-interna', icon: <Zap size={20} />, label: t('dashboard.actions.ai'), desc: t('dashboard.actions.ai_desc'), color: '#f59e0b' },
+                            { to: '/pipeline', icon: <Target size={20} />, label: t('dashboard.actions.pipeline'), desc: t('dashboard.actions.pipeline_desc'), color: '#ef4444' },
                         ].map((act, i) => (
                             <Link key={i} to={act.to} className="db-action-chip" style={{ '--chip-color': act.color } as any}>
                                 <div className="db-action-chip-icon" style={{ background: `${act.color}15`, color: act.color }}>
@@ -401,10 +403,10 @@ export default function Dashboard() {
                         <div className="db-panel-hdr">
                             <div className="db-panel-title">
                                 <span className="db-title-dot" />
-                                Cobertura Geográfica
+                                {t('dashboard.geographic_coverage')}
                             </div>
                             <Link to="/mapa" className="db-panel-link">
-                                Ver todo <ArrowRight size={12} />
+                                {t('common.view_all')} <ArrowRight size={12} />
                             </Link>
                         </div>
                         <div className="db-map-body">
@@ -424,7 +426,7 @@ export default function Dashboard() {
                                     </CircleMarker>
                                 ))}
                             </MapContainer>
-                            <div className="db-map-badge">{stats.localesMapa.length} nodos activos</div>
+                            <div className="db-map-badge">{stats.localesMapa.length} {t('dashboard.active_nodes')}</div>
                         </div>
                     </motion.div>
                 )}
@@ -435,7 +437,7 @@ export default function Dashboard() {
                         <div className="db-panel-hdr">
                             <div className="db-panel-title">
                                 <span className="db-title-dot" style={{ background: 'var(--success)' }} />
-                                Monitor de Flota
+                                {t('dashboard.fleet_monitor')}
                             </div>
                             <span className="db-live-badge">LIVE</span>
                         </div>
@@ -451,21 +453,21 @@ export default function Dashboard() {
                         <div className="db-panel-hdr">
                             <div className="db-panel-title">
                                 <span className="db-title-dot" style={{ background: '#ef4444' }} />
-                                Riesgo Abandono
+                                {t('dashboard.churn_risk')}
                             </div>
                         </div>
                         <div className="db-churn-list">
                             {stats.topChurn.length === 0 ? (
                                 <div className="db-empty">
                                     <CheckCircle size={28} style={{ color: 'var(--success)', opacity: 0.6 }} />
-                                    <p>Sin alertas críticas</p>
+                                    <p>{t('dashboard.no_alerts')}</p>
                                 </div>
                             ) : stats.topChurn.map(c => (
                                 <Link key={c.id} to={`/clientes?id=${c.cliente_id}`} className="db-churn-row">
                                     <div className="db-churn-dot" style={{ background: c.risk.level === 'alto' ? '#ef4444' : '#f59e0b' }} />
                                     <div className="db-churn-name">{c.clientes?.nombre_local}</div>
                                     <div className="db-churn-days" style={{ color: c.risk.level === 'alto' ? '#ef4444' : '#f59e0b' }}>
-                                        {c.risk.diasSinContacto > 1000 ? 'N/D' : `${c.risk.diasSinContacto}d`}
+                                        {c.risk.diasSinContacto > 1000 ? 'N/D' : `${c.risk.diasSinContacto}${t('common.days_short')}`}
                                     </div>
                                 </Link>
                             ))}
@@ -481,7 +483,7 @@ export default function Dashboard() {
                         <div className="db-panel-hdr">
                             <div className="db-panel-title">
                                 <span className="db-title-dot" />
-                                Crecimiento Semanal
+                                {t('dashboard.weekly_growth')}
                             </div>
                         </div>
                         <div style={{ height: 200 }}>
@@ -495,7 +497,7 @@ export default function Dashboard() {
                         <div className="db-panel-hdr">
                             <div className="db-panel-title">
                                 <span className="db-title-dot" style={{ background: '#8b5cf6' }} />
-                                Mix de Cartera
+                                {t('dashboard.portfolio_mix')}
                             </div>
                         </div>
                         <div style={{ height: 200, display: 'flex', justifyContent: 'center' }}>
@@ -513,11 +515,11 @@ export default function Dashboard() {
                         <div className="db-panel-hdr">
                             <div className="db-panel-title">
                                 <span className="db-title-dot" style={{ background: '#10b981' }} />
-                                Actividad Reciente
+                                {t('dashboard.recent_activity')}
                             </div>
                         </div>
                         {stats.ultimasVisitas.length === 0 ? (
-                            <div className="db-empty"><p>Sin visitas recientes</p></div>
+                            <div className="db-empty"><p>{t('dashboard.no_recent_visits')}</p></div>
                         ) : (
                             <div className="db-activity-list">
                                 {stats.ultimasVisitas.map(v => (

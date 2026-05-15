@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
@@ -14,6 +15,7 @@ const MAX_SIZE_MB = 2;
 
 export default function Configuracion() {
     const navigate = useNavigate();
+    const { t, i18n } = useTranslation();
     const { user, avatarUrl, updateProfile, updateAvatarUrl, isDemoMode, role, roleName } = useAuth();
     const fileInputRef = useRef(null);
 
@@ -89,10 +91,10 @@ export default function Configuracion() {
             });
             if (error) throw error;
             setDiaReporte(parseInt(nuevoDia));
-            toast.success('Día de envío actualizado');
+            toast.success(t('settings.report_day_updated', { defaultValue: 'Día de envío actualizado' }));
         } catch (err) {
             console.error('Error updating report day:', err);
-            toast.error('Error al actualizar el día de reporte');
+            toast.error(t('settings.report_day_error', { defaultValue: 'Error al actualizar el día de reporte' }));
         } finally {
             setSavingDia(false);
         }
@@ -102,11 +104,11 @@ export default function Configuracion() {
         if (isDemoMode) return;
         const email = newRecipientEmail.trim().toLowerCase();
         if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-            toast.error('Ingresá un email válido');
+            toast.error(t('settings.invalid_email', { defaultValue: 'Ingresá un email válido' }));
             return;
         }
         if (reportRecipients.some(r => r.email === email)) {
-            toast.error('Ese email ya está en la lista');
+            toast.error(t('settings.email_exists', { defaultValue: 'Ese email ya está en la lista' }));
             return;
         }
         const { data, error } = await supabase
@@ -114,22 +116,22 @@ export default function Configuracion() {
             .insert({ empresa_id: empresaActiva.id, email })
             .select()
             .single();
-        if (error) { toast.error('Error al agregar destinatario'); return; }
+        if (error) { toast.error(t('settings.recipient_error', { defaultValue: 'Error al agregar destinatario' })); return; }
         setReportRecipients(prev => [...prev, data]);
         setNewRecipientEmail('');
-        toast.success(`${email} agregado como destinatario`);
+        toast.success(t('settings.recipient_added', { email, defaultValue: `${email} agregado como destinatario` }));
     };
 
     const handleRemoveRecipient = async (id, email) => {
         if (isDemoMode) return;
         await supabase.from('report_recipients').delete().eq('id', id);
         setReportRecipients(prev => prev.filter(r => r.id !== id));
-        toast.success(`${email} eliminado`);
+        toast.success(t('settings.recipient_removed', { email, defaultValue: `${email} eliminado` }));
     };
 
     const handleSendTestReport = async () => {
         if (reportRecipients.length === 0) {
-            toast.error('Agrega al menos un destinatario primero');
+            toast.error(t('settings.no_recipients_error', { defaultValue: 'Agrega al menos un destinatario primero' }));
             return;
         }
         setSendingTestReport(true);
@@ -148,12 +150,12 @@ export default function Configuracion() {
             );
             const result = await res.json();
             if (res.ok) {
-                toast.success('✅ Reporte de prueba enviado. Revisá tu casilla de correo.');
+                toast.success(t('settings.test_report_success', { defaultValue: '✅ Reporte de prueba enviado. Revisá tu casilla de correo.' }));
             } else {
-                toast.error('Error al enviar: ' + (result?.error || 'Error desconocido'));
+                toast.error(t('settings.test_report_error', { error: result?.error || 'Error desconocido' }));
             }
         } catch (err) {
-            toast.error('Error de conexión al enviar el reporte');
+            toast.error(t('common.errors.load_error'));
         } finally {
             setSendingTestReport(false);
         }
@@ -169,13 +171,11 @@ export default function Configuracion() {
 
         // Validate type
         if (!file.type.startsWith('image/')) {
-            toast.error('El archivo debe ser una imagen (JPG, PNG, WEBP, etc.)');
+            toast.error(t('settings.invalid_image', { defaultValue: 'El archivo debe ser una imagen (JPG, PNG, WEBP, etc.)' }));
             return;
         }
-
-        // Validate size
         if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-            toast.error(`La imagen no puede superar los ${MAX_SIZE_MB}MB`);
+            toast.error(t('settings.image_too_large', { size: MAX_SIZE_MB, defaultValue: `La imagen no puede superar los ${MAX_SIZE_MB}MB` }));
             return;
         }
 
@@ -204,10 +204,10 @@ export default function Configuracion() {
             const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
             await updateAvatarUrl(publicUrl);
-            toast.success('¡Foto de perfil actualizada!', { icon: '📸' });
+            toast.success(t('settings.avatar_updated', { defaultValue: '¡Foto de perfil actualizada!' }), { icon: '📸' });
         } catch (err) {
             console.error('Avatar upload error:', err);
-            toast.error('Error al subir la imagen: ' + (err.message || 'Error desconocido'));
+            toast.error(t('settings.upload_error', { error: err.message || 'Error desconocido', defaultValue: 'Error al subir la imagen: ' + (err.message || 'Error desconocido') }));
             setAvatarPreview(null);
         } finally {
             setUploadingAvatar(false);
@@ -218,7 +218,7 @@ export default function Configuracion() {
 
     const handleRemoveAvatar = async () => {
         if (!avatarUrl) return;
-        if (!window.confirm('¿Eliminar tu foto de perfil?')) return;
+        if (!window.confirm(t('settings.confirm_remove_avatar', { defaultValue: '¿Eliminar tu foto de perfil?' }))) return;
 
         setUploadingAvatar(true);
         try {
@@ -229,10 +229,10 @@ export default function Configuracion() {
             }
             await updateAvatarUrl(null);
             setAvatarPreview(null);
-            toast.success('Foto de perfil eliminada');
+            toast.success(t('settings.avatar_removed', { defaultValue: 'Foto de perfil eliminada' }));
         } catch (err) {
             console.error('Remove avatar error:', err);
-            toast.error('Error al eliminar la foto');
+            toast.error(t('settings.remove_avatar_error', { defaultValue: 'Error al eliminar la foto' }));
         } finally {
             setUploadingAvatar(false);
         }
@@ -246,14 +246,14 @@ export default function Configuracion() {
     const handleSaveProfile = async (e) => {
         e.preventDefault();
         const trimmedName = profileName.trim();
-        if (!trimmedName) { toast.error('El nombre no puede estar vacío'); return; }
+        if (!trimmedName) { toast.error(t('settings.empty_name', { defaultValue: 'El nombre no puede estar vacío' })); return; }
         setSavingProfile(true);
         try {
             await updateProfile({ display_name: trimmedName });
-            toast.success('Perfil actualizado correctamente');
+            toast.success(t('settings.profile_updated', { defaultValue: 'Perfil actualizado correctamente' }));
         } catch (error) {
             console.error('Error updating profile:', error);
-            toast.error('Error al actualizar el perfil');
+            toast.error(t('settings.profile_error', { defaultValue: 'Error al actualizar el perfil' }));
         } finally {
             setSavingProfile(false);
         }
@@ -264,19 +264,19 @@ export default function Configuracion() {
         e.preventDefault();
         const pass = newPassword.trim();
         const confirm = confirmPassword.trim();
-        if (!pass) { toast.error('Ingresá una nueva contraseña'); return; }
-        if (pass.length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres'); return; }
-        if (pass !== confirm) { toast.error('Las contraseñas no coinciden'); return; }
+        if (!pass) { toast.error(t('settings.empty_password', { defaultValue: 'Ingresá una nueva contraseña' })); return; }
+        if (pass.length < 6) { toast.error(t('settings.password_too_short', { defaultValue: 'La contraseña debe tener al menos 6 caracteres' })); return; }
+        if (pass !== confirm) { toast.error(t('settings.passwords_mismatch', { defaultValue: 'Las contraseñas no coinciden' })); return; }
         setSavingPassword(true);
         try {
             const { error } = await supabase.auth.updateUser({ password: pass });
             if (error) throw error;
-            toast.success('Contraseña actualizada exitosamente');
+            toast.success(t('settings.password_updated', { defaultValue: 'Contraseña actualizada exitosamente' }));
             setNewPassword('');
             setConfirmPassword('');
         } catch (error) {
             console.error('Error updating password:', error);
-            toast.error('Error al actualizar la contraseña');
+            toast.error(t('settings.password_error', { defaultValue: 'Error al actualizar la contraseña' }));
         } finally {
             setSavingPassword(false);
         }
@@ -320,7 +320,7 @@ export default function Configuracion() {
 
     const handleDeleteGrupo = (id) => {
         if (isDemoMode) return;
-        if (!window.confirm('¿Eliminar este grupo? Los clientes ya no estarán asociados a él.')) return;
+        if (!window.confirm(t('settings.confirm_delete_group', { defaultValue: '¿Eliminar este grupo? Los clientes ya no estarán asociados a él.' }))) return;
         deleteGrupoMutation.mutate({ id, empresaId: empresaActiva.id });
     };
 
@@ -332,11 +332,45 @@ export default function Configuracion() {
     return (
         <div className="container" style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
             <header style={{ marginBottom: '32px' }}>
-                <h1 style={{ margin: 0 }}>Configuración de Cuenta</h1>
-                <p className="muted" style={{ margin: '8px 0 0 0' }}>Administra tu perfil y opciones de seguridad.</p>
+                <h1 style={{ margin: 0 }}>{t('settings.account_config')}</h1>
+                <p className="muted" style={{ margin: '8px 0 0 0' }}>{t('settings.account_config_desc')}</p>
             </header>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+                {/* ── IDIOMA ─────────────────────────────────── */}
+                <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                    <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
+                        <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{t('common.language', { defaultValue: 'Idioma' })}</h2>
+                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{t('settings.language_desc', { defaultValue: 'Seleccioná tu idioma de preferencia.' })}</p>
+                    </div>
+                    <div style={{ padding: '24px' }}>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button
+                                onClick={() => i18n.changeLanguage('es')}
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border)',
+                                    background: i18n.language.startsWith('es') ? 'var(--accent)' : 'var(--bg-body)',
+                                    color: i18n.language.startsWith('es') ? '#fff' : 'var(--text-primary)',
+                                    fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                                }}
+                            >
+                                🇪🇸 Español
+                            </button>
+                            <button
+                                onClick={() => i18n.changeLanguage('en')}
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border)',
+                                    background: i18n.language.startsWith('en') ? 'var(--accent)' : 'var(--bg-body)',
+                                    color: i18n.language.startsWith('en') ? '#fff' : 'var(--text-primary)',
+                                    fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                                }}
+                            >
+                                🇺🇸 English
+                            </button>
+                        </div>
+                    </div>
+                </section>
 
                 {/* ── GESTIÓN DE PIPELINE ────────────────────── */}
                 {(role === 'super-admin' || roleName === 'admin' || role === 'admin') && (
@@ -347,8 +381,8 @@ export default function Configuracion() {
                                     <Settings2 size={24} />
                                 </div>
                                 <div>
-                                    <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Misión y Pipeline</h2>
-                                    <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>Personalizá los estados y etapas de tus clientes.</p>
+                                    <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>{t('menu.groups.pipeline', { defaultValue: 'Misión y Pipeline' })}</h2>
+                                    <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{t('settings.pipeline_desc', { defaultValue: 'Personalizá los estados y etapas de tus clientes.' })}</p>
                                 </div>
                             </div>
                             <button 
@@ -356,7 +390,7 @@ export default function Configuracion() {
                                 className="btn-primary"
                                 style={{ padding: '10px 20px', borderRadius: '12px', fontWeight: 700 }}
                             >
-                                CONFIGURAR ETAPAS
+                                {t('settings.configure_stages', { defaultValue: 'CONFIGURAR ETAPAS' })}
                             </button>
                         </div>
                     </section>
@@ -365,8 +399,8 @@ export default function Configuracion() {
                 {/* ── FOTO DE PERFIL ──────────────────────────── */}
                 <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Foto de Perfil</h2>
-                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>Se muestra en el sidebar y en tu perfil de usuario.</p>
+                        <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{t('settings.avatar')}</h2>
+                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{t('settings.avatar_desc')}</p>
                     </div>
 
                     <div style={{ padding: '28px 24px', display: 'flex', alignItems: 'center', gap: '28px', flexWrap: 'wrap' }}>
@@ -449,7 +483,7 @@ export default function Configuracion() {
                                     }}
                                 >
                                     <Camera size={15} />
-                                    Cambiar foto
+                                    {t('settings.change_photo')}
                                 </button>
                                 {!isDemoMode && displayedAvatar && (
                                     <button
@@ -467,12 +501,12 @@ export default function Configuracion() {
                                         }}
                                     >
                                         <Trash2 size={15} />
-                                        Eliminar foto
+                                        {t('settings.remove_photo')}
                                     </button>
                                 )}
                             </div>
                             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                JPG, PNG, WEBP o GIF. Máximo {MAX_SIZE_MB}MB.
+                                {t('settings.avatar_hint', { size: MAX_SIZE_MB })}
                             </p>
                         </div>
                     </div>
@@ -491,18 +525,18 @@ export default function Configuracion() {
                 {/* ── PERFIL ──────────────────────────────────── */}
                 <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Perfil</h2>
-                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>Información pública de tu cuenta.</p>
+                        <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{t('settings.profile')}</h2>
+                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{t('settings.profile_desc')}</p>
                     </div>
 
                     <div style={{ padding: '24px' }}>
                         <form onSubmit={handleSaveProfile} style={{ display: 'grid', gap: '20px' }}>
                             <div className="field">
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Nombre de usuario</label>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>{t('settings.profile_name')}</label>
                                 <input
                                     type="text"
                                     className="input premium-input"
-                                    placeholder="Tu nombre"
+                                    placeholder={t('settings.profile_name')}
                                     value={profileName}
                                     onChange={(e) => setProfileName(e.target.value)}
                                     style={{ width: '100%', maxWidth: '400px' }}
@@ -510,7 +544,7 @@ export default function Configuracion() {
                             </div>
 
                             <div className="field">
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Email</label>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>{t('settings.email')}</label>
                                 <input
                                     type="text"
                                     className="input premium-input"
@@ -518,12 +552,12 @@ export default function Configuracion() {
                                     value={user?.email || ''}
                                     style={{ width: '100%', maxWidth: '400px', opacity: 0.7, cursor: 'not-allowed', backgroundColor: 'var(--bg-body)' }}
                                 />
-                                <small className="muted" style={{ display: 'block', marginTop: '6px' }}>El email no se puede cambiar directamente.</small>
+                                <small className="muted" style={{ display: 'block', marginTop: '6px' }}>{t('settings.email_desc')}</small>
                             </div>
 
                             <div style={{ marginTop: '8px' }}>
                                 <Button type="submit" variant="primary" disabled={savingProfile}>
-                                    {savingProfile ? 'Guardando...' : 'Guardar Cambios'}
+                                    {savingProfile ? t('settings.saving') : t('settings.save_changes')}
                                 </Button>
                             </div>
                         </form>
@@ -534,29 +568,29 @@ export default function Configuracion() {
                 {!isDemoMode && (
                 <section style={{ background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Seguridad</h2>
-                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>Cambiá tu contraseña de acceso.</p>
+                        <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{t('settings.security')}</h2>
+                        <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{t('settings.security_desc')}</p>
                     </div>
 
                     <div style={{ padding: '24px' }}>
                         <form onSubmit={handleUpdatePassword} style={{ display: 'grid', gap: '20px' }}>
                             <div className="field">
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Nueva contraseña</label>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>{t('settings.new_password')}</label>
                                 <input
                                     type="password"
                                     className="input premium-input"
-                                    placeholder="Mínimo 6 caracteres"
+                                    placeholder={t('settings.new_password')}
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     style={{ width: '100%', maxWidth: '400px' }}
                                 />
                             </div>
                             <div className="field">
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Confirmar contraseña</label>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>{t('settings.confirm_password')}</label>
                                 <input
                                     type="password"
                                     className="input premium-input"
-                                    placeholder="Repetí la contraseña"
+                                    placeholder={t('settings.confirm_password')}
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     style={{ width: '100%', maxWidth: '400px' }}
@@ -564,7 +598,7 @@ export default function Configuracion() {
                             </div>
                             <div>
                                 <Button type="submit" variant="primary" disabled={savingPassword}>
-                                    {savingPassword ? 'Actualizando...' : 'Cambiar Contraseña'}
+                                    {savingPassword ? t('settings.updating') : t('settings.update_password')}
                                 </Button>
                             </div>
                         </form>
@@ -579,9 +613,9 @@ export default function Configuracion() {
                             <div style={{ background: 'rgba(37,99,235,0.1)', color: 'var(--accent)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
                                 <Mail size={20} />
                             </div>
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Reportes Automáticos</h2>
-                                <p className="muted" style={{ margin: '2px 0 0 0', fontSize: '0.85rem' }}>Reporte semanal de KPIs enviado cada lunes a las 08:00 AM.</p>
+                             <div>
+                                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{t('settings.reports')}</h2>
+                                <p className="muted" style={{ margin: '2px 0 0 0', fontSize: '0.85rem' }}>{t('settings.reports_desc')}</p>
                             </div>
                         </div>
                     </div>
@@ -592,19 +626,19 @@ export default function Configuracion() {
                         <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '12px', padding: '16px', display: 'flex', gap: '12px' }}>
                             <Info size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                                <strong style={{ color: 'var(--text)' }}>Configuración requerida (una sola vez):</strong><br />
-                                1. Creá una cuenta gratuita en <strong>resend.com</strong> y obtené tu API Key.<br />
-                                2. En Supabase Dashboard → <em>Edge Functions → send-weekly-report → Secrets</em> → agrega <code style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>RESEND_API_KEY</code>.<br />
-                                3. Ejecutá <code style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>supabase/setup_weekly_report.sql</code> en el SQL Editor de Supabase.<br />
-                                4. Desplegá la función: <code style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>supabase functions deploy send-weekly-report</code>
+                                <strong style={{ color: 'var(--text)' }}>{t('settings.reports_notice')}</strong><br />
+                                1. {t('settings.reports_step_1')}<br />
+                                2. {t('settings.reports_step_2')}<br />
+                                3. {t('settings.reports_step_3')}<br />
+                                4. {t('settings.reports_step_4')}
                             </div>
                         </div>
 
                         {/* Day Config */}
                         <div style={{ background: 'var(--bg-body)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div>
-                                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.95rem' }}>Día de envío (08:00 AM)</label>
-                                <p className="muted" style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Elegí qué día querés recibir tu reporte de los últimos 7 días.</p>
+                                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.95rem' }}>{t('settings.report_day')}</label>
+                                <p className="muted" style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>{t('settings.report_day_desc')}</p>
                             </div>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <select 
@@ -614,25 +648,25 @@ export default function Configuracion() {
                                     disabled={savingDia || isDemoMode}
                                     style={{ padding: '10px 16px', minWidth: '160px', fontWeight: 500 }}
                                 >
-                                    <option value={1}>Lunes</option>
-                                    <option value={2}>Martes</option>
-                                    <option value={3}>Miércoles</option>
-                                    <option value={4}>Jueves</option>
-                                    <option value={5}>Viernes</option>
-                                    <option value={6}>Sábado</option>
-                                    <option value={0}>Domingo</option>
+                                    <option value={1}>{t('settings.days.1')}</option>
+                                    <option value={2}>{t('settings.days.2')}</option>
+                                    <option value={3}>{t('settings.days.3')}</option>
+                                    <option value={4}>{t('settings.days.4')}</option>
+                                    <option value={5}>{t('settings.days.5')}</option>
+                                    <option value={6}>{t('settings.days.6')}</option>
+                                    <option value={0}>{t('settings.days.0')}</option>
                                 </select>
                             </div>
                         </div>
 
                         {/* Recipients list */}
                         <div>
-                            <label style={{ display: 'block', marginBottom: '12px', fontWeight: 600, fontSize: '0.9rem' }}>Destinatarios del Reporte</label>
+                            <label style={{ display: 'block', marginBottom: '12px', fontWeight: 600, fontSize: '0.9rem' }}>{t('settings.recipients')}</label>
                             {loadingRecipients ? (
-                                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Cargando...</div>
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t('common.loading')}</div>
                             ) : reportRecipients.length === 0 ? (
                                 <div style={{ background: 'var(--bg-body)', borderRadius: '10px', padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', border: '1px dashed var(--border)' }}>
-                                    No hay destinatarios configurados todavía.
+                                    {t('settings.no_recipients')}
                                 </div>
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -646,7 +680,7 @@ export default function Configuracion() {
                                                 <button
                                                     onClick={() => handleRemoveRecipient(r.id, r.email)}
                                                     style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
-                                                    title="Eliminar destinatario"
+                                                    title={t('common.delete')}
                                                 >
                                                     <X size={16} />
                                                 </button>
@@ -670,7 +704,7 @@ export default function Configuracion() {
                             />
                             {!isDemoMode && (
                                 <Button variant="primary" onClick={handleAddRecipient} style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-                                    <Plus size={15} /> Agregar Destinatario
+                                    <Plus size={15} /> {t('settings.add_recipient')}
                                 </Button>
                             )}
                         </div>
@@ -685,10 +719,10 @@ export default function Configuracion() {
                                 id="send-test-report-btn"
                             >
                                 <Send size={15} />
-                                {sendingTestReport ? 'Enviando...' : 'Enviar Reporte de Prueba Ahora'}
+                                {sendingTestReport ? t('common.loading') : t('settings.test_report')}
                             </Button>
                             <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                Envía un reporte del último período semanal a todos los destinatarios configurados.
+                                {t('settings.test_report_desc')}
                             </p>
                         </div>
 
@@ -702,9 +736,9 @@ export default function Configuracion() {
                             <div style={{ background: 'var(--accent-soft)', color: 'var(--accent)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
                                 <Tag size={20} />
                             </div>
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Grupos de Clientes</h2>
-                                <p className="muted" style={{ margin: '2px 0 0 0', fontSize: '0.85rem' }}>Personalizá cómo segmentás a tus clientes.</p>
+                             <div>
+                                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{t('settings.groups')}</h2>
+                                <p className="muted" style={{ margin: '2px 0 0 0', fontSize: '0.85rem' }}>{t('settings.groups_desc')}</p>
                             </div>
                         </div>
                     </div>
@@ -713,17 +747,17 @@ export default function Configuracion() {
                         <form onSubmit={handleSaveGrupo} style={{ background: 'var(--bg-body)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                                 <div style={{ flex: 1, minWidth: '200px' }}>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Nombre del Grupo</label>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>{t('settings.group_name')}</label>
                                     <input 
                                         className="input" 
-                                        placeholder="Ej: Clientes VIP, Región Sur..." 
+                                        placeholder={t('settings.group_name_placeholder')} 
                                         value={grupoForm.nombre}
                                         onChange={e => setGrupoForm({ ...grupoForm, nombre: e.target.value })}
                                         style={{ width: '100%' }}
                                     />
                                 </div>
                                 <div style={{ width: '160px' }}>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Color</label>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>{t('settings.color')}</label>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                                         {PRESET_COLORS.map(c => (
                                             <button 
@@ -744,11 +778,11 @@ export default function Configuracion() {
                             
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <Button type="submit" variant="primary" style={{ flex: 1 }}>
-                                    {editingGrupo ? 'Actualizar Grupo' : 'Crear Grupo'}
+                                    {editingGrupo ? t('settings.update_group') : t('settings.create_group')}
                                 </Button>
                                 {editingGrupo && (
                                     <Button variant="secondary" onClick={() => { setEditingGrupo(null); setGrupoForm({ nombre: '', color: '#0c0c0c' }); }}>
-                                        Cancelar
+                                        {t('common.cancel')}
                                     </Button>
                                 )}
                             </div>
@@ -756,10 +790,10 @@ export default function Configuracion() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                             {loadingGrupos ? (
-                                <p className="muted">Cargando grupos...</p>
+                                <p className="muted">{t('common.loading')}</p>
                             ) : grupos.length === 0 ? (
                                 <p className="muted" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', border: '1px dashed var(--border)', borderRadius: '12px' }}>
-                                    No has creado ningún grupo todavía.
+                                    {t('settings.no_groups')}
                                 </p>
                             ) : grupos.map(g => (
                                 <div key={g.id} style={{ 

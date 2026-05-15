@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UserCircle, X, MessageCircle, Send, ClipboardList, Check, CheckCheck, Calendar, ArrowUpRight, Link as LinkIcon, Users, User, Route, Newspaper } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatToLocal } from '../../utils/dateUtils';
@@ -41,6 +42,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     selectedContext, setSelectedContext,
     loadMoreMessages, smartReplies, openViewer
 }) => {
+    const { t } = useTranslation();
     const [isContextModalOpen, setIsContextModalOpen] = useState(false);
 
     const parseMessage = (text: string) => {
@@ -87,7 +89,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         return (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '16px', padding: '40px' }}>
                 <MessageCircle size={60} style={{ opacity: 0.15 }} />
-                <span style={{ fontSize: '1.05rem', fontWeight: 500, textAlign: 'center' }}>Selecciona un contacto para iniciar un chat</span>
+                <span style={{ fontSize: '1.05rem', fontWeight: 500, textAlign: 'center' }}>{t('chat.area.no_selected')}</span>
             </div>
         );
     }
@@ -144,7 +146,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     </h3>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-                        <span>En línea</span>
+                        <span>{t('common.online')}</span>
                     </div>
                 </div>
             </div>
@@ -153,7 +155,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg)' }}>
                 {hasMoreMessages && (
                     <div ref={topRef} style={{ textAlign: 'center', padding: '10px', color: 'var(--text-muted)', fontSize: '0.82rem', cursor: 'pointer' }} onClick={() => loadMoreMessages()}>
-                        {loadingMessages ? 'Cargando...' : 'Pulsa para cargar más mensajes'}
+                        {loadingMessages ? t('common.loading') : t('chat.area.load_more')}
                     </div>
                 )}
                 {mensajes.map((msg, i) => {
@@ -186,16 +188,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                     } as React.CSSProperties}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}>
                                             <ClipboardList size={18} />
-                                            <span style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Tarea Asignada</span>
+                                            <span style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>{t('chat.task_modal.title')}</span>
                                         </div>
                                         <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)' }}>{parsed.title}</div>
                                         {parsed.desc && <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{parsed.desc}</div>}
                                         {parsed.date && (
                                             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'var(--bg-card)', padding: '8px 12px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <Calendar size={14} /> <span>Vence: {formatToLocal(parsed.date)}</span>
+                                                <Calendar size={14} /> <span>{t('chat.task_modal.field_date')}: {formatToLocal(parsed.date)}</span>
                                             </div>
                                         )}
-                                        <Link to="/tablero" style={{ textAlign: 'center', padding: '10px', background: 'var(--accent)', borderRadius: '12px', color: '#fff', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 700, marginTop: '4px' }}>Ver en Tablero</Link>
+                                        <Link to="/tablero" style={{ textAlign: 'center', padding: '10px', background: 'var(--accent)', borderRadius: '12px', color: '#fff', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 700, marginTop: '4px' }}>{t('common.actions.view_on_board')}</Link>
                                     </div>
                                 ) : parsed.type === 'novedad' ? (
                                     <div style={{ 
@@ -208,14 +210,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                     } as React.CSSProperties}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}>
                                             <Newspaper size={18} />
-                                            <span style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Post Compartido</span>
+                                            <span style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>{t('news.post_shared')}</span>
                                         </div>
                                         <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Publicado por <strong>{(parsed as any).creador}</strong></div>
                                         <div style={{ fontSize: '0.88rem', fontStyle: 'italic', color: 'var(--text)', background: 'var(--bg-card)', padding: '8px 12px', borderRadius: '10px', borderLeft: '3px solid var(--accent)' }}>
                                             "{(parsed as any).preview}"
                                         </div>
                                         <Link to="/novedades" style={{ textAlign: 'center', padding: '10px', background: 'var(--accent)', borderRadius: '12px', color: '#fff', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 700, marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                                            Ver en Novedades <ArrowUpRight size={14} />
+                                            {t('news.view_on_news')} <ArrowUpRight size={14} />
                                         </Link>
                                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                                             {formatTime(msg.created_at)}
@@ -240,7 +242,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                             }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>
                                                     {getContextIcon(parsed.ctxType || '')}
-                                                    <span>Referencia: {parsed.ctxType}</span>
+                                                    <span>{t('common.reference')}: {parsed.ctxType}</span>
                                                 </div>
                                                 <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{parsed.ctxLabel}</div>
                                                 <Link 
@@ -254,7 +256,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                                         justifyContent: 'center', gap: '4px' 
                                                     }}
                                                 >
-                                                    Abrir registro <ArrowUpRight size={14} />
+                                                    {t('common.actions.open_record')} <ArrowUpRight size={14} />
                                                 </Link>
                                             </div>
                                         )}
@@ -301,7 +303,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 700 }}>
                                 <LinkIcon size={14} />
-                                <span>Vinculando a {selectedContext.type}: <strong>{selectedContext.label}</strong></span>
+                                <span>{t('chat.area.linking_to')} {selectedContext.type}: <strong>{selectedContext.label}</strong></span>
                             </div>
                             <button onClick={() => setSelectedContext(null)} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer' }}>
                                 <X size={16} />
@@ -349,15 +351,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         <button 
                             type="button" 
                             onClick={openTaskModal} 
-                            title="Asignar tarea"
+                            title={t('chat.area.task_tooltip')}
                             style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text)', transition: 'all 0.2s' }}
                         >
                             <ClipboardList size={20} />
                         </button>
-                        <button 
+                         <button 
                             type="button" 
                             onClick={() => setIsContextModalOpen(true)} 
-                            title="Vincular contexto"
+                            title={t('chat.area.link_context_tooltip', { defaultValue: 'Vincular contexto' })}
                             style={{ 
                                 width: '42px', height: '42px', borderRadius: '12px', 
                                 background: selectedContext ? 'var(--accent)' : 'var(--bg-card)', 
@@ -375,7 +377,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         type="text" 
                         value={newMessage} 
                         onChange={e => setNewMessage(e.target.value)} 
-                        placeholder={selectedContext ? "Escribe un mensaje relacionado..." : "Escribe un mensaje..."}
+                        placeholder={selectedContext ? t('chat.area.placeholder_context') : t('chat.area.placeholder')}
                         style={{ flex: 1, padding: '12px 20px', borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', outline: 'none', fontSize: '0.95rem' }} 
                     />
                     

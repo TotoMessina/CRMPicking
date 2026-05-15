@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
+import enLocale from '@fullcalendar/core/locales/en-gb';
 import { Calendar as CalendarIcon, Clock, Sun, Target, Filter, Plus, Zap, User, BookOpen } from 'lucide-react';
 
 import { TurnoModal } from '../components/ui/TurnoModal';
@@ -21,6 +23,7 @@ const TYPE_COLORS = {
 };
 
 export default function Horarios() {
+    const { t, i18n } = useTranslation();
     const { empresaActiva } = useAuth();
     const calendarRef = useRef(null);
     const [usersCache, setUsersCache] = useState([]);
@@ -127,7 +130,7 @@ export default function Horarios() {
                 let query = supabase.from("turnos").select("*")
                     .eq("empresa_id", empresaActiva.id)
                     .gte("start_time", dateRange.start)
-                    .lt("end_time", dateRange.end);
+                    .lte("start_time", dateRange.end);
 
                 if (filtroEmpleado) {
                     query = query.eq("usuario_email", filtroEmpleado);
@@ -136,260 +139,124 @@ export default function Horarios() {
                 const { data, error } = await query;
                 if (error) throw error;
 
-                const fetchedTurnos = data || [];
-                setTurnosCache(fetchedTurnos);
-                calculateStats(fetchedTurnos, filtroEmpleado);
-
-                const getShortName = (email) => {
-                    const u = usersCache.find(x => x.email === email);
-                    if (u && u.nombre) return u.nombre.split(" ")[0];
-                    return email ? email.split("@")[0] : "Usuario";
-                };
-
-                const mapped = fetchedTurnos.map(t => ({
-                    id: String(t.id),
-                    title: `${getShortName(t.usuario_email)} - ${t.tipo?.toUpperCase()}`,
+                setTurnosCache(data || []);
+                const events = (data || []).map(t => ({
+                    id: t.id,
+                    title: `${t.usuario_email.split('@')[0]} - ${t.tipo}`,
                     start: t.start_time,
                     end: t.end_time,
-                    backgroundColor: TYPE_COLORS[t.tipo] || "#64748b",
-                    borderColor: TYPE_COLORS[t.tipo] || "#64748b",
-                    allDay: t.tipo === 'vacaciones' || t.tipo === 'estudio',
-                    extendedProps: {
-                        usuario_email: t.usuario_email,
-                        tipo: t.tipo,
-                        notas: t.notas
-                    }
+                    backgroundColor: TYPE_COLORS[t.tipo] || "#3b82f6",
+                    borderColor: TYPE_COLORS[t.tipo] || "#3b82f6",
+                    extendedProps: { ...t }
                 }));
-
-                setCalendarEvents(mapped);
+                setCalendarEvents(events);
+                calculateStats(data || [], filtroEmpleado);
             } catch (err) {
-                console.error(err);
-                toast.error("Error al cargar turnos del calendario");
+                console.error("Error loading shifts:", err);
+                toast.error(t('common.errors.load_error'));
             }
         };
-
         loadTurnos();
-    }, [dateRange, filtroEmpleado, usersCache, refreshCounter]);
+    }, [dateRange, filtroEmpleado, empresaActiva, refreshCounter]);
 
-    const toLocalInputValue = (date) => {
-        if (!date) return "";
-        const offsetMs = date.getTimezoneOffset() * 60 * 1000;
-        const msLocal = date.getTime() - offsetMs;
-        const dateLocal = new Date(msLocal);
-        return dateLocal.toISOString().slice(0, 16);
-    };
+    const refetchEvents = () => setRefreshCounter(p => p + 1);
 
     const handleDateSelect = (selectInfo) => {
         setEditingTurnoId(null);
         setInitialTurnoData({
-            usuario_email: filtroEmpleado || "",
-            tipo: "jornada",
-            inicio: toLocalInputValue(selectInfo.start),
-            fin: toLocalInputValue(selectInfo.end),
-            notas: ""
+            start_time: selectInfo.startStr,
+            end_time: selectInfo.endStr,
+            usuario_email: filtroEmpleado || ""
         });
         setModalTurnoOpen(true);
     };
 
     const handleEventClick = (clickInfo) => {
-        const evt = clickInfo.event;
-        const props = evt.extendedProps;
-
-        setEditingTurnoId(evt.id);
-        setInitialTurnoData({
-            usuario_email: props.usuario_email,
-            tipo: props.tipo,
-            inicio: toLocalInputValue(evt.start),
-            fin: toLocalInputValue(evt.end || evt.start),
-            notas: props.notas || ""
-        });
+        setEditingTurnoId(clickInfo.event.id);
+        setInitialTurnoData(null);
         setModalTurnoOpen(true);
     };
 
-    const checkOverlap = async (email, startIso, endIso, excludeId = null) => {
-        let query = supabase.from("turnos")
-            .select("id")
-            .eq("usuario_email", email)
-            .lt("start_time", endIso)
-            .gt("end_time", startIso);
-        if (excludeId) query = query.neq("id", excludeId);
-        const { data, error } = await query;
-        return data && data.length > 0;
-    };
+    const handleEventDropOrResize = async (changeInfo) => {
+        const { event } = changeInfo;
+        const id = event.id;
+        const start = event.startStr;
+        const end = event.endStr;
 
-    const handleEventDropOrResize = async (info) => {
-        const evt = info.event;
-        const startIso = evt.start.toISOString();
-
-        let safeEnd = evt.end ? evt.end.toISOString() : evt.start.toISOString();
-        if (!evt.end) {
-            if (evt.allDay) {
-                const d = new Date(evt.start);
-                d.setDate(d.getDate() + 1);
-                safeEnd = d.toISOString();
-            } else {
-                const d = new Date(evt.start);
-                d.setHours(d.getHours() + 1);
-                safeEnd = d.toISOString();
-            }
-        }
-
-        const isOverlap = await checkOverlap(evt.extendedProps.usuario_email, startIso, safeEnd, evt.id);
-        if (isOverlap) {
-            toast.error(`⚠️ No se puede modificar: se superpone con otro turno.`);
-            info.revert();
-            return;
-        }
-
-        const { error } = await supabase.from("turnos").update({
-            start_time: startIso,
-            end_time: safeEnd
-        }).eq("id", evt.id);
+        const { error } = await supabase.from("turnos")
+            .update({ start_time: start, end_time: end })
+            .eq("id", id);
 
         if (error) {
-            toast.error("Error al mover: " + error.message);
-            info.revert();
+            toast.error(t('common.errors.update_error'));
+            changeInfo.revert();
         } else {
-            toast.success("Turno actualizado");
-            calculateStats(turnosCache, filtroEmpleado);
+            toast.success(t('common.success.updated'));
+            refetchEvents();
         }
     };
 
-    const openCargaManual = () => {
-        const now = new Date();
-        now.setMinutes(0, 0, 0);
-        const next = new Date(now);
-        next.setHours(now.getHours() + 8);
-
-        setEditingTurnoId(null);
-        setInitialTurnoData({
-            usuario_email: filtroEmpleado || "",
-            tipo: "jornada",
-            inicio: toLocalInputValue(now),
-            fin: toLocalInputValue(next),
-            notas: ""
-        });
-        setModalTurnoOpen(true);
-    };
-
-    const refetchEvents = () => {
-        setRefreshCounter(prev => prev + 1);
-    };
-
-    useEffect(() => {
-        refetchEvents();
-    }, [filtroEmpleado]);
-
     return (
-        <div className="page-container" style={{ padding: '0', maxWidth: '100%', margin: '0 auto', animation: 'page-enter 0.5s ease-out forwards' }}>
-
-            {/* 1. HERO HEADER */}
-            <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', gap: '16px' }}>
+        <div className="horarios-page" style={{ padding: '24px' }}>
+            <header style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Horarios y Turnos
-                    </h1>
-                    <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>
-                        Gestión de jornadas, vacaciones y horas extra de empleados.
-                    </p>
+                    <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>{t('horarios.title')}</h1>
+                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>{t('horarios.subtitle')}</p>
                 </div>
-
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Button variant="secondary" onClick={() => setModalMasivoOpen(true)} className="btn-text-hide-mobile" style={{ borderRadius: '99px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Zap size={18} style={{ color: '#f59e0b' }} /> <span>Carga Masiva</span>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <Button onClick={() => { setEditingTurnoId(null); setInitialTurnoData(null); setModalTurnoOpen(true); }}>
+                        <Plus size={16} style={{ marginRight: '8px' }} /> {t('horarios.new_shift')}
                     </Button>
-                    <Button variant="primary" onClick={openCargaManual} className="btn-text-hide-mobile" style={{ padding: '10px 24px', fontSize: '1.05rem', fontWeight: 600, borderRadius: '99px', boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.5)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Plus size={20} /> <span>Cargar Turno</span>
+                    <Button variant="secondary" onClick={() => setModalMasivoOpen(true)}>
+                        <Zap size={16} style={{ marginRight: '8px' }} /> {t('horarios.bulk_create')}
                     </Button>
                 </div>
             </header>
 
-            {/* 2. STATS BADGES (If Filtered) */}
-            {filtroEmpleado && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                    <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
-                            <Clock size={20} />
-                        </div>
-                        <div>
-                            <div className="muted" style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Horas Totales</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.total.toFixed(1)} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>hs</span></div>
-                        </div>
-                    </div>
-
-                    <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-                            <Target size={20} />
-                        </div>
-                        <div>
-                            <div className="muted" style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Horas Extra</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.extra.toFixed(1)} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>hs</span></div>
-                        </div>
-                    </div>
-
-                    <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                            <Sun size={20} />
-                        </div>
-                        <div>
-                            <div className="muted" style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Días Vacaciones</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.vacDays} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>días</span></div>
-                        </div>
-                    </div>
-
-                    <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
-                            <BookOpen size={20} />
-                        </div>
-                        <div>
-                            <div className="muted" style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Días Estudio</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.studyDays} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>días</span></div>
-                        </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div className="stat-card premium black">
+                    <div className="stat-squircle"><Clock size={20} /></div>
+                    <div className="stat-info">
+                        <div className="stat-value">{stats.total.toFixed(1)}h</div>
+                        <div className="stat-label">{t('horarios.stats.total')}</div>
                     </div>
                 </div>
-            )}
-
-            {/* 3. GLASSMORPHIC FILTERS */}
-            <section style={{
-                background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '24px', padding: '24px', marginBottom: '32px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 4px 24px -10px rgba(0, 0, 0, 0.08)', position: 'relative', overflow: 'hidden'
-            }}>
-                <div style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)', opacity: 0.5 }}></div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)', fontWeight: 700, fontSize: '1.1rem' }}>
-                    <Filter size={18} style={{ color: 'var(--accent)' }} /> Filtrar Cronograma
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: '400px' }}>
-                        <User size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                        <select className="input" value={filtroEmpleado} onChange={e => setFiltroEmpleado(e.target.value)} style={{ width: '100%', paddingLeft: '44px', borderRadius: '12px', height: '48px', fontSize: '1rem' }}>
-                            <option value="">Todos los empleados</option>
-                            {usersCache.map(u => (
-                                <option key={u.email} value={u.email}>{u.nombre || u.email} ({u.role || 'User'})</option>
-                            ))}
-                        </select>
+                <div className="stat-card premium amber">
+                    <div className="stat-squircle"><Zap size={20} /></div>
+                    <div className="stat-info">
+                        <div className="stat-value">{stats.extra.toFixed(1)}h</div>
+                        <div className="stat-label">{t('horarios.stats.extra')}</div>
                     </div>
-                    <Button variant="secondary" onClick={() => loadUsers()} style={{ borderRadius: '12px', height: '48px', padding: '0 24px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                        Actualizar Vista
-                    </Button>
                 </div>
-            </section>
+                <div className="stat-card premium emerald">
+                    <div className="stat-squircle"><Sun size={20} /></div>
+                    <div className="stat-info">
+                        <div className="stat-value">{stats.vacDays}</div>
+                        <div className="stat-label">{t('horarios.stats.vacations')}</div>
+                    </div>
+                </div>
+            </div>
 
-            {/* 4. CALENDAR BENTO BOARD */}
-            <section style={{ flex: 1, minHeight: '650px', display: 'flex', flexDirection: 'column', background: 'var(--bg-elevated)', borderRadius: '24px', padding: '24px', border: '1px solid var(--border)', boxShadow: '0 4px 24px -10px rgba(0, 0, 0, 0.08)' }}>
-                <div style={{ flex: 1, backgroundColor: 'var(--bg)', borderRadius: '16px', padding: '16px', border: '1px solid var(--border)', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <section className="glass-card" style={{ padding: '20px' }}>
+                <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <Filter size={18} className="text-muted" />
+                    <select className="input" value={filtroEmpleado} onChange={e => setFiltroEmpleado(e.target.value)} style={{ maxWidth: '300px' }}>
+                        <option value="">{t('horarios.filter_all')}</option>
+                        {usersCache.map(u => <option key={u.email} value={u.email}>{u.nombre || u.email}</option>)}
+                    </select>
+                </div>
+
+                <div className="calendar-container premium-calendar">
                     <FullCalendar
                         ref={calendarRef}
                         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                        initialView="dayGridMonth"
-                        locale={esLocale}
-                        height="auto"
-                        navLinks={true}
+                        initialView="timeGridWeek"
                         headerToolbar={{
                             left: 'prev,next today',
                             center: 'title',
-                            right: 'dayGridMonth,timeGridWeek'
+                            right: 'dayGridMonth,timeGridWeek,timeGridDay'
                         }}
+                        locale={i18n.language === 'es' ? esLocale : enLocale}
                         editable={true}
                         selectable={true}
                         events={calendarEvents}

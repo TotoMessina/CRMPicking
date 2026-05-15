@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RepartidorFilters } from '../components/repartidores/RepartidorFilters';
 
 export default function Repartidores() {
+    const { t } = useTranslation();
     const { empresaActiva, isDemoMode } = useAuth();
     const [repartidores, setRepartidores] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export default function Repartidores() {
         const { data, count, error } = await request;
 
         if (error) {
-            toast.error('Error al cargar repartidores');
+            toast.error(t('delivery.toast.load_error'));
             console.error(error);
         } else {
             setRepartidores(data || []);
@@ -110,19 +112,19 @@ export default function Repartidores() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("¿Seguro que querés eliminar a este repartidor?")) return;
+        if (!window.confirm(t('delivery.confirm_delete'))) return;
         const { error } = await supabase.from("repartidores").delete().eq("id", id);
         if (error) {
-            toast.error("Error al eliminar.");
+            toast.error(t('delivery.toast.delete_error'));
         } else {
-            toast.success("Repartidor eliminado.");
+            toast.success(t('delivery.toast.delete_success'));
             fetchRepartidores();
         }
     };
 
     const handleOpenActivity = (id, nombre) => {
         setActTargetId(id);
-        setActTargetName(nombre || 'Sin nombre');
+        setActTargetName(nombre || t('common.no_name'));
         setActModalOpen(true);
     };
 
@@ -139,10 +141,10 @@ export default function Repartidores() {
             <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Repartidores
+                        {t('delivery.title')}
                     </h1>
                     <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>
-                        Gestión de flota y estados.
+                        {t('delivery.subtitle')}
                     </p>
                 </div>
 
@@ -154,7 +156,7 @@ export default function Repartidores() {
                         style={{ borderRadius: '14px', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)' }}
                     >
                         <MoreVertical size={18} />
-                        <span className="hide-mobile">Acciones</span>
+                        <span className="hide-mobile">{t('common.actions.dropdown_actions')}</span>
                     </Button>
 
                     <AnimatePresence>
@@ -180,21 +182,21 @@ export default function Repartidores() {
                                         onClick={() => { descargarModeloRepartidores(); setActionsOpen(false); }}
                                         style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                     >
-                                        <FileText size={16} style={{ color: 'var(--accent)' }} /> Descargar Modelo Excel
+                                        <FileText size={16} style={{ color: 'var(--accent)' }} /> {t('delivery.download_model')}
                                     </button>
                                     <button 
                                         className="dropdown-item" 
                                         onClick={() => { exportarRepartidoresExcel(empresaActiva, { search: fSearch, estado: fEstado, responsable: fResponsable }); setActionsOpen(false); }}
                                         style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                     >
-                                        <Download size={16} style={{ color: 'var(--accent)' }} /> Exportar Repartidores
+                                        <Download size={16} style={{ color: 'var(--accent)' }} /> {t('delivery.export')}
                                     </button>
                                     {!isDemoMode && (
                                         <label 
                                             className="dropdown-item" 
                                             style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
                                         >
-                                            <Upload size={16} style={{ color: 'var(--accent)' }} /> Importar Excel
+                                            <Upload size={16} style={{ color: 'var(--accent)' }} /> {t('delivery.import')}
                                             <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => { handleImportExcel(e); setActionsOpen(false); }} />
                                         </label>
                                     )}
@@ -216,7 +218,7 @@ export default function Repartidores() {
             <section style={{ marginBottom: '32px' }}>
                 <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: 'var(--text)' }}>
-                        Listado <span className="muted" style={{ fontWeight: 500, fontSize: '1.2rem' }}>({total})</span>
+                        {t('delivery.list')} <span className="muted" style={{ fontWeight: 500, fontSize: '1.2rem' }}>({total})</span>
                     </h2>
                 </header>
 
@@ -231,7 +233,7 @@ export default function Repartidores() {
                         ))
                     ) : repartidores.length === 0 ? (
                         <div style={{ gridColumn: '1 / -1', background: 'var(--bg-elevated)', border: '1px dashed var(--border)', borderRadius: '20px', padding: '40px', textAlign: 'center' }}>
-                            <p className="muted" style={{ fontSize: '1.1rem' }}>No se encontraron repartidores con esos filtros.</p>
+                            <p className="muted" style={{ fontSize: '1.1rem' }}>{t('delivery.no_results')}</p>
                         </div>
                     ) : repartidores.map(r => {
                         const acts = activities[r.id] || [];
@@ -249,7 +251,7 @@ export default function Repartidores() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1, paddingRight: '12px' }}>
                                         <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
-                                            {r.nombre || "(Sin nombre)"}
+                                            {r.nombre || `(${t('common.no_name')})`}
                                         </h3>
 
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
@@ -262,24 +264,26 @@ export default function Repartidores() {
 
                                     {/* Quick actions top right */}
                                     <div style={{ display: 'flex', gap: '6px' }}>
-                                        <button onClick={() => handleEdit(r.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title="Editar">
+                                        <button onClick={() => handleEdit(r.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title={t('common.edit')}>
                                             <Edit2 size={16} />
                                         </button>
                                         {!isDemoMode && (
-                                            <button onClick={() => handleDelete(r.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title="Eliminar">
+                                            <button onClick={() => handleDelete(r.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title={t('common.delete')}>
                                                 <Trash2 size={16} />
                                             </button>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Badges row */}
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                    {r.estado && (
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                                            {r.estado}
-                                        </span>
-                                    )}
+                                    {/* Badges row */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {r.estado && (
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                                                {r.estado === 'Documentación sin gestionar' ? t('delivery.status.no_docs') :
+                                                 r.estado === 'Cuenta aun no confirmada' ? t('delivery.status.unconfirmed') :
+                                                 r.estado === 'Cuenta confirmada y repartiendo' ? t('delivery.status.confirmed') : r.estado}
+                                            </span>
+                                        )}
                                     {r.responsable && (
                                         <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'var(--bg-elevated)', color: 'var(--text)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <User size={12} /> {r.responsable}
@@ -289,17 +293,17 @@ export default function Repartidores() {
 
                                 {r.notas && (
                                     <div style={{ fontSize: '0.9rem', background: 'var(--bg-elevated)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                                        <strong>Notas:</strong> {r.notas}
+                                        <strong>{t('common.notes')}:</strong> {r.notas}
                                     </div>
                                 )}
 
                                 {/* Card Footer Actions */}
                                 <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px dashed var(--border)' }}>
                                     <Button variant="primary" style={{ flex: 1, padding: '8px' }} onClick={() => handleOpenActivity(r.id, r.nombre)}>
-                                        <Plus size={16} /> Actividad
+                                        <Plus size={16} /> {t('common.activity')}
                                     </Button>
                                     <Button variant="secondary" style={{ flex: 1, padding: '8px' }} onClick={() => toggleHistory(r.id)}>
-                                        <MessageSquare size={16} /> {isExpanded ? 'Ocultar' : `Historial (${acts.length})`}
+                                        <MessageSquare size={16} /> {isExpanded ? t('common.hide') : `${t('common.history')} (${acts.length})`}
                                     </Button>
                                 </div>
 
@@ -323,13 +327,13 @@ export default function Repartidores() {
                                             }}>
                                                 <div style={{ color: 'var(--text)', marginBottom: '4px', lineHeight: 1.4 }}>{a.detalle}</div>
                                                 <div className="muted" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
-                                                    <Clock size={12} /> {new Date(a.fecha_accion).toLocaleString('es-AR')}
+                                                    <Clock size={12} /> {new Date(a.fecha_accion).toLocaleString()}
                                                     {a.usuario && <><User size={12} style={{ marginLeft: '6px' }} /> {a.usuario}</>}
                                                 </div>
                                             </div>
                                         )) : (
                                             <div className="muted" style={{ textAlign: 'center', padding: '16px', background: 'var(--bg-elevated)', borderRadius: '12px' }}>
-                                                Sin movimientos.
+                                                {t('delivery.card.no_movements')}
                                             </div>
                                         )}
                                     </div>
@@ -343,7 +347,7 @@ export default function Repartidores() {
             {!loading && total > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '24px' }}>
                     <Button variant="secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft size={16} /></Button>
-                    <span className="muted">Página {page} de {totalPages}</span>
+                    <span className="muted">{t('common.page')} {page} {t('common.of')} {totalPages}</span>
                     <Button variant="secondary" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight size={16} /></Button>
                     <select
                         className="input"
@@ -397,7 +401,7 @@ export default function Repartidores() {
                             border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer',
                             boxShadow: '0 8px 20px -6px rgba(0, 0, 0, 0.3)'
                         }}
-                        title="Nuevo Repartidor"
+                        title={t('delivery.new_delivery')}
                     >
                         <Plus size={32} />
                     </motion.button>

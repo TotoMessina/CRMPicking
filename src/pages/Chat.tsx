@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChat } from '../hooks/useChat';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatArea } from '../components/chat/ChatArea';
@@ -11,6 +12,7 @@ import { X } from 'lucide-react';
  * Chat Page
  */
 export default function Chat() {
+    const { t } = useTranslation();
     const { user, userName, empresaActiva, role, isDemoMode } = useAuth();
     const [viewerImage, setViewerImage] = useState<string | null>(null);
     const roleName = role || '';
@@ -34,7 +36,7 @@ export default function Chat() {
         setIsTaskModalOpen(true);
     };
 
-    if (!user) return <div className="p-8 text-center muted">Cargando sesión de chat...</div>;
+    if (!user) return <div className="p-8 text-center muted">{t('chat.loading_session', { defaultValue: 'Cargando sesión de chat...' })}</div>;
 
     return (
         <div style={{

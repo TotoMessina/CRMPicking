@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import {
     Plus, Trash2, X, Search, ChevronUp, ChevronDown,
@@ -94,6 +95,7 @@ interface Visita {
 }
 
 export default function AsignadorRutas() {
+    const { t } = useTranslation();
     const { empresaActiva } = useAuth();
     const { tenantConfig } = useTenant();
 
@@ -203,7 +205,7 @@ export default function AsignadorRutas() {
             }
             setDistanciaTotal(dist);
         } catch (e) {
-            toast.error('Error al cargar la ruta');
+            toast.error(t('asignador.toast.load_error'));
         } finally {
             setLoadingRuta(false);
         }
@@ -225,24 +227,24 @@ export default function AsignadorRutas() {
     }, [searchTerm, empresaActiva]);
 
     const agregarAFila = async (ec: any) => {
-        if (!usuarioSeleccionado) return toast.error('Seleccioná un usuario');
+        if (!usuarioSeleccionado) return toast.error(t('asignador.toast.select_user'));
         const yaExiste = rutaActual.find(v => String(v.cliente_id) === String(ec.clientes.id));
-        if (yaExiste) return toast.error('Ya está en la ruta');
+        if (yaExiste) return toast.error(t('asignador.toast.already_in_route'));
 
         const newOrder = rutaActual.length;
         const { data, error } = await (supabase as any).from('visitas_diarias').insert([{
             empresa_id: empresaActiva?.id, cliente_id: ec.clientes.id, usuario_asignado_email: usuarioSeleccionado, fecha_asignada: fechaSeleccionada, estado: 'Pendiente', orden: newOrder
         }]).select('*').single();
 
-        if (error) return toast.error('Error al agregar');
+        if (error) return toast.error(t('asignador.toast.add_error'));
         const dataConClientes: Visita = { ...data, clientes: ec.clientes };
         setRutaActual([...rutaActual, dataConClientes]);
-        toast.success(`Agregado a ${usuarioSeleccionado.split('@')[0]}`);
+        toast.success(t('asignador.toast.add_success', { name: usuarioSeleccionado.split('@')[0] }));
     };
 
     const quitarVisita = async (id: string | number) => {
         const { error } = await (supabase as any).from('visitas_diarias').delete().eq('id', id);
-        if (error) return toast.error('Error al eliminar');
+        if (error) return toast.error(t('asignador.toast.delete_error'));
         const nueva = rutaActual.filter(v => v.id !== id);
         setRutaActual(nueva);
         const updates = nueva.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id));
@@ -275,16 +277,16 @@ export default function AsignadorRutas() {
 
     const vaciarRuta = async () => {
         if (!usuarioSeleccionado || !fechaSeleccionada || rutaActual.length === 0) return;
-        if (!window.confirm('¿Estás seguro que deseas eliminar TODAS las visitas planificadas para este vendedor en esta fecha?')) return;
+        if (!window.confirm(t('asignador.confirm.empty_all'))) return;
         
         const ids = rutaActual.map(v => v.id);
         const { error } = await (supabase as any).from('visitas_diarias').delete().in('id', ids);
         
         if (error) {
-            toast.error('Error al vaciar la ruta');
+            toast.error(t('asignador.toast.empty_error'));
         } else {
             setRutaActual([]);
-            toast.success('Ruta vaciada al 100%');
+            toast.success(t('asignador.toast.empty_success'));
         }
     };
 
@@ -299,7 +301,7 @@ export default function AsignadorRutas() {
             .order('fecha_asignada', { ascending: false })
             .limit(1);
         
-        if (!lastOne?.[0]) { toast.error('No hay rutas previas para clonar'); setLoadingRuta(false); return; }
+        if (!lastOne?.[0]) { toast.error(t('asignador.toast.no_prev_route')); setLoadingRuta(false); return; }
 
         const lastDate = lastOne[0].fecha_asignada;
 
@@ -317,9 +319,9 @@ export default function AsignadorRutas() {
             }));
             const { error } = await (supabase as any).from('visitas_diarias').insert(logs);
             if (!error) {
-                toast.success(`Ruta clonada del ${lastDate}`);
+                toast.success(t('asignador.toast.cloned_success', { date: lastDate }));
                 fetchRuta();
-            } else toast.error('Error al clonar');
+            } else toast.error(t('asignador.toast.cloning_error'));
         }
         setLoadingRuta(false);
     };
@@ -334,14 +336,14 @@ export default function AsignadorRutas() {
             return `${i + 1}. *${c?.nombre_local}*\n🏠 ${c?.direccion}\n${v.comentarios_admin ? `📝 _${v.comentarios_admin}_\n` : ''}${mapsLink ? `🔗 GPS: ${mapsLink}\n` : ''}`;
         }).join('\n');
         
-        const texto = encodeURIComponent(header + body + `\n\nGenerado por ${tenantConfig.app.name}`);
+        const texto = encodeURIComponent(header + body + `\n\n${t('asignador.whatsapp.generated_by')} ${tenantConfig.app.name}`);
         window.open(`https://wa.me/?text=${texto}`, '_blank');
     };
 
     const optimizarRuta = async () => {
-        if (rutaActual.length < 3) return toast('Añadí más locales', { icon: 'ℹ️' });
+        if (rutaActual.length < 3) return toast(t('asignador.toast.add_more'), { icon: 'ℹ️' });
         
-        toast.loading('Optimizando trayecto...', { id: 'opt' });
+        toast.loading(t('asignador.toast.optimizing'), { id: 'opt' });
         let ruta = [...rutaActual];
         let optimizada: Visita[] = [];
         let p = [...ruta];
@@ -359,7 +361,7 @@ export default function AsignadorRutas() {
         
         setRutaActual(optimizada);
         await Promise.all(optimizada.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id)));
-        toast.success('Ruta optimizada sin cruces 🎯', { id: 'opt' });
+        toast.success(t('asignador.toast.optimized_success'), { id: 'opt' });
     };
 
     const polylinePoints = useMemo(() => 
@@ -370,54 +372,54 @@ export default function AsignadorRutas() {
         <div className="asign-pro-container">
             <div className="asign-stats-bar">
                 <div className="stat-card premium blue">
-                    <div className="stat-squircle"><MapPin size={22} /></div>
+                    <div className="stat-squircle"><Users size={22} /></div>
                     <div className="stat-info">
                         <div className="stat-value">{rutaActual.length}</div>
-                        <div className="stat-label">Locales</div>
+                        <div className="stat-label">{t('asignador.stats.locales')}</div>
                     </div>
                 </div>
                 <div className="stat-card premium emerald">
                     <div className="stat-squircle"><TrendingDown size={22} /></div>
                     <div className="stat-info">
                         <div className="stat-value">{distanciaTotal.toFixed(1)} KM</div>
-                        <div className="stat-label">Distancia</div>
+                        <div className="stat-label">{t('asignador.stats.distance')}</div>
                     </div>
                 </div>
                 <div className="stat-card premium amber">
                     <div className="stat-squircle"><Clock size={22} /></div>
                     <div className="stat-info">
                         <div className="stat-value">~{rutaActual.length * 15} min</div>
-                        <div className="stat-label">Tiempo Est.</div>
+                        <div className="stat-label">{t('asignador.stats.estimated_time')}</div>
                     </div>
                 </div>
                 <div className="stat-card premium black interactive" style={{ cursor: 'pointer' }} onClick={() => setVerMapa(!verMapa)}>
                     <div className="stat-squircle"><MapIcon size={22} /></div>
                     <div className="stat-info">
-                        <div className="stat-value" style={{ fontSize: '1.2rem' }}>{verMapa ? 'ACTIVO' : 'OCULTO'}</div>
-                        <div className="stat-label">Mapa Visual</div>
+                        <div className="stat-value" style={{ fontSize: '1.2rem' }}>{verMapa ? t('asignador.stats.active') : t('asignador.stats.hidden')}</div>
+                        <div className="stat-label">{t('asignador.stats.visual_map')}</div>
                     </div>
                 </div>
             </div>
 
             <div className="mobile-tabs-switcher">
                 <button className={`m-tab-btn ${mobileTab === 'buscar' ? 'active' : ''}`} onClick={() => setMobileTab('buscar')}>
-                    <Plus size={18} /> <span>Añadir</span>
+                    <Plus size={18} /> <span>{t('asignador.mobile.add')}</span>
                 </button>
                 <button className={`m-tab-btn ${mobileTab === 'ruta' ? 'active' : ''}`} onClick={() => setMobileTab('ruta')}>
-                    <RouteIcon size={18} /> <span>Mi Ruta ({rutaActual.length})</span>
+                    <RouteIcon size={18} /> <span>{t('asignador.mobile.my_route', { count: rutaActual.length })}</span>
                 </button>
             </div>
 
-            <div className={`asign-main-grid view-${mobileTab}`}>
-                <div className={`side-panel ${mobileTab === 'buscar' ? 'mobile-visible' : 'mobile-hidden'}`}>
+            <div className={`asign-main-grid view-${verMapa ? 'split' : 'full'}`}>
+                <div className={`control-panel ${mobileTab === 'buscar' ? 'mobile-visible' : 'mobile-hidden'}`}>
                     <div className="glass-card sticky-mobile-config">
                         <h3 className="asign-section-title" style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
                             <User size={16} className="text-accent" /> 
-                            <span>Configuración de Ruta</span>
+                            <span>{t('asignador.config.title')}</span>
                         </h3>
                         <div className="config-inputs-grid">
                             <select className="input premium-select" value={usuarioSeleccionado} onChange={e => setUsuarioSeleccionado(e.target.value)}>
-                                <option value="">— Elegir Vendedor —</option>
+                                <option value="">— {t('asignador.config.choose_vendor')} —</option>
                                 {usuarios.map(u => <option key={u.email} value={u.email}>{u.nombre}</option>)}
                             </select>
                             <input type="date" className="input premium-input" value={fechaSeleccionada} onChange={e => setFechaSeleccionada(e.target.value)} />
@@ -427,10 +429,10 @@ export default function AsignadorRutas() {
                     <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div className="tabs-header">
                             <button className={`tab-btn ${tabActiva === 'riesgo' ? 'active' : ''}`} onClick={() => setTabActiva('riesgo')}>
-                                Sugerencias Riesgo
+                                {t('asignador.tabs.risk')}
                             </button>
                             <button className={`tab-btn ${tabActiva === 'buscar' ? 'active' : ''}`} onClick={() => setTabActiva('buscar')}>
-                                Buscar Local
+                                {t('asignador.tabs.search')}
                             </button>
                         </div>
 
@@ -441,15 +443,15 @@ export default function AsignadorRutas() {
                                         <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} key={s.id} className="suggestion-item" onClick={() => agregarAFila(s)}>
                                             <div className="risk-badge" style={{ background: s.risk.color, color: '#fff' }}>{s.risk.level}</div>
                                             <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{s.clientes.nombre_local}</div>
-                                            <div className="muted" style={{ fontSize: '0.75rem' }}>{s.risk.diasSinContacto} días sin contacto</div>
+                                            <div className="muted" style={{ fontSize: '0.75rem' }}>{t('asignador.risk_days', { count: s.risk.diasSinContacto })}</div>
                                         </motion.div>
                                     ))
-                                ) : <div className="muted p-4 text-center">No hay alertas críticas hoy ✨</div>
+                                ) : <div className="muted p-4 text-center">{t('asignador.no_alerts')} ✨</div>
                             ) : (
                                 <div>
                                     <div className="asign-search-wrap">
                                         <Search size={15} className="asign-search-icon" />
-                                        <input type="text" className="input" placeholder="Nombre del local..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ paddingLeft: '36px', width: '100%' }} />
+                                        <input type="text" className="input" placeholder={t('asignador.search_placeholder')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ paddingLeft: '36px', width: '100%' }} />
                                     </div>
                                     <div style={{ marginTop: 12 }}>
                                         {searchResults.map(r => (
@@ -473,11 +475,11 @@ export default function AsignadorRutas() {
                         <div className="route-header">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <List size={18} />
-                                <strong>Ruta del Día</strong>
+                                <strong>{t('asignador.route.header')}</strong>
                             </div>
                             {rutaActual.length > 0 && (
                                 <button className="btn-link" onClick={vaciarRuta} style={{ border: 'none', background: 'transparent', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer' }}>
-                                    Vaciar Todo
+                                    {t('asignador.route.empty_all')}
                                 </button>
                             )}
                         </div>
@@ -486,11 +488,11 @@ export default function AsignadorRutas() {
                             <Droppable droppableId="ruta">
                                 {(provided) => (
                                     <div {...provided.droppableProps} ref={provided.innerRef} className="route-list" style={{ overflowY: 'auto', flex: 1, minHeight: '100px' }}>
-                                        {loadingRuta ? <div className="p-8 text-center muted">Actualizando lista...</div> :
+                                        {loadingRuta ? <div className="p-8 text-center muted">{t('asignador.route.updating')}</div> :
                                          rutaActual.length === 0 ? (
                                             <div className="p-12 text-center muted">
                                                 <RouteIcon size={40} style={{ opacity: 0.2, margin: '0 auto 10px' }} />
-                                                <p>No hay locales asignados.<br/>Usa el buscador o cloná la última ruta.</p>
+                                                <p>{t('asignador.route.empty_desc')}<br/>{t('asignador.route.empty_tip')}</p>
                                             </div>
                                          ) : (
                                             rutaActual.map((v, i) => (
@@ -504,8 +506,8 @@ export default function AsignadorRutas() {
                                                                 <div className="route-item-info">
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                                         <div className="route-sorter-arrows" style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '4px' }}>
-                                                                            <button onClick={() => moverVisita(i, -1)} disabled={i === 0} className={`arrow-btn ${i === 0 ? 'disabled' : ''}`} title="Subir"><ChevronUp size={14} /></button>
-                                                                            <button onClick={() => moverVisita(i, 1)} disabled={i === rutaActual.length - 1} className={`arrow-btn ${i === rutaActual.length - 1 ? 'disabled' : ''}`} title="Bajar"><ChevronDown size={14} /></button>
+                                                                            <button onClick={() => moverVisita(i, -1)} disabled={i === 0} className={`arrow-btn ${i === 0 ? 'disabled' : ''}`} title={t('common.actions.move_up')}><ChevronUp size={14} /></button>
+                                                                            <button onClick={() => moverVisita(i, 1)} disabled={i === rutaActual.length - 1} className={`arrow-btn ${i === rutaActual.length - 1 ? 'disabled' : ''}`} title={t('common.actions.move_down')}><ChevronDown size={14} /></button>
                                                                         </div>
                                                                         <span style={{ background: 'var(--accent)', color: '#fff', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
                                                                         <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{v.clientes?.nombre_local}</div>
@@ -516,17 +518,17 @@ export default function AsignadorRutas() {
                                                                             💬 {v.comentarios_admin}
                                                                         </div>
                                                                     )}
-                                                                </div>
-                                                                <div className="route-item-actions" style={{ display: 'flex', gap: '8px', paddingRight: '4px' }}>
-                                                                    <button onClick={() => setEditingComentario({ id: v.id, texto: v.comentarios_admin || '' })} className={`premium-pill-btn ${v.comentarios_admin ? 'active' : ''}`} title={v.comentarios_admin ? 'Editar Nota' : 'Añadir Nota'}>
-                                                                        <MessageSquare size={14} /> <span>{v.comentarios_admin ? 'Ver Nota' : 'Añadir Nota'}</span>
-                                                                    </button>
-                                                                    <button onClick={() => { if(window.confirm(`¿Quitar ${v.clientes?.nombre_local || 'el local'} de la ruta?`)) quitarVisita(v.id) }} className="premium-pill-btn danger" title="Eliminar de la fila">
-                                                                        <Trash2 size={14} /> <span>Quitar</span>
-                                                                    </button>
-                                                                </div>
+                                                                    <div className="route-item-actions" style={{ display: 'flex', gap: '8px', paddingRight: '4px', marginLeft: 52, marginTop: 8 }}>
+                                                                        <button onClick={() => setEditingComentario({ id: v.id, texto: v.comentarios_admin || '' })} className={`premium-pill-btn ${v.comentarios_admin ? 'active' : ''}`} title={v.comentarios_admin ? t('asignador.actions.edit_note') : t('asignador.actions.add_note')}>
+                                                                            <MessageSquare size={14} /> <span>{v.comentarios_admin ? t('asignador.actions.view_note') : t('asignador.actions.add_note')}</span>
+                                                                        </button>
+                                                                        <button onClick={() => { if(window.confirm(t('asignador.confirm.remove_client', { name: v.clientes?.nombre_local || t('asignador.unnamed_local') }))) quitarVisita(v.id) }} className="premium-pill-btn danger" title={t('asignador.actions.remove_from_list')}>
+                                                                            <Trash2 size={14} /> <span>{t('common.actions.remove')}</span>
+                                                                        </button>
+                                                                    </div>
                                                             </div>
                                                         </div>
+                                                    </div>
                                                     )}
                                                 </Draggable>
                                             ))
@@ -543,26 +545,26 @@ export default function AsignadorRutas() {
                         {editingComentario && (
                             <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)' }} onClick={() => setEditingComentario(null)}>
                                 <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="glass-card" style={{ width: '90%', maxWidth: '420px', padding: '24px', background: 'var(--bg)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)' }} onClick={e => e.stopPropagation()}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                                         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                                             <div style={{ background: 'var(--accent-soft)', padding: '8px', borderRadius: '10px', display: 'flex' }}><MessageSquare size={18} className="text-accent" /></div>
-                                            <strong style={{ fontSize: '1.1rem' }}>Mensaje al Vendedor</strong>
+                                            <strong style={{ fontSize: '1.1rem' }}>{t('asignador.modal.note_title')}</strong>
                                         </div>
-                                        <button onClick={() => setEditingComentario(null)} className="premium-icon-btn" style={{ border: 'none' }}><X size={18} /></button>
+                                        <button onClick={() => setEditingComentario(null)} className="premium-icon-btn" style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}><X size={18} /></button>
                                     </div>
-                                    <textarea className="input premium-input" autoFocus value={editingComentario.texto} onChange={e => setEditingComentario({...editingComentario!, texto: e.target.value})} rows={4} style={{ width: '100%', marginBottom: 20, resize: 'none', fontSize: '0.95rem' }} placeholder="Escribe instrucciones especiales, horarios de atención, qué cobrar..." />
+                                    <textarea className="input premium-input" autoFocus value={editingComentario.texto} onChange={e => setEditingComentario({...editingComentario!, texto: e.target.value})} rows={4} style={{ width: '100%', marginBottom: 20, resize: 'none', fontSize: '0.95rem' }} placeholder={t('asignador.modal.note_placeholder')} />
                                     <div style={{ display: 'flex', gap: 12 }}>
-                                        <button className="btn-secundario" onClick={() => setEditingComentario(null)} style={{ flex: 1 }}>Cancelar</button>
+                                        <button className="btn-secundario" onClick={() => setEditingComentario(null)} style={{ flex: 1 }}>{t('common.actions.cancel')}</button>
                                         <button className="btn-primario" onClick={async () => {
                                             const { error } = await (supabase as any).from('visitas_diarias').update({ comentarios_admin: editingComentario.texto }).eq('id', editingComentario.id);
                                             if (error) {
-                                                toast.error('No se pudo guardar la nota');
+                                                toast.error(t('asignador.toast.save_note_error'));
                                                 return;
                                             }
                                             setRutaActual(prev => prev.map(v => v.id === editingComentario.id ? { ...v, comentarios_admin: editingComentario.texto } : v));
                                             setEditingComentario(null);
-                                            toast.success('Nota guardada');
-                                        }} style={{ flex: 1.5 }}>Completar</button>
+                                            toast.success(t('asignador.toast.save_note_success'));
+                                        }} style={{ flex: 1.5 }}>{t('common.actions.complete')}</button>
                                     </div>
                                 </motion.div>
                             </div>
@@ -596,11 +598,11 @@ export default function AsignadorRutas() {
             </div>
 
             <div className="action-buttons-floating">
-                <button className="btn-floating btn-secundario" onClick={clonarUltimaRuta} title="Cargar locales de la visita anterior">
-                    <Copy size={16} /> <span className="hide-mobile">Clonar Última</span>
+                <button className="btn-floating btn-secundario" onClick={clonarUltimaRuta} title={t('asignador.actions.clone_tip')}>
+                    <Copy size={16} /> <span className="hide-mobile">{t('asignador.actions.clone_last')}</span>
                 </button>
                 <button className="btn-floating btn-secundario" onClick={optimizarRuta}>
-                    <Zap size={16} /> <span className="hide-mobile">Optimizar</span>
+                    <Zap size={16} /> <span className="hide-mobile">{t('common.actions.optimize')}</span>
                 </button>
                 <button className="btn-floating btn-primario" onClick={compartirWhatsApp} disabled={rutaActual.length === 0}>
                     <Share2 size={16} /> <span className="hide-mobile">WhatsApp</span>

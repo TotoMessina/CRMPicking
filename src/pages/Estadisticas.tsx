@@ -1,5 +1,6 @@
 import React from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { useTranslation } from 'react-i18next';
 import { useStatistics } from '../hooks/useStatistics';
 import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import { StatsFilters } from '../components/stats/StatsFilters';
@@ -33,6 +34,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 ChartJS.defaults.devicePixelRatio = typeof window !== 'undefined' ? Math.max(window.devicePixelRatio || 1, 3) : 3;
 
 const Estadisticas: React.FC = () => {
+    const { t } = useTranslation();
     const {
         currentTab, setCurrentTab,
         rangePreset, setRangePreset,
@@ -59,7 +61,7 @@ const Estadisticas: React.FC = () => {
     const handleExportPdf = async () => {
         if (!dashboardRef.current) return;
         try {
-            toast.loading("Generando documento auditado (puede tardar unos segundos)...", { id: 'pdf-toast' });
+            toast.loading(t('stats.toast.generating_pdf'), { id: 'pdf-toast' });
             
             setIsExportingPdf(true);
             
@@ -110,19 +112,19 @@ const Estadisticas: React.FC = () => {
                 heightLeft -= pageHeight;
             }
             
-            pdf.save(`Reporte_Grafico_CRM_${new Date().getTime()}.pdf`);
+            pdf.save(`${t('stats.export.filename_prefix')}_${new Date().getTime()}.pdf`);
             
             // Log security event
             securityService.logAction(user?.email, empresaActiva?.id, 'export_pdf', { type: 'graphic_report' });
 
             setIsExportingPdf(false);
             toast.dismiss('pdf-toast');
-            toast.success("PDF generado exitosamente");
+            toast.success(t('stats.toast.pdf_success'));
         } catch (error) {
             console.error("PDF generation error", error);
             setIsExportingPdf(false);
             toast.dismiss('pdf-toast');
-            toast.error("Error al generar PDF");
+            toast.error(t('stats.toast.pdf_error'));
         }
     };
 
@@ -130,16 +132,16 @@ const Estadisticas: React.FC = () => {
         try {
             // Hoja 1: Resumen (KPIs)
             const wsResumenData: any[][] = [
-                [`Reporte Ejecutivo ${tenantConfig.app.shortName} - Resumen`],
-                ["Fecha de generación", new Date().toLocaleString()],
-                ["Filtro Rango", rangePreset as string],
+                [`${t('stats.export.exec_report_title')} ${tenantConfig.app.shortName} - ${t('stats.export.summary')}`],
+                [t('stats.export.gen_date'), new Date().toLocaleString()],
+                [t('stats.export.range_filter'), rangePreset as string],
                 [],
-                ["Métrica", "Valor"]
+                [t('stats.export.metric'), t('stats.export.value')]
             ];
             const kpiLabels: Record<string, string> = {
-                totalClientesActivos: 'Clientes activos', conFecha: 'Agenda con fecha', vencidos: 'Vencidos', sinFecha: 'Sin fecha',
-                proxHoy: 'Próximo hoy', prox7: 'Próximo 7d', proxFuturo: 'Próximo futuro',
-                act7: 'Actividades 7d', act30: 'Actividades 30d', activos30: 'Activos 30d', dormidos30: 'Dormidos 30d', sinHistorial: 'Sin historial'
+                totalClientesActivos: t('stats.kpis.active_clients'), conFecha: t('stats.kpis.with_date'), vencidos: t('stats.kpis.expired'), sinFecha: t('stats.kpis.no_date'),
+                proxHoy: t('stats.kpis.next_today'), prox7: t('stats.kpis.next_7d'), proxFuturo: t('stats.kpis.next_future'),
+                act7: t('stats.kpis.acts_7d'), act30: t('stats.kpis.acts_30d'), activos30: t('stats.kpis.active_30d'), dormidos30: t('stats.kpis.sleeping_30d'), sinHistorial: t('stats.kpis.no_history')
             };
             Object.entries(kpis).forEach(([key, val]) => {
                 wsResumenData.push([kpiLabels[key] || key, val]);
@@ -147,11 +149,17 @@ const Estadisticas: React.FC = () => {
 
             // Hoja 2: Rendimiento
             const wsRendimientoData: any[][] = [
-                ["Desempeño de Activadores"],
+                [t('stats.export.activators_performance')],
                 []
             ];
             if (listsData?.activadoresDetalle && listsData.activadoresDetalle.length > 0) {
-                wsRendimientoData.push(["Activador", "Locales Activos (Totales)", "Locales Creados", "Locales Visitados (Totales)", "Efectividad"]);
+                wsRendimientoData.push([
+                    t('stats.export.cols.activator'), 
+                    t('stats.export.cols.active_locales'), 
+                    t('stats.export.cols.created_locales'), 
+                    t('stats.export.cols.visited_locales'), 
+                    t('stats.export.cols.effectiveness')
+                ]);
                 listsData.activadoresDetalle.forEach((a: any) => {
                     wsRendimientoData.push([
                         a.nombre,
@@ -162,7 +170,7 @@ const Estadisticas: React.FC = () => {
                     ]);
                 });
             } else if (listsData?.activadoresStats && listsData.activadoresStats.length > 0) {
-                wsRendimientoData.push(["Activador", "Conversión/Efectividad (%)"]);
+                wsRendimientoData.push([t('stats.export.cols.activator'), t('stats.export.cols.conversion_rate')]);
                 listsData.activadoresStats.forEach((a: any) => {
                     wsRendimientoData.push([a.name, a.rate.toFixed(1) + '%']);
                 });
@@ -170,13 +178,13 @@ const Estadisticas: React.FC = () => {
 
             // Hoja 3: Datos Crudos
             const wsCrudosData: any[][] = [
-                ["Datos Crudos - Distribución General"],
+                [t('stats.export.raw_data_dist')],
                 [],
-                ["Rubro", "Cantidad"]
+                [t('stats.export.cols.category'), t('stats.export.cols.quantity')]
             ];
             if (listsData?.rubros) listsData.rubros.forEach((r: any) => wsCrudosData.push([r[0], r[1]]));
             wsCrudosData.push([]);
-            wsCrudosData.push(["Estado", "Cantidad"]);
+            wsCrudosData.push([t('stats.export.cols.status'), t('stats.export.cols.quantity')]);
             if (listsData?.estados) listsData.estados.forEach((e: any) => wsCrudosData.push([e[0], e[1]]));
 
             const wb = XLSX.utils.book_new();
@@ -186,18 +194,18 @@ const Estadisticas: React.FC = () => {
             const wsCrudos = XLSX.utils.aoa_to_sheet(wsCrudosData);
 
             XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen KPIs");
-            XLSX.utils.book_append_sheet(wb, wsRendimiento, "Rendimiento");
-            XLSX.utils.book_append_sheet(wb, wsCrudos, "Datos Crudos");
+            XLSX.utils.book_append_sheet(wb, wsRendimiento, t('stats.export.sheets.performance'));
+            XLSX.utils.book_append_sheet(wb, wsCrudos, t('stats.export.sheets.raw_data'));
 
-            XLSX.writeFile(wb, `Reporte_Avanzado_CRM_${new Date().getTime()}.xlsx`);
+            XLSX.writeFile(wb, `${t('stats.export.filename_prefix_xlsx')}_${new Date().getTime()}.xlsx`);
             
             // Log security event
             securityService.logAction(user?.email, empresaActiva?.id, 'export_excel', { type: 'advanced_stats_report' });
 
-            toast.success("Reporte Excel descargado exitosamente");
+            toast.success(t('stats.toast.excel_success'));
         } catch (error) {
             console.error("Export error", error);
-            toast.error("Hubo un error al exportar el reporte.");
+            toast.error(t('stats.toast.excel_error'));
         }
     };
 
@@ -243,24 +251,23 @@ const Estadisticas: React.FC = () => {
                                 <div>
                                     <h1 style={{ margin: 0, fontSize: '32px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{tenantConfig.app.shortName}</h1>
                                     <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        Reporte Corporativo
+                                        {t('stats.report.corp_title')}
                                     </p>
                                 </div>
                             </div>
                             <div style={{ marginLeft: '12px', borderLeft: '2px solid #e2e8f0', paddingLeft: '20px' }}>
                                 <p style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                    Reporte Ejecutivo
+                                    {t('stats.report.exec_title')}
                                 </p>
                             </div>
                         </div>
-
                         <div style={{ textAlign: 'right', fontSize: '13px', color: '#475569' }}>
                            <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#1e293b' }}>
-                                Empresa: <strong style={{color: '#4f46e5'}}>{empresaActiva?.nombre || 'General'}</strong>
+                                {t('stats.report.company')}: <strong style={{color: '#4f46e5'}}>{empresaActiva?.nombre || t('common.general')}</strong>
                             </h2>
-                            <p style={{ margin: '4px 0 0 0' }}><strong>Generado por:</strong> {userName || user?.email || 'Sistema'}</p>
-                            <p style={{ margin: '4px 0 0 0' }}><strong>Fecha:</strong> {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
-                            <p style={{ margin: '4px 0 0 0' }}><strong>Audit ID:</strong> #{Math.random().toString(36).substring(2, 9).toUpperCase()}</p>
+                            <p style={{ margin: '4px 0 0 0' }}><strong>{t('stats.report.gen_by')}:</strong> {userName || user?.email || t('common.system')}</p>
+                            <p style={{ margin: '4px 0 0 0' }}><strong>{t('stats.report.date')}:</strong> {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
+                            <p style={{ margin: '4px 0 0 0' }}><strong>{t('stats.report.audit_id')}:</strong> #{Math.random().toString(36).substring(2, 9).toUpperCase()}</p>
                         </div>
                     </div>
                 </div>
@@ -302,19 +309,19 @@ const Estadisticas: React.FC = () => {
                     style={{ flex: 1, padding: '12px', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', background: currentTab === 'tabApps' ? STATS_THEME.colors.primary : 'var(--bg-elevated)', color: currentTab === 'tabApps' ? '#fff' : 'var(--text)' }}
                     onClick={() => setCurrentTab('tabApps')}
                 >
-                    🚀 Ecosistema Apps
+                    🚀 {t('stats.tabs.apps_ecosystem')}
                 </div>
                 <div
                     style={{ flex: 1, padding: '12px', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', background: currentTab === 'tabActivadores' ? STATS_THEME.colors.primary : 'var(--bg-elevated)', color: currentTab === 'tabActivadores' ? '#fff' : 'var(--text)' }}
                     onClick={() => setCurrentTab('tabActivadores')}
                 >
-                    ⚡ Gestión Activadores
+                    ⚡ {t('stats.tabs.activators_management')}
                 </div>
                 <div
                     style={{ flex: 1, padding: '12px', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', background: currentTab === 'tabForecasting' ? STATS_THEME.colors.primary : 'var(--bg-elevated)', color: currentTab === 'tabForecasting' ? '#fff' : 'var(--text)' }}
                     onClick={() => setCurrentTab('tabForecasting')}
                 >
-                    🎯 Proyecciones AI
+                    🎯 {t('stats.tabs.ai_projections')}
                 </div>
             </div>
 
@@ -352,18 +359,18 @@ const Estadisticas: React.FC = () => {
                             case 'consumidores_chart':
                                 widgetContent = <ChartWidget id={widgetId} title="Evolución Consumidores" chartType="bar" data={chartsData.consumidoresEvolucion} />; break;
                             case 'repartidores_chart':
-                                widgetContent = <ChartWidget id={widgetId} title="Evolución Repartidores" chartType="bar" data={chartsData.repartidoresEvolucion} />; break;
+                                widgetContent = <ChartWidget id={widgetId} title={t('stats.widgets.drivers_evolution')} chartType="bar" data={chartsData.repartidoresEvolucion} />; break;
                             case 'rubros_donut':
-                                widgetContent = <ChartWidget id={widgetId} title="Rubros (Clientes)" chartType="donut" data={chartsData.rubros} list={listsData.rubros} />; break;
+                                widgetContent = <ChartWidget id={widgetId} title={t('stats.widgets.categories_clients')} chartType="donut" data={chartsData.rubros} list={listsData.rubros} />; break;
                             case 'estados_donut':
-                                widgetContent = <ChartWidget id={widgetId} title="Estados (Clientes)" chartType="donut" data={chartsData.estados} list={listsData.estados} />; break;
+                                widgetContent = <ChartWidget id={widgetId} title={t('stats.widgets.status_clients')} chartType="donut" data={chartsData.estados} list={listsData.estados} />; break;
                             case 'creadores_donut':
-                                widgetContent = <ChartWidget id={widgetId} title="Creadores (Altas)" chartType="donut" data={chartsData.creados} list={listsData.creados} />; break;
+                                widgetContent = <ChartWidget id={widgetId} title={t('stats.widgets.creators_new')} chartType="donut" data={chartsData.creados} list={listsData.creados} />; break;
                             case 'integrity_audit':
                                 widgetContent = (
                                     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                                         <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <ShieldCheck size={18} /> Auditoría de Integridad
+                                            <ShieldCheck size={18} /> {t('stats.widgets.integrity_audit')}
                                         </h3>
                                         <IntegrityAuditCards integrityData={extraData.integrity} />
                                     </div>
@@ -372,7 +379,7 @@ const Estadisticas: React.FC = () => {
                                 widgetContent = (
                                     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-elevated)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
                                         <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <MapIcon size={18} /> Densidad Geográfica
+                                            <MapIcon size={18} /> {t('stats.widgets.geo_density')}
                                         </h3>
                                         <div style={{ flex: 1, minHeight: '300px' }}>
                                             <GeoHeatmap points={extraData.geoPoints} />

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Filter, Search, Phone, MapPin, Store, Activity as ActivityIcon, User, Tag, Building, Clock, Calendar, ChevronDown, X, Check } from 'lucide-react';
 import { ClientFilters as ClientFiltersType } from '../../hooks/useClientsLogic';
 
@@ -17,7 +18,8 @@ const MultiSelectFilter: React.FC<{
     options: string[];
     onChange: (next: string[]) => void;
     placeholder?: string;
-}> = ({ label, icon, selected, options, onChange, placeholder = "Todos" }) => {
+}> = ({ label, icon, selected, options, onChange, placeholder }) => {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
@@ -73,7 +75,7 @@ const MultiSelectFilter: React.FC<{
             >
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1, maxWidth: 'calc(100% - 24px)' }}>
                     {selected.length === 0 ? (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{placeholder}</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{placeholder || t('clients.filters.all')}</span>
                     ) : (
                         selected.slice(0, 1).map(val => (
                             <span key={val} style={{ 
@@ -131,7 +133,7 @@ const MultiSelectFilter: React.FC<{
                         <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                         <input 
                             autoFocus
-                            placeholder={`Buscar ${label.toLowerCase()}...`}
+                            placeholder={t('clients.filters.search_placeholder_field', { label: label.toLowerCase() })}
                             value={searchTerm}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -149,7 +151,7 @@ const MultiSelectFilter: React.FC<{
                     <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '4px' }}>
                         {filteredOptions.length === 0 ? (
                             <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                No se encontraron resultados
+                                {t('clients.filters.no_results_search')}
                             </div>
                         ) : (
                             filteredOptions.map(opt => {
@@ -193,7 +195,7 @@ const MultiSelectFilter: React.FC<{
                                     borderRadius: '6px'
                                 }}
                             >
-                                Limpiar
+                                {t('clients.filters.clear')}
                             </button>
                         </div>
                     )}
@@ -204,6 +206,7 @@ const MultiSelectFilter: React.FC<{
 };
 
 export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosValidos, responsablesValidos, gruposValidos }) => {
+    const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
 
     let activeCount = 0;
@@ -242,7 +245,7 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                     <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input 
                         className="input" 
-                        placeholder="Buscar por Nombre o Local..." 
+                        placeholder={t('clients.filters.search_placeholder')} 
                         value={filters.nombre} 
                         onChange={e => updateFilter('nombre', e.target.value)} 
                         style={{ 
@@ -277,7 +280,7 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                     }}
                 >
                     <Filter size={18} />
-                    Filtros Avanzados
+                    {t('clients.filters.advanced_filters')}
                     {activeCount > 0 && (
                         <span style={{ 
                             background: 'rgba(255,255,255,0.25)', 
@@ -305,27 +308,27 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <Phone size={14} /> Teléfono
+                                <Phone size={14} /> {t('clients.filters.phone')}
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input className="input" placeholder="Teléfono..." value={filters.telefono} onChange={e => updateFilter('telefono', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                                <input className="input" placeholder={`${t('clients.filters.phone')}...`} value={filters.telefono} onChange={e => updateFilter('telefono', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
                             </div>
                         </div>
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <MapPin size={14} /> Dirección
+                                <MapPin size={14} /> {t('clients.filters.address')}
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input className="input" placeholder="Dirección..." value={filters.direccion} onChange={e => updateFilter('direccion', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                                <input className="input" placeholder={`${t('clients.filters.address')}...`} value={filters.direccion} onChange={e => updateFilter('direccion', e.target.value)} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
                             </div>
                         </div>
 
                         {gruposValidos.length > 0 && (
                             <MultiSelectFilter 
-                                label="Grupos" 
+                                label={t('clients.filters.groups')} 
                                 icon={<Tag size={14} />} 
                                 selected={filters.grupos} 
                                 options={gruposValidos.map(g => g.nombre)} 
@@ -336,21 +339,21 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                                     ).filter(Boolean) as string[];
                                     updateFilter('grupos', nextIds);
                                 }} 
-                                placeholder="Cualquier grupo"
+                                placeholder={t('clients.filters.any', { label: t('clients.filters.groups').toLowerCase() })}
                             />
                         )}
 
                         <MultiSelectFilter 
-                            label="Rubros" 
+                            label={t('clients.filters.sectors')} 
                             icon={<Store size={14} />} 
                             selected={filters.rubro} 
                             options={rubrosValidos} 
                             onChange={(next) => updateFilter('rubro', next)} 
-                            placeholder="Cualquier rubro"
+                            placeholder={t('clients.filters.any', { label: t('clients.filters.sectors').toLowerCase() })}
                         />
 
                         <MultiSelectFilter 
-                            label="Estados" 
+                            label={t('clients.filters.states')} 
                             icon={<ActivityIcon size={14} />} 
                             selected={filters.estado} 
                             options={[
@@ -362,11 +365,11 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                                 "6 - Local No Interesado"
                             ]} 
                             onChange={(next) => updateFilter('estado', next)} 
-                            placeholder="Todos los estados"
+                            placeholder={t('clients.filters.all')}
                         />
 
                         <MultiSelectFilter 
-                            label="Situaciones" 
+                            label={t('clients.filters.situations')} 
                             icon={<ActivityIcon size={14} />} 
                             selected={filters.situacion} 
                             options={[
@@ -375,78 +378,78 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                                 "en funcionamiento"
                             ]} 
                             onChange={(next) => updateFilter('situacion', next)} 
-                            placeholder="Todas las situaciones"
+                            placeholder={t('clients.filters.all')}
                         />
 
                         <MultiSelectFilter 
-                            label="Tipos de Contacto" 
+                            label={t('clients.filters.contact_types')} 
                             icon={<Phone size={14} />} 
                             selected={filters.tipoContacto} 
                             options={["Visita Presencial", "Llamada"]} 
                             onChange={(next) => updateFilter('tipoContacto', next)} 
-                            placeholder="Todos los tipos"
+                            placeholder={t('clients.filters.all')}
                         />
 
                         <MultiSelectFilter 
-                            label="Responsables" 
+                            label={t('clients.filters.responsibles')} 
                             icon={<User size={14} />} 
                             selected={filters.responsable} 
                             options={responsablesValidos} 
                             onChange={(next) => updateFilter('responsable', next)} 
-                            placeholder="Todos"
+                            placeholder={t('clients.filters.all')}
                         />
 
                         <MultiSelectFilter 
-                            label="Creado Por" 
+                            label={t('clients.filters.created_by')} 
                             icon={<User size={14} />} 
                             selected={filters.creadoPor || []} 
                             options={responsablesValidos} 
                             onChange={(next) => updateFilter('creadoPor', next)} 
-                            placeholder="Todos"
+                            placeholder={t('clients.filters.all')}
                         />
 
                         <MultiSelectFilter 
-                            label="Interés" 
+                            label={t('clients.filters.interest')} 
                             icon={<Tag size={14} />} 
                             selected={filters.interes} 
                             options={["Bajo", "Medio", "Alto"]} 
                             onChange={(next) => updateFilter('interes', next)} 
-                            placeholder="Cualquier interés"
+                            placeholder={t('clients.filters.any', { label: t('clients.filters.interest').toLowerCase() })}
                         />
 
                         <MultiSelectFilter 
-                            label="Estilos de Contacto" 
+                            label={t('clients.filters.contact_styles')} 
                             icon={<Building size={14} />} 
                             selected={filters.estilo} 
                             options={["Dueño", "Empleado", "Cerrado"]} 
                             onChange={(next) => updateFilter('estilo', next)} 
-                            placeholder="Cualquier estilo"
+                            placeholder={t('clients.filters.any', { label: t('clients.filters.contact_styles').toLowerCase() })}
                         />
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <Calendar size={14} /> Fecha Alta (Desde)
+                                <Calendar size={14} /> {t('clients.filters.date_added_from')}
                             </div>
                             <input type="date" className="input" value={filters.creadoDesde} onChange={e => updateFilter('creadoDesde', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
                         </div>
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <Calendar size={14} /> Fecha Alta (Hasta)
+                                <Calendar size={14} /> {t('clients.filters.date_added_to')}
                             </div>
                             <input type="date" className="input" value={filters.creadoHasta} onChange={e => updateFilter('creadoHasta', e.target.value)} style={{ width: '100%', borderRadius: '12px' }} />
                         </div>
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <Calendar size={14} /> Agenda (Desde)
+                                <Calendar size={14} /> {t('clients.filters.agenda_from')}
                             </div>
                             <input type="date" className="input" value={filters.contactoDesde} onChange={e => { updateFilter('contactoDesde', e.target.value); updateFilter('proximos7', false); updateFilter('vencidos', false); }} style={{ width: '100%', borderRadius: '12px', borderColor: filters.contactoDesde ? 'var(--accent)' : 'var(--border)' }} />
                         </div>
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <Calendar size={14} /> Agenda (Hasta)
+                                <Calendar size={14} /> {t('clients.filters.agenda_to')}
                             </div>
                             <input type="date" className="input" value={filters.contactoHasta} onChange={e => { updateFilter('contactoHasta', e.target.value); updateFilter('proximos7', false); updateFilter('vencidos', false); }} style={{ width: '100%', borderRadius: '12px', borderColor: filters.contactoHasta ? 'var(--accent)' : 'var(--border)' }} />
                         </div>
@@ -472,7 +475,7 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                                 }}
                             >
                                 <Clock size={16} />
-                                Vencidos{filters.vencidos ? ' ✓' : ''}
+                                {t('clients.filters.overdue')}{filters.vencidos ? ' ✓' : ''}
                             </button>
                             <button
                                 onClick={() => {
@@ -494,7 +497,7 @@ export const ClientFilters: React.FC<Props> = ({ filters, updateFilter, rubrosVa
                                 }}
                             >
                                 <Calendar size={16} />
-                                Próximos 7{filters.proximos7 ? ' ✓' : ''}
+                                {t('clients.filters.next_7_days')}{filters.proximos7 ? ' ✓' : ''}
                             </button>
                         </div>
                     </div>

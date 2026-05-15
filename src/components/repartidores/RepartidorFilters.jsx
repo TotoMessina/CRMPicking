@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Filter, Search, Activity as ActivityIcon, User, ChevronDown } from 'lucide-react';
 
 export const RepartidorFilters = ({
@@ -7,6 +8,7 @@ export const RepartidorFilters = ({
     fResponsable, setFResponsable,
     setPage
 }) => {
+    const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
 
     const activeCount = [
@@ -37,7 +39,7 @@ export const RepartidorFilters = ({
                     <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input 
                         className="input" 
-                        placeholder="Buscar por Nombre, Tel, Localidad..." 
+                        placeholder={t('delivery.filters.search_placeholder')} 
                         value={fSearch} 
                         onChange={e => handleSearchChange(e.target.value)} 
                         style={{ 
@@ -70,7 +72,7 @@ export const RepartidorFilters = ({
                     }}
                 >
                     <Filter size={18} />
-                    Filtros Avanzados
+                    {t('delivery.filters.advanced')}
                     {activeCount > 0 && (
                         <span style={{ 
                             background: 'rgba(255,255,255,0.25)', 
@@ -98,27 +100,27 @@ export const RepartidorFilters = ({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <ActivityIcon size={14} /> Estado
+                                <ActivityIcon size={14} /> {t('delivery.filters.status')}
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <ActivityIcon size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                                 <select className="input" value={fEstado} onChange={e => { setFEstado(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                                    <option value="Todos">Todos los estados</option>
-                                    <option value="Documentación sin gestionar">Documentación sin gestionar</option>
-                                    <option value="Cuenta aun no confirmada">Cuenta aun no confirmada</option>
-                                    <option value="Cuenta confirmada y repartiendo">Cuenta confirmada y repartiendo</option>
+                                    <option value="Todos">{t('common.all')}</option>
+                                    <option value="Documentación sin gestionar">{t('delivery.status.no_docs')}</option>
+                                    <option value="Cuenta aun no confirmada">{t('delivery.status.unconfirmed')}</option>
+                                    <option value="Cuenta confirmada y repartiendo">{t('delivery.status.confirmed')}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <User size={14} /> Responsable
+                                <User size={14} /> {t('delivery.filters.responsible')}
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                                 <select className="input" value={fResponsable} onChange={e => { setFResponsable(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                                    <option value="">Cualquier responsable</option>
+                                    <option value="">{t('delivery.filters.any_responsible')}</option>
                                     <option value="Toto">Toto</option>
                                     <option value="Ruben">Ruben</option>
                                     <option value="Tincho(B)">Tincho(B)</option>

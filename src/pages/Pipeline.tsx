@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Search, User, Calendar, RefreshCcw, ChevronLeft, Maximize2, Settings, Edit2 } from 'lucide-react';
@@ -28,6 +29,7 @@ interface Client {
  * Pipeline (Kanban) Page
  */
 export default function Pipeline() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { user, userName, empresaActiva, role, isDemoMode } = useAuth();
     const roleName = role || '';
@@ -77,7 +79,7 @@ export default function Pipeline() {
             .order('updated_at', { ascending: false });
 
         if (error) {
-            toast.error('Error cargando pipeline');
+            toast.error(t('pipeline.toast.load_error'));
             console.error(error);
         } else {
             const mapped = (data || []).map((row: any) => ({
@@ -119,13 +121,13 @@ export default function Pipeline() {
             .eq('empresa_id', empresaActiva.id);
 
         if (error) {
-            toast.error('Error al mover el cliente');
+            toast.error(t('pipeline.toast.move_error'));
             setClients(previousClients);
         } else {
             const oldStatus = source.droppableId;
             await (supabase as any).from('actividades').insert([{
                 cliente_id: clientId,
-                descripcion: `🔄 Cambio de estado (Pipeline): ${oldStatus} ➔ ${newStatus}`,
+                descripcion: t('pipeline.activity.status_change', { oldStatus, newStatus }),
                 usuario: userName || user?.email || 'Sistema',
                 empresa_id: empresaActiva.id,
                 fecha: new Date().toISOString()
@@ -181,7 +183,7 @@ export default function Pipeline() {
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '8px' }}>
                     <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text)', lineHeight: 1.25 }}>
-                        {client.nombre_local || client.nombre || 'Local sin nombre'}
+                        {client.nombre_local || client.nombre || t('pipeline.card.no_name')}
                     </div>
                     {!isMobile && (
                         <button
@@ -216,10 +218,10 @@ export default function Pipeline() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed var(--border)' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                             {client.interes === 'Alto' && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px', background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)' }}>🔥 HOT</span>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px', background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)' }}>{t('pipeline.card.hot')}</span>
                             )}
                             {client.venta_digital && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--accent) 0%, #333 100%)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>🌐 Digital</span>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--accent) 0%, #333 100%)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>{t('pipeline.card.digital')}</span>
                             )}
                         </div>
                         {client.notas && (
@@ -233,7 +235,7 @@ export default function Pipeline() {
         );
     };
 
-    if (loadingStates) return <div className="p-8 text-center muted">Sincronizando Pipeline...</div>;
+    if (loadingStates) return <div className="p-8 text-center muted">{t('pipeline.loading')}</div>;
 
     return (
         <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '1400px', width: '100%', margin: isMobile ? '0' : '24px auto', borderRadius: isMobile ? '0' : '24px', overflow: 'hidden', minHeight: '100vh', background: 'transparent' }}>
@@ -242,10 +244,10 @@ export default function Pipeline() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <h1 style={{ fontSize: isMobile ? '1.75rem' : '2.8rem', fontWeight: 900, margin: '0 0 8px 0', letterSpacing: '-0.03em', color: 'var(--text)' }}>
-                                Pipeline <span style={{ color: 'var(--accent)' }}>PickUp</span>
+                                {t('pipeline.title')} <span style={{ color: 'var(--accent)' }}>PickUp</span>
                             </h1>
                             <p className="muted" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500 }}>
-                                Gestión comercial de locales.
+                                {t('pipeline.subtitle')}
                             </p>
                         </div>
                         {isAdmin && !isMobile && (
@@ -254,7 +256,7 @@ export default function Pipeline() {
                                 className="btn-link"
                                 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 800, padding: '12px 16px', background: 'var(--bg-elevated)', borderRadius: '12px' }}
                             >
-                                <Settings size={16} /> CONFIGURAR
+                                <Settings size={16} /> {t('pipeline.configure')}
                             </button>
                         )}
                     </div>
@@ -265,7 +267,7 @@ export default function Pipeline() {
                             <input
                                 type="text"
                                 className="input"
-                                placeholder={isMobile ? "Buscar..." : "Buscar local, responsable..."}
+                                placeholder={isMobile ? t('pipeline.search_mobile') : t('pipeline.search_placeholder')}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 style={{ paddingLeft: '48px', height: '48px', borderRadius: '16px', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
@@ -313,7 +315,7 @@ export default function Pipeline() {
                         </div>
                         {getColumnClients(activeTab || '').length === 0 ? (
                             <div className="muted" style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--bg-elevated)', borderRadius: '24px', border: '1px dashed var(--border)' }}>
-                                No hay clientes en este estado.
+                                {t('pipeline.no_clients')}
                             </div>
                         ) : (
                             getColumnClients(activeTab || '').map((client, idx) => (

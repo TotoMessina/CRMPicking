@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { 
     Heart, X, User, Calendar, MapPin, Activity, 
@@ -14,6 +15,7 @@ import 'leaflet/dist/leaflet.css';
 
 // --- Card Component ---
 const SwipeCard = ({ client, onSwipe, index }) => {
+    const { t } = useTranslation();
     const x = useMotionValue(0);
     const rotate = useTransform(x, [-200, 200], [-25, 25]);
     const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
@@ -66,21 +68,20 @@ const SwipeCard = ({ client, onSwipe, index }) => {
                     <h2 className="client-name">{client.clientes?.nombre_local}</h2>
                     <div className="client-detail">
                         <MapPin size={16} />
-                        <span>{client.clientes?.direccion || 'Sin dirección'}</span>
+                        <span>{client.clientes?.direccion || t('tinder.card.no_address')}</span>
                     </div>
                     <div className="client-detail">
                         <Activity size={16} />
-                        <span>Última actividad: {client.ultima_actividad ? new Date(client.ultima_actividad).toLocaleDateString() : 'Nunca'}</span>
+                        <span>{t('tinder.card.last_activity', { date: client.ultima_actividad ? new Date(client.ultima_actividad).toLocaleDateString() : t('tinder.card.never') })}</span>
                     </div>
-                    
                     <div className="risk-info">
                         <Info size={16} />
-                        <span>{client.risk?.diasSinContacto} días sin contacto</span>
+                        <span>{t('tinder.card.days_no_contact', { count: client.risk?.diasSinContacto })}</span>
                     </div>
 
                     <div className="card-footer-info">
                         <div className="badge secondary">
-                            {client.rubro || 'General'}
+                            {client.rubro || t('tinder.card.general')}
                         </div>
                         <div className="badge accent">
                             {client.estado}
@@ -93,6 +94,7 @@ const SwipeCard = ({ client, onSwipe, index }) => {
 };
 
 export default function TinderClientes() {
+    const { t } = useTranslation();
     const { empresaActiva } = useAuth();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -174,11 +176,11 @@ export default function TinderClientes() {
             }
         } catch (e) {
             console.error(e);
-            toast.error('Error al cargar candidatos');
+            toast.error(t('tinder.toast.load_error'));
         } finally {
             setLoading(false);
         }
-    }, [empresaActiva]);
+    }, [empresaActiva, t]);
 
     // Fetch existing visits for stats and map
     const fetchExistingVisits = useCallback(async () => {
@@ -292,7 +294,7 @@ export default function TinderClientes() {
             });
             
             L.marker(pos, { icon }).addTo(currentMarkerRef.current)
-                .bindTooltip('<b>PRÓXIMO:</b> ' + currentClient.nombre_local, { permanent: true, className: 'tooltip-premium', direction: 'top', offset: [0, -15] });
+                .bindTooltip('<b>' + t('tinder.map.next') + ':</b> ' + currentClient.nombre_local, { permanent: true, className: 'tooltip-premium', direction: 'top', offset: [0, -15] });
             
             allPoints.push(pos);
 
@@ -306,14 +308,14 @@ export default function TinderClientes() {
             const bounds = L.latLngBounds(allPoints);
             mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
         }
-    }, [existingVisits, clients]);
+    }, [existingVisits, clients, t]);
 
     const handleSwipe = async (direction, client) => {
         setClients(prev => prev.filter(c => c.id !== client.id));
 
         if (direction === 'right') {
             if (!usuarioSeleccionado) {
-                toast.error('Selecciona un vendedor primero');
+                toast.error(t('tinder.toast.select_vendor'));
                 setClients(prev => [client, ...prev]); // Put it back
                 return;
             }
@@ -329,10 +331,10 @@ export default function TinderClientes() {
 
             if (error) {
                 console.error('Error inserting visit:', error);
-                toast.error('Error al agregar a la ruta');
+                toast.error(t('tinder.toast.add_error'));
                 setClients(prev => [client, ...prev]); // Put it back
             } else {
-                toast.success(`Agregado a ${usuarioSeleccionado.split('@')[0]}`, { icon: '🚀' });
+                toast.success(t('tinder.toast.add_success', { name: usuarioSeleccionado.split('@')[0] }), { icon: '🚀' });
                 setStats(prev => ({ ...prev, added: prev.added + 1, scheduled: prev.scheduled + 1 }));
                 fetchExistingVisits(); // Refresh map
             }
@@ -348,10 +350,10 @@ export default function TinderClientes() {
 
             if (error) {
                 console.error('Error postponing client:', error);
-                toast.error('Error al posponer');
+                toast.error(t('tinder.toast.postpone_error'));
                 setClients(prev => [client, ...prev]); // Put it back
             } else {
-                toast('Pospuesto para mañana', { icon: '⏰' });
+                toast(t('tinder.toast.postpone_success'), { icon: '⏰' });
                 setStats(prev => ({ ...prev, postponed: prev.postponed + 1 }));
             }
         }
@@ -363,30 +365,30 @@ export default function TinderClientes() {
                 <div className="tinder-title-row">
                     <div className="tinder-title">
                         <Star className="text-accent" fill="currentColor" />
-                        <h1>Prospecteo Inteligente</h1>
+                        <h1>{t('tinder.title')}</h1>
                     </div>
                     <div className="tinder-stats-summary">
                         <div className="stat-pill primary">
                             <Navigation size={14} />
-                            <span>{stats.scheduled} Agendados hoy</span>
+                            <span>{t('tinder.scheduled_today', { count: stats.scheduled })}</span>
                         </div>
                     </div>
                 </div>
                 
                 <div className="tinder-controls">
                     <div className="control-group">
-                        <label><User size={14} /> Vendedor</label>
+                        <label><User size={14} /> {t('tinder.vendedor_label')}</label>
                         <select 
                             value={usuarioSeleccionado} 
                             onChange={e => setUsuarioSeleccionado(e.target.value)}
                             className="tinder-select"
                         >
-                            <option value="">Elegir...</option>
+                            <option value="">{t('tinder.choose_placeholder')}</option>
                             {usuarios.map(u => <option key={u.email} value={u.email}>{u.nombre}</option>)}
                         </select>
                     </div>
                     <div className="control-group">
-                        <label><Calendar size={14} /> Fecha</label>
+                        <label><Calendar size={14} /> {t('tinder.fecha_label')}</label>
                         <input 
                             type="date" 
                             value={fechaSeleccionada} 
@@ -399,11 +401,11 @@ export default function TinderClientes() {
                 <div className="tinder-stats-row">
                     <div className="stat-item">
                         <CheckCircle2 size={16} className="text-success" />
-                        <span>{stats.added} Sesión actual</span>
+                        <span>{t('tinder.session_stat', { count: stats.added })}</span>
                     </div>
                     <div className="stat-item">
                         <RotateCcw size={16} className="text-warning" />
-                        <span>{stats.postponed} Pospuestos</span>
+                        <span>{t('tinder.postponed_stat', { count: stats.postponed })}</span>
                     </div>
                 </div>
             </header>
@@ -413,9 +415,9 @@ export default function TinderClientes() {
                     {loading ? (
                         <div className="tinder-loading">
                             <div className="loader-ring"></div>
-                            <p>Buscando mejores candidatos...</p>
+                            <p>{t('tinder.loading')}</p>
                         </div>
-                    ) : clients.length > 0 ? (
+                    ) : (clients.length > 0 ? (
                         <>
                             <div className="card-stack-container">
                                 <AnimatePresence>
@@ -450,13 +452,13 @@ export default function TinderClientes() {
                     ) : (
                         <div className="tinder-empty">
                             <div className="empty-icon">✨</div>
-                            <h2>¡Todo listo por ahora!</h2>
-                            <p>No hay más clientes con riesgo alto que requieran atención inmediata.</p>
+                            <h2>{t('tinder.empty.title')}</h2>
+                            <p>{t('tinder.empty.desc')}</p>
                             <button className="btn-refetch" onClick={fetchCandidates}>
-                                Recargar candidatos
+                                {t('tinder.empty.refetch')}
                             </button>
                         </div>
-                    )}
+                    ))}
                 </main>
 
                 <aside className="tinder-map-container">
@@ -464,7 +466,7 @@ export default function TinderClientes() {
                         <div ref={mapContainerRef} className="map-view" />
                         <div className="map-overlay-info">
                             <MapIcon size={14} />
-                            <span>Mapa de Ruta en Vivo</span>
+                            <span>{t('tinder.map.live_route')}</span>
                         </div>
                     </div>
                 </aside>

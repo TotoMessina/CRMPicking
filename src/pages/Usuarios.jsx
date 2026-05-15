@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Search, Edit2, X, Shield, MapPin, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Usuarios() {
+    const { t } = useTranslation();
     const { user: currentUser, empresaActiva, isDemoMode } = useAuth();
     const [usuarios, setUsuarios] = useState([]);
     const [rolesDisponibles, setRolesDisponibles] = useState([]);
@@ -83,7 +85,7 @@ export default function Usuarios() {
             setUsuarios(merged);
         } catch (error) {
             console.error('Error fetching users:', error);
-            toast.error('Error al cargar trabajadores del sistema');
+            toast.error(t('common.errors.loading_users', { defaultValue: 'Error al cargar trabajadores del sistema' }));
         } finally {
             setLoading(false);
         }
@@ -129,13 +131,12 @@ export default function Usuarios() {
             });
 
             if (rpcError) throw rpcError;
-
-            toast.success('Trabajador actualizado exitosamente');
+            toast.success(t('users.modal.success'));
             setIsModalOpen(false);
             fetchUsuarios(); // Refresh list to reflect changes visually
         } catch (error) {
             console.error('Error updating user info:', error);
-            toast.error('Fallo al actualizar el perfil o permiso. Verifica permisos de administrador.');
+            toast.error(t('users.modal.error'));
         } finally {
             setSaving(false);
         }
@@ -162,10 +163,10 @@ export default function Usuarios() {
         <div className="container" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
             <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 style={{ margin: 0 }}>Equipo de Trabajo</h1>
-                    <p className="muted" style={{ margin: '4px 0 0 0' }}>Administrá roles y visualización de tu franquicia / empresa.</p>
+                    <h1 style={{ margin: 0 }}>{t('users.title')}</h1>
+                    <p className="muted" style={{ margin: '4px 0 0 0' }}>{t('users.subtitle')}</p>
                 </div>
-                <Button variant="secondary" onClick={fetchUsuarios}>🔄 Refrescar Lista</Button>
+                <Button variant="secondary" onClick={fetchUsuarios}>🔄 {t('users.actions.refresh')}</Button>
             </header>
 
             {/* FILTROS SUPERIORES */}
@@ -176,7 +177,7 @@ export default function Usuarios() {
                         <input
                             type="text"
                             className="input premium-input"
-                            placeholder="Buscar por Nombre o Email en tu equipo..."
+                            placeholder={t('users.search_placeholder')}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             style={{ width: '100%', paddingLeft: '44px' }}
@@ -188,11 +189,11 @@ export default function Usuarios() {
                         value={rolFilter}
                         onChange={(e) => setRolFilter(e.target.value)}
                     >
-                        <option value="">Filtro: Todos los Roles</option>
-                        <option value="admin">Supervisores (Admin)</option>
-                        <option value="user">Colaboradores Standard</option>
+                        <option value="">{t('users.filter_all')}</option>
+                        <option value="admin">{t('users.filter_admins')}</option>
+                        <option value="user">{t('users.filter_standard')}</option>
                         {rolesDisponibles.map(r => (
-                            <option key={r.nombre} value={r.nombre}>Custom: {r.nombre}</option>
+                            <option key={r.nombre} value={r.nombre}>{t('users.modal.role_custom', { company: '' })} {r.nombre}</option>
                         ))}
                     </select>
                 </div>
@@ -203,24 +204,24 @@ export default function Usuarios() {
                 <table className="tabla-datos" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border)' }}>
-                            <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Trabajador</th>
-                            <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Seguridad / Email</th>
-                            <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Rol Designado</th>
-                            <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estado Nube</th>
-                            <th style={{ padding: '16px 24px', textAlign: 'right', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Acciones</th>
+                            <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('users.table.worker')}</th>
+                            <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('users.table.security_email')}</th>
+                            <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('users.table.role')}</th>
+                            <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('users.table.status')}</th>
+                            <th style={{ padding: '16px 24px', textAlign: 'right', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('users.table.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
                             <tr><td colSpan="5" style={{ padding: '40px', textAlign: 'center' }}>
                                 <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-                                <div className="muted">Indagando base de datos interna...</div>
+                                <div className="muted">{t('users.status.db_searching')}</div>
                             </td></tr>
                         ) : filteredUsuarios.length === 0 ? (
                             <tr><td colSpan="5" style={{ padding: '60px', textAlign: 'center' }}>
                                 <Shield size={48} className="muted" style={{ margin: '0 auto 16px', opacity: 0.3 }} />
-                                <div className="muted" style={{ fontWeight: 600 }}>No hay usuarios bajo este filtro</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>El equipo está vacío o los criterios de búsqueda ocultan al personal.</div>
+                                <div className="muted" style={{ fontWeight: 600 }}>{t('users.status.no_results')}</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>{t('users.status.no_results_desc')}</div>
                             </td></tr>
                         ) : (
                             filteredUsuarios.map(u => (
@@ -252,18 +253,18 @@ export default function Usuarios() {
                                     <td style={{ padding: '16px 24px' }}>
                                         {u.activo !== false ? (
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800 }}>
-                                                <CheckCircle size={12} /> Habilitado
+                                                <CheckCircle size={12} /> {t('users.status.enabled')}
                                             </span>
                                         ) : (
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800 }}>
-                                                <XCircle size={12} /> Restringido
+                                                <XCircle size={12} /> {t('users.status.restricted')}
                                             </span>
                                         )}
                                     </td>
                                     <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                                         {!isDemoMode && (
                                             <Button variant="secondary" className="btn-sm" onClick={() => handleOpenModal(u)}>
-                                                <Edit2 size={13} style={{ marginRight: '6px' }} /> Editar Contrato
+                                                <Edit2 size={13} style={{ marginRight: '6px' }} /> {t('users.actions.edit_contract')}
                                             </Button>
                                         )}
                                     </td>
@@ -280,14 +281,14 @@ export default function Usuarios() {
                     <div className="modal-content" style={{ maxWidth: '420px', padding: 0, overflow: 'hidden' }}>
                         <div style={{ padding: '24px', background: 'var(--bg-body)', borderBottom: '1px solid var(--border)', position: 'relative' }}>
                             <button className="modal-close" onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', right: '20px', top: '24px' }}><X size={20} /></button>
-                            <h2 style={{ margin: '0 0 4px 0', fontSize: '1.3rem' }}>Parametrizar Empleado</h2>
-                            <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>Ficha técnica de: <strong style={{ color: 'var(--text)' }}>{selectedUser.nombre || selectedUser.email}</strong></p>
+                            <h2 style={{ margin: '0 0 4px 0', fontSize: '1.3rem' }}>{t('users.modal.title')}</h2>
+                            <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>{t('users.modal.subtitle')} <strong style={{ color: 'var(--text)' }}>{selectedUser.nombre || selectedUser.email}</strong></p>
                         </div>
 
                         <form onSubmit={handleSave} style={{ padding: '24px' }}>
                             {/* ROLES DINAMICOS */}
                             <div className="field" style={{ marginBottom: '20px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Otorgamiento de Cargo Jurídico</label>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>{t('users.modal.role_label')}</label>
                                 <select
                                     className="input premium-input"
                                     style={{ width: '100%', opacity: currentUser?.id === selectedUser.id ? 0.6 : 1 }}
@@ -295,26 +296,26 @@ export default function Usuarios() {
                                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                                     disabled={currentUser?.id === selectedUser.id}
                                 >
-                                    <option value="admin">Administrador Total (Sin límite)</option>
-                                    <option value="user">Usuario Genérico (Acceso base)</option>
+                                    <option value="admin">{t('users.modal.role_admin')}</option>
+                                    <option value="user">{t('users.modal.role_user')}</option>
                                     
-                                    {rolesDisponibles.length > 0 && <optgroup label={`Cargos en ${empresaActiva?.nombre}`}>
+                                    {rolesDisponibles.length > 0 && <optgroup label={t('users.modal.role_custom', { company: empresaActiva?.nombre })}>
                                         {rolesDisponibles.map(r => (
                                             <option key={r.nombre} value={r.nombre}>{r.nombre}</option>
                                         ))}
                                     </optgroup>}
                                 </select>
                                 {currentUser?.id === selectedUser.id ? (
-                                    <div style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '6px', fontWeight: 600 }}>No podés alterar tu propio cargo por seguridad. Pedile a otro Administrador que lo haga.</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '6px', fontWeight: 600 }}>{t('users.modal.role_self_edit_error')}</div>
                                 ) : (
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px' }}>Los roles específicos permiten bloquear/habilitar diferentes pestañas en el menú central de la compañía.</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px' }}>{t('users.modal.role_desc')}</div>
                                 )}
                             </div>
 
                             {/* MARCADOR DE EMOJI EN MAPA */}
-                            <div className="field" style={{ marginBottom: '24px' }}>
+                             <div className="field" style={{ marginBottom: '24px' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>
-                                    <MapPin size={16} className="text-accent" /> Emblema Rastreador (GPS)
+                                    <MapPin size={16} className="text-accent" /> {t('users.modal.gps_label')}
                                 </label>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                                     {['📍', '🟢', '🔵', '🟠', '🔴', '🚗', '🏍️', '🚲', '🚶', '⭐'].map(emoji => (
@@ -334,14 +335,14 @@ export default function Usuarios() {
                                         >
                                             {emoji}
                                         </button>
-                                    ))}
+                                     ))}
                                 </div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>Se utilizará este ícono flotante para distinguir a la persona en los mapas de radar.</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>{t('users.modal.gps_desc')}</div>
                             </div>
 
                             {/* ESTADO ACTIVO */}
                             <div style={{ background: editForm.activo ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)', border: `1px solid ${editForm.activo ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, padding: '16px', borderRadius: '12px', marginBottom: '24px', transition: 'all 0.3s', opacity: currentUser?.id === selectedUser.id ? 0.6 : 1 }}>
-                                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: currentUser?.id === selectedUser.id ? 'not-allowed' : 'pointer', userSelect: 'none' }}>
+                                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: currentUser?.id === selectedUser.id ? 'not-allowed' : 'pointer' }}>
                                     <input
                                         type="checkbox"
                                         checked={editForm.activo}
@@ -350,18 +351,18 @@ export default function Usuarios() {
                                         style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: editForm.activo ? '#10b981' : '#ef4444' }}
                                     />
                                     <div>
-                                        <strong style={{ display: 'block', color: 'var(--text)', marginBottom: '2px' }}>Cuenta Operativa</strong>
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Desmarcá esta casilla para bloquear por completo el acceso del usuario a los datos del sistema, revocando toda sesión activa.</span>
+                                        <strong style={{ display: 'block', color: 'var(--text)', marginBottom: '2px' }}>{t('users.modal.status_label')}</strong>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('users.modal.status_desc')}</span>
                                     </div>
                                 </label>
                             </div>
 
                             {/* BOTONERA INF */}
-                            <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
-                                <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} disabled={saving} style={{ flex: 1, padding: '12px' }}>Cancelar</Button>
+                             <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
+                                <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} disabled={saving} style={{ flex: 1, padding: '12px' }}>{t('common.cancel')}</Button>
                                 {!isDemoMode && (
                                     <Button type="submit" variant="primary" disabled={saving} style={{ flex: 1.5, padding: '12px' }}>
-                                        {saving ? 'Guardando Registro...' : 'Guardar Ficha Laboral'}
+                                        {saving ? t('users.modal.saving') : t('users.modal.save')}
                                     </Button>
                                 )}
                             </div>

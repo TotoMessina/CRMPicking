@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
@@ -32,6 +33,7 @@ const SPRINT_PALETTES = [
 ];
 
 export default function Proveedores() {
+    const { t } = useTranslation();
     const { empresaActiva, isDemoMode } = useAuth();
     const [activeTab, setActiveTab] = useState('roadmap');
 
@@ -69,9 +71,9 @@ export default function Proveedores() {
             supabase.from('eventos_proveedores').select(`*, proveedores(nombre)`).eq('empresa_id', empresaActiva.id).order('orden', { ascending: true })
         ]);
 
-        if (provRes.error) toast.error("Error proveedores");
+        if (provRes.error) toast.error(t('providers.toast.load_error'));
         if (sprintRes.error) console.error("Error sprints:", sprintRes.error);
-        if (eventRes.error) toast.error("Error eventos");
+        if (eventRes.error) toast.error(t('providers.toast.events_error'));
 
         setProveedores(provRes.data || []);
         applySearchProv(searchProv, provRes.data || []);
@@ -118,8 +120,8 @@ export default function Proveedores() {
             fecha_inicio: info.event.start.toISOString(),
             fecha_fin: info.event.end ? info.event.end.toISOString() : null
         }).eq('id', info.event.id);
-        if (error) { toast.error("Error al mover fecha"); info.revert(); }
-        else { toast.success("Hito actualizado"); fetchData(); }
+        if (error) { toast.error(t('providers.toast.move_date_error')); info.revert(); }
+        else { toast.success(t('providers.toast.milestone_updated')); fetchData(); }
     };
 
     // --- Roadmap logic ---
@@ -134,9 +136,9 @@ export default function Proveedores() {
     });
 
     const priorityCols = [
-        { key: 'alta', label: 'Prioridad Alta', icon: <Flame size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'alta'), bg: '#fef2f2', border: '#fecaca', color: '#ef4444' },
-        { key: 'media', label: 'Prioridad Media', icon: <CheckCircle2 size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'media' || !i.prioridad), bg: '#f0f9ff', border: '#bae6fd', color: '#3b82f6' },
-        { key: 'baja', label: 'Backlog / Baja', icon: <Coffee size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'baja'), bg: 'var(--bg-elevated)', border: 'var(--border)', color: 'var(--text-muted)' },
+        { key: 'alta', label: t('providers.priority_high'), icon: <Flame size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'alta'), bg: '#fef2f2', border: '#fecaca', color: '#ef4444' },
+        { key: 'media', label: t('providers.priority_medium'), icon: <CheckCircle2 size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'media' || !i.prioridad), bg: '#f0f9ff', border: '#bae6fd', color: '#3b82f6' },
+        { key: 'baja', label: t('providers.priority_low'), icon: <Coffee size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'baja'), bg: 'var(--bg-elevated)', border: 'var(--border)', color: 'var(--text-muted)' },
     ].filter(c => c.ideas.length > 0);
 
     const sprintBlocks = [
@@ -157,8 +159,8 @@ export default function Proveedores() {
             setSprints(items);
             const updates = items.map((item, index) => ({ id: item.id, empresa_id: empresaActiva.id, nombre: item.nombre, orden: index }));
             const { error } = await supabase.from('proveedor_sprints').upsert(updates);
-            if (error) { toast.error("Error al guardar orden"); fetchData(); }
-            else { toast.success("Fases reordenadas"); }
+            if (error) { toast.error(t('providers.toast.save_order_error')); fetchData(); }
+            else { toast.success(t('providers.toast.order_saved')); }
             return;
         }
 
@@ -232,9 +234,9 @@ export default function Proveedores() {
 
     const handleOpenSprintModal = (id = null) => { setEditingSprintId(id); setModalSprintOpen(true); };
     const handleDeleteSprint = async (id, name) => {
-        if (!window.confirm(`¿Seguro que querés eliminar "${name}"?`)) return;
+        if (!window.confirm(t('providers.confirm_delete_sprint', { name }))) return;
         const { error } = await supabase.from('proveedor_sprints').delete().eq('id', id);
-        if (error) toast.error("Error al eliminar"); else { toast.success("Eliminado"); fetchData(); }
+        if (error) toast.error(t('providers.toast.delete_error')); else { toast.success(t('providers.toast.delete_success')); fetchData(); }
     };
 
     // --- Component Renderer for Idea Cards ---
@@ -305,14 +307,14 @@ export default function Proveedores() {
             <header style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Proveedores &amp; Despliegues
+                        {t('providers.title')}
                     </h1>
-                    <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>Gestión de catálogo externo e hitos de planificación.</p>
+                    <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>{t('providers.subtitle')}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-                    <button onClick={() => setActiveTab('roadmap')} style={tabBtnStyle(activeTab === 'roadmap')}><MapPin size={18} /> Roadmap de Ideas</button>
-                    <button onClick={() => setActiveTab('calendario')} style={tabBtnStyle(activeTab === 'calendario')}><CalendarIcon size={18} /> Calendario Lógico</button>
-                    <button onClick={() => setActiveTab('directorio')} style={tabBtnStyle(activeTab === 'directorio')}><Store size={18} /> Directorio Contactos</button>
+                    <button onClick={() => setActiveTab('roadmap')} style={tabBtnStyle(activeTab === 'roadmap')}><MapPin size={18} /> {t('providers.roadmap')}</button>
+                    <button onClick={() => setActiveTab('calendario')} style={tabBtnStyle(activeTab === 'calendario')}><CalendarIcon size={18} /> {t('providers.calendar')}</button>
+                    <button onClick={() => setActiveTab('directorio')} style={tabBtnStyle(activeTab === 'directorio')}><Store size={18} /> {t('providers.directory')}</button>
                 </div>
             </header>
 
@@ -322,27 +324,27 @@ export default function Proveedores() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-elevated)', padding: '20px', borderRadius: '20px', border: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                             <div style={{ display: 'flex', background: 'var(--bg-body)', border: '1px solid var(--border)', borderRadius: '12px', padding: '4px', gap: '4px' }}>
-                                <button onClick={() => setRoadmapGroupBy('sprint')} style={{ padding: '8px 16px', borderRadius: '9px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s', background: roadmapGroupBy === 'sprint' ? 'var(--accent)' : 'transparent', color: roadmapGroupBy === 'sprint' ? '#fff' : 'var(--text-muted)' }}><Layers size={14} /> Sprints</button>
-                                <button onClick={() => setRoadmapGroupBy('prioridad')} style={{ padding: '8px 16px', borderRadius: '9px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s', background: roadmapGroupBy === 'prioridad' ? 'var(--accent)' : 'transparent', color: roadmapGroupBy === 'prioridad' ? '#fff' : 'var(--text-muted)' }}><Flame size={14} /> Prioridad</button>
+                                <button onClick={() => setRoadmapGroupBy('sprint')} style={{ padding: '8px 16px', borderRadius: '9px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s', background: roadmapGroupBy === 'sprint' ? 'var(--accent)' : 'transparent', color: roadmapGroupBy === 'sprint' ? '#fff' : 'var(--text-muted)' }}><Layers size={14} /> {t('providers.sprints')}</button>
+                                <button onClick={() => setRoadmapGroupBy('prioridad')} style={{ padding: '8px 16px', borderRadius: '9px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s', background: roadmapGroupBy === 'prioridad' ? 'var(--accent)' : 'transparent', color: roadmapGroupBy === 'prioridad' ? '#fff' : 'var(--text-muted)' }}><Flame size={14} /> {t('providers.priority')}</button>
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                <Button variant="secondary" onClick={() => handleOpenSprintModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Settings2 size={16} /> Nuevo Sprint</Button>
-                                <Button variant="primary" onClick={() => { setIsIdea(true); setEditingEventId(null); setModalEventOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Plus size={18} /> Nueva Idea</Button>
+                                <Button variant="secondary" onClick={() => handleOpenSprintModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Settings2 size={16} /> {t('providers.new_sprint')}</Button>
+                                <Button variant="primary" onClick={() => { setIsIdea(true); setEditingEventId(null); setModalEventOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Plus size={18} /> {t('providers.new_idea')}</Button>
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700 }}><Filter size={14} /> Filtrar por:</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700 }}><Filter size={14} /> {t('providers.filter_by')}</span>
                             <select className="input" style={{ width: 'auto', minWidth: '180px' }} value={roadmapPriorityFilter} onChange={e => setRoadmapPriorityFilter(e.target.value)}>
-                                <option value="">Todas las Prioridades</option>
-                                <option value="alta">🔥 Solo Alta</option><option value="media">⭐ Solo Media</option><option value="baja">☕ Solo Baja</option>
+                                <option value="">{t('providers.all_priorities')}</option>
+                                <option value="alta">{t('providers.priority_high')}</option><option value="media">{t('providers.priority_medium')}</option><option value="baja">{t('providers.priority_low')}</option>
                             </select>
                             <select className="input" style={{ width: 'auto', minWidth: '200px' }} value={roadmapDependencyFilter} onChange={e => setRoadmapDependencyFilter(e.target.value)}>
-                                <option value="">Dependencia Global</option><option value="interna">Equipo PickUp</option><option value="externa">Esperando Proveedor</option>
+                                <option value="">{t('providers.dep_global')}</option><option value="interna">{t('providers.dep_internal')}</option><option value="externa">{t('providers.dep_external')}</option>
                             </select>
                         </div>
                     </div>
 
-                    {loading ? <div className="muted text-center" style={{ padding: '60px' }}>Cargando...</div> : (
+                    {loading ? <div className="muted text-center" style={{ padding: '60px' }}>{t('common.loading')}</div> : (
                         roadmapGroupBy === 'prioridad' ? (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
                                 {priorityCols.map(col => (
@@ -400,7 +402,7 @@ export default function Proveedores() {
                                                                         >
                                                                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
                                                                                 {block.ideas.length === 0 && !ideaSnapshot.isDraggingOver ? (
-                                                                                    <div style={{ gridColumn: '1/-1', padding: '20px', border: '1px dashed var(--border)', borderRadius: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Suelta ideas aquí.</div>
+                                                                                    <div style={{ gridColumn: '1/-1', padding: '20px', border: '1px dashed var(--border)', borderRadius: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t('providers.drop_ideas_here')}</div>
                                                                                 ) : (
                                                                                     block.ideas.map((i, idx) => <IdeaCard key={i.id} idea={i} index={idx} />)
                                                                                 )}
@@ -444,7 +446,7 @@ export default function Proveedores() {
                         }}
                         eventDrop={handleEventDrop}
                         height="auto"
-                        locale="es"
+                        locale={t('common.language_code') || 'es'}
                     />
                 </div>
             )}
@@ -464,14 +466,14 @@ export default function Proveedores() {
                             />
                         </div>
                         <Button variant="primary" onClick={() => { setEditingProvId(null); setModalProvOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Plus size={18} /> Nuevo Proveedor
+                            <Plus size={18} /> {t('providers.new_provider')}
                         </Button>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
                         {filteredProveedores.length === 0 ? (
                             <div className="muted" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px' }}>
-                                No se encontraron proveedores.
+                                {t('providers.no_providers')}
                             </div>
                         ) : (
                             filteredProveedores.map(prov => (
@@ -479,7 +481,7 @@ export default function Proveedores() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
                                             <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: 'var(--text)' }}>{prov.nombre}</h3>
-                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '3px 10px', borderRadius: '8px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>{prov.rubro || 'Sin rubro'}</span>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '3px 10px', borderRadius: '8px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>{prov.rubro || t('providers.no_rubro')}</span>
                                         </div>
                                         <button onClick={() => { setEditingProvId(prov.id); setModalProvOpen(true); }} className="btn-icon" style={{ background: 'var(--bg-body)', border: '1px solid var(--border)', padding: '8px', borderRadius: '10px', color: 'var(--text-muted)' }}>
                                             <Settings2 size={16} />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -12,6 +13,7 @@ export default function Login() {
     const { user, signIn } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const { tenantConfig } = useTenant();
+    const { t } = useTranslation();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
@@ -33,16 +35,14 @@ export default function Login() {
     const handleLogin = async (e: React.FormEvent) => {
         if (e) e.preventDefault();
         setLoading(true);
-        showMessage('Ingresando...');
+        showMessage(t('login.authenticating'));
 
         try {
             await signIn(email, password);
         } catch (error: any) {
-            let errorText = "Error al ingresar: " + error.message;
-            if (error.message.includes("Invalid login credentials")) {
-                errorText = "Credenciales incorrectas. Verificá tu email y contraseña.";
-            } else if (error.message.includes("Email not confirmed")) {
-                errorText = "Tu email no ha sido confirmado. Revisá tu bandeja de entrada.";
+            let errorText = t('login.invalid_credentials');
+            if (error.message.includes("Email not confirmed")) {
+                errorText = t('login.email_not_confirmed');
             }
             showMessage(errorText, 'error');
         } finally {
@@ -57,7 +57,7 @@ export default function Login() {
         setEmail(demoEmail);
         setPassword(demoPass);
         
-        showMessage('Accediendo con cuenta Demo...', 'info');
+        showMessage(t('login.demo_accessing'), 'info');
         
         setTimeout(() => {
             setLoading(true);
@@ -88,13 +88,13 @@ export default function Login() {
                         }}
                     />
                     <div className="login-brand-logo" style={{ display: 'none' }}>{tenantConfig.app.shortName.substring(0, 2).toUpperCase()}</div>
-                    <h1>Bienvenido</h1>
-                    <p>Ingresá tus credenciales para continuar</p>
+                    <h1>{t('login.welcome_title')}</h1>
+                    <p>{t('login.welcome_subtitle')}</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="form-stack">
                     <div className="field">
-                        <label htmlFor="email">Email</label>
+                        <label htmlFor="email">{t('login.email')}</label>
                         <input
                             id="email" type="email" autoComplete="email" required
                             placeholder="tu@email.com"
@@ -103,7 +103,7 @@ export default function Login() {
                     </div>
 
                     <div className="field">
-                        <label htmlFor="password">Contraseña</label>
+                        <label htmlFor="password">{t('login.password')}</label>
                         <input
                             id="password" type="password" autoComplete="current-password" required
                             placeholder="••••••••"
@@ -113,12 +113,12 @@ export default function Login() {
 
                     <div className="form-actions-stack">
                         <button className="btn-primario btn-block" type="submit" disabled={loading}>
-                            {loading ? 'Cargando...' : 'Ingresar'}
+                            {loading ? t('common.loading') : t('login.enter')}
                         </button>
                         
                         <div style={{ margin: '12px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>o también</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('login.or_also')}</span>
                             <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
                         </div>
 
@@ -129,7 +129,7 @@ export default function Login() {
                             disabled={loading}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}
                         >
-                            <Rocket size={18} /> Acceder a Demo
+                            <Rocket size={18} /> {t('login.demo_login')}
                         </button>
                     </div>
                 </form>
@@ -142,7 +142,7 @@ export default function Login() {
             </div>
             
             <div className="theme-toggle-fixed" style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 50 }}>
-                <button className="btn-icon" type="button" title="Cambiar tema" onClick={toggleTheme}>
+                <button className="btn-icon" type="button" title={t('common.change_theme')} onClick={toggleTheme}>
                     {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
             </div>

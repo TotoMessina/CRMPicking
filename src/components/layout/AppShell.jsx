@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { useAppShell } from '../../hooks/useAppShell';
@@ -11,6 +12,7 @@ import { useTenant } from '../../contexts/TenantContext';
 import { applyBrandingToDOM } from '../../hooks/useBranding';
 
 const SidebarBrand = ({ setIsMobileMenuOpen, empresaActiva }) => {
+    const { t } = useTranslation();
     const { tenantConfig } = useTenant();
     const logoUrl = empresaActiva?.config?.logoUrl || tenantConfig.app.logoUrl;
     const systemName = empresaActiva?.config?.systemName || tenantConfig.app.shortName;
@@ -38,39 +40,44 @@ const SidebarBrand = ({ setIsMobileMenuOpen, empresaActiva }) => {
                 <div className="sidebar-title">{systemName}</div>
             </div>
         </div>
-        <button className="sidebar-close-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Cerrar menú">×</button>
+        <button className="sidebar-close-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label={t('common.actions.close_menu', { defaultValue: 'Cerrar menú' })}>×</button>
     </div>
     );
 };
 
-const UserInfo = ({ userName, email, avatarUrl, empresaActiva, empresasDisponibles, onChangeEmpresa }) => (
-    <div className="sidebar-user-card">
-        <div className="sidebar-avatar">
-            {avatarUrl
-                ? <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
-                : (userName || email || '?')[0].toUpperCase()
-            }
+const UserInfo = ({ userName, email, avatarUrl, empresaActiva, empresasDisponibles, onChangeEmpresa }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="sidebar-user-card">
+            <div className="sidebar-avatar">
+                {avatarUrl
+                    ? <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
+                    : (userName || email || '?')[0].toUpperCase()
+                }
+            </div>
+            <div className="sidebar-user-info">
+                <strong className="sidebar-user-name">{userName || email || t('common.loading')}</strong>
+                {empresaActiva && (
+                    <button
+                        className="sidebar-empresa-btn"
+                        onClick={() => empresasDisponibles.length > 1 && onChangeEmpresa()}
+                        disabled={empresasDisponibles.length <= 1}
+                        title={empresaActiva.nombre}
+                    >
+                        <Building2 size={10} />
+                        <span>{empresaActiva.nombre}</span>
+                        {empresasDisponibles.length > 1 && <ChevronDown size={10} />}
+                    </button>
+                )}
+            </div>
         </div>
-        <div className="sidebar-user-info">
-            <strong className="sidebar-user-name">{userName || email || 'Cargando...'}</strong>
-            {empresaActiva && (
-                <button
-                    className="sidebar-empresa-btn"
-                    onClick={() => empresasDisponibles.length > 1 && onChangeEmpresa()}
-                    disabled={empresasDisponibles.length <= 1}
-                    title={empresaActiva.nombre}
-                >
-                    <Building2 size={10} />
-                    <span>{empresaActiva.nombre}</span>
-                    {empresasDisponibles.length > 1 && <ChevronDown size={10} />}
-                </button>
-            )}
-        </div>
-    </div>
-);
+    );
+};
 
 const NavItem = ({ item, unreadChatCount, setIsMobileMenuOpen }) => {
+    const { t } = useTranslation();
     const Icon = item.icon;
+    const labelKey = `menu.${item.label.toLowerCase().replace(/\s+/g, '_')}`;
     return (
         <li onClick={() => setIsMobileMenuOpen(false)}>
             <NavLink 
@@ -80,7 +87,7 @@ const NavItem = ({ item, unreadChatCount, setIsMobileMenuOpen }) => {
                 style={{ display: 'flex', alignItems: 'center' }}
             >
                 <Icon size={18} style={{ marginRight: '8px', flexShrink: 0 }} />
-                <span style={{ flex: 1 }}>{item.label}</span>
+                <span style={{ flex: 1 }}>{t(labelKey, { defaultValue: item.label })}</span>
                 {item.to === '/chat' && unreadChatCount > 0 && (
                     <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', marginLeft: 'auto' }}>
                         {unreadChatCount > 99 ? '99+' : unreadChatCount}
@@ -94,7 +101,9 @@ const NavItem = ({ item, unreadChatCount, setIsMobileMenuOpen }) => {
 const NAV_GROUP_ORDER = ['Activaciones', 'Operaciones', 'Planificación', 'Mapas', 'Listados', 'Administrativo'];
 
 const NavGroup = ({ groupName, items, unreadChatCount, setIsMobileMenuOpen, isOpen, onToggle }) => {
+    const { t } = useTranslation();
     const hasUnread = items.some(item => item.to === '/chat');
+    const groupKey = `menu.groups.${groupName.toLowerCase().replace(/\s+/g, '_')}`;
     return (
         <li className="sidebar-nav-group">
             <button
@@ -103,7 +112,7 @@ const NavGroup = ({ groupName, items, unreadChatCount, setIsMobileMenuOpen, isOp
                 aria-expanded={isOpen}
                 type="button"
             >
-                <span className="sidebar-nav-group-text">{groupName}</span>
+                <span className="sidebar-nav-group-text">{t(groupKey, { defaultValue: groupName })}</span>
                 {hasUnread && !isOpen && (
                     <span className="sidebar-group-dot" aria-hidden="true" />
                 )}
@@ -142,8 +151,8 @@ function getActiveGroup(pathname, navItems, defaultGroup = 'Activaciones') {
     });
     return match?.group || defaultGroup;
 }
-
 export function AppShell() {
+    const { t } = useTranslation();
     const {
         user, userName, avatarUrl, empresaActiva, empresasDisponibles, setEmpresaActiva,
         theme, toggleTheme, location, navigate,
@@ -284,17 +293,17 @@ export function AppShell() {
                         }}
                     >
                         <Bot size={14} />
-                        <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>{tenantConfig.ai.name}</span>
+                        <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>{t(tenantConfig.ai.name)}</span>
                     </button>
 
                     {/* Modo Ruta */}
                     <button
                         className={`sidebar-ruta-btn${isRutaActive ? ' active' : ''}`}
                         onClick={toggleModoRuta}
-                        title={isRutaActive ? 'Desactivar Modo Ruta' : 'Activar Modo Ruta'}
+                        title={isRutaActive ? t('sidebar.deactivate_route_mode', { defaultValue: 'Desactivar Modo Ruta' }) : t('sidebar.activate_route_mode_title', { defaultValue: 'Activar Modo Ruta' })}
                     >
                         <Navigation size={14} style={{ transform: isRutaActive ? 'rotate(45deg)' : 'none', transition: 'transform 0.4s ease' }} />
-                        <span>{isRutaActive ? 'MODO RUTA: ON' : 'Modo Ruta'}</span>
+                        <span>{isRutaActive ? `${t('sidebar.route_mode').toUpperCase()}: ${t('sidebar.active').toUpperCase()}` : t('sidebar.route_mode')}</span>
                         {isRutaActive && <span className="sidebar-ruta-dot" />}
                     </button>
 
@@ -304,7 +313,7 @@ export function AppShell() {
                         <button
                             className="sidebar-ctrl-btn"
                             onClick={toggleTheme}
-                            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+                            title={theme === 'dark' ? t('common.light_mode') : t('common.dark_mode')}
                             type="button"
                         >
                             {theme === 'dark'
@@ -317,7 +326,7 @@ export function AppShell() {
                             className={`sidebar-ctrl-btn${pushEnabled ? ' active' : ''}`}
                             onClick={handleSubscribePush}
                             disabled={pushEnabled}
-                            title={pushEnabled ? 'Notificaciones activas' : 'Activar notificaciones'}
+                            title={pushEnabled ? t('sidebar.notifications_active') : t('sidebar.activate_notifications')}
                             type="button"
                         >
                             <Bell size={15} />
@@ -329,7 +338,7 @@ export function AppShell() {
                             className="sidebar-ctrl-btn sidebar-ctrl-danger"
                             onClick={handleLogout}
                             id="btnLogout"
-                            title="Cerrar sesión"
+                            title={t('common.logout')}
                             type="button"
                         >
                             <LogOut size={15} />
@@ -339,7 +348,7 @@ export function AppShell() {
                     {/* Version + Update */}
                     <div className="sidebar-version">
                         <span>v1.2.5</span>
-                        <button onClick={handleForceUpdate} className="sidebar-update-btn">Actualizar</button>
+                        <button onClick={handleForceUpdate} className="sidebar-update-btn">{t('common.update')}</button>
                     </div>
                 </div>
 
@@ -369,3 +378,5 @@ export function AppShell() {
         </div>
     );
 }
+
+export default AppShell;

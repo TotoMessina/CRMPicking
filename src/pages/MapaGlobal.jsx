@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Map as MapIcon, Users, Truck, Activity, RefreshCw, Navigation, Layers, Filter, X, History, Calendar, User } from 'lucide-react';
@@ -22,6 +23,7 @@ const CATEGORY_COLORS = {
 };
 
 export default function MapaGlobal() {
+    const { t } = useTranslation();
     const { empresaActiva } = useAuth();
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
@@ -96,7 +98,7 @@ export default function MapaGlobal() {
         }
 
         setLoading(true);
-        const toastId = toast.loading("Cargando datos globales...");
+        const toastId = toast.loading(t('map_global.toast.loading'));
 
         try {
             // 0. Fetch Absolute Totals independently (Resilient loading)
@@ -204,7 +206,7 @@ export default function MapaGlobal() {
                 repartidores: rCount !== null ? rCount : mappedRepartidores.length
             });
 
-            toast.success("Mapa global actualizado", { id: toastId });
+            toast.success(t('map_global.toast.updated'), { id: toastId });
             
             // Load users for history selection
             const { data: usersInfo } = await supabase
@@ -215,7 +217,7 @@ export default function MapaGlobal() {
 
         } catch (error) {
             console.error("fetchData Global Error:", error);
-            toast.error("Error al cargar datos", { id: toastId });
+            toast.error(t('map_global.toast.error'), { id: toastId });
         } finally {
             setLoading(false);
         }
@@ -241,7 +243,7 @@ export default function MapaGlobal() {
     const fetchHistory = async () => {
         if (!historyUser || !historyDate || !empresaActiva?.id) return;
         setHistoryLoading(true);
-        const tId = toast.loading("Cargando recorrido...");
+        const tId = toast.loading(t('map_global.toast.loading_history'));
         
         try {
             const { data: hist, error } = await supabase
@@ -257,13 +259,13 @@ export default function MapaGlobal() {
             setHistoryData(hist || []);
             
             if (!hist?.length) {
-                toast.error("No se encontraron movimientos para esta fecha", { id: tId });
+                toast.error(t('map_global.toast.no_history'), { id: tId });
             } else {
-                toast.success(`Se encontraron ${hist.length} puntos`, { id: tId });
+                toast.success(t('map_global.toast.history_found', { count: hist.length }), { id: tId });
             }
         } catch (err) {
             console.error("Error fetching history:", err);
-            toast.error("Error al cargar historial", { id: tId });
+            toast.error(t('map_global.toast.history_error'), { id: tId });
         } finally {
             setHistoryLoading(false);
         }
@@ -349,7 +351,7 @@ export default function MapaGlobal() {
                     weight: 1,
                     opacity: 1,
                     fillOpacity: 0.8
-                }).bindPopup(`<b>Consumidor:</b> ${c.nombre}`).addTo(layersRef.current.consumidores);
+                }).bindPopup(`<b>${t('map_global.layers.consumidor')}:</b> ${c.nombre}`).addTo(layersRef.current.consumidores);
             });
         }
 
@@ -363,7 +365,7 @@ export default function MapaGlobal() {
                     weight: 1,
                     opacity: 1,
                     fillOpacity: 0.85
-                }).bindPopup(`<b>Cliente:</b> ${c.nombre}`).addTo(layersRef.current.clientes);
+                }).bindPopup(`<b>${t('map_global.layers.cliente')}:</b> ${c.nombre}`).addTo(layersRef.current.clientes);
             });
         }
 
@@ -377,7 +379,7 @@ export default function MapaGlobal() {
                     weight: 1,
                     opacity: 1,
                     fillOpacity: 0.9
-                }).bindPopup(`<b>Repartidor:</b> ${r.nombre}`).addTo(layersRef.current.repartidores);
+                }).bindPopup(`<b>${t('map_global.layers.repartidor')}:</b> ${r.nombre}`).addTo(layersRef.current.repartidores);
             });
         }
 
@@ -399,11 +401,11 @@ export default function MapaGlobal() {
             const end = historyData[historyData.length - 1];
 
             L.circleMarker([start.lat, start.lng], { radius: 8, fillColor: '#22c55e', color: '#fff', weight: 3, fillOpacity: 1 })
-                .bindPopup(`<b>Inicio Jornada</b><br>${format(parseISO(start.fecha), 'HH:mm')}`)
+                .bindPopup(`<b>${t('map_global.history.start')}</b><br>${format(parseISO(start.fecha), 'HH:mm')}`)
                 .addTo(histLayer);
 
             L.circleMarker([end.lat, end.lng], { radius: 8, fillColor: '#ef4444', color: '#fff', weight: 3, fillOpacity: 1 })
-                .bindPopup(`<b>Última Posición</b><br>${format(parseISO(end.fecha), 'HH:mm')}`)
+                .bindPopup(`<b>${t('map_global.history.end')}</b><br>${format(parseISO(end.fecha), 'HH:mm')}`)
                 .addTo(histLayer);
 
             // Center map on path if newly loaded
@@ -426,29 +428,28 @@ export default function MapaGlobal() {
             <div className="map-main-view">
                 <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
 
-                {/* OVERLAY: MULTI-STATS BADGE */}
-                <MapStatsBadge>
+                {/* OVERLAY: MULTI-STATS BADGE *                 <MapStatsBadge>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: isMobile ? '10px' : '20px', textAlign: 'center' }}>
                         <div>
-                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.clientes, fontWeight: 800, textTransform: 'uppercase' }}>Clientes</div>
+                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.clientes, fontWeight: 800, textTransform: 'uppercase' }}>{t('map_global.layers.clientes')}</div>
                             <div style={{ fontSize: '1rem', fontWeight: 800 }}>{totals.clientes}</div>
                         </div>
                         <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: isMobile ? '10px' : '20px' }}>
-                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.consumidores, fontWeight: 800, textTransform: 'uppercase' }}>Consum.</div>
+                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.consumidores, fontWeight: 800, textTransform: 'uppercase' }}>{t('map_global.layers.consum_short')}</div>
                             <div style={{ fontSize: '1rem', fontWeight: 800 }}>{totals.consumidores}</div>
                         </div>
                         <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: isMobile ? '10px' : '20px' }}>
-                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.repartidores, fontWeight: 800, textTransform: 'uppercase' }}>Repart.</div>
+                            <div style={{ fontSize: '0.65rem', color: CATEGORY_COLORS.repartidores, fontWeight: 800, textTransform: 'uppercase' }}>{t('map_global.layers.repart_short')}</div>
                             <div style={{ fontSize: '1rem', fontWeight: 800 }}>{totals.repartidores}</div>
                         </div>
                     </div>
-                </MapStatsBadge>
+                </MapStatsBadge>ge>
 
                 {/* OVERLAY: LEGEND */}
                 <MapLegend 
-                    title="Capas Activas"
+                    title={t('map_global.legend.title')}
                     items={Object.entries(CATEGORY_COLORS).map(([key, color]) => ({ 
-                        label: `${key.charAt(0).toUpperCase() + key.slice(1)} (${countsInZone[key]})`, 
+                        label: `${t(`map_global.layers.${key}`)} (${countsInZone[key]})`, 
                         color 
                     }))}
                     isMobile={isMobile}
@@ -467,7 +468,7 @@ export default function MapaGlobal() {
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontWeight: 600, fontSize: '0.8rem'
                         }}
                     >
-                        📋 Capas ({Object.values(visibility).filter(v => v).length})
+                        📋 {t('map_global.legend.mobile_btn', { count: Object.values(visibility).filter(v => v).length })}
                     </button>
                 )}
 
@@ -483,29 +484,28 @@ export default function MapaGlobal() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <History size={18} className="text-accent" />
-                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Historial de Ruta</h3>
+                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>{t('map_global.history.title')}</h3>
                             </div>
                             <button onClick={() => setHistoryMode(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)' }}><X size={20} /></button>
                         </div>
-                        
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-muted)' }}>ACTIVADOR</label>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-muted)' }}>{t('map_global.history.activator_label')}</label>
                                 <select 
                                     className="input premium-input" 
                                     style={{ width: '100%' }}
                                     value={historyUser}
                                     onChange={e => setHistoryUser(e.target.value)}
                                 >
-                                    <option value="">Seleccionar usuario...</option>
+                                    <option value="">{t('map_global.history.select_user')}</option>
                                     {availableUsers.map(u => (
                                         <option key={u.id} value={u.id}>{u.nombre || u.email}</option>
                                     ))}
                                 </select>
                             </div>
-
+ 
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-muted)' }}>FECHA</label>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-muted)' }}>{t('common.date')}</label>
                                 <input 
                                     type="date" 
                                     className="input premium-input" 
@@ -518,13 +518,13 @@ export default function MapaGlobal() {
                             {historyData.length > 0 && (
                                 <div style={{ background: 'var(--bg-body)', padding: '12px', borderRadius: '12px', marginTop: '4px' }}>
                                     <div style={{ fontSize: '0.85rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>Distancia aprox:</span>
+                                        <span>{t('map_global.history.distance')}:</span>
                                         <span className="text-accent">
                                             {(historyData.length * 0.15).toFixed(1)} km
                                         </span>
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                        {historyData.length} puntos registrados cada 1 min.
+                                        {t('map_global.history.points_count', { count: historyData.length })}
                                     </div>
                                 </div>
                             )}
@@ -544,7 +544,7 @@ export default function MapaGlobal() {
                         style={{ borderRadius: '12px', height: '40px', padding: '0 15px' }}
                     >
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.clientes, marginRight: '8px' }}></div>
-                        Clientes
+                        {t('map_global.layers.clientes')}
                     </Button>
                     <Button 
                         variant={visibility.consumidores ? 'primary' : 'secondary'} 
@@ -553,7 +553,7 @@ export default function MapaGlobal() {
                         style={{ borderRadius: '12px', height: '40px', padding: '0 15px' }}
                     >
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.consumidores, marginRight: '8px' }}></div>
-                        Consumidores
+                        {t('map_global.layers.consumidores')}
                     </Button>
                     <Button 
                         variant={visibility.repartidores ? 'primary' : 'secondary'} 
@@ -562,14 +562,14 @@ export default function MapaGlobal() {
                         style={{ borderRadius: '12px', height: '40px', padding: '0 15px' }}
                     >
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.repartidores, marginRight: '8px' }}></div>
-                        Repartidores
+                        {t('map_global.layers.repartidores')}
                     </Button>
                 </div>
 
                 <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0, margin: '0 8px' }}></div>
 
                 <Button variant="secondary" onClick={fetchData} disabled={loading} style={{ borderRadius: '12px', height: '40px' }}>
-                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> {isMobile ? '' : 'Refrescar'}
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> {isMobile ? '' : t('common.actions.refresh')}
                 </Button>
 
                 <div style={{ borderLeft: '1px solid var(--border)', height: '24px', margin: '0 8px' }}></div>
@@ -580,7 +580,7 @@ export default function MapaGlobal() {
                     style={{ borderRadius: '12px', height: '40px', padding: '0 16px', gap: '8px' }}
                 >
                     <History size={16} />
-                    <span className="hide-mobile">Historial Ruta</span>
+                    <span className="hide-mobile">{t('map_global.history.btn')}</span>
                 </Button>
             </MapControlBar>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
@@ -9,6 +10,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import esLocale from '@fullcalendar/core/locales/es';
+import enLocale from '@fullcalendar/core/locales/en-gb';
 
 import { EventoCalendarioModal } from '../components/ui/EventoCalendarioModal';
 
@@ -19,6 +21,7 @@ const THEME_COLORS = {
 };
 
 export default function Calendario() {
+    const { t, i18n } = useTranslation();
     const { empresaActiva } = useAuth();
     const calendarRef = useRef(null);
     const [usuarios, setUsuarios] = useState([]);
@@ -129,7 +132,7 @@ export default function Calendario() {
 
                         events.push({
                             id: `contacto-${c.clientes?.id || c.id}`,
-                            title: c.clientes?.nombre || "(Sin nombre)",
+                            title: c.clientes?.nombre || `(${t('common.no_name')})`,
                             start: startDate.toISOString(),
                             end: endDate.toISOString(),
                             backgroundColor: color,
@@ -203,7 +206,7 @@ export default function Calendario() {
                 setCalendarEvents(events);
             } catch (err) {
                 console.error(err);
-                toast.error("Error al cargar eventos");
+                toast.error(t('calendar.toast.load_error'));
             }
         };
 
@@ -237,7 +240,7 @@ export default function Calendario() {
             setEditingId(null);
             setEditingClienteId(props.clienteId);
             setInitialData({
-                titulo: `Contacto: ${ev.title || ""}`.trim(),
+                titulo: `${t('calendar.event_types.contact')}: ${ev.title || ""}`.trim(),
                 inicio: ev.start ? toLocalInputValue(ev.start) : "",
                 fin: ev.end ? toLocalInputValue(ev.end) : ""
             });
@@ -285,7 +288,7 @@ export default function Calendario() {
                 }).eq("cliente_id", clienteId).eq("empresa_id", empresaActiva.id);
 
                 if (error) throw error;
-                toast.success("Fecha de contacto actualizada");
+                toast.success(t('calendar.toast.contact_updated'));
             } else if (kind === "evento") {
                 const dbId = ev.extendedProps.dbId;
                 const payload = {
@@ -295,12 +298,12 @@ export default function Calendario() {
                 };
                 const { error } = await supabase.from("eventos").update(payload).eq("id", dbId).eq("empresa_id", empresaActiva?.id);
                 if (error) throw error;
-                toast.success("Evento actualizado");
+                toast.success(t('calendar.toast.event_updated'));
             }
         } catch (err) {
             console.error(err);
             info.revert();
-            toast.error("No se pudo guardar el cambio.");
+            toast.error(t('calendar.toast.update_error'));
         }
     };
 
@@ -310,27 +313,27 @@ export default function Calendario() {
 
     return (
         <div className="container" style={{ padding: 'max(16px, 2vw)', height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <header style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
+             <header style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 style={{ margin: 0 }}>Agenda y Calendario</h1>
-                    <p className="muted" style={{ margin: 0 }}>Planificación de visitas y eventos internos.</p>
+                    <h1 style={{ margin: 0 }}>{t('calendar.title')}</h1>
+                    <p className="muted" style={{ margin: 0 }}>{t('calendar.subtitle')}</p>
                 </div>
-
+ 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     <div className="field" style={{ margin: 0, minWidth: '150px' }}>
                         <select className="input" value={filtroUsuario} onChange={(e) => setFiltroUsuario(e.target.value)}>
-                            <option value="">Cualquier Usuario</option>
+                            <option value="">{t('calendar.filters.any_user')}</option>
                             {usuarios.map(u => <option key={u} value={u}>{u}</option>)}
                         </select>
                     </div>
                     <div className="field" style={{ margin: 0, minWidth: '150px' }}>
                         <select className="input" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
-                            <option value="todos">Todos los Eventos</option>
-                            <option value="contactos">Solo Contactos</option>
-                            <option value="internos">Solo Internos/Reuniones</option>
+                            <option value="todos">{t('calendar.filters.all_events')}</option>
+                            <option value="contactos">{t('calendar.filters.only_contacts')}</option>
+                            <option value="internos">{t('calendar.filters.only_internal')}</option>
                         </select>
                     </div>
-                    <Button onClick={() => openCreateModal()}>Nuevo Evento</Button>
+                    <Button onClick={() => openCreateModal()}>{t('calendar.actions.new_event')}</Button>
                 </div>
             </header>
 
@@ -344,7 +347,7 @@ export default function Calendario() {
                         center: 'title',
                         right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
                     }}
-                    locale={esLocale}
+                    locale={i18n.language === 'en' ? enLocale : esLocale}
                     events={calendarEvents}
                     datesSet={handleDatesSet}
                     eventClick={handleEventClick}

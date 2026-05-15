@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ConsumerFilters } from '../components/consumidores/ConsumerFilters';
 
 export default function Consumidores() {
+    const { t } = useTranslation();
     const { empresaActiva, isDemoMode } = useAuth();
     const [consumidores, setConsumidores] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ export default function Consumidores() {
         const { data, count, error } = await request;
 
         if (error) {
-            toast.error('Error al cargar consumidores');
+            toast.error(t('consumers.toast.load_error'));
             console.error(error);
         } else {
             setConsumidores(data || []);
@@ -114,19 +116,19 @@ export default function Consumidores() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("¿Seguro que querés marcar como eliminado este consumidor?")) return;
+        if (!window.confirm(t('consumers.confirm_delete'))) return;
         const { error } = await supabase.from("consumidores").update({ activo: false }).eq("id", id);
         if (error) {
-            toast.error("No se pudo eliminar.");
+            toast.error(t('consumers.toast.delete_error'));
         } else {
-            toast.success("Consumidor eliminado.");
+            toast.success(t('consumers.toast.delete_success'));
             fetchConsumidores();
         }
     };
 
     const handleOpenActivity = (id, nombre) => {
         setActTargetId(id);
-        setActTargetName(nombre || 'Sin nombre');
+        setActTargetName(nombre || t('common.no_name'));
         setActModalOpen(true);
     };
 
@@ -142,10 +144,10 @@ export default function Consumidores() {
             <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Consumidores
+                        {t('consumers.title')}
                     </h1>
                     <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>
-                        Gestión B2C e historial de contactos.
+                        {t('consumers.subtitle')}
                     </p>
                 </div>
 
@@ -157,7 +159,7 @@ export default function Consumidores() {
                         style={{ borderRadius: '14px', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)' }}
                     >
                         <MoreVertical size={18} />
-                        <span className="hide-mobile">Acciones</span>
+                        <span className="hide-mobile">{t('common.actions.dropdown_actions')}</span>
                     </Button>
 
                     <AnimatePresence>
@@ -183,21 +185,21 @@ export default function Consumidores() {
                                         onClick={() => { descargarModeloConsumidores(); setActionsOpen(false); }}
                                         style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                     >
-                                        <FileText size={16} style={{ color: 'var(--accent)' }} /> Descargar Modelo Excel
+                                        <FileText size={16} style={{ color: 'var(--accent)' }} /> {t('consumers.download_model')}
                                     </button>
                                     <button 
                                         className="dropdown-item" 
                                         onClick={() => { exportarConsumidoresExcel(empresaActiva, { nombre: fNombre, telefono: fTelefono, localidad: fLocalidad, estado: fEstado, responsable: fResponsable }); setActionsOpen(false); }}
                                         style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                     >
-                                        <Download size={16} style={{ color: 'var(--accent)' }} /> Exportar Consumidores
+                                        <Download size={16} style={{ color: 'var(--accent)' }} /> {t('consumers.export')}
                                     </button>
                                     {!isDemoMode && (
                                         <label 
                                             className="dropdown-item" 
                                             style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
                                         >
-                                            <Upload size={16} style={{ color: 'var(--accent)' }} /> Importar Excel
+                                            <Upload size={16} style={{ color: 'var(--accent)' }} /> {t('consumers.import')}
                                             <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => { handleImportExcel(e); setActionsOpen(false); }} />
                                         </label>
                                     )}
@@ -222,7 +224,7 @@ export default function Consumidores() {
             <section style={{ marginBottom: '32px' }}>
                 <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: 'var(--text)' }}>
-                        Listado <span className="muted" style={{ fontWeight: 500, fontSize: '1.2rem' }}>({total})</span>
+                        {t('consumers.list')} <span className="muted" style={{ fontWeight: 500, fontSize: '1.2rem' }}>({total})</span>
                     </h2>
                 </header>
 
@@ -237,7 +239,7 @@ export default function Consumidores() {
                         ))
                     ) : consumidores.length === 0 ? (
                         <div style={{ gridColumn: '1 / -1', background: 'var(--bg-elevated)', border: '1px dashed var(--border)', borderRadius: '20px', padding: '40px', textAlign: 'center' }}>
-                            <p className="muted" style={{ fontSize: '1.1rem' }}>No se encontraron consumidores con esos filtros.</p>
+                            <p className="muted" style={{ fontSize: '1.1rem' }}>{t('consumers.no_results')}</p>
                         </div>
                     ) : consumidores.map(c => {
                         const acts = activities[c.id] || [];
@@ -255,7 +257,7 @@ export default function Consumidores() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1, paddingRight: '12px' }}>
                                         <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
-                                            {c.nombre || "(Sin nombre)"}
+                                            {c.nombre || `(${t('common.no_name')})`}
                                         </h3>
 
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
@@ -265,8 +267,8 @@ export default function Consumidores() {
                                             {(c.fecha_proximo_contacto || c.hora_proximo_contacto) && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent)', fontWeight: 600, marginTop: '4px' }}>
                                                     <Calendar size={15} />
-                                                    Próx: {c.fecha_proximo_contacto ? formatToLocal(c.fecha_proximo_contacto) : ''}
-                                                    {c.hora_proximo_contacto ? ` a las ${c.hora_proximo_contacto.slice(0, 5)}` : ""}
+                                                    {t('consumers.card.next')}: {c.fecha_proximo_contacto ? formatToLocal(c.fecha_proximo_contacto) : ''}
+                                                    {c.hora_proximo_contacto ? ` ${t('common.at_time')} ${c.hora_proximo_contacto.slice(0, 5)}` : ""}
                                                 </div>
                                             )}
                                         </div>
@@ -274,11 +276,11 @@ export default function Consumidores() {
 
                                     {/* Quick actions top right */}
                                     <div style={{ display: 'flex', gap: '6px' }}>
-                                        <button onClick={() => handleEdit(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title="Editar">
+                                        <button onClick={() => handleEdit(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title={t('common.edit')}>
                                             <Edit2 size={16} />
                                         </button>
                                         {!isDemoMode && (
-                                            <button onClick={() => handleDelete(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title="Eliminar">
+                                            <button onClick={() => handleDelete(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title={t('common.delete')}>
                                                 <Trash2 size={16} />
                                             </button>
                                         )}
@@ -288,9 +290,9 @@ export default function Consumidores() {
                                 {/* Badges row */}
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                     {c.estado && (
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                                            {c.estado}
-                                        </span>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                                                {t(`consumers.status.${c.estado.toLowerCase().replace(/ /g, '_')}`, { defaultValue: c.estado })}
+                                            </span>
                                     )}
                                     {c.responsable && (
                                         <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: 'var(--bg-elevated)', color: 'var(--text)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -301,17 +303,17 @@ export default function Consumidores() {
 
                                 {c.notas && (
                                     <div style={{ fontSize: '0.9rem', background: 'var(--bg-elevated)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                                        <strong>Notas:</strong> {c.notas}
+                                        <strong>{t('common.notes')}:</strong> {c.notas}
                                     </div>
                                 )}
 
                                 {/* Card Footer Actions */}
                                 <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px dashed var(--border)' }}>
                                     <Button variant="primary" style={{ flex: 1, padding: '8px' }} onClick={() => handleOpenActivity(c.id, c.nombre)}>
-                                        <Plus size={16} /> Actividad
+                                        <Plus size={16} /> {t('common.activity')}
                                     </Button>
                                     <Button variant="secondary" style={{ flex: 1, padding: '8px' }} onClick={() => toggleHistory(c.id)}>
-                                        <MessageSquare size={16} /> {isExpanded ? 'Ocultar' : `Historial (${acts.length})`}
+                                        <MessageSquare size={16} /> {isExpanded ? t('common.hide') : `${t('common.history')} (${acts.length})`}
                                     </Button>
                                 </div>
 
@@ -335,13 +337,13 @@ export default function Consumidores() {
                                             }}>
                                                 <div style={{ color: 'var(--text)', marginBottom: '4px', lineHeight: 1.4 }}>{a.descripcion}</div>
                                                 <div className="muted" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
-                                                    <Clock size={12} /> {new Date(a.fecha).toLocaleString('es-AR')}
+                                                    <Clock size={12} /> {new Date(a.fecha).toLocaleString()}
                                                     {a.usuario && <><User size={12} style={{ marginLeft: '6px' }} /> {a.usuario}</>}
                                                 </div>
                                             </div>
                                         )) : (
                                             <div className="muted" style={{ textAlign: 'center', padding: '16px', background: 'var(--bg-elevated)', borderRadius: '12px' }}>
-                                                No hay actividades registradas.
+                                                {t('consumers.card.no_activities')}
                                             </div>
                                         )}
                                     </div>
@@ -355,7 +357,7 @@ export default function Consumidores() {
             {!loading && total > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '24px' }}>
                     <Button variant="secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft size={16} /></Button>
-                    <span className="muted">Página {page} de {totalPages}</span>
+                    <span className="muted">{t('common.page')} {page} {t('common.of')} {totalPages}</span>
                     <Button variant="secondary" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight size={16} /></Button>
                     <select
                         className="input"
@@ -409,7 +411,7 @@ export default function Consumidores() {
                             border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer',
                             boxShadow: '0 8px 20px -6px rgba(0, 0, 0, 0.3)'
                         }}
-                        title="Nuevo Consumidor"
+                        title={t('consumers.new_consumer')}
                     >
                         <Plus size={32} />
                     </motion.button>

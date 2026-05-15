@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ClipboardList, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatUser } from '../../hooks/useChat';
@@ -25,6 +26,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     isTaskModalOpen, setIsTaskModalOpen, taskForm, setTaskForm, 
     usuarios, selectedUser, sendingTask, handleSendTask 
 }) => {
+    const { t } = useTranslation();
     if (!isTaskModalOpen) return null;
 
     return (
@@ -40,9 +42,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                         <div>
                             <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px', letterSpacing: '-0.01em' }}>
                                 <ClipboardList size={22} color="var(--accent)" />
-                                Asignar Tarea
+                                {t('chat.task_modal.title')}
                             </h2>
-                            <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Asignando a: <strong>{selectedUser?.nombre || selectedUser?.email.split('@')[0]}</strong></p>
+                            <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('common.assigning_to')}: <strong>{selectedUser?.nombre || selectedUser?.email.split('@')[0]}</strong></p>
                         </div>
                         <button onClick={() => setIsTaskModalOpen(false)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px', cursor: 'pointer', color: 'var(--text-muted)' }}>
                             <X size={20} />
@@ -51,25 +53,25 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
                     <div style={{ padding: '28px', overflowY: 'auto' }} className="custom-scrollbar">
                         <form id="chat-task-form" onSubmit={handleSendTask} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.9rem' }}>Título de la tarea *</label>
-                                <input required type="text" placeholder="Ej: Revisar carga de ruta" style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none' }}
+                             <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.9rem' }}>{t('chat.task_modal.field_title')} *</label>
+                                <input required type="text" placeholder={t('common.placeholders.task_example')} style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none' }}
                                     value={taskForm.titulo} onChange={e => setTaskForm({ ...taskForm, titulo: e.target.value })} />
                             </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.9rem' }}>Descripción</label>
-                                <textarea rows={3} placeholder="Detalles opcionales..." style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none', resize: 'none' }}
+                             <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.9rem' }}>{t('chat.task_modal.field_desc')}</label>
+                                <textarea rows={3} placeholder={t('common.placeholders.optional_details')} style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none', resize: 'none' }}
                                     value={taskForm.descripcion} onChange={e => setTaskForm({ ...taskForm, descripcion: e.target.value })} />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.9rem' }}>Fecha de Vencimiento</label>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.9rem' }}>{t('chat.task_modal.field_date')}</label>
                                     <input type="date" style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none' }}
                                         value={taskForm.fecha_vencimiento} onChange={e => setTaskForm({ ...taskForm, fecha_vencimiento: e.target.value })} />
                                 </div>
                             </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '12px', fontWeight: 700, fontSize: '0.9rem' }}>Personas asignadas</label>
+                             <div>
+                                <label style={{ display: 'block', marginBottom: '12px', fontWeight: 700, fontSize: '0.9rem' }}>{t('chat.task_modal.field_assignee')}</label>
                                 <div style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '16px', border: '1px solid var(--border)', maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     {usuarios.map(u => (
                                         <label key={u.email} style={{ 
@@ -94,15 +96,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                         </form>
                     </div>
 
-                    <div style={{ padding: '20px 28px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: 'var(--bg-glass)' }}>
-                        <button type="button" onClick={() => setIsTaskModalOpen(false)} style={{ padding: '12px 20px', borderRadius: '14px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+                     <div style={{ padding: '20px 28px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: 'var(--bg-glass)' }}>
+                        <button type="button" onClick={() => setIsTaskModalOpen(false)} style={{ padding: '12px 20px', borderRadius: '14px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 600, cursor: 'pointer' }}>{t('common.cancel')}</button>
                         <button type="submit" form="chat-task-form" disabled={sendingTask || !taskForm.titulo.trim() || taskForm.asignado_a.length === 0}
                             style={{ 
                                 padding: '12px 24px', borderRadius: '14px', background: 'var(--accent)', border: 'none', 
                                 color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
                                 opacity: (sendingTask || !taskForm.titulo.trim() || taskForm.asignado_a.length === 0) ? 0.6 : 1 
                             }}>
-                            {sendingTask ? 'Asignando...' : 'Asignar Tarea'}
+                             {sendingTask ? t('chat.task_modal.sending') : t('common.save')}
                         </button>
                     </div>
                 </motion.div>

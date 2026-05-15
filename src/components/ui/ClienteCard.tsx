@@ -1,4 +1,5 @@
 import React, { memo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Phone, MapPin, Mail, Calendar, Edit2, Trash2, User, Clock, Sparkles, Wand2 } from 'lucide-react';
 import { Button } from './Button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,7 +26,7 @@ interface Props {
     onOpenActivity: (id: string, nombre: string) => void;
 }
 
-const getAISmartTags = (activities: ClientActivity[], c: Client) => {
+const getAISmartTags = (activities: ClientActivity[], c: Client, t: any) => {
     const allText = activities.map(a => `${a.descripcion} ${a.notas || ''}`).join(' ').toLowerCase();
     const tags: { text: string; color: string }[] = [];
     
@@ -33,22 +34,22 @@ const getAISmartTags = (activities: ClientActivity[], c: Client) => {
     const situacion = c.situacion?.toLowerCase() || '';
 
     // 1. ESTADO DE ADOPCIÓN (REGLAS DE NEGOCIO)
-    if (estadoNum === 3) tags.push({ text: '📱 App (Sin Tienda)', color: '#f59e0b' });
-    if (estadoNum === 4) tags.push({ text: '✨ Tienda Orgánica', color: '#8b5cf6' });
-    if (estadoNum === 5) tags.push({ text: '🤝 Convertido (Field)', color: '#10b981' });
-    if (estadoNum === 2 || estadoNum === 6) tags.push({ text: '🚫 No Interesado', color: '#ef4444' });
+    if (estadoNum === 3) tags.push({ text: t('common.tags.app_no_store', { defaultValue: '📱 App (Sin Tienda)' }), color: '#f59e0b' });
+    if (estadoNum === 4) tags.push({ text: t('common.tags.organic_store', { defaultValue: '✨ Tienda Orgánica' }), color: '#8b5cf6' });
+    if (estadoNum === 5) tags.push({ text: t('common.tags.converted_field', { defaultValue: '🤝 Convertido (Field)' }), color: '#10b981' });
+    if (estadoNum === 2 || estadoNum === 6) tags.push({ text: t('common.tags.not_interested', { defaultValue: '🚫 No Interesado' }), color: '#ef4444' });
 
     // 2. SITUACIÓN OPERATIVA
-    if (situacion === 'en funcionamiento') tags.push({ text: '🚀 Operativo', color: '#10b981' });
-    else if (situacion === 'en proceso') tags.push({ text: '⚒️ Cargando Catálogo', color: '#3b82f6' });
-    else if (situacion === 'sin comunicacion nueva' && (estadoNum >= 3)) tags.push({ text: '❓ Estado Incierto', color: '#64748b' });
+    if (situacion === 'en funcionamiento') tags.push({ text: t('common.tags.operational', { defaultValue: '🚀 Operativo' }), color: '#10b981' });
+    else if (situacion === 'en proceso') tags.push({ text: t('common.tags.loading_catalog', { defaultValue: '⚒️ Cargando Catálogo' }), color: '#3b82f6' });
+    else if (situacion === 'sin comunicacion nueva' && (estadoNum >= 3)) tags.push({ text: t('common.tags.uncertain_state', { defaultValue: '❓ Estado Incierto' }), color: '#64748b' });
 
     // 3. ALERTAS DE HISTORIAL
     if (allText.includes('error') || allText.includes('bug') || allText.includes('falla')) 
-        tags.push({ text: '🛠️ Soporte Urgente', color: '#dc2626' });
+        tags.push({ text: t('common.tags.urgent_support', { defaultValue: '🛠️ Soporte Urgente' }), color: '#dc2626' });
 
     if (allText.includes('señor grande') || allText.includes('celular viejo')) 
-        tags.push({ text: '📵 Barrera Técnica', color: '#64748b' });
+        tags.push({ text: t('common.tags.technical_barrier', { defaultValue: '📵 Barrera Técnica' }), color: '#64748b' });
 
     return tags;
 };
@@ -65,6 +66,7 @@ export const ClienteCard = memo<Props>(({
     onRegistrarLlamada,
     onOpenActivity
 }) => {
+    const { t } = useTranslation();
     const { isDemoMode, empresaActiva }: any = useAuth();
     const [aiResult, setAiResult] = useState<any>(null);
     const [isSummarizing, setIsSummarizing] = useState(false);
@@ -94,7 +96,7 @@ export const ClienteCard = memo<Props>(({
             setAiResult(res);
         } catch (error) {
             console.error(error);
-            toast.error("Error al generar análisis.");
+            toast.error(t('common.error_ai_strategy'));
         } finally {
             setIsSummarizing(false);
         }
@@ -115,7 +117,7 @@ export const ClienteCard = memo<Props>(({
 
     const { level: churnLevel, color: churnColor, label: churnLabel, diasSinContacto } = getChurnRisk(c);
     const showChurnWarning = churnLevel === 'alto' || churnLevel === 'medio';
-    const aiTags = getAISmartTags(acts, c);
+    const aiTags = getAISmartTags(acts, c, t);
 
     return (
         <div className="bento-card" style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
@@ -124,10 +126,10 @@ export const ClienteCard = memo<Props>(({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, paddingRight: '12px' }}>
                     <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
-                        {c.nombre_local || c.nombre || "(Sin nombre)"}
+                        {c.nombre_local || c.nombre || t('clients.card.no_name')}
                     </h3>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                        Creado: {c.clientes?.created_at ? new Date(c.clientes.created_at).toLocaleDateString('es-AR') : c.created_at ? new Date(c.created_at).toLocaleDateString('es-AR') : '-'}
+                        {t('clients.card.created')}: {c.clientes?.created_at ? new Date(c.clientes.created_at).toLocaleDateString() : c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
@@ -143,8 +145,8 @@ export const ClienteCard = memo<Props>(({
                         {(c.fecha_proximo_contacto || c.hora_proximo_contacto) && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent)', fontWeight: 600, marginTop: '4px' }}>
                                 <Calendar size={15} />
-                                Próx: {c.fecha_proximo_contacto ? formatToLocal(c.fecha_proximo_contacto) : ''}
-                                {c.hora_proximo_contacto ? ` a las ${c.hora_proximo_contacto.slice(0, 5)}` : ""}
+                                {t('clients.card.next_contact')}: {c.fecha_proximo_contacto ? formatToLocal(c.fecha_proximo_contacto) : ''}
+                                {c.hora_proximo_contacto ? ` ${t('clients.card.at_time')} ${c.hora_proximo_contacto.slice(0, 5)}` : ""}
                             </div>
                         )}
 
@@ -164,11 +166,11 @@ export const ClienteCard = memo<Props>(({
                 </div>
 
                 <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => onEdit(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title="Editar">
+                    <button onClick={() => onEdit(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }} title={t('clients.card.edit')}>
                         <Edit2 size={16} />
                     </button>
                     {!isDemoMode && (
-                        <button onClick={() => onDelete(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title="Eliminar">
+                        <button onClick={() => onDelete(c.id)} className="" style={{ padding: '8px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--danger)', cursor: 'pointer' }} title={t('clients.card.delete')}>
                             <Trash2 size={16} />
                         </button>
                     )}
@@ -193,7 +195,7 @@ export const ClienteCard = memo<Props>(({
                 )}
                 {c.interes && (
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: c.interes === 'Alto' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg)', color: c.interes === 'Alto' ? '#ef4444' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                        🔥 Interés: {c.interes}
+                        {t('clients.card.interest_fire')}: {c.interes}
                     </span>
                 )}
                 {c.responsable && (
@@ -204,7 +206,7 @@ export const ClienteCard = memo<Props>(({
                 
                 {showChurnWarning && (
                     <span 
-                        title={`No se registra actividad hace ${diasSinContacto > 1000 ? 'mucho' : diasSinContacto} días`}
+                        title={t('clients.card.no_activity_for', { days: diasSinContacto > 1000 ? t('clients.card.never') : diasSinContacto })}
                         style={{ 
                             fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '99px', 
                             background: `${churnColor}15`, color: churnColor, border: `1px solid ${churnColor}50`, 
@@ -212,7 +214,7 @@ export const ClienteCard = memo<Props>(({
                             animation: churnLevel === 'alto' ? 'pulse 2s infinite' : 'none'
                         }}
                     >
-                        {churnLabel} ({diasSinContacto > 1000 ? 'Nunca' : `${diasSinContacto}d`})
+                        {churnLabel} ({diasSinContacto > 1000 ? t('clients.card.never') : `${diasSinContacto}${t('clients.card.days_short')}`})
                     </span>
                 )}
 
@@ -269,7 +271,7 @@ export const ClienteCard = memo<Props>(({
                         {/* Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#8b5cf6', fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                                <Sparkles size={16} /> Inteligencia Estratégica
+                                <Sparkles size={16} /> {t('clients.card.ai_strategy_title')}
                             </div>
                             <button 
                                 onClick={() => setAiResult(null)}
@@ -301,14 +303,14 @@ export const ClienteCard = memo<Props>(({
                                 display: 'flex', flexDirection: 'column', gap: '8px'
                             }}>
                                 <div style={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: aiResult.alertas.length > 0 ? '#ef4444' : 'var(--text-muted)' }}>
-                                    ⚠️ Alertas Críticas
+                                    {t('clients.card.critical_alerts')}
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     {aiResult.alertas.length > 0 ? aiResult.alertas.map((a: string, i: number) => (
                                         <div key={i} style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             • {a}
                                         </div>
-                                    )) : <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Sin alertas detectadas.</div>}
+                                    )) : <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{t('clients.card.no_alerts')}</div>}
                                 </div>
                             </div>
                         </div>
@@ -316,7 +318,7 @@ export const ClienteCard = memo<Props>(({
                         {/* Patrones Box */}
                         <div style={{ padding: '16px', borderRadius: '18px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
                             <div style={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Wand2 size={12} /> Detección de Patrones
+                                <Wand2 size={12} /> {t('clients.card.pattern_detection')}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                 {aiResult.patrones.map((p: string, i: number) => (
@@ -325,7 +327,7 @@ export const ClienteCard = memo<Props>(({
                                         {p}
                                     </div>
                                 ))}
-                                {aiResult.patrones.length === 0 && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Analizando tendencias...</div>}
+                                {aiResult.patrones.length === 0 && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('clients.card.analyzing_trends')}</div>}
                             </div>
                         </div>
 
@@ -336,7 +338,7 @@ export const ClienteCard = memo<Props>(({
                             border: '1px solid rgba(139, 92, 246, 0.2)'
                         }}>
                             <div style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', color: '#8b5cf6', marginBottom: '12px' }}>
-                                🎯 Próximos Hitos (Next Milestones)
+                                {t('clients.card.next_milestones')}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {aiResult.planAccion.map((p: string, i: number) => (
@@ -369,14 +371,14 @@ export const ClienteCard = memo<Props>(({
                     }}
                 >
                     {isSummarizing ? <Sparkles size={18} className="animate-spin" /> : <Wand2 size={18} />}
-                    {isSummarizing ? 'IA Generando Estrategia...' : '✨ Analizar Estrategia con IA'}
+                    {isSummarizing ? t('clients.card.ai_summarizing') : t('clients.card.ai_summarize_btn')}
                 </button>
             )}
 
             <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', marginRight: '2px' }}>
-                        <Calendar size={13} style={{ marginRight: '4px' }} /> Próx. contacto:
+                        <Calendar size={13} style={{ marginRight: '4px' }} /> {t('clients.card.quick_next_contact')}
                     </span>
                     {[{ label: '+3d', days: 3 }, { label: '+7d', days: 7 }, { label: '+15d', days: 15 }, { label: '+1mes', days: 30 }].map(({ label, days }) => (
                         <button
@@ -393,17 +395,17 @@ export const ClienteCard = memo<Props>(({
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <button onClick={() => onToggleHistory(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Clock size={16} /> Historial ({acts.length})
+                        <Clock size={16} /> {t('clients.card.history')} ({acts.length})
                     </button>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={() => onRegistrarVisita(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>
-                            🏪 Visita {visitCount > 0 && <span>({visitCount})</span>}
+                            🏪 {t('clients.card.visit')} {visitCount > 0 && <span>({visitCount})</span>}
                         </button>
                         <button onClick={() => onRegistrarLlamada(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-active)', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
-                            📞 Llamada {callCount > 0 && <span>({callCount})</span>}
+                            📞 {t('clients.card.call')} {callCount > 0 && <span>({callCount})</span>}
                         </button>
                         <Button variant="secondary" onClick={() => onOpenActivity(c.id, c.nombre || c.nombre_local || '')} style={{ padding: '6px 12px', fontSize: '0.85rem', borderRadius: '8px' }}>
-                            + Actividad
+                            {t('clients.card.add_activity')}
                         </Button>
                     </div>
                 </div>

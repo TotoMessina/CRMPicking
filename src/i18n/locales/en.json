@@ -1,0 +1,947 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading...",
+    "no_results": "No results found",
+    "today": "Today",
+    "date": "Date",
+    "never": "Never",
+    "saving": "Saving...",
+    "time": {
+      "years": "years",
+      "months": "months",
+      "days": "days",
+      "hours": "hours"
+    },
+    "actions": {
+      "undo": "Undo",
+      "move_up": "Move Up",
+      "move_down": "Move Down",
+      "remove": "Remove",
+      "cancel": "Cancel",
+      "complete": "Complete",
+      "refresh": "Refresh",
+      "optimize": "Optimize"
+    },
+    "logout": "Log out",
+    "settings": "Settings",
+    "language": "Language",
+    "dashboard": "Dashboard",
+    "notifications": "Notifications",
+    "update": "Update",
+    "light_mode": "Light mode",
+    "dark_mode": "Dark mode",
+    "change_theme": "Change theme",
+    "view_all": "View all",
+    "days_short": "d",
+    "online": "Online",
+    "reference": "Reference",
+    "linking_to": "Linking to",
+    "assigning_to": "Assigning to",
+    "complete": "Complete...",
+    "searching": "Searching...",
+    "thinking": "Analyzing...",
+    "yes": "Yes",
+    "no": "No",
+    "just_now": "just now",
+    "all": "All",
+    "publish": "Publish",
+    "at_time": "at",
+    "hide": "Hide",
+    "page": "Page",
+    "of": "of",
+    "description": "Description",
+    "notes": "Notes",
+    "activity": "Activity",
+    "history": "History",
+    "actions": {
+      "view_on_board": "View on Board",
+      "open_record": "Open record",
+      "locate_on_map": "Locate on map",
+      "close_menu": "Close menu",
+      "dropdown_actions": "Actions"
+    },
+    "errors": {
+      "unexpected": "An unexpected error occurred",
+      "enter_address_first": "Please enter an address first.",
+      "load_error": "Error loading data",
+      "delete_error": "Error deleting"
+    }
+  },
+  "dashboard": {
+    "sync_mission": "Syncing Mission Control...",
+    "system_active": "System Active",
+    "welcome_back": "Hello, {{name}}",
+    "managing": "Managing",
+    "new_today": "new today",
+    "no_news_today": "No news today",
+    "search_placeholder": "Search point of sale...",
+    "no_address": "No address",
+    "active_nodes": "active nodes",
+    "status": {
+      "no_docs": "Pending Documentation",
+      "unconfirmed": "Account not yet confirmed",
+      "confirmed": "Confirmed and delivering"
+    },
+    "filters": {
+      "search_placeholder": "Search by Name, Tel, Location...",
+      "advanced": "Advanced Filters",
+      "status": "Status",
+      "responsible": "Responsible",
+      "any_responsible": "Any responsible"
+    },
+    "hero": {
+      "clients": "Clients",
+      "in_field": "In Field",
+      "consumers": "Consumers"
+    },
+    "kpis": {
+      "pos": "Points of Sale",
+      "delivery": "Deliveries",
+      "consumers": "Consumers",
+      "churn": "Churn Detected",
+      "active": "Active",
+      "alert": "⚠ Alert"
+    },
+    "quick_actions": "Quick Actions",
+    "actions": {
+      "new_client": "New Client",
+      "new_client_desc": "Load point of sale",
+      "route": "Day's Route",
+      "route_desc": "Plan logistics",
+      "agenda": "Agenda",
+      "agenda_desc": "Schedule visits",
+      "chat": "Internal Chat",
+      "chat_desc": "Communicate with staff",
+      "ai": "Internal AI",
+      "ai_desc": "AI Analysis",
+      "pipeline": "Pipeline",
+      "pipeline_desc": "Sales tracking"
+    },
+    "geographic_coverage": "Geographic Coverage",
+    "fleet_monitor": "Fleet Monitor",
+    "churn_risk": "Churn Risk",
+    "no_alerts": "No critical alerts",
+    "weekly_growth": "Weekly Growth",
+    "portfolio_mix": "Portfolio Mix",
+    "recent_activity": "Recent Activity",
+    "no_recent_visits": "No recent visits",
+    "charts": {
+      "new_clients": "New Locals"
+    }
+  },
+  "menu": {
+    "groups": {
+      "activaciones": "Activations",
+      "operaciones": "Operations",
+      "planificación": "Planning",
+      "mapas": "Maps",
+      "listados": "Lists",
+      "administrativo": "Administrative"
+    },
+    "inicio": "Home",
+    "novedades": "News",
+    "chat_interno": "Internal Chat",
+    "clientes": "Clients",
+    "pipeline": "Pipeline",
+    "ruta_de_hoy": "Today's Route",
+    "buscador_historial": "History Search",
+    "asignador_de_rutas": "Route Assignor",
+    "consumidores": "Consumers",
+    "repartidores": "Deliveries",
+    "proveedores": "Suppliers",
+    "usuarios": "Work Team",
+    "empresas": "Company Management",
+    "internal_ai": "InsideBot AI",
+    "inventario_marketing": "Marketing Inventory",
+    "calendario": "Calendar",
+    "horarios": "Schedules",
+    "tablero_tareas": "Task Board",
+    "campañas": "Campaigns",
+    "mapa_clientes": "Client Map",
+    "mapa_repartidores": "Delivery Map",
+    "mapa_consumidores": "Consumer Map",
+    "mapa_global": "Global Map",
+    "estadísticas": "Statistics",
+    "tickets": "Tickets",
+    "empresas": "Companies",
+    "panel_súper-admin": "Super-Admin Panel",
+    "permisos": "Permissions",
+    "auditoría": "Audit",
+    "radar_predictivo_(ia)": "Predictive Radar (AI)",
+    "prospecteo_tinder": "Tinder Prospecting",
+    "configuración": "Settings"
+  },
+  "sidebar": {
+    "messaging": "Messaging",
+    "system_activity": "System Activity",
+    "route_mode": "Route Mode",
+    "active": "Active",
+    "off": "OFF",
+    "version": "v1.2.5",
+    "notifications_active": "Active notifications",
+    "activate_notifications": "Activate notifications",
+    "deactivate_route_mode": "Deactivate Route Mode",
+    "activate_route_mode_title": "Activate Route Mode"
+  },
+  "login": {
+    "welcome": "Welcome to",
+    "welcome_title": "Welcome",
+    "welcome_subtitle": "Enter your credentials to continue",
+    "email": "Email",
+    "password": "Password",
+    "enter": "Log in",
+    "forgot_password": "Forgot your password?",
+    "authenticating": "Logging in...",
+    "invalid_credentials": "Incorrect credentials. Please check your email and password.",
+    "email_not_confirmed": "Your email has not been confirmed. Please check your inbox.",
+    "demo_accessing": "Accessing Demo account...",
+    "demo_login": "Access Demo",
+    "or_also": "or also"
+  },
+  "settings": {
+    "language_desc": "Select your preferred language.",
+    "account_config": "Account Settings",
+    "account_config_desc": "Manage your profile and security options.",
+    "profile": "Profile",
+    "profile_desc": "Public information of your account.",
+    "profile_name": "Username",
+    "email": "Email",
+    "email_desc": "Email cannot be changed directly.",
+    "save_changes": "Save Changes",
+    "saving": "Saving...",
+    "security": "Security",
+    "security_desc": "Change your access password.",
+    "new_password": "New password",
+    "confirm_password": "Confirm password",
+    "update_password": "Change Password",
+    "updating": "Updating...",
+    "avatar": "Profile Photo",
+    "avatar_desc": "Shown in the sidebar and your user profile.",
+    "change_photo": "Change photo",
+    "remove_photo": "Remove photo",
+    "avatar_hint": "JPG, PNG, WEBP or GIF. Maximum {{size}}MB.",
+    "reports": "Automatic Reports",
+    "reports_desc": "Weekly KPI report sent every Monday at 08:00 AM.",
+    "reports_notice": "Configuration required (one-time):",
+    "report_day": "Delivery day (08:00 AM)",
+    "report_day_desc": "Choose which day you want to receive your report for the last 7 days.",
+    "report_day_updated": "Delivery day updated",
+    "report_day_error": "Error updating report day",
+    "invalid_email": "Enter a valid email",
+    "email_exists": "That email is already in the list",
+    "recipient_error": "Error adding recipient",
+    "recipient_added": "{{email}} added as recipient",
+    "recipient_removed": "{{email}} removed",
+    "no_recipients_error": "Add at least one recipient first",
+    "test_report_success": "✅ Test report sent. Check your inbox.",
+    "test_report_error": "Error sending: {{error}}",
+    "invalid_image": "File must be an image (JPG, PNG, WEBP, etc.)",
+    "image_too_large": "Image cannot exceed {{size}}MB",
+    "avatar_updated": "Profile photo updated!",
+    "upload_error": "Error uploading image: {{error}}",
+    "confirm_remove_avatar": "Remove your profile photo?",
+    "avatar_removed": "Profile photo removed",
+    "remove_avatar_error": "Error removing photo",
+    "empty_name": "Name cannot be empty",
+    "profile_updated": "Profile successfully updated",
+    "profile_error": "Error updating profile",
+    "empty_password": "Enter a new password",
+    "password_too_short": "Password must be at least 6 characters",
+    "passwords_mismatch": "Passwords do not match",
+    "password_updated": "Password successfully updated",
+    "password_error": "Error updating password",
+    "confirm_delete_group": "Delete this group? Clients will no longer be associated with it.",
+    "pipeline_desc": "Customize your clients' states and stages.",
+    "configure_stages": "CONFIGURE STAGES",
+    "group_name_placeholder": "Ex: VIP Clients, South Region...",
+    "reports_step_1": "Create a free account at resend.com and get your API Key.",
+    "reports_step_2": "In Supabase Dashboard → Edge Functions → send-weekly-report → Secrets → add RESEND_API_KEY.",
+    "reports_step_3": "Run supabase/setup_weekly_report.sql in the Supabase SQL Editor.",
+    "reports_step_4": "Deploy the function: supabase functions deploy send-weekly-report",
+    "recipients": "Report Recipients",
+    "no_recipients": "No recipients configured yet.",
+    "add_recipient": "Add Recipient",
+    "test_report": "Send Test Report Now",
+    "test_report_desc": "Sends a report of the last weekly period to all configured recipients.",
+    "groups": "Client Groups",
+    "groups_desc": "Customize how you segment your clients.",
+    "group_name": "Group Name",
+    "color": "Color",
+    "create_group": "Create Group",
+    "update_group": "Update Group",
+    "no_groups": "You haven't created any groups yet.",
+    "days": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    }
+  },
+  "clients": {
+    "title": "Clients",
+    "agenda_today": "Today's Agenda",
+    "subtitle": "Interactive management and segmentation.",
+    "agenda_subtitle": "Scheduled contacts.",
+    "actions": "Actions",
+    "download_model": "Download Excel Model",
+    "export": "Export Clients",
+    "import": "Import Excel",
+    "list": "List",
+    "sort_by": "Sort by",
+    "no_results": "No clients found with those filters.",
+    "page_x_of_y": "Page {{page}} of {{totalPages}}",
+    "new_client_title": "Register New Client",
+    "sorting": {
+      "updated": "Last edited",
+      "recent": "Most recent (creation)",
+      "oldest": "Oldest (creation)",
+      "activity_desc": "Last activity (Recent first)",
+      "activity_asc": "Last activity (Oldest first)",
+      "az": "Name (A - Z)",
+      "za": "Name (Z - A)"
+    },
+    "filters": {
+      "search_placeholder": "Search by Name or Local...",
+      "advanced_filters": "Advanced Filters",
+      "search_placeholder_field": "Search {{label}}...",
+      "no_results_search": "No results found",
+      "clear": "Clear",
+      "all": "All",
+      "any": "Any {{label}}",
+      "phone": "Phone",
+      "address": "Address",
+      "groups": "Groups",
+      "sectors": "Rubros",
+      "states": "States",
+      "situations": "Situations",
+      "contact_types": "Contact Types",
+      "responsibles": "Responsibles",
+      "created_by": "Created By",
+      "interest": "Interest",
+      "contact_styles": "Contact Styles",
+      "date_added_from": "Date Added (From)",
+      "date_added_to": "Date Added (To)",
+      "agenda_from": "Agenda (From)",
+      "agenda_to": "Agenda (To)",
+      "overdue": "Overdue",
+      "next_7_days": "Next 7"
+    },
+    "card": {
+      "no_name": "(No name)",
+      "created": "Created",
+      "next_contact": "Next",
+      "at_time": "at",
+      "edit": "Edit",
+      "delete": "Delete",
+      "interest_fire": "🔥 Interest",
+      "never": "Never",
+      "days_short": "d",
+      "no_activity_for": "No activity recorded for {{days}} days",
+      "ai_strategy_title": "Strategic Intelligence",
+      "critical_alerts": "⚠️ Critical Alerts",
+      "no_alerts": "No alerts detected.",
+      "pattern_detection": "Pattern Detection",
+      "analyzing_trends": "Analyzing trends...",
+      "next_milestones": "🎯 Next Milestones",
+      "ai_summarizing": "AI Generating Strategy...",
+      "ai_summarize_btn": "✨ Analyze Strategy with AI",
+      "quick_next_contact": "Next contact:",
+      "history": "History",
+      "visit": "Visit",
+      "activity": {
+        "add_title": "Add Activity",
+        "consumer": "Consumer",
+        "description": "Description",
+        "description_placeholder": "Management detail...",
+        "date": "Date and Time",
+        "user": "User",
+        "success": "Activity added",
+        "error_description": "Description is required"
+      },
+      "add_activity": "+ Activity"
+    },
+    "modal": {
+      "title_edit": "Edit Client",
+      "title_new": "New Client",
+      "discard_changes": "Discard changes?",
+      "discard_msg": "You have unsaved changes. Are you sure you want to exit?",
+      "discard_confirm": "Yes, exit",
+      "discard_cancel": "Keep editing",
+      "saving": "Saving...",
+      "save": "Save Client",
+      "next": "Next",
+      "back": "Back",
+      "steps": {
+        "contact": "1. Local & Contact Details",
+        "classification": "2. Client Classification",
+        "agenda": "3. Agenda & Notes"
+      },
+      "fields": {
+        "local_name": "Local Name",
+        "address": "Address",
+        "contact_name": "Contact Name",
+        "phone": "Phone",
+        "email": "Mail",
+        "cuit": "CUIT",
+        "hours": "Business Hours",
+        "contact_style": "Contact Style",
+        "contact_type": "Contact Type",
+        "responsible": "Responsible",
+        "category": "Category",
+        "state": "State",
+        "interest": "Interest",
+        "digital_sales": "Digital Sales?",
+        "groups": "Groups / Tags",
+        "situation": "Situation",
+        "next_visit": "Next Visit",
+        "notes": "Notes"
+      },
+      "errors": {
+        "required": "\"{{label}}\" is required",
+        "phone_verify": "Enter a phone number to verify",
+        "local_name_ia": "Enter local name to use AI"
+      },
+      "placeholders": {
+        "notes": "Add any relevant details...",
+        "select": "Select...",
+        "digital_sales_detail": "Which one? Ex: Pedidos Ya, Rappi..."
+      },
+      "ia": {
+        "analyzing": "AI analyzing local...",
+        "completed": "AI completed data!",
+        "error": "Error querying AI",
+        "magic_fill": "✨ Analyze with AI",
+        "verifying_phone": "Verifying...",
+        "verify_phone_msg": "Enter client's phone to verify if it already exists in the database.",
+        "verify_continue": "Verify and Continue",
+        "geocoding": "Finding location...",
+        "geocode_success": "Address located successfully.",
+        "geocode_error": "We couldn't find that address. Try adding city or country.",
+        "maps_error": "Error connecting to map service."
+      },
+      "toast": {
+        "client_found": "Client found: {{name}}",
+        "new_phone": "New phone, you can continue with loading.",
+        "saved_offline": "💾 Saved offline. Will sync soon.",
+        "updated": "Client updated",
+        "created": "Client successfully created",
+        "load_error": "Error loading client data",
+        "save_error": "Error saving: {{error}}"
+      }
+    }
+  },
+  "pipeline": {
+    "title": "Pipeline",
+    "subtitle": "Local commercial management.",
+    "search_placeholder": "Search local, responsible...",
+    "search_mobile": "Search...",
+    "configure": "CONFIGURE",
+    "toast": {
+      "load_error": "Failed to load pipeline",
+      "move_error": "Failed to move prospect"
+    },
+    "activity": {
+      "status_change": "Status changed from {{oldStatus}} to {{newStatus}}"
+    },
+    "card": {
+      "no_name": "No name",
+      "hot": "HOT",
+      "digital": "DIGITAL"
+    },
+    "settings": {
+      "title": "Workflow Settings",
+      "subtitle": "Manage stages and situations of your clients.",
+      "tabs": {
+        "stages": "Pipeline Stages",
+        "situations": "Situations (Tags)"
+      },
+      "info": {
+        "stages": "Order the main stages of the Kanban board.",
+        "situations": "Define secondary situations to segment clients in advanced states."
+      },
+      "form": {
+        "new_stage": "New Stage {{order}}",
+        "new_situation": "New Situation {{order}}",
+        "name_placeholder": "Name...",
+        "add_new": "ADD NEW",
+        "save_changes": "SAVE CHANGES",
+        "saving": "SAVING...",
+        "default": "DEFAULT",
+        "set_default": "SET DEFAULT"
+      },
+      "visible_in": "Visible in stages:",
+      "all_stages": "(All)",
+      "toast": {
+        "duplicate_name": "You cannot have two items with the same name.",
+        "delete_associated": "You cannot delete this because it has {{count}} associated clients.",
+        "delete_error": "Error deleting record",
+        "delete_success": "Deleted successfully",
+        "save_success": "Configuration saved",
+        "save_error": "Failed to save"
+      }
+    }
+  },
+  "tinder": {
+    "title": "Smart Prospecting",
+    "scheduled_today": "{{count}} Scheduled today",
+    "session_stat": "{{count}} Current session",
+    "postponed_stat": "{{count}} Postponed",
+    "vendedor_label": "Salesperson",
+    "fecha_label": "Date",
+    "choose_placeholder": "Choose...",
+    "loading": "Finding best candidates...",
+    "empty": {
+      "title": "All set for now!",
+      "desc": "No more high-risk clients requiring immediate attention.",
+      "refetch": "Reload candidates"
+    },
+    "card": {
+      "no_address": "No address",
+      "last_activity": "Last activity: {{date}}",
+      "never": "Never",
+      "days_no_contact": "{{count}} days without contact",
+      "general": "General",
+      "stats": {
+        "last_swipe": "Last swipe"
+      }
+    },
+    "map": {
+      "live_route": "Live Route Map",
+      "next": "NEXT"
+    },
+    "toast": {
+      "select_vendor": "Select a salesperson first",
+      "add_success": "Added to {{name}}",
+      "add_error": "Error adding to route",
+      "postpone_success": "Postponed for tomorrow",
+      "postpone_error": "Error postponing",
+      "load_error": "Error loading candidates"
+    }
+  },
+  "ruta": {
+    "title": "My Daily Route",
+    "loading": "Loading your route...",
+    "completed_stats": "{{count}}/{{total}} completed",
+    "unnamed_local": "Unnamed location",
+    "views": {
+      "list": "List",
+      "map": "Map",
+      "both": "Both"
+    },
+    "empty": {
+      "title": "No assigned visits",
+      "desc": "You have no scheduled locations for {{date}}.",
+      "this_date": "this date",
+      "contact_coordinator": "Check with your coordinator."
+    },
+    "status": {
+      "pendiente": "Pending",
+      "visitado": "Visited",
+      "ausente": "Absent",
+      "cancelado": "Cancelled"
+    },
+    "actions": {
+      "mark_visited": "Mark Visited"
+    },
+    "toast": {
+      "load_error": "Error loading your route",
+      "update_error": "Error updating status",
+      "marked_as": "Marked as {{status}}"
+    }
+  },
+  "asignador": {
+    "stats": {
+      "locales": "Locations",
+      "distance": "Distance",
+      "estimated_time": "Est. Time",
+      "visual_map": "Visual Map",
+      "active": "ACTIVE",
+      "hidden": "HIDDEN"
+    },
+    "mobile": {
+      "add": "Add",
+      "my_route": "My Route ({{count}})"
+    },
+    "config": {
+      "title": "Route Configuration",
+      "choose_vendor": "Choose Salesperson"
+    },
+    "tabs": {
+      "risk": "Risk Suggestions",
+      "search": "Search Location"
+    },
+    "risk_days": "{{count}} days without contact",
+    "no_alerts": "No critical alerts today",
+    "search_placeholder": "Location name...",
+    "route": {
+      "header": "Daily Route",
+      "empty_all": "Empty All",
+      "updating": "Updating list...",
+      "empty_desc": "No assigned locations.",
+      "empty_tip": "Use search or clone last route."
+    },
+    "actions": {
+      "add_note": "Add Note",
+      "edit_note": "Edit Note",
+      "view_note": "View Note",
+      "remove_from_list": "Remove from list",
+      "clone_last": "Clone Last",
+      "clone_tip": "Load locations from previous visit"
+    },
+    "modal": {
+      "note_title": "Message to Salesperson",
+      "note_placeholder": "Write special instructions, business hours, collection details..."
+    },
+    "whatsapp": {
+      "header": "ROUTE SHEET",
+      "vendor": "Salesperson",
+      "locales": "Locations",
+      "generated_by": "Generated by"
+    },
+    "confirm": {
+      "empty_all": "Are you sure you want to delete ALL planned visits for this salesperson on this date?",
+      "remove_client": "Remove {{name}} from route?"
+    },
+    "unnamed_local": "location",
+    "toast": {
+      "load_error": "Error loading route",
+      "select_user": "Select a user",
+      "already_in_route": "Already in route",
+      "add_error": "Error adding",
+      "add_success": "Added to {{name}}",
+      "delete_error": "Error deleting",
+      "empty_error": "Error emptying route",
+      "empty_success": "Route emptied 100%",
+      "no_prev_route": "No previous routes to clone",
+      "cloned_success": "Route cloned from {{date}}",
+      "cloning_error": "Error cloning",
+      "add_more": "Add more locations",
+      "optimizing": "Optimizing path...",
+      "optimized_success": "Route optimized without crossovers 🎯",
+      "save_note_error": "Could not save note",
+      "save_note_success": "Note saved"
+    }
+  },
+  "map": {
+    "zone": {
+      "title": "Zone",
+      "mark_today": "Mark \"Today\"",
+      "mark_done": "Mark \"Done\"",
+      "mark_extra": "Mark \"Extra\""
+    },
+    "popup": {
+      "no_rubro": "No category",
+      "next": "Next",
+      "unknown": "Unknown",
+      "edit_client": "Edit Client",
+      "assign_route": "Assign to Route",
+      "seen_ago": "Seen"
+    },
+    "my_location": "My Location",
+    "confirm": {
+      "delete_zone": "Delete this zone?"
+    },
+    "toast": {
+      "update_zone_error": "Error updating color",
+      "update_zone_success": "Color updated",
+      "delete_zone_error": "Error deleting zone",
+      "delete_zone_success": "Zone deleted",
+      "saving_zone": "Saving zone...",
+      "save_zone_error": "Error saving zone",
+      "save_zone_success": "Zone saved",
+      "select_activator": "Must select an activator",
+      "exporting_report": "Generating report...",
+      "load_history_error": "Error loading history",
+      "no_gps_data": "No location data for this day",
+      "export_success": "Report exported successfully",
+      "select_min_route": "Select at least 2 points to route"
+    }
+  },
+  "map_global": {
+    "legend": {
+      "title": "Active Layers",
+      "mobile_btn": "Layers ({{count}})"
+    },
+    "layers": {
+      "cliente": "Client",
+      "clientes": "Clients",
+      "consumidor": "Consumer",
+      "consumidores": "Consumers",
+      "repartidor": "Driver",
+      "repartidores": "Drivers",
+      "consum_short": "Consum.",
+      "repart_short": "Drivers"
+    },
+    "history": {
+      "title": "Route History",
+      "activator_label": "ACTIVATOR",
+      "select_user": "Select user...",
+      "distance": "Approx. Distance",
+      "points_count": "{{count}} points recorded every 1 min.",
+      "start": "Day Start",
+      "end": "Last Position",
+      "btn": "Route History"
+    },
+    "toast": {
+      "loading": "Loading global data...",
+      "updated": "Global map updated",
+      "error": "Error loading data",
+      "loading_history": "Loading route...",
+      "no_history": "No movements found for this date",
+      "history_found": "Found {{count}} points",
+      "history_error": "Error loading history"
+    }
+  },
+  "map_repart": {
+    "status": {
+      "unmanaged": "Documentation unmanaged",
+      "unconfirmed": "Account unconfirmed",
+      "active": "Account confirmed and active"
+    },
+    "stats": {
+      "in_zone": "in zone",
+      "total": "Total Drivers"
+    },
+    "legend": {
+      "title": "States",
+      "view_btn": "View Legend"
+    },
+    "popup": {
+      "responsible": "Resp",
+      "edit_btn": "Edit Driver"
+    },
+    "actions": {
+      "locate": "Locate Me",
+      "register": "Register Here",
+      "coverage": "Coverage",
+      "heat": "Heat"
+    },
+    "my_location": "My location",
+    "toast": {
+      "load_error": "Error loading drivers",
+      "heat_error": "Could not load heatmap",
+      "geo_unsupported": "Geolocation not supported",
+      "locating": "Finding location...",
+      "geo_success": "Location found",
+      "geo_error": "Error getting location",
+      "geo_denied": "Location permission denied",
+      "geo_unavailable": "Position unavailable (check GPS)",
+      "geo_timeout": "Request timeout",
+      "locate_first": "Must locate yourself first"
+    }
+  },
+  "chat": {
+    "loading_session": "Loading chat session...",
+    "sidebar": {
+      "title": "Messaging",
+      "search_placeholder": "Search contact...",
+      "loading": "Loading contacts...",
+      "no_contacts": "No contacts found",
+      "new_message": "New message",
+      "default_role": "User"
+    },
+    "area": {
+      "placeholder": "Type a message...",
+      "placeholder_context": "Type a related message...",
+      "no_selected": "Select a chat to start",
+      "loading": "Loading messages...",
+      "load_more": "Load more messages",
+      "smart_replies": "AI Suggestions",
+      "send": "Send",
+      "task_tooltip": "Create Task"
+    },
+    "task_modal": {
+      "title": "Create New Task",
+      "field_title": "Task Title",
+      "field_desc": "Description / Details",
+      "field_date": "Due Date",
+      "field_assign": "Assign to",
+      "assigning": "Assigning...",
+      "sending": "Sending...",
+      "send": "Send Task",
+      "toast": {
+        "success": "Task sent successfully",
+        "error": "Error sending task"
+      }
+    }
+  },
+  "news": {
+    "title": "Corporate",
+    "subtitle": "Stay up to date with the latest from {{company}}",
+    "search_placeholder": "Search posts or authors...",
+    "loading": "Loading feed...",
+    "empty": "No recent posts.",
+    "no_results": "No results found for selected filters.",
+    "confirm_delete": "Are you sure you want to delete this post?",
+    "poll_votes": "votes",
+    "modal": {
+      "roles_notice": "Visible only for selected roles.",
+      "back_to_edit": "Back to Edit",
+      "preview": "Preview"
+    },
+    "actions": {
+      "publish": "Publish",
+      "publishing": "Publishing...",
+      "pin": "Pin to Top",
+      "unpin": "Unpin from Top",
+      "ai_summarize": "Summarize with AI",
+      "ai_processing": "Processing with InsideBot...",
+      "share": "Share",
+      "like": "Like"
+    },
+    "filters": {
+      "posts": "Communications",
+      "polls": "Polls",
+      "media": "Multimedia",
+      "media_photo": "Photo",
+      "media_video": "Video"
+    },
+    "post_shared": "Post Shared",
+    "view_on_news": "View in News"
+  },
+  "inventory": {
+    "title": "Inventory",
+    "subtitle": "Stock control of materials for the field team",
+    "new_material": "New Material",
+    "loading": "Loading inventory...",
+    "low_stock": "LOW STOCK",
+    "initial_stock": "Initial Stock",
+    "min_stock_alert": "Minimum Alert",
+    "current": "Current",
+    "minimum": "Minimum",
+    "history": "History",
+    "confirm_delete": "Are you sure you want to delete this material?",
+    "placeholders": {
+      "name": "Ex: Flyers A5",
+      "desc": "Ex: Institutional flyer for new locals"
+    },
+    "toast": {
+      "load_error": "Error loading inventory",
+      "save_error": "Error saving material",
+      "save_success": "Material created successfully",
+      "delete_error": "Error deleting",
+      "delete_success": "Material deleted"
+    }
+  },
+  "consumers": {
+    "title": "Consumers",
+    "subtitle": "B2C management and contact history.",
+    "download_model": "Download Excel Model",
+    "export": "Export Consumers",
+    "import": "Import Excel",
+    "list": "List",
+    "no_results": "No consumers found with those filters.",
+    "new_consumer": "New Consumer",
+    "filters": {
+      "search_placeholder": "Search by Name, Tel, Location...",
+      "advanced": "Advanced Filters",
+      "phone": "Phone",
+      "location": "Location",
+      "status": "Status",
+      "responsible": "Responsible",
+      "any_responsible": "Any responsible"
+    },
+    "status": {
+      "lead": "Lead",
+      "contacted": "Contacted",
+      "interested": "Interested",
+      "client": "Client",
+      "not_interested": "Not interested"
+    },
+    "card": {
+      "next": "Next"
+    },
+    "toast": {
+      "load_error": "Error loading consumers",
+      "delete_error": "Could not delete.",
+      "delete_success": "Consumer deleted."
+    },
+    "confirm_delete": "Are you sure you want to mark this consumer as deleted?",
+    "activity": {
+      "add_title": "Add Activity",
+      "consumer": "Consumer",
+      "description": "Description",
+      "description_placeholder": "Management detail...",
+      "date": "Date and Time",
+      "user": "User",
+      "success": "Activity added",
+      "error_description": "Description is required"
+    }
+  },
+  "delivery": {
+    "title": "Deliveries",
+    "subtitle": "Fleet management and status.",
+    "download_model": "Download Excel Model",
+    "export": "Export Deliveries",
+    "import": "Import Excel",
+    "list": "List",
+    "no_results": "No deliveries found with those filters.",
+    "new_delivery": "New Delivery",
+    "filters": {
+      "search_placeholder": "Search by Name, Tel, Location...",
+      "advanced": "Advanced Filters",
+      "status": "Status",
+      "responsible": "Responsible",
+      "any_responsible": "Any responsible"
+    },
+    "status": {
+      "no_docs": "Pending Documentation",
+      "unconfirmed": "Account not yet confirmed",
+      "confirmed": "Confirmed and delivering"
+    },
+    "card": {
+      "no_movements": "No movements."
+    },
+    "toast": {
+      "load_error": "Error loading deliveries",
+      "delete_error": "Error deleting.",
+      "delete_success": "Delivery deleted."
+    },
+    "confirm_delete": "Are you sure you want to delete this delivery personnel?"
+  },
+  "providers": {
+    "title": "Providers & Deployments",
+    "subtitle": "External catalog management and planning milestones.",
+    "roadmap": "Idea Roadmap",
+    "calendar": "Logical Calendar",
+    "directory": "Contact Directory",
+    "new_sprint": "New Sprint",
+    "new_idea": "New Idea",
+    "new_provider": "New Provider",
+    "filter_by": "Filter by:",
+    "all_priorities": "All Priorities",
+    "priority_high": "🔥 Only High",
+    "priority_medium": "⭐ Only Medium",
+    "priority_low": "☕ Only Low",
+    "dep_global": "Global Dependency",
+    "dep_internal": "PickUp Team",
+    "dep_external": "Waiting for Provider",
+    "sprints": "Sprints",
+    "priority": "Priority",
+    "search_placeholder": "Search provider by name...",
+    "no_providers": "No providers found.",
+    "no_rubro": "No category",
+    "drop_ideas_here": "Drop ideas here.",
+    "toast": {
+      "load_error": "Error providers",
+      "events_error": "Error events",
+      "save_order_error": "Error saving order",
+      "order_saved": "Phases reordered",
+      "move_date_error": "Error moving date",
+      "milestone_updated": "Milestone updated",
+      "idea_moved_error": "Error moving idea",
+      "idea_reordered": "Idea reordered",
+      "delete_error": "Error deleting",
+      "delete_success": "Deleted"
+    },
+    "confirm_delete_sprint": "Are you sure you want to delete \"{{name}}\"?"
+  }
+}

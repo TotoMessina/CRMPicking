@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../components/ui/Button';
 import { Plus, ChevronLeft, ChevronRight, Download, Upload, MoreVertical, FileText } from 'lucide-react';
 import { ClienteModal } from '../components/ui/ClienteModal';
@@ -12,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const Clientes: React.FC = () => {
     const { isDemoMode } = useAuth();
+    const { t } = useTranslation();
     const {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
         filters, updateFilter, rubrosValidos, responsablesValidos, gruposValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
@@ -30,10 +32,10 @@ const Clientes: React.FC = () => {
             <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        {isAgendaHoy ? "Agenda de Hoy" : "Clientes"}
+                        {isAgendaHoy ? t('clients.agenda_today') : t('clients.title')}
                     </h1>
                     <p className="muted" style={{ margin: 0, fontSize: '1.1rem' }}>
-                        {isAgendaHoy ? "Contactos programados." : "Gestión y segmentación interactiva."}
+                        {isAgendaHoy ? t('clients.agenda_subtitle') : t('clients.subtitle')}
                     </p>
                 </div>
 
@@ -45,7 +47,7 @@ const Clientes: React.FC = () => {
                         style={{ borderRadius: '14px', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)' }}
                     >
                         <MoreVertical size={18} />
-                        <span className="hide-mobile">Acciones</span>
+                        <span className="hide-mobile">{t('clients.actions')}</span>
                     </Button>
 
                     <AnimatePresence>
@@ -71,20 +73,20 @@ const Clientes: React.FC = () => {
                                         onClick={() => { handleDescargarModelo(); setActionsOpen(false); }}
                                         style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)' }}
                                     >
-                                        <FileText size={16} className="text-accent" /> Descargar Modelo Excel
+                                        <FileText size={16} className="text-accent" /> {t('clients.download_model')}
                                     </button>
                                     <button 
                                         className="dropdown-item" 
                                         onClick={() => { handleDescargarExcel(); setActionsOpen(false); }}
                                         style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)' }}
                                     >
-                                        <Download size={16} className="text-accent" /> Exportar Clientes
+                                        <Download size={16} className="text-accent" /> {t('clients.export')}
                                     </button>
                                     <label 
                                         className="dropdown-item" 
                                         style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
                                     >
-                                        <Upload size={16} className="text-accent" /> Importar Excel
+                                        <Upload size={16} className="text-accent" /> {t('clients.import')}
                                         <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => { handleImportExcel(e as any); setActionsOpen(false); }} />
                                     </label>
                                 </motion.div>
@@ -107,24 +109,24 @@ const Clientes: React.FC = () => {
             <section style={{ marginBottom: '32px' }}>
                 <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: 'var(--text)' }}>
-                        Listado <span className="muted" style={{ fontWeight: 500, fontSize: '1.2rem' }}>({total})</span>
+                        {t('clients.list')} <span className="muted" style={{ fontWeight: 500, fontSize: '1.2rem' }}>({total})</span>
                     </h2>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ordenar por</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('clients.sort_by')}</span>
                         <select
                             className="input"
                             value={sortBy}
                             onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
                             style={{ padding: '8px 12px', borderRadius: '10px', minWidth: '180px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text)' }}
                         >
-                            <option value="updated">Últimos editados</option>
-                            <option value="recent">Más recientes (creación)</option>
-                            <option value="oldest">Más antiguos (creación)</option>
-                            <option value="activity_desc">Última actividad (Recientes primero)</option>
-                            <option value="activity_asc">Última actividad (Antiguos primero)</option>
-                            <option value="az">Nombre (A - Z)</option>
-                            <option value="za">Nombre (Z - A)</option>
+                             <option value="updated">{t('clients.sorting.updated')}</option>
+                            <option value="recent">{t('clients.sorting.recent')}</option>
+                            <option value="oldest">{t('clients.sorting.oldest')}</option>
+                            <option value="activity_desc">{t('clients.sorting.activity_desc')}</option>
+                            <option value="activity_asc">{t('clients.sorting.activity_asc')}</option>
+                            <option value="az">{t('clients.sorting.az')}</option>
+                            <option value="za">{t('clients.sorting.za')}</option>
                         </select>
                     </div>
                 </header>
@@ -140,7 +142,7 @@ const Clientes: React.FC = () => {
                         ))
                     ) : clientes.length === 0 ? (
                         <div style={{ gridColumn: '1 / -1', background: 'var(--bg-elevated)', border: '1px dashed var(--border)', borderRadius: '20px', padding: '40px', textAlign: 'center' }}>
-                            <p className="muted" style={{ fontSize: '1.1rem' }}>No se encontraron clientes con esos filtros.</p>
+                            <p className="muted" style={{ fontSize: '1.1rem' }}>{t('clients.no_results')}</p>
                         </div>
                     ) : clientes.map((c: any, index: number) => (
                         <motion.div
@@ -169,7 +171,7 @@ const Clientes: React.FC = () => {
             {!loading && total > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '24px' }}>
                     <Button variant="secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft size={16} /></Button>
-                    <span className="muted">Página {page} de {totalPages}</span>
+                    <span className="muted">{t('clients.page_x_of_y', { page, totalPages })}</span>
                     <Button variant="secondary" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight size={16} /></Button>
                 </div>
             )}
@@ -209,7 +211,7 @@ const Clientes: React.FC = () => {
                         transition={{ 
                             boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
                         }}
-                        onClick={handleCreate}
+                         onClick={handleCreate}
                         id="btn-nuevo-cliente"
                         style={{
                             pointerEvents: 'auto',
@@ -219,7 +221,7 @@ const Clientes: React.FC = () => {
                             border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer',
                             boxShadow: '0 8px 20px -6px rgba(0, 0, 0, 0.3)'
                         }}
-                        title="Registrar Nuevo Cliente"
+                        title={t('clients.new_client_title')}
                     >
                         <Plus size={32} />
                     </motion.button>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { 
@@ -72,17 +73,17 @@ const ESTILO_COLORS: Record<string, string> = {
     "Sin definir": "#64748b"
 };
 
-const timeSince = (date: string | null) => {
-    if (!date) return 'Nunca';
+const timeSinceLocalized = (date: string | null, t: any) => {
+    if (!date) return t('common.never');
     const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " años";
+    if (interval > 1) return Math.floor(interval) + " " + t('common.time.years');
     interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " meses";
+    if (interval > 1) return Math.floor(interval) + " " + t('common.time.months');
     interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " días";
+    if (interval > 1) return Math.floor(interval) + " " + t('common.time.days');
     interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " horas";
+    if (interval > 1) return Math.floor(interval) + " " + t('common.time.hours');
     interval = seconds / 60;
     if (interval > 1) return Math.floor(interval) + " min";
     return Math.floor(seconds) + " seg";
@@ -115,6 +116,7 @@ function getColorForRubro(rubro: string | null) {
 }
 
 export default function MapaClientes() {
+    const { t } = useTranslation();
     const { empresaActiva } = useAuth();
     const { tenantConfig } = useTenant();
     const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -205,16 +207,16 @@ export default function MapaClientes() {
     const [historicalActivadorId, setHistoricalActivadorId] = useState('');
     const [historicalDate, setHistoricalDate] = useState(() => new Date().toISOString().split('T')[0]);
     const historicalPathLayerRef = useRef<L.LayerGroup | null>(null);
-
+    
     const bindZonePopup = (layer: any, zoneId: string) => {
         const popupContent = `
-            <div style="margin-bottom:8px; font-weight:bold;">Zona</div>
+            <div style="margin-bottom:8px; font-weight:bold;">${t('map.zone.title')}</div>
             <div style="display:flex; flex-direction:column; gap:6px;">
-                <button class="btn-popup-local" style="color:var(--text); border:1px solid var(--border); padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#0c0c0c')">⬛ Marcar "Hoy"</button>
-                <button class="btn-popup-local" style="color:#dc2626; border:1px solid #dc2626; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#ef4444')">🔴 Marcar "Realizada"</button>
-                <button class="btn-popup-local" style="color:#ea580c; border:1px solid #ea580c; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#f97316')">🟠 Marcar "Extra"</button>
+                <button class="btn-popup-local" style="color:var(--text); border:1px solid var(--border); padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#0c0c0c')">⬛ ${t('map.zone.mark_today')}</button>
+                <button class="btn-popup-local" style="color:#dc2626; border:1px solid #dc2626; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#ef4444')">🔴 ${t('map.zone.mark_done')}</button>
+                <button class="btn-popup-local" style="color:#ea580c; border:1px solid #ea580c; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#f97316')">🟠 ${t('map.zone.mark_extra')}</button>
                 <hr style="width:100%; border:0; border-top:1px solid #eee; margin:4px 0;">
-                <button class="btn-popup-local" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer;" onclick="window.deleteZoneById('${zoneId}')">🗑️ Eliminar</button>
+                <button class="btn-popup-local" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer;" onclick="window.deleteZoneById('${zoneId}')">🗑️ ${t('common.actions.delete')}</button>
             </div>
         `;
         layer.bindPopup(popupContent);
@@ -250,7 +252,7 @@ export default function MapaClientes() {
         window.updateZoneColor = async (id: string, newColor: string) => {
             const { error } = await (supabase as any).from('zones').update({ color: newColor }).eq('id', id).eq('empresa_id', empresaActiva?.id);
             if (error) {
-                toast.error("Error al actualizar color");
+                toast.error(t('map.toast.update_zone_error'));
             } else {
                 if (drawnZonesRef.current) {
                     drawnZonesRef.current.eachLayer((layer: any) => {
@@ -260,15 +262,15 @@ export default function MapaClientes() {
                         }
                     });
                 }
-                toast.success("Color actualizado");
+                toast.success(t('map.toast.update_zone_success'));
             }
         };
 
         window.deleteZoneById = async (id: string) => {
-            if (!window.confirm("¿Eliminar esta zona?")) return;
+            if (!window.confirm(t('map.confirm.delete_zone'))) return;
             const { error } = await (supabase as any).from('zones').delete().eq('id', id).eq('empresa_id', empresaActiva?.id);
             if (error) {
-                toast.error("Error al eliminar zona");
+                toast.error(t('map.toast.delete_zone_error'));
             } else {
                 if (drawnZonesRef.current) {
                     drawnZonesRef.current.eachLayer((layer: any) => {
@@ -277,7 +279,7 @@ export default function MapaClientes() {
                         }
                     });
                 }
-                toast.success("Zona eliminada");
+                toast.success(t('map.toast.delete_zone_success'));
             }
         };
 
@@ -397,7 +399,7 @@ export default function MapaClientes() {
 
                 if (!coords || coords.length < 3) return;
 
-                toast.loading("Guardando zona...", { id: 'save-zone' });
+                toast.loading(t('map.toast.saving_zone'), { id: 'save-zone' });
                 const { data, error } = await (supabase as any).from('zones').insert([{
                     coordinates: coords,
                     color: color,
@@ -406,13 +408,13 @@ export default function MapaClientes() {
                 }]).select();
 
                 if (error) {
-                    toast.error("Error al guardar la zona", { id: 'save-zone' });
+                    toast.error(t('map.toast.save_zone_error'), { id: 'save-zone' });
                     drawnZonesRef.current?.removeLayer(layer);
                 } else {
                     const newId = data[0].id;
                     (layer as any).zoneId = newId;
                     bindZonePopup(layer, newId);
-                    toast.success("Zona guardada", { id: 'save-zone' });
+                    toast.success(t('map.toast.save_zone_success'), { id: 'save-zone' });
                 }
             });
 
@@ -421,7 +423,7 @@ export default function MapaClientes() {
                 layers.eachLayer(async function (layer: any) {
                     if (layer.zoneId) {
                         const { error } = await (supabase as any).from('zones').delete().eq('id', layer.zoneId).eq('empresa_id', empresaActiva?.id);
-                        if (error) toast.error("Error eliminando zona");
+                        if (error) toast.error(t('map.toast.delete_zone_error'));
                     }
                 });
             });
@@ -539,12 +541,12 @@ export default function MapaClientes() {
                 marker.bindPopup(`
                     <div style="min-width:220px; padding: 5px 0;">
                         <b style="font-size: 1.1em; display: block; margin-bottom: 2px;">${rec.nombre_local || rec.nombre}</b>
-                        <span style="font-size: 0.85em; color: #666; display: block; margin-bottom: 8px;">${rec.rubro || 'Sin rubro'}</span>
+                        <span style="font-size: 0.85em; color: #666; display: block; margin-bottom: 8px;">${rec.rubro || t('map.popup.no_rubro')}</span>
                         
                         <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.9em; color: #444; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05);">
                             ${rec.direccion ? `<span>📍 ${rec.direccion}</span>` : ''}
                             ${rec.telefono ? `<span>📞 ${rec.telefono}</span>` : ''}
-                            ${rec.fecha_proximo_contacto ? `<span style="color: var(--accent); font-weight: 700;">📅 Próx: ${formatToLocal(rec.fecha_proximo_contacto)}</span>` : ''}
+                            ${rec.fecha_proximo_contacto ? `<span style="color: var(--accent); font-weight: 700;">📅 ${t('map.popup.next')}: ${formatToLocal(rec.fecha_proximo_contacto)}</span>` : ''}
                         </div>
 
                         ${rec.notas ? `
@@ -559,14 +561,14 @@ export default function MapaClientes() {
                             </div>
                         ` : ''}
 
-                        <div style="margin-top: 12px; font-size: 0.75em; color: #888;">👤 ${rec.creado_por || 'Desconocido'}</div>
+                        <div style="margin-top: 12px; font-size: 0.75em; color: #888;">👤 ${rec.creado_por || t('map.popup.unknown')}</div>
                         
                         <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
                             <button class="btn-popup-edit" style="width: 100%; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem;">
-                                ✏️ Editar Cliente
+                                ✏️ ${t('map.popup.edit_client')}
                             </button>
                             <button class="btn-popup-assign" style="width: 100%; padding: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                📍 Asignar a Ruta
+                                📍 ${t('map.popup.assign_route')}
                             </button>
                         </div>
                     </div>
@@ -662,7 +664,7 @@ export default function MapaClientes() {
                     </div>
                     <div style="background: var(--bg-body); padding: 8px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem;">
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <span>🕒 Visto hace: <b>${timeSince(user.last_seen)}</b></span>
+                            <span>🕒 ${t('map.popup.seen_ago')}: <b>${timeSinceLocalized(user.last_seen, t)}</b></span>
                         </div>
                     </div>
                 </div>
@@ -683,8 +685,8 @@ export default function MapaClientes() {
     };
 
     const exportarReporteRecorrido = async () => {
-        if (!historicalActivadorId) return toast.error('Debe seleccionar un activador');
-        toast.loading('Generando reporte...', { id: 'export' });
+        if (!historicalActivadorId) return toast.error(t('map.toast.select_activator'));
+        toast.loading(t('map.toast.exporting_report'), { id: 'export' });
 
         const startDate = new Date(`${historicalDate}T00:00:00`).toISOString();
         const endDate = new Date(`${historicalDate}T23:59:59.999`).toISOString();
@@ -700,13 +702,13 @@ export default function MapaClientes() {
 
         if (histErr) {
             console.error("Error historial:", histErr);
-            toast.error("Error al cargar historial");
+            toast.error(t('map.toast.load_history_error'));
             return;
         }
 
         const hData = historial as any[];
         if (hData.length === 0) {
-            toast.error("No hay datos de ubicación para ese día");
+            toast.error(t('map.toast.no_gps_data'));
             return;
         }
 
@@ -776,13 +778,13 @@ export default function MapaClientes() {
         XLSX.utils.book_append_sheet(wb, wsAct, "Actividades");
 
         XLSX.writeFile(wb, `Reporte_Ruta_${activadorName.replace(/\s+/g, '_')}_${historicalDate}.xlsx`);
-        toast.success('Reporte exportado correctamente', { id: 'export' });
+        toast.success(t('map.toast.export_success'), { id: 'export' });
     };
 
     const optimizeRoute = () => {
-        if (routeStops.length < 2) return toast.error("Selecciona al menos 2 puntos para rutar");
+        if (routeStops.length < 2) return toast.error(t('map.toast.select_min_route'));
 
-        let startPoint = myLocation ? { id: 'me', lat: myLocation.lat, lng: myLocation.lng, nombre: 'Mi Ubicación' } : routeStops[0];
+        let startPoint = myLocation ? { id: 'me', lat: myLocation.lat, lng: myLocation.lng, nombre: t('map.my_location') } : routeStops[0];
         let remaining = routeStops.filter(s => s.id !== startPoint.id);
 
         let ordered = [startPoint];

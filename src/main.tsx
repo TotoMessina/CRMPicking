@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import { injectTenantTheme } from './config/tenant';
 import { TenantProvider } from './contexts/TenantContext';
+import './i18n/config';
 
 injectTenantTheme();
 

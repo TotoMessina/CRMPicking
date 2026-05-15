@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UserCircle, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ChatUser } from '../../hooks/useChat';
@@ -13,6 +14,7 @@ interface ChatSidebarProps {
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({ usuarios, selectedUser, setSelectedUser, loadingUsers, isMobile, openViewer }) => {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState('');
 
     if (isMobile && selectedUser) return null;
@@ -41,12 +43,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ usuarios, selectedUser
                 borderBottom: '1px solid var(--border)', 
                 background: 'var(--bg-glass)', flexShrink: 0 
             }}>
-                <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.01em' }}>Mensajería</h2>
+                <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.01em' }}>{t('chat.sidebar.title')}</h2>
                 <div style={{ position: 'relative' }}>
                     <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input 
                         type="text" 
-                        placeholder="Buscar contacto..." 
+                        placeholder={t('chat.sidebar.search_placeholder')} 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         style={{
@@ -67,11 +69,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ usuarios, selectedUser
                 {loadingUsers ? (
                     <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
                         <div className="spinner-small" style={{ margin: '0 auto 12px auto' }} />
-                        Cargando contactos...
+                        {t('chat.sidebar.loading')}
                     </div>
                 ) : filteredUsers.length === 0 ? (
                     <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                        No se encontraron contactos
+                        {t('chat.sidebar.no_contacts')}
                     </div>
                 ) : (
                     <motion.div 
@@ -154,7 +156,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ usuarios, selectedUser
                                         marginTop: '1px',
                                         opacity: u.unreadCount && u.unreadCount > 0 ? 1 : 0.8
                                     } as React.CSSProperties}>
-                                        {u.unreadCount && u.unreadCount > 0 ? 'Mensaje nuevo' : (u.role || 'Usuario')}
+                                        {u.unreadCount && u.unreadCount > 0 ? t('chat.sidebar.new_message') : (u.role || t('chat.sidebar.default_role'))}
                                     </div>
                                 </div>
                                 {selectedUser?.email === u.email && (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { 
     Plus, Trash2, GripVertical, Save, RefreshCcw, 
@@ -12,6 +13,7 @@ import { usePipelineStates } from '../hooks/usePipelineStates';
 import { usePipelineSituations } from '../hooks/usePipelineSituations';
 
 export default function PipelineSettings() {
+    const { t } = useTranslation();
     const { empresaActiva, role, roleName } = useAuth();
     const [activeTab, setActiveTab] = useState('states'); // 'states' | 'situations'
 
@@ -43,7 +45,7 @@ export default function PipelineSettings() {
         const newOrder = items.length > 0 ? Math.max(...items.map(s => s.orden)) + 1 : 1;
         const newItem = {
             id: `temp-${Date.now()}`,
-            label: activeTab === 'states' ? `Nueva Etapa ${newOrder}` : `Nueva Situación ${newOrder}`,
+            label: activeTab === 'states' ? t('pipeline.settings.form.new_stage', { order: newOrder }) : t('pipeline.settings.form.new_situation', { order: newOrder }),
             color: activeTab === 'states' ? '#0c0c0c' : '#94a3b8',
             orden: newOrder,
             is_default: items.length === 0,
@@ -97,15 +99,15 @@ export default function PipelineSettings() {
             .eq(queryField, itemLabel);
 
         if (count > 0) {
-            toast.error(`No podés borrar esto porque tiene ${count} clientes asociados.`);
+            toast.error(t('pipeline.settings.toast.delete_associated', { count }));
             return;
         }
 
         const { error } = await supabase.from(table).delete().eq('id', db_id);
         if (error) {
-            toast.error("Error al eliminar el registro");
+            toast.error(t('pipeline.settings.toast.delete_error'));
         } else {
-            toast.success("Eliminado correctamente");
+            toast.success(t('pipeline.settings.toast.delete_success'));
             setActiveItems(prev => prev.filter(s => s.id !== id));
         }
     };
@@ -133,7 +135,7 @@ export default function PipelineSettings() {
         const hasDuplicates = labels.some((label, index) => labels.indexOf(label) !== index);
 
         if (hasDuplicates) {
-            toast.error("No podés tener dos elementos con el mismo nombre.");
+            toast.error(t('pipeline.settings.toast.duplicate_name'));
             return;
         }
 
@@ -169,7 +171,7 @@ export default function PipelineSettings() {
             const { error } = await supabase.from(table).upsert(toUpsert, { onConflict: 'id' });
             if (error) throw error;
 
-            toast.success("Configuración guardada");
+            toast.success(t('pipeline.settings.toast.save_success'));
             if (activeTab === 'states') refreshStates();
             else refreshSituations();
         } catch (err) {
@@ -184,9 +186,9 @@ export default function PipelineSettings() {
         return (
             <div className="container" style={{ textAlign: 'center', padding: '100px 20px' }}>
                 <Shield size={64} className="muted" style={{ marginBottom: '20px' }} />
-                <h2>Acceso Restringido</h2>
-                <p className="muted">Solo los administradores pueden configurar el sistema.</p>
-                <button onClick={() => window.history.back()} className="btn-link" style={{ marginTop: '20px' }}>VOLVER</button>
+                <h2>{t('common.access_denied', { defaultValue: 'Acceso Restringido' })}</h2>
+                <p className="muted">{t('pipeline.settings.restricted_desc', { defaultValue: 'Solo los administradores pueden configurar el sistema.' })}</p>
+                <button onClick={() => window.history.back()} className="btn-link" style={{ marginTop: '20px' }}>{t('common.actions.back', { defaultValue: 'VOLVER' })}</button>
             </div>
         );
     }
@@ -198,9 +200,9 @@ export default function PipelineSettings() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 950, letterSpacing: '-0.03em', margin: 0 }}>
-                        Ajustes de <span style={{ color: 'var(--accent)' }}>Workflow</span>
+                        {t('pipeline.settings.title_part1', { defaultValue: 'Ajustes de' })} <span style={{ color: 'var(--accent)' }}>{t('pipeline.settings.title_part2', { defaultValue: 'Workflow' })}</span>
                     </h1>
-                    <p className="muted" style={{ margin: '4px 0 0 0' }}>Gestioná las etapas y situaciones de tus clientes.</p>
+                    <p className="muted" style={{ margin: '4px 0 0 0' }}>{t('pipeline.settings.subtitle')}</p>
                 </div>
                 <button 
                     onClick={() => activeTab === 'states' ? refreshStates() : refreshSituations()}
@@ -224,7 +226,7 @@ export default function PipelineSettings() {
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    <Layout size={18} /> Etapas del Pipeline
+                    <Layout size={18} /> {t('pipeline.settings.tabs.stages')}
                 </button>
                 <button 
                     onClick={() => setActiveTab('situations')}
@@ -237,7 +239,7 @@ export default function PipelineSettings() {
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    <Layers size={18} /> Situaciones (Tags)
+                    <Layers size={18} /> {t('pipeline.settings.tabs.situations')}
                 </button>
             </div>
 
@@ -246,8 +248,8 @@ export default function PipelineSettings() {
                     <Info size={20} style={{ color: 'var(--accent)' }} />
                     <p style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600, margin: 0 }}>
                         {activeTab === 'states' 
-                            ? 'Ordená las etapas principales del tablero Kanban.' 
-                            : 'Definí situaciones secundarias para segmentar clientes en estados avanzados.'}
+                            ? t('pipeline.settings.info.stages')
+                            : t('pipeline.settings.info.situations')}
                     </p>
                 </div>
 
@@ -283,13 +285,13 @@ export default function PipelineSettings() {
                                                         </div>
 
                                                         <input type="text" value={item.label} onChange={(e) => handleUpdateItem(item.id, 'label', e.target.value)}
-                                                            className="input" placeholder="Nombre..." style={{ flex: 1, height: '38px', fontSize: '0.9rem', fontWeight: 700, border: 'none', background: 'transparent' }} />
+                                                            className="input" placeholder={t('pipeline.settings.form.name_placeholder')} style={{ flex: 1, height: '38px', fontSize: '0.9rem', fontWeight: 700, border: 'none', background: 'transparent' }} />
 
                                                         <button 
                                                             onClick={() => handleUpdateItem(item.id, 'is_default', !item.is_default)}
                                                             className={item.is_default ? 'pill-btn active' : 'pill-btn'}
                                                         >
-                                                            {item.is_default ? 'DEFAULT' : 'SET DEFAULT'}
+                                                            {item.is_default ? t('pipeline.settings.form.default') : t('pipeline.settings.form.set_default')}
                                                         </button>
 
                                                         <button onClick={() => handleRemoveItem(item.id, item.db_id)} className="btn-icon" style={{ color: 'var(--danger)', border: 'none', background: 'transparent' }}>
@@ -300,7 +302,7 @@ export default function PipelineSettings() {
                                                     {activeTab === 'situations' && (
                                                         <div style={{ padding: '0 16px 12px 48px', borderTop: '1px solid var(--border-soft)', background: 'rgba(0,0,0,0.02)' }}>
                                                             <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px', marginTop: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                                Visible en las etapas: {(!item.estados_visibles || item.estados_visibles.length === 0) && <span style={{ color: 'var(--accent)' }}>(Todas)</span>}
+                                                                {t('pipeline.settings.visible_in')} {(!item.estados_visibles || item.estados_visibles.length === 0) && <span style={{ color: 'var(--accent)' }}>{t('pipeline.settings.all_stages')}</span>}
                                                             </p>
                                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                                                 {localStates.map(state => {
@@ -337,11 +339,11 @@ export default function PipelineSettings() {
 
                 <div style={{ marginTop: '32px', display: 'flex', gap: '12px' }}>
                     <button onClick={handleAddItem} className="btn-link" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-active)', padding: '12px 24px', borderRadius: '14px', flex: 1, border: '1px dashed var(--border)', fontWeight: 700 }}>
-                        <Plus size={20} /> AÑADIR NUEVO
+                        <Plus size={20} /> {t('pipeline.settings.form.add_new')}
                     </button>
                     <button onClick={handleSave} disabled={saving} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 32px', borderRadius: '14px', minWidth: '150px' }}>
                         {saving ? <RefreshCcw size={18} className="spin" /> : <Save size={18} />} 
-                        {saving ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
+                        {saving ? t('pipeline.settings.form.saving') : t('pipeline.settings.form.save_changes')}
                     </button>
                 </div>
             </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Filter, Search, Phone, MapPin, Activity as ActivityIcon, User, ChevronDown } from 'lucide-react';
 
 export const ConsumerFilters = ({
@@ -9,6 +10,7 @@ export const ConsumerFilters = ({
     fResponsable, setFResponsable,
     setPage
 }) => {
+    const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
 
     const activeCount = [
@@ -40,7 +42,7 @@ export const ConsumerFilters = ({
                     <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input 
                         className="input" 
-                        placeholder="Buscar por Nombre..." 
+                        placeholder={t('consumers.filters.search_placeholder')} 
                         value={fNombre} 
                         onChange={e => handleSearchChange(e.target.value)} 
                         style={{ 
@@ -73,7 +75,7 @@ export const ConsumerFilters = ({
                     }}
                 >
                     <Filter size={18} />
-                    Filtros Avanzados
+                    {t('consumers.filters.advanced')}
                     {activeCount > 0 && (
                         <span style={{ 
                             background: 'rgba(255,255,255,0.25)', 
@@ -101,49 +103,49 @@ export const ConsumerFilters = ({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <Phone size={14} /> Teléfono
+                                <Phone size={14} /> {t('consumers.filters.phone')}
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input className="input" placeholder="Teléfono..." value={fTelefono} onChange={e => { setFTelefono(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                                <input className="input" placeholder={t('consumers.filters.phone')} value={fTelefono} onChange={e => { setFTelefono(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
                             </div>
                         </div>
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <MapPin size={14} /> Localidad
+                                <MapPin size={14} /> {t('consumers.filters.location')}
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input className="input" placeholder="Localidad..." value={fLocalidad} onChange={e => { setFLocalidad(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
+                                <input className="input" placeholder={t('consumers.filters.location')} value={fLocalidad} onChange={e => { setFLocalidad(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }} />
                             </div>
                         </div>
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <ActivityIcon size={14} /> Estado
+                                <ActivityIcon size={14} /> {t('consumers.filters.status')}
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <ActivityIcon size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                                 <select className="input" value={fEstado} onChange={e => { setFEstado(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                                    <option value="Todos">Todos los estados</option>
-                                    <option value="Lead">Lead</option>
-                                    <option value="Contactado">Contactado</option>
-                                    <option value="Interesado">Interesado</option>
-                                    <option value="Cliente">Cliente</option>
-                                    <option value="No interesado">No interesado</option>
+                                    <option value="Todos">{t('common.all')}</option>
+                                    <option value="Lead">{t('consumers.status.lead')}</option>
+                                    <option value="Contactado">{t('consumers.status.contacted')}</option>
+                                    <option value="Interesado">{t('consumers.status.interested')}</option>
+                                    <option value="Cliente">{t('consumers.status.client')}</option>
+                                    <option value="No interesado">{t('consumers.status.not_interested')}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>
-                                <User size={14} /> Responsable
+                                <User size={14} /> {t('consumers.filters.responsible')}
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                                 <select className="input" value={fResponsable} onChange={e => { setFResponsable(e.target.value); setPage(1); }} style={{ width: '100%', paddingLeft: '40px', borderRadius: '12px' }}>
-                                    <option value="">Cualquier responsable</option>
+                                    <option value="">{t('consumers.filters.any_responsible')}</option>
                                     <option value="Toto">Toto</option>
                                     <option value="Ruben">Ruben</option>
                                     <option value="Tincho(B)">Tincho(B)</option>

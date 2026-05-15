@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { CheckCircle, MapPin, Navigation, MessageSquare, Route, X, Map, List } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -49,6 +50,7 @@ function FitBounds({ points }) {
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function RutaDiaria() {
+    const { t } = useTranslation();
     const { user, empresaActiva } = useAuth();
     const [visitas, setVisitas] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -82,7 +84,7 @@ export default function RutaDiaria() {
             setVisitas(visitasRaw.map(v => ({ ...v, clientes: clienteMap[v.cliente_id] || null })));
         } catch (e) {
             console.error(e);
-            toast.error('Error al cargar tu ruta del día');
+            toast.error(t('ruta.toast.load_error'));
         } finally {
             setLoading(false);
         }
@@ -98,10 +100,10 @@ export default function RutaDiaria() {
             .eq('id', visitaId);
 
         if (error) {
-            toast.error('Error actualizando el estado');
+            toast.error(t('ruta.toast.update_error'));
         } else {
             const iconos = { Visitado: '✅', Ausente: '⛔', Pendiente: '🔄', Cancelado: '❌' };
-            toast.success(`${iconos[nuevoEstado] || ''} Marcado como ${nuevoEstado}`, { duration: 2500 });
+            toast.success(`${iconos[nuevoEstado] || ''} ${t('ruta.toast.marked_as', { status: t(`ruta.status.${nuevoEstado.toLowerCase()}`) })}`, { duration: 2500 });
             setVisitas(prev => prev.map(v => v.id === visitaId ? { ...v, estado: nuevoEstado } : v));
         }
         setUpdatingId(null);
@@ -139,8 +141,8 @@ export default function RutaDiaria() {
                     <div className="ruta-title-group">
                         <Route size={22} color="var(--accent)" />
                         <div>
-                            <h1>Mi Ruta del Día</h1>
-                            <p>{esHoy ? 'Hoy' : filterDate}</p>
+                            <h1>{t('ruta.title')}</h1>
+                            <p>{esHoy ? t('common.today') : filterDate}</p>
                         </div>
                     </div>
                     <input
@@ -160,7 +162,7 @@ export default function RutaDiaria() {
                             />
                         </div>
                         <span className="ruta-progress-label">
-                            {totalVisitados}/{visitas.length} completados
+                            {t('ruta.completed_stats', { count: totalVisitados, total: visitas.length })}
                         </span>
                     </div>
                 )}
@@ -172,19 +174,19 @@ export default function RutaDiaria() {
                             className={`ruta-vista-tab ${vista === 'lista' ? 'active' : ''}`}
                             onClick={() => setVista('lista')}
                         >
-                            <List size={14} /> Lista
+                            <List size={14} /> {t('ruta.views.list')}
                         </button>
                         <button
                             className={`ruta-vista-tab ${vista === 'mapa' ? 'active' : ''}`}
                             onClick={() => setVista('mapa')}
                         >
-                            <Map size={14} /> Mapa
+                            <Map size={14} /> {t('ruta.views.map')}
                         </button>
                         <button
                             className={`ruta-vista-tab ${vista === 'ambos' ? 'active' : ''}`}
                             onClick={() => setVista('ambos')}
                         >
-                            <Route size={14} /> Ambos
+                            <Route size={14} /> {t('ruta.views.both')}
                         </button>
                     </div>
                 )}
@@ -195,13 +197,13 @@ export default function RutaDiaria() {
                 {loading ? (
                     <div className="ruta-empty-state">
                         <div className="ruta-spinner" />
-                        <p>Cargando tu ruta...</p>
+                        <p>{t('ruta.loading')}</p>
                     </div>
                 ) : visitas.length === 0 ? (
                     <div className="ruta-empty-state">
                         <Route size={48} color="var(--text-muted)" style={{ opacity: 0.4 }} />
-                        <h3>Sin visitas asignadas</h3>
-                        <p>No tenés locales programados para {esHoy ? 'hoy' : 'esta fecha'}.<br />Consultá con tu coordinador.</p>
+                        <h3>{t('ruta.empty.title')}</h3>
+                        <p>{t('ruta.empty.desc', { date: esHoy ? t('common.today').toLowerCase() : t('ruta.empty.this_date') })}<br />{t('ruta.empty.contact_coordinator')}</p>
                     </div>
                 ) : (
                     <div className={`ruta-split ${vista === 'ambos' ? 'ruta-split--ambos' : ''}`}>
@@ -264,7 +266,7 @@ export default function RutaDiaria() {
                                                             background: colores.badgeBg,
                                                             color: colores.badge
                                                         }}>
-                                                            {visita.estado}
+                                                            {t(`ruta.status.${visita.estado.toLowerCase()}`)}
                                                         </span>
                                                         {visita.comentarios_admin && (
                                                             <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#6d28d9', fontStyle: 'italic' }}>
@@ -313,7 +315,7 @@ export default function RutaDiaria() {
                                                     className="ruta-estado-badge"
                                                     style={{ color: colores.badge, background: colores.badgeBg }}
                                                 >
-                                                    {visita.estado}
+                                                    {t(`ruta.status.${visita.estado.toLowerCase()}`)}
                                                 </span>
                                             </div>
 
@@ -321,7 +323,7 @@ export default function RutaDiaria() {
                                                 <h2 className="ruta-local-name"
                                                     style={{ textDecoration: isVisitado ? 'line-through' : 'none', opacity: isVisitado ? 0.6 : 1 }}
                                                 >
-                                                    {cliente?.nombre_local || 'Local sin nombre'}
+                                                    {cliente?.nombre_local || t('ruta.unnamed_local')}
                                                 </h2>
 
                                                 {cliente?.direccion && (
@@ -353,35 +355,35 @@ export default function RutaDiaria() {
                                                     <img src="https://www.gstatic.com/mapspro/images/stock/956-waze-google-maps.png" alt="Waze" style={{ width: 16, height: 16, objectFit: 'contain' }} />
                                                     Waze
                                                 </button>
-                                            </div>
 
-                                            <div className="ruta-action-btns">
-                                                {visita.estado !== 'Visitado' && (
+                                                {visita.estado === 'Pendiente' && (
                                                     <button
                                                         className="ruta-btn-check"
                                                         onClick={() => marcarEstado(visita.id, 'Visitado')}
                                                         disabled={isUpdating}
                                                     >
                                                         <CheckCircle size={20} />
-                                                        {isUpdating ? 'Guardando...' : 'Marcar Visitado'}
+                                                        {isUpdating ? t('common.saving') : t('ruta.actions.mark_visited')}
                                                     </button>
                                                 )}
+
                                                 {visita.estado === 'Visitado' && (
                                                     <button
                                                         className="ruta-btn-revert"
                                                         onClick={() => marcarEstado(visita.id, 'Pendiente')}
                                                         disabled={isUpdating}
                                                     >
-                                                        <X size={16} /> Deshacer
+                                                        <X size={16} /> {t('common.actions.undo')}
                                                     </button>
                                                 )}
+
                                                 {visita.estado === 'Pendiente' && (
                                                     <button
                                                         className="ruta-btn-ausente"
                                                         onClick={() => marcarEstado(visita.id, 'Ausente')}
                                                         disabled={isUpdating}
                                                     >
-                                                        ⛔ Ausente
+                                                        ⛔ {t('ruta.status.ausente')}
                                                     </button>
                                                 )}
                                             </div>

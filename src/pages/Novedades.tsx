@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNovedades } from '../hooks/useNovedades';
@@ -13,6 +14,7 @@ import { es } from 'date-fns/locale';
 import './Novedades.css';
 
 export default function Novedades() {
+    const { t } = useTranslation();
     const { novedades, historias, loading, toggleLike, markAsViewed, addComentario, refresh, togglePin, votarEncuesta, toggleReaccionComentario } = useNovedades();
     const { user, role, empresaActiva, avatarUrl } = useAuth();
     
@@ -74,12 +76,12 @@ export default function Novedades() {
         <div className="nov-container">
             <div className="nov-header">
                 <div>
-                    <h1 className="nov-title">Corporativo</h1>
-                    <p className="nov-subtitle">Mantente al día con lo último de {empresaActiva?.nombre}</p>
+                    <h1 className="nov-title">{t('news.title')}</h1>
+                    <p className="nov-subtitle">{t('news.subtitle', { company: empresaActiva?.nombre })}</p>
                 </div>
                 {canPost && (
                     <button className="btn-primary" onClick={() => setIsCreating(true)}>
-                        <Send size={16} /> Publicar
+                        <Send size={16} /> {t('common.publish')}
                     </button>
                 )}
             </div>
@@ -89,7 +91,7 @@ export default function Novedades() {
                     <Search size={16} className="nov-filter-search-icon" />
                     <input 
                         type="text" 
-                        placeholder="Buscar publicaciones o autores..." 
+                        placeholder={t('news.search_placeholder')} 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                         className="nov-filter-input"
@@ -97,10 +99,10 @@ export default function Novedades() {
                 </div>
                 <div className="nov-filter-pills-group">
                     {[
-                        { id: 'todos', label: 'Todos' },
-                        { id: 'posts', label: 'Comunicados' },
-                        { id: 'encuestas', label: 'Encuestas' },
-                        { id: 'media', label: 'Multimedia' }
+                        { id: 'todos', label: t('common.all') },
+                        { id: 'posts', label: t('news.filters.posts') },
+                        { id: 'encuestas', label: t('news.filters.polls') },
+                        { id: 'media', label: t('news.filters.media') }
                     ].map(f => (
                         <button
                             key={f.id}
@@ -168,11 +170,11 @@ export default function Novedades() {
 
             <div className="nov-feed">
                 {loading ? (
-                    <div className="nov-loading">Cargando muro...</div>
+                    <div className="nov-loading">{t('news.loading')}</div>
                 ) : novedades.length === 0 ? (
-                    <div className="nov-empty">No hay publicaciones recientes.</div>
+                    <div className="nov-empty">{t('news.empty')}</div>
                 ) : filteredNovedades.length === 0 ? (
-                    <div className="nov-empty">No se encontraron resultados para los filtros seleccionados.</div>
+                    <div className="nov-empty">{t('news.no_results')}</div>
                 ) : (
                     filteredNovedades.map(n => (
                         <FeedPost 
@@ -201,6 +203,7 @@ export default function Novedades() {
 }
 
 function StoriesViewer({ historias, initialIndex, onClose, markAsViewed }: any) {
+    const { t } = useTranslation();
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [progress, setProgress] = useState(0);
     const [isMediaLoaded, setIsMediaLoaded] = useState(false);
@@ -276,7 +279,7 @@ function StoriesViewer({ historias, initialIndex, onClose, markAsViewed }: any) 
                 </div>
                 <div className="nov-viewer-content">
                     {!isMediaLoaded && (
-                        <div className="nov-viewer-loader" style={{ position: 'absolute', color: '#fff' }}>Cargando...</div>
+                        <div className="nov-viewer-loader" style={{ position: 'absolute', color: '#fff' }}>{t('common.loading')}</div>
                     )}
                     {story.media_urls?.[0] ? (
                         isVideo ? (
@@ -313,6 +316,7 @@ function StoriesViewer({ historias, initialIndex, onClose, markAsViewed }: any) 
 }
 
 function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenComments, newComment, setNewComment, handleCommentSubmit, setLightboxMedia, togglePin, votarEncuesta, companyUsers, empresaActiva, toggleReaccionComentario }: any) {
+    const { t } = useTranslation();
     const [showMenu, setShowMenu] = useState(false);
     const [showReactions, setShowReactions] = useState(false);
     const [showBigHeart, setShowBigHeart] = useState(false);
@@ -426,7 +430,7 @@ function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenC
     };
 
     const handleDelete = async () => {
-        if (!window.confirm('¿Seguro de eliminar esta publicación?')) return;
+        if (!window.confirm(t('news.confirm_delete'))) return;
         await (supabase as any).from('novedades').delete().eq('id', post.id);
         window.location.reload();
     };
@@ -455,9 +459,9 @@ function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenC
                     {showMenu && (
                         <div className="nov-dropdown">
                             <button onClick={() => { togglePin(post.id, post.fijado); setShowMenu(false); }} className="nov-dropdown-item">
-                                {post.fijado ? 'Desfijar del Inicio' : 'Fijar al Inicio'}
+                                {post.fijado ? t('news.actions.unpin') : t('news.actions.pin')}
                             </button>
-                            <button onClick={handleDelete} className="nov-dropdown-item text-danger">Eliminar</button>
+                            <button onClick={handleDelete} className="nov-dropdown-item text-danger">{t('common.delete')}</button>
                         </div>
                     )}
                 </div>
@@ -488,7 +492,7 @@ function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenC
                             }}
                         >
                             <Sparkles size={14} /> 
-                            {isSummarizing ? "Procesando con InsideBot..." : "Resumir con IA"}
+                            {isSummarizing ? t('news.actions.ai_processing') : t('news.actions.ai_summarize')}
                         </button>
                     ) : (
                         <motion.div 
@@ -562,7 +566,7 @@ function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenC
                         );
                     })}
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'right', marginTop: 4 }}>
-                        {post.votos?.length || 0} votos
+                        {post.votos?.length || 0} {t('news.poll_votes')}
                     </div>
                 </div>
             )}
@@ -693,7 +697,7 @@ function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenC
                 </div>
 
                 <button className="nov-action-btn" onClick={setOpenComments}><MessageCircle size={18} /> <span>{post.comentarios_count || 0}</span></button>
-                <button className="nov-action-btn" onClick={() => setIsSharing(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Share2 size={18} /> <span>Compartir</span></button>
+                <button className="nov-action-btn" onClick={() => setIsSharing(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Share2 size={18} /> <span>{t('news.actions.share')}</span></button>
                 <div className="nov-views"><Eye size={16} /> {post.vistas_count || 0}</div>
             </div>
 
@@ -728,7 +732,7 @@ function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenC
                                                 transition: 'color 0.2s ease'
                                             }}
                                         >
-                                            Me gusta
+                                            {t('news.actions.like')}
                                         </button>
                                         {Array.isArray(c.reacciones) && c.reacciones.length > 0 && (
                                             <div style={{ 
@@ -1113,7 +1117,7 @@ function CreatePostModal({ onClose, user, empresaActiva, refresh, avatarUrl }: a
                                 </div>
                                 {selectedRoles.length > 0 && (
                                     <div style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: 6, fontWeight: 500 }}>
-                                        Visible únicamente para los roles seleccionados.
+                                        {t('news.modal.roles_notice', { defaultValue: 'Visible únicamente para los roles seleccionados.' })}
                                     </div>
                                 )}
                             </div>
@@ -1123,12 +1127,12 @@ function CreatePostModal({ onClose, user, empresaActiva, refresh, avatarUrl }: a
                 <div className="nov-modal-actions">
                     {isPreview ? (
                         <button className="btn-secondary" style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 99, cursor: 'pointer', fontWeight: 600 }} onClick={() => setIsPreview(false)}>
-                            Volver a Editar
+                            {t('news.modal.back_to_edit', { defaultValue: 'Volver a Editar' })}
                         </button>
                     ) : (
                         <div className="nov-media-buttons">
-                            {!isEncuesta && <label className="nov-media-btn"><ImageIcon size={18} /> Foto <input type="file" hidden accept="image/*" multiple onChange={handleFileChange} /></label>}
-                            {!isEncuesta && <label className="nov-media-btn"><Video size={18} /> Video <input type="file" hidden accept="video/*" multiple onChange={handleFileChange} /></label>}
+                            {!isEncuesta && <label className="nov-media-btn"><ImageIcon size={18} /> {t('news.filters.media_photo', { defaultValue: 'Foto' })} <input type="file" hidden accept="image/*" multiple onChange={handleFileChange} /></label>}
+                            {!isEncuesta && <label className="nov-media-btn"><Video size={18} /> {t('news.filters.media_video', { defaultValue: 'Video' })} <input type="file" hidden accept="video/*" multiple onChange={handleFileChange} /></label>}
                         </div>
                     )}
                     <div style={{ display: 'flex', gap: 12, marginLeft: 'auto' }}>
@@ -1139,11 +1143,11 @@ function CreatePostModal({ onClose, user, empresaActiva, refresh, avatarUrl }: a
                                 onClick={() => setIsPreview(true)}
                                 disabled={!contenido.trim() && files.length === 0}
                             >
-                                Vista Previa
+                                {t('news.modal.preview', { defaultValue: 'Vista Previa' })}
                             </button>
                         )}
                         <button className="btn-primary" disabled={uploading} onClick={handleCreate}>
-                            {uploading ? 'Publicando...' : 'Compartir'}
+                            {uploading ? t('news.actions.publishing', { defaultValue: 'Publicando...' }) : t('news.actions.share')}
                         </button>
                     </div>
                 </div>

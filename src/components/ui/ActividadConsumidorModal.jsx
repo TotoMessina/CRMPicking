@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from './Button';
@@ -7,6 +8,7 @@ import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function ActividadConsumidorModal({ isOpen, onClose, consumidorId, consumidorNombre, onSaved }) {
+    const { t } = useTranslation();
     const { empresaActiva } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -44,8 +46,8 @@ export function ActividadConsumidorModal({ isOpen, onClose, consumidorId, consum
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.descripcion.trim()) return toast.error("La descripción es obligatoria");
-        if (!empresaActiva?.id) return toast.error("No hay empresa activa seleccionada");
+        if (!formData.descripcion.trim()) return toast.error(t('consumers.activity.error_description'));
+        if (!empresaActiva?.id) return toast.error(t('common.errors.no_company'));
 
         setLoading(true);
 
@@ -63,7 +65,7 @@ export function ActividadConsumidorModal({ isOpen, onClose, consumidorId, consum
         if (error) {
             toast.error(error.message);
         } else {
-            toast.success("Actividad agregada");
+            toast.success(t('consumers.activity.success'));
 
             // Sync last activity on main table ignoring errors
             await supabase.from("consumidores").update({ ultima_actividad: fechaISO }).eq("id", consumidorId);
@@ -79,34 +81,34 @@ export function ActividadConsumidorModal({ isOpen, onClose, consumidorId, consum
         <div className="modal is-open">
             <div className="modal-content" style={{ maxWidth: '500px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0 }}>Agregar actividad</h3>
+                    <h3 style={{ margin: 0 }}>{t('consumers.activity.add_title')}</h3>
                     <button className="modal-close" type="button" onClick={onClose}><X size={20} /></button>
                 </div>
 
                 <div className="muted" style={{ marginBottom: '16px', fontSize: '14px' }}>
-                    Consumidor: {consumidorNombre} (ID: {consumidorId})
+                    {t('consumers.activity.consumer')}: {consumidorNombre} (ID: {consumidorId})
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <label className="field">
-                        <span className="field-label">Descripción *</span>
-                        <textarea name="descripcion" className="input" rows="4" placeholder="Detalle de la gestión..." value={formData.descripcion} onChange={handleChange} required></textarea>
+                        <span className="field-label">{t('consumers.activity.description')} *</span>
+                        <textarea name="descripcion" className="input" rows="4" placeholder={t('consumers.activity.description_placeholder')} value={formData.descripcion} onChange={handleChange} required></textarea>
                     </label>
 
                     <div className="form-row-2">
                         <label className="field">
-                            <span className="field-label">Fecha y hora</span>
+                            <span className="field-label">{t('consumers.activity.date')}</span>
                             <input name="fecha" className="input" type="datetime-local" value={formData.fecha} onChange={handleChange} />
                         </label>
                         <label className="field">
-                            <span className="field-label">Usuario</span>
+                            <span className="field-label">{t('consumers.activity.user')}</span>
                             <input name="usuario" className="input" type="text" placeholder="Ej: Toto / Admin" value={formData.usuario} onChange={handleChange} />
                         </label>
                     </div>
 
                     <div className="modal-actions" style={{ marginTop: '24px' }}>
-                        <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
-                        <Button variant="primary" type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</Button>
+                        <Button variant="secondary" type="button" onClick={onClose}>{t('common.cancel')}</Button>
+                        <Button variant="primary" type="submit" disabled={loading}>{loading ? t('common.saving') : t('common.save')}</Button>
                     </div>
                 </form>
             </div>

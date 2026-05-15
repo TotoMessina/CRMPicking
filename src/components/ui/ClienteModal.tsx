@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,11 +20,10 @@ import { useRubros } from '../../hooks/useRubros';
 import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 import { useGrupos, useUpdateClienteGrupos } from '../../hooks/useGrupos';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Tag as TagIcon } from 'lucide-react';
+import { Tag as TagIcon, Sparkles, Wand2 } from 'lucide-react';
 import { usePipelineStates } from '../../hooks/usePipelineStates';
 import { usePipelineSituations } from '../../hooks/usePipelineSituations';
 import { aiProvider } from '../../lib/aiProvider';
-import { Sparkles, Wand2 } from 'lucide-react';
 
 interface Props {
     isOpen: boolean;
@@ -59,7 +59,6 @@ interface FormData {
     [key: string]: any;
 }
 
-// Helper: inline error message under a field
 const FieldError: React.FC<{ msg?: string }> = ({ msg }) => {
     if (!msg) return null;
     return (
@@ -69,7 +68,6 @@ const FieldError: React.FC<{ msg?: string }> = ({ msg }) => {
     );
 }
 
-// Fallback Form Layout (Backwards Compatibility)
 const DEFAULT_FORM_LAYOUT = {
     steps: [
         {
@@ -114,6 +112,7 @@ const DEFAULT_FORM_LAYOUT = {
 const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
 
 export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: initialClienteId, initialLocation, onSaved }) => {
+    const { t } = useTranslation();
     const { user, userName, empresaActiva, isDemoMode }: any = useAuth();
     const { states: COLUMNS, defaultState, loading: loadingStates } = usePipelineStates(empresaActiva?.id);
     const { situations: SITUACIONES, defaultSituation, loading: loadingSituations } = usePipelineSituations(empresaActiva?.id);
@@ -130,7 +129,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [isMagicThinking, setIsMagicThinking] = useState(false);
 
-    // Grupos
     const { data: gruposDB = [] } = useGrupos(empresaActiva?.id);
     const [selectedGrupos, setSelectedGrupos] = useState<string[]>([]);
 
@@ -170,7 +168,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const [stepEnteredAt, setStepEnteredAt] = useState(Date.now());
     const [lastGeocodedAddress, setLastGeocodedAddress] = useState<string | null>(null);
 
-    // Auto-fill responsable with the current user's name when creating a new client
     useEffect(() => {
         if (!isOpen || clienteId || !user) return;
         supabase.from('usuarios').select('nombre').eq('email', user.email).maybeSingle()
@@ -181,7 +178,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             });
     }, [isOpen, clienteId, user]);
 
-    // Sync defaults when creating
     useEffect(() => {
         if (!isOpen || clienteId) return;
         if (defaultState || defaultSituation) {
@@ -197,7 +193,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         if (e) e.preventDefault();
         const tel = formData.telefono?.trim();
         if (!tel) {
-            setErrors({ telefono: 'Ingresá un número de teléfono para verificar' });
+            setErrors({ telefono: t('clients.modal.errors.phone_verify') });
             return;
         }
 
@@ -211,14 +207,14 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         setVerifyingPhone(false);
 
         if (data && data.id) {
-            toast.success(`Cliente encontrado: ${data.nombre_local || data.nombre}`);
+            toast.success(t('clients.modal.toast.client_found', { name: data.nombre_local || data.nombre }));
             const idString = data.id.toString();
             setClienteId(idString);
             setErrors(prev => { const n = { ...prev }; delete n.telefono; return n; });
             loadCliente(idString);
             handleStepChange(1);
         } else {
-            toast.success('Teléfono nuevo, podés continuar con la carga.');
+            toast.success(t('clients.modal.toast.new_phone'));
             setErrors(prev => { const n = { ...prev }; delete n.telefono; return n; });
             handleStepChange(1);
         }
@@ -227,12 +223,12 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const handleMagicFill = async () => {
         const name = formData.nombre_local?.trim();
         if (!name || name.length < 3) {
-            toast.error('Ingresá el nombre del local para usar la IA');
+            toast.error(t('clients.modal.errors.local_name_ia'));
             return;
         }
 
         setIsMagicThinking(true);
-        const tid = toast.loading('IA analizando local...');
+        const tid = toast.loading(t('clients.modal.ia.analyzing'));
 
         try {
             const suggestion = await aiProvider.suggestClientDetails(name, formData.direccion);
@@ -244,10 +240,10 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 notas: (prev.notas ? prev.notas + '\n' : '') + (suggestion.notas || '')
             }));
 
-            toast.success('¡IA completó los datos!', { id: tid });
+            toast.success(t('clients.modal.ia.completed'), { id: tid });
             setIsDirty(true);
         } catch (error) {
-            toast.error('Error al consultar la IA', { id: tid });
+            toast.error(t('clients.modal.ia.error'), { id: tid });
         } finally {
             setIsMagicThinking(false);
         }
@@ -256,18 +252,17 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const handleGeocode = async () => {
         const currentAddress = formData.direccion?.trim();
         if (!currentAddress) {
-            toast.error('Por favor, ingresá una dirección primero.');
+            toast.error(t('common.errors.enter_address_first', { defaultValue: 'Por favor, ingresá una dirección primero.' }));
             return;
         }
 
-        // Optimization: Skip if the address hasn't changed since the last successful geocode
         if (lastGeocodedAddress === currentAddress) {
-            toast.success('Ubicación ya actualizada para esta dirección.');
+            toast.success(t('clients.modal.ia.geocode_success'));
             return;
         }
 
         setIsGeocoding(true);
-        const toastId = toast.loading('Buscando ubicación...');
+        const toastId = toast.loading(t('clients.modal.ia.geocoding'));
 
         try {
             const coords = await geocodeAddress(currentAddress);
@@ -278,13 +273,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     lng: coords.lng
                 }));
                 setLastGeocodedAddress(currentAddress);
-                toast.success('Dirección ubicada correctamente.', { id: toastId });
+                toast.success(t('clients.modal.ia.geocode_success'), { id: toastId });
                 setIsDirty(true);
             } else {
-                toast.error('No pudimos encontrar esa dirección. Intentá agregar ciudad o país.', { id: toastId });
+                toast.error(t('clients.modal.ia.geocode_error'), { id: toastId });
             }
         } catch (error) {
-            toast.error('Error al conectar con el servicio de mapas.', { id: toastId });
+            toast.error(t('clients.modal.ia.maps_error'), { id: toastId });
         } finally {
             setIsGeocoding(false);
         }
@@ -330,7 +325,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             let finalData: FormData;
 
             if (ecData) {
-                // Merge both: fallback to universal if specific is null
                 const rawClientes = (ecData as any).clientes || {};
                 finalData = {
                     ...emptyForm(),
@@ -354,22 +348,18 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     metadata: (ecData as any).metadata || {}
                 };
 
-                // Track the initial address to avoid redundant geocoding if it doesn't change
                 if (finalData.direccion && finalData.lat && finalData.lng) {
                     setLastGeocodedAddress(finalData.direccion.trim());
                 }
 
-                // Remove the nested joined object to keep formData clean
                 delete (finalData as any).clientes;
                 
-                // Set selected groups
                 if ((ecData as any).clientes && (ecData as any).clientes.cliente_grupos) {
                     setSelectedGrupos(((ecData as any).clientes.cliente_grupos as any[]).map((cg: any) => cg.grupo_id.toString()));
                 } else {
                     setSelectedGrupos([]);
                 }
             } else {
-                // Fallback to just universal if not found in company
                 const { data, error } = await (supabase as any).from('clientes').select('*').eq('id', id).single();
                 if (error) throw error;
                 
@@ -386,7 +376,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 };
             }
 
-            // Auto-fill responsible if empty during edit
             if (!finalData.responsable && (userName || user?.email)) {
                 finalData.responsable = userName || user?.email;
                 setIsDirty(true);
@@ -397,14 +386,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             setErrors({});
         } catch (error: any) {
             console.error('Error cargando cliente:', error);
-            toast.error('Error cargando los datos del cliente');
+            toast.error(t('clients.modal.toast.load_error'));
             handleClose();
         } finally {
             setLoading(false);
             setIsDirty(false);
         }
     };
-
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
@@ -416,11 +404,9 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         setFormData(prev => ({ ...prev, [name]: val }));
         setIsDirty(true);
 
-        // Clear error on change
         if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
     };
 
-    // Validate all fields and return errors object
     const validate = () => {
         const errs: Record<string, string> = {};
         layout.steps.forEach((s: any) => {
@@ -428,7 +414,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 if (f.required) {
                     const val = f.isStandard ? formData[f.key] : formData.metadata?.[f.key];
                     if (typeof val === 'string' ? !val.trim() : (val === undefined || val === null || val === '')) {
-                        errs[f.key] = `El campo "${f.label}" es requerido`;
+                        errs[f.key] = t('clients.modal.errors.required', { label: f.label });
                     }
                 }
             });
@@ -461,15 +447,13 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Prevent double click on "Siguiente" triggering "Guardar"
-        if (step === 3 && Date.now() - stepEnteredAt < 500) {
+        if (step === layout.steps.length && Date.now() - stepEnteredAt < 500) {
             return;
         }
 
         const errs = validate();
         if (Object.keys(errs).length > 0) {
             setErrors(errs);
-            // Navigate to first step that has an error
             for (const [s, fields] of Object.entries(dynamicStepFields)) {
                 if (fields.some(f => errs[f])) { handleStepChange(Number(s)); break; }
             }
@@ -502,14 +486,12 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 lng: formData.lng != null && formData.lng !== '' ? parseFloat(formData.lng as string) : null,
             };
 
-            // If the state implies activation/closure, mark the current user as the closer
             if (esEstadoFinal(formData.estado)) {
                 rawPayload.activador_cierre = userName || user?.email || null;
             }
 
             const payload = { ...rawPayload };
 
-            // Override with map coordinates when creating from the map
             if (initialLocation && !clienteId) {
                 payload.lng = parseFloat(initialLocation.lng as any);
                 payload.lat = parseFloat(initialLocation.lat as any);
@@ -517,27 +499,16 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
             const shouldRecordVisit = payload.estado !== ESTADO_RELEVADO || formData.registrar_visita === 'true';
 
-            console.log('--- AUDITORÍA DE GUARDADO ---');
-            console.log('Cliente:', formData.nombre_local || formData.nombre);
-            console.log('Empresa Destino ID:', empresaActiva?.id);
-            console.log('Empresa Destino Nombre:', empresaActiva?.nombre);
-            console.log('----------------------------');
-
-            console.log('Guardando cliente...', { clienteId, empresaId: empresaActiva?.id });
-
             if (!empresaActiva?.id) {
                 toast.error('Error: No se detectó una empresa activa.');
                 setLoading(false);
                 return;
             }
 
-            // --- SaaS NO-CODE AUTOMATIONS ENGINE 2.0 ---
             const automations = empresaActiva?.config?.automations || [];
             if (automations.length > 0) {
                 automations.forEach((rule: any) => {
                     let isMatch = false;
-                    
-                    // 1. Trigger Detection Logic
                     if (rule.trigger === 'state_changed') {
                         const oldState = originalData?.estado || null;
                         const newState = payload.estado || null;
@@ -550,27 +521,20 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                     (clienteId && oldVal !== newVal && newVal === rule.value));
                     }
                                         
-                    // 2. Action Execution Logic
                     if (isMatch) {
-                        console.log(`[AUTOMATION] Matched trigger '${rule.trigger}' with value '${rule.value}'`);
-                        
                         if (rule.action === 'assign_responsible') {
                             payload.responsable = rule.target;
                             formData.responsable = rule.target;
-                            console.log(`[AUTOMATION] Action executed: assigned responsibility to ${rule.target}`);
                         } else if (rule.action === 'change_situation') {
                             payload.situacion = rule.target;
                             formData.situacion = rule.target;
-                            console.log(`[AUTOMATION] Action executed: changed situation to ${rule.target}`);
                         } else if (rule.action === 'auto_schedule') {
                             const daysToAdd = parseInt(rule.target) || 7;
                             const futureDate = new Date();
                             futureDate.setDate(futureDate.getDate() + daysToAdd);
-                            const dateString = futureDate.toISOString().split('T')[0]; // YYYY-MM-DD
-                            
+                            const dateString = futureDate.toISOString().split('T')[0];
                             payload.fecha_proximo_contacto = dateString;
                             formData.fecha_proximo_contacto = dateString;
-                            console.log(`[AUTOMATION] Action executed: auto-scheduled contact in ${daysToAdd} days (${dateString})`);
                         } else if (rule.action === 'add_note') {
                             const noteText = rule.target || 'Nota automática';
                             const currentNotes = payload.notas || '';
@@ -578,10 +542,8 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                             const finalNote = currentNotes 
                                 ? `${currentNotes}\n\n[🤖 ${timestamp}]: ${noteText}` 
                                 : `[🤖 ${timestamp}]: ${noteText}`;
-                                
                             payload.notas = finalNote;
                             formData.notas = finalNote;
-                            console.log(`[AUTOMATION] Action executed: appended automatic note`);
                         }
                     }
                 });
@@ -592,8 +554,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
 
             if (clienteId) {
                 const numericId = parseInt(clienteId, 10);
-                
-                // EXCLUSIVELY universal fields for 'clientes' table
                 const universalFields = {
                     nombre_local: payload.nombre_local,
                     nombre: payload.nombre,
@@ -605,7 +565,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     cuit: payload.cuit,
                 };
 
-                // Company-specific fields for 'empresa_cliente' table
                 const companyFields = {
                     estado: payload.estado,
                     rubro: payload.rubro,
@@ -623,7 +582,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     metadata: formData.metadata || {}
                 };
 
-                // 1. First update company-specific record (stato/situacion - critical)
                 const { error: cErr } = await supabase
                     .from('empresa_cliente')
                     .update({
@@ -633,15 +591,10 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     .eq('cliente_id', numericId)
                     .eq('empresa_id', empresaActiva.id);
 
-                if (cErr) console.error('Error actualizando empresa_cliente:', cErr);
-
-                // 2. Then update universal client record (name, address, coords)
                 const { error: uErr } = await supabase
                     .from('clientes')
                     .update(universalFields as any)
                     .eq('id', numericId);
-
-                if (uErr) console.error('Error actualizando clientes:', uErr);
 
                 finalErr = cErr || uErr;
 
@@ -664,7 +617,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     }] as any);
                 }
             } else {
-                // Creation logic (New Client) via RPC
                 let creadoPor: string | null = userName || null;
                 if (!creadoPor && user?.email) {
                     const { data: uData } = await supabase.from('usuarios').select('nombre').eq('email', user.email).maybeSingle();
@@ -712,7 +664,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     resultId = createdId;
                     const numericResultId = typeof resultId === 'string' ? parseInt(resultId, 10) : resultId;
                     
-                    // Log creation
                     const desc = `${initialLocation ? '📍' : '🆕'} Alta de cliente - Estado: ${payload.estado || 'Sin estado'}`;
                     await supabase.from('actividades').insert([{
                         cliente_id: numericResultId,
@@ -739,23 +690,21 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             if (finalErr) {
                 const isOffline = finalErr.message === 'Failed to fetch' || finalErr.message?.includes('fetch') || !navigator.onLine;
                 if (isOffline) {
-                    // Queue for offline sync
                     if (clienteId) {
                         await queueMutation('clientes', 'UPDATE', { id: clienteId, ...payload });
                         await queueMutation('empresa_cliente', 'UPDATE', { cliente_id: clienteId, empresa_id: empresaActiva.id, ...payload });
                     } else {
                         await queueMutation('_rpc_crear_cliente', 'INSERT', { empresa_id: empresaActiva.id, ...payload, registrar_visita: shouldRecordVisit });
                     }
-                    toast.success('💾 Guardado sin conexión. Se sincronizará pronto.');
+                    toast.success(t('clients.modal.toast.saved_offline'));
                     setIsDirty(false);
                     onSaved();
                 } else {
                     throw finalErr;
                 }
             } else {
-                toast.success(clienteId ? 'Cliente actualizado' : 'Cliente creado exitosamente');
+                toast.success(clienteId ? t('clients.modal.toast.updated') : t('clients.modal.toast.created'));
                 
-                // 3. Update Groups (Many-to-Many)
                 if (resultId) {
                     await updateGruposMutation.mutateAsync({
                         clienteId: resultId.toString(),
@@ -769,7 +718,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             }
         } catch (error: any) {
             console.error('Error final guardando cliente:', error);
-            toast.error(`Error al guardar: ${error.message || 'Ocurrió un error inesperado'}`);
+            toast.error(t('clients.modal.toast.save_error', { error: error.message || t('common.errors.unexpected', { defaultValue: 'Ocurrió un error inesperado' }) }));
         } finally {
             setLoading(false);
         }
@@ -835,7 +784,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                             }}
                         >
                             {isMagicThinking ? <Sparkles size={12} className="animate-spin" /> : <Wand2 size={12} />}
-                            {isMagicThinking ? 'Analizando...' : 'Magic Fill'}
+                            {isMagicThinking ? t('common.thinking', { defaultValue: 'Analizando...' }) : t('clients.modal.ia.magic_fill')}
                         </button>
                     )}
                     {cf.key === 'direccion' && (
@@ -852,11 +801,9 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                 padding: '2px 6px', borderRadius: '4px', transition: 'all 0.2s',
                                 opacity: isGeocoding ? 0.6 : 1
                             }}
-                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.1)'}
-                            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
                         >
                             {isGeocoding ? <RefreshCw size={12} className="animate-spin" /> : <MapPin size={12} />}
-                            {isGeocoding ? 'Buscando...' : 'Ubicar en mapa'}
+                            {isGeocoding ? t('common.searching', { defaultValue: 'Buscando...' }) : t('common.actions.locate_on_map', { defaultValue: 'Ubicar en mapa' })}
                         </button>
                     )}
                 </label>
@@ -864,9 +811,9 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                 {cf.type === 'interes_bar' ? (
                     (() => {
                         const levels = [
-                            { value: 'Bajo', color: '#94a3b8', label: 'Bajo' },
-                            { value: 'Medio', color: '#f59e0b', label: 'Medio' },
-                            { value: 'Alto', color: '#10b981', label: 'Alto' },
+                            { value: 'Bajo', color: '#94a3b8', label: t('common.levels.low', { defaultValue: 'Bajo' }) },
+                            { value: 'Medio', color: '#f59e0b', label: t('common.levels.medium', { defaultValue: 'Medio' }) },
+                            { value: 'Alto', color: '#10b981', label: t('common.levels.high', { defaultValue: 'Alto' }) },
                         ];
                         const activeIdx = levels.findIndex(l => l.value === (val || 'Bajo'));
                         const activeColor = levels[activeIdx]?.color || '#94a3b8';
@@ -894,10 +841,10 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                         <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', cursor: 'pointer', fontWeight: 500 }}>
                             <input type="checkbox" checked={val === 'true' || val === true} onChange={e => handleFieldChange(e.target.checked ? 'true' : 'false')}
                                 style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }} />
-                            {(val === 'true' || val === true) ? 'Sí, tiene venta digital' : 'No tiene venta digital'}
+                            {(val === 'true' || val === true) ? t('common.yes', { defaultValue: 'Sí' }) : t('common.no', { defaultValue: 'No' })}
                         </label>
                         {(val === 'true' || val === true) && (
-                            <input type="text" placeholder="¿Cuál? Ej: Pedidos Ya, Rappi..." value={formData.venta_digital_cual || ''} onChange={e => setFormData(p => ({ ...p, venta_digital_cual: e.target.value }))} style={{ marginTop: '4px' }} />
+                            <input type="text" placeholder={t('clients.modal.placeholders.digital_sales_detail', { defaultValue: '¿Cuál? Ej: Pedidos Ya, Rappi...' })} value={formData.venta_digital_cual || ''} onChange={e => setFormData(p => ({ ...p, venta_digital_cual: e.target.value }))} style={{ marginTop: '4px' }} />
                         )}
                     </div>
                 ) : cf.type === 'grupos' ? (
@@ -937,62 +884,6 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                             })}
                         </div>
                     )
-                ) : cf.type === 'groups' ? (
-                    (() => {
-                        let items: string[] = [];
-                        if (cf.source === 'responsables') {
-                            items = [...new Set([...responsablesDB, formData.responsable])].filter(Boolean);
-                        } else if (cf.source === 'rubros') {
-                            items = rubrosDB;
-                        } else if (cf.source === 'estados') {
-                            items = COLUMNS.map(col => col.label);
-                        } else if (cf.source === 'tipos_contacto') {
-                            items = ['Visita Presencial', 'Llamada'];
-                        } else if (cf.source === 'estilos_contacto') {
-                            items = ['Sin definir', 'Dueño', 'Empleado', 'Cerrado'];
-                        } else if (cf.options && cf.options.length > 0) {
-                            items = cf.options;
-                        }
-
-                        const currentList: string[] = typeof val === 'string' 
-                            ? val.split(',').map(s => s.trim()).filter(Boolean) 
-                            : (Array.isArray(val) ? val : []);
-
-                        return (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
-                                {items.map((item: string) => {
-                                    const isSelected = currentList.includes(item);
-                                    return (
-                                        <button
-                                            key={item}
-                                            type="button"
-                                            onClick={() => {
-                                                const newList = isSelected
-                                                    ? currentList.filter(v => v !== item)
-                                                    : [...currentList, item];
-                                                handleFieldChange(newList.join(', '));
-                                            }}
-                                            style={{
-                                                padding: '6px 12px',
-                                                borderRadius: '99px',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 600,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                                border: '1px solid',
-                                                background: isSelected ? 'var(--accent)' : 'transparent',
-                                                color: isSelected ? '#fff' : 'var(--text-muted)',
-                                                borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
-                                                opacity: isSelected ? 1 : 0.7
-                                            }}
-                                        >
-                                            {item}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        );
-                    })()
                 ) : cf.type === 'situacion' ? (
                     (clienteId || esEstadoFinal(formData.estado)) && (
                         <select name="situacion" value={formData.situacion || defaultSituation || SITUACION_SIN_COMUNICACION} onChange={handleInputChange}>
@@ -1020,11 +911,11 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                             onChange={e => handleFieldChange(e.target.checked)}
                             style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
                         />
-                        {cf.label}
+                        {t(`clients.modal.fields.${cf.key}`, { defaultValue: cf.label })}
                     </label>
                 ) : cf.type === 'select' ? (
                     <select value={val || ''} onChange={handleInputChange} style={hasError ? ERR_STYLE : {}}>
-                        <option value="">Seleccionar...</option>
+                        <option value="">{t('clients.modal.placeholders.select')}</option>
                         {cf.options && cf.options.length > 0 ? (
                             cf.options.map((o: string) => <option key={o} value={o}>{o}</option>)
                         ) : cf.source === 'rubros' ? (
@@ -1054,7 +945,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                         ) : null}
                     </select>
                 ) : cf.type === 'textarea' ? (
-                    <textarea value={val || ''} onChange={handleInputChange} style={hasError ? ERR_STYLE : {}} rows={3} />
+                    <textarea value={val || ''} onChange={handleInputChange} style={hasError ? ERR_STYLE : {}} rows={3} placeholder={t('clients.modal.placeholders.notes')} />
                 ) : (
                     <div style={{ position: 'relative' }}>
                         <input 
@@ -1065,7 +956,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                 ...(hasError ? ERR_STYLE : {}),
                                 ...(cf.key === 'direccion' ? { paddingRight: '35px' } : {})
                             }}
-                            placeholder={cf.placeholder || 'Completar...'}
+                            placeholder={t(`clients.modal.placeholders.${cf.key}`, { defaultValue: cf.placeholder || t('common.complete', { defaultValue: 'Completar...' }) })}
                         />
                         {cf.key === 'direccion' && formData.lat && formData.lng && !isGeocoding && (
                             <div title="Ubicación fijada" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}>
@@ -1094,133 +985,126 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="modal-header">
-                            <h3>{clienteId ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
+                            <h3>{clienteId ? t('clients.modal.title_edit') : t('clients.modal.title_new')}</h3>
                             <button className="modal-close" type="button" onClick={handleClose}>
                                 <X size={20} />
                             </button>
                         </div>
 
-                {/* Step indicators */}
-                {step > 0 && (
-                <div className="wizard-steps" style={{ marginBottom: '24px' }}>
-                    {layout.steps.map((st: any) => (
-                        <div
-                            key={st.id}
-                            className={`step-indicator ${step === st.id ? 'active' : ''} ${(dynamicStepFields[st.id] || []).some(f => errors[f]) ? 'error' : ''}`}
-                            onClick={() => handleStepChange(st.id)}
-                            style={{
-                                cursor: 'pointer',
-                                ...((dynamicStepFields[st.id] || []).some(f => errors[f]) ? { background: '#ef4444', opacity: 1 } : {})
-                            }}
-                            title={st.title}
-                        />
-                    ))}
-                </div>
-                )}
-
-                <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
-                    <AnimatePresence mode="wait">
-                    {clienteId && loading && Object.keys(formData).length === 0 ? (
-                        <motion.div key="skeleton-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '10px 0' }}>
-                            <div className="skeleton" style={{ gridColumn: '1 / -1', height: '24px', width: '35%', marginBottom: '8px', borderRadius: '6px' }} />
-                            {Array.from({ length: 6 }).map((_, i) => (
-                                <div key={i} className="field">
-                                    <div className="skeleton" style={{ height: '14px', width: '30%', marginBottom: '6px', borderRadius: '4px' }} />
-                                    <div className="skeleton" style={{ height: '38px', width: '100%', borderRadius: '8px' }} />
-                                </div>
+                        {step > 0 && (
+                        <div className="wizard-steps" style={{ marginBottom: '24px' }}>
+                            {layout.steps.map((st: any) => (
+                                <div
+                                    key={st.id}
+                                    className={`step-indicator ${step === st.id ? 'active' : ''} ${(dynamicStepFields[st.id] || []).some(f => errors[f]) ? 'error' : ''}`}
+                                    onClick={() => handleStepChange(st.id)}
+                                    style={{
+                                        cursor: 'pointer',
+                                        ...((dynamicStepFields[st.id] || []).some(f => errors[f]) ? { background: '#ef4444', opacity: 1 } : {})
+                                    }}
+                                    title={st.title}
+                                />
                             ))}
-                        </motion.div>
-                    ) : (
-                    <motion.div key={step} initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} transition={{ duration: 0.2 }}>
-                    
-                    {/* ── STEP 0 ── */}
-                    {step === 0 && (
-                        <div>
-                            <h3 style={{ marginBottom: '16px' }}>Verificar Teléfono</h3>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
-                                Ingresá el teléfono del cliente para verificar si ya existe en la base de datos.
-                            </p>
-                            <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                                <div className="field">
-                                    <label>Teléfono *</label>
-                                    <input type="text" {...inp('telefono')} placeholder="Ej: 112345678" onKeyDown={(e) => e.key === 'Enter' && handleVerifyPhone(e as any)} />
-                                    <FieldError msg={errors.telefono} />
+                        </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
+                            <AnimatePresence mode="wait">
+                            {clienteId && loading && Object.keys(formData).length === 0 ? (
+                                <motion.div key="skeleton-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '10px 0' }}>
+                                    <div className="skeleton" style={{ gridColumn: '1 / -1', height: '24px', width: '35%', marginBottom: '8px', borderRadius: '6px' }} />
+                                    {Array.from({ length: 6 }).map((_, i) => (
+                                        <div key={i} className="field">
+                                            <div className="skeleton" style={{ height: '14px', width: '30%', marginBottom: '6px', borderRadius: '4px' }} />
+                                            <div className="skeleton" style={{ height: '38px', width: '100%', borderRadius: '8px' }} />
+                                        </div>
+                                    ))}
+                                </motion.div>
+                            ) : (
+                            <motion.div key={step} initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} transition={{ duration: 0.2 }}>
+                                {step === 0 && (
+                                    <div>
+                                        <h3 style={{ marginBottom: '16px' }}>{t('clients.modal.ia.verifying_phone', { defaultValue: 'Verificar Teléfono' })}</h3>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
+                                            {t('clients.modal.ia.verify_phone_msg', { defaultValue: 'Ingresá el teléfono del cliente para verificar si ya existe en la base de datos.' })}
+                                        </p>
+                                        <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                                            <div className="field">
+                                                <label>{t('clients.modal.fields.phone')} *</label>
+                                                <input type="text" {...inp('telefono')} placeholder="Ej: 112345678" onKeyDown={(e) => e.key === 'Enter' && handleVerifyPhone(e as any)} />
+                                                <FieldError msg={errors.telefono} />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', gap: '12px' }}>
+                                            <Button variant="secondary" type="button" onClick={handleClose}>{t('common.actions.cancel', { defaultValue: 'Cancelar' })}</Button>
+                                            <Button variant="primary" type="button" onClick={handleVerifyPhone} disabled={verifyingPhone}>
+                                                {verifyingPhone ? t('clients.modal.ia.verifying_phone') : t('clients.modal.ia.verify_continue', { defaultValue: 'Verificar y Continuar' })}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {step > 0 && activeStepObj && (
+                                    <div>
+                                        <h3 style={{ marginBottom: '16px' }}>{activeStepObj.title}</h3>
+                                        <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                            {activeStepObj.fields.map((cf: any) => renderDynamicField(cf))}
+                                        </div>
+                                    </div>
+                                )}
+                            </motion.div>
+                            )}
+                            </AnimatePresence>
+
+                            {step > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
+                                <Button variant="secondary" type="button" onClick={() => handleStepChange(step > 1 ? step - 1 : 1)} style={{ visibility: step === 1 ? 'hidden' : 'visible' }}>
+                                    {t('clients.modal.back')}
+                                </Button>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <Button variant="secondary" type="button" onClick={handleClose}>{t('common.actions.cancel', { defaultValue: 'Cancelar' })}</Button>
+                                    {step < totalSteps ? (
+                                        <Button key="siguiente" variant="primary" type="button" onClick={handleNextPhase}>{t('clients.modal.next')}</Button>
+                                    ) : (
+                                        <Button key="guardar" variant="primary" type="submit" disabled={loading}>
+                                            {loading ? t('clients.modal.saving') : t('clients.modal.save')}
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', gap: '12px' }}>
-                                <Button variant="secondary" type="button" onClick={handleClose}>Cancelar</Button>
-                                <Button variant="primary" type="button" onClick={handleVerifyPhone} disabled={verifyingPhone}>
-                                    {verifyingPhone ? 'Verificando...' : 'Verificar y Continuar'}
-                                </Button>
-                            </div>
-                        </div>
-                    )}
+                            )}
+                        </form>
+                    </motion.div>
 
-                    {/* Dynamic step rendering */}
-                    {step > 0 && activeStepObj && (
-                        <div>
-                            <h3 style={{ marginBottom: '16px' }}>{activeStepObj.title}</h3>
-                            <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                {activeStepObj.fields.map((cf: any) => renderDynamicField(cf))}
-                            </div>
-                        </div>
-                    )}
-
-
-
-                     </motion.div>
+                    <AnimatePresence>
+                    {showConfirm && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal active" style={{ zIndex: 9999, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(5px)' }}>
+                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="modal-content" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '32px 24px', position: 'relative' }}>
+                                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                    <AlertCircle size={32} />
+                                </div>
+                                <h3 style={{ margin: '0 0 12px', fontSize: '1.4rem' }}>{t('clients.modal.discard_changes')}</h3>
+                                <p className="muted" style={{ margin: '0 0 24px', fontSize: '1rem', lineHeight: 1.5 }}>{t('clients.modal.discard_msg')}</p>
+                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                    <Button variant="secondary" onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: '12px' }}>
+                                        {t('clients.modal.discard_cancel')}
+                                    </Button>
+                                    <button
+                                        type="button"
+                                        style={{
+                                            flex: 1, padding: '12px', borderRadius: '10px', fontWeight: 600, fontSize: '0.95rem',
+                                            background: 'var(--danger)', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(239,68,68,0.3)'
+                                        }}
+                                        onClick={() => { setShowConfirm(false); setIsDirty(false); onClose(); }}
+                                    >
+                                        {t('clients.modal.discard_confirm')}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
                     )}
                     </AnimatePresence>
-
-                    {step > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
-                        <Button variant="secondary" type="button" onClick={() => handleStepChange(step > 1 ? step - 1 : 1)} style={{ visibility: step === 1 ? 'hidden' : 'visible' }}>
-                            Anterior
-                        </Button>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <Button variant="secondary" type="button" onClick={handleClose}>Cancelar</Button>
-                            {step < totalSteps ? (
-                                <Button key="siguiente" variant="primary" type="button" onClick={handleNextPhase}>Siguiente</Button>
-                            ) : (
-                                <Button key="guardar" variant="primary" type="submit" disabled={loading}>
-                                    {loading ? 'Guardando...' : 'Guardar Cliente'}
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                    )}
-                </form>
-            </motion.div>
-
-            <AnimatePresence>
-            {showConfirm && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal active" style={{ zIndex: 9999, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(5px)' }}>
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="modal-content" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '32px 24px', position: 'relative' }}>
-                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                            <AlertCircle size={32} />
-                        </div>
-                        <h3 style={{ margin: '0 0 12px', fontSize: '1.4rem' }}>¿Descartar cambios?</h3>
-                        <p className="muted" style={{ margin: '0 0 24px', fontSize: '1rem', lineHeight: 1.5 }}>Tienes datos sin guardar en el formulario. Si sales ahora, se perderán para siempre.</p>
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                            <Button variant="secondary" onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: '12px' }}>
-                                Volver al formulario
-                            </Button>
-                            <button
-                                type="button"
-                                style={{
-                                    flex: 1, padding: '12px', borderRadius: '10px', fontWeight: 600, fontSize: '0.95rem',
-                                    background: 'var(--danger)', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(239,68,68,0.3)'
-                                }}
-                                onClick={() => { setShowConfirm(false); setIsDirty(false); onClose(); }}
-                            >
-                                Sí, descartar
-                            </button>
-                        </div>
-                    </motion.div>
                 </motion.div>
-            )}
-            </AnimatePresence>
-        </motion.div>
             )}
         </AnimatePresence>,
         document.body
