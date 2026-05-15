@@ -15,6 +15,7 @@ export interface Novedad {
     creador?: {
         nombre?: string;
         avatar_emoji?: string;
+        avatar_url?: string | null;
     };
     likes_count?: number;
     comentarios_count?: number;
@@ -32,5 +33,6 @@ export interface NovedadComentario {
     usuario?: {
         nombre?: string;
         avatar_emoji?: string;
+        avatar_url?: string | null;
     };
 }

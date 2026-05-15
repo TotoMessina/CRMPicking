@@ -9,9 +9,10 @@ interface ChatSidebarProps {
     setSelectedUser: (user: ChatUser | null) => void;
     loadingUsers: boolean;
     isMobile: boolean;
+    openViewer: (url: string) => void;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({ usuarios, selectedUser, setSelectedUser, loadingUsers, isMobile }) => {
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({ usuarios, selectedUser, setSelectedUser, loadingUsers, isMobile, openViewer }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     if (isMobile && selectedUser) return null;
@@ -105,7 +106,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ usuarios, selectedUser
                                         transition: 'all 0.2s'
                                     }}>
                                         {u.avatar_url ? (
-                                            <img src={u.avatar_url} alt={u.nombre || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <img 
+                                                src={u.avatar_url} 
+                                                alt={u.nombre || ''} 
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }} 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openViewer(u.avatar_url!);
+                                                }}
+                                            />
                                         ) : (
                                             <UserCircle size={28} />
                                         )}

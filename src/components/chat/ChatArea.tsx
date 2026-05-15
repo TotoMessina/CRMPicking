@@ -25,6 +25,7 @@ interface ChatAreaProps {
     setSelectedContext: (ctx: ChatContext | null) => void;
     loadMoreMessages: () => Promise<void>;
     smartReplies?: string[];
+    openViewer: (url: string) => void;
 }
 
 const formatTime = (isoString: string) => {
@@ -38,7 +39,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     loadingMessages, hasMoreMessages, isMobile, 
     scrollContainerRef, topRef, messagesEndRef,
     selectedContext, setSelectedContext,
-    loadMoreMessages, smartReplies
+    loadMoreMessages, smartReplies, openViewer
 }) => {
     const [isContextModalOpen, setIsContextModalOpen] = useState(false);
 
@@ -127,7 +128,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     border: '1px solid var(--border)'
                 }}>
                     {selectedUser.avatar_url ? (
-                        <img src={selectedUser.avatar_url} alt={selectedUser.nombre || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img 
+                            src={selectedUser.avatar_url} 
+                            alt={selectedUser.nombre || ''} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }} 
+                            onClick={() => openViewer(selectedUser.avatar_url!)}
+                        />
                     ) : (
                         <UserCircle size={28} />
                     )}

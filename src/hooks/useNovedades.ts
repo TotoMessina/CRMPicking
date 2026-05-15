@@ -4,7 +4,7 @@ import { Novedad, NovedadComentario } from '../types/novedades';
 import { useAuth } from '../contexts/AuthContext';
 
 export function useNovedades() {
-    const { empresaActiva, user, role } = useAuth();
+    const { empresaActiva, user, role, avatarUrl } = useAuth();
     const [novedades, setNovedades] = useState<Novedad[]>([]);
     const [historias, setHistorias] = useState<Novedad[]>([]);
     const [loading, setLoading] = useState(true);
@@ -65,7 +65,8 @@ export function useNovedades() {
                 // Parse creador metadata from denormalized columns
                 let creadorInfo = { 
                     nombre: n.creador_nombre || 'Usuario', 
-                    avatar_emoji: n.creador_avatar || '👤' 
+                    avatar_emoji: n.creador_avatar || '👤',
+                    avatar_url: n.creador_avatar_url || null
                 };
 
                 const myLike = nLikes.find(l => l.usuario_id === user.id);
@@ -167,6 +168,7 @@ export function useNovedades() {
             usuario_id: user.id,
             usuario_nombre: user.user_metadata?.nombre || user.email?.split('@')[0] || 'Usuario',
             usuario_avatar: user.user_metadata?.avatar_emoji || '👤',
+            usuario_avatar_url: avatarUrl || null,
             comentario
         }).select();
 

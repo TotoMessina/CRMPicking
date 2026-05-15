@@ -1,14 +1,18 @@
+import React, { useState } from 'react';
 import { useChat } from '../hooks/useChat';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatArea } from '../components/chat/ChatArea';
 import { TaskModal } from '../components/chat/TaskModal';
 import { useAuth } from '../contexts/AuthContext';
+import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 
 /**
  * Chat Page
  */
 export default function Chat() {
     const { user, userName, empresaActiva, role, isDemoMode } = useAuth();
+    const [viewerImage, setViewerImage] = useState<string | null>(null);
     const roleName = role || '';
     const {
         usuarios, selectedUser, setSelectedUser, mensajes, newMessage, setNewMessage,
@@ -53,6 +57,7 @@ export default function Chat() {
                 setSelectedUser={setSelectedUser} 
                 loadingUsers={loadingUsers} 
                 isMobile={isMobile} 
+                openViewer={(url) => setViewerImage(url)}
             />
 
             <ChatArea 
@@ -74,6 +79,7 @@ export default function Chat() {
                 selectedContext={selectedContext}
                 setSelectedContext={setSelectedContext}
                 smartReplies={smartReplies}
+                openViewer={(url) => setViewerImage(url)}
             />
 
             <TaskModal 
@@ -86,6 +92,52 @@ export default function Chat() {
                 sendingTask={sendingTask} 
                 handleSendTask={handleSendTask} 
             />
+
+            <AnimatePresence>
+                {viewerImage && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setViewerImage(null)}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.9)',
+                            backdropFilter: 'blur(10px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 3000,
+                            padding: '20px',
+                            cursor: 'zoom-out'
+                        }}
+                    >
+                        <motion.button 
+                            className="icon-btn" 
+                            onClick={() => setViewerImage(null)}
+                            style={{ position: 'absolute', top: '20px', right: '20px', color: '#fff', background: 'rgba(255,255,255,0.1)' }}
+                        >
+                            <X size={24} />
+                        </motion.button>
+                        <motion.img 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            src={viewerImage} 
+                            alt="Profile" 
+                            style={{ 
+                                maxWidth: '100%', 
+                                maxHeight: '90vh', 
+                                borderRadius: '24px',
+                                boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                                pointerEvents: 'auto'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

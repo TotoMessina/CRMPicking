@@ -14,7 +14,7 @@ import './Novedades.css';
 
 export default function Novedades() {
     const { novedades, historias, loading, toggleLike, markAsViewed, addComentario, refresh, togglePin, votarEncuesta, toggleReaccionComentario } = useNovedades();
-    const { user, role, empresaActiva } = useAuth();
+    const { user, role, empresaActiva, avatarUrl } = useAuth();
     
     const canPost = role === 'admin' || role === 'super-admin' || role === 'recursos-humanos';
 
@@ -40,7 +40,8 @@ export default function Novedades() {
                     id: u.user_email,
                     nombre: u.user_nombre || u.user_email?.split('@')[0] || 'Usuario',
                     email: u.user_email,
-                    avatar_emoji: u.user_avatar_emoji || '👤'
+                    avatar_emoji: u.user_avatar_emoji || '👤',
+                    avatar_url: u.user_avatar_url || null
                 }));
                 setCompanyUsers(mapped);
             }
@@ -119,7 +120,11 @@ export default function Novedades() {
                             <div key={h.id} className={`nov-story ${h.is_viewed_by_me ? 'viewed' : ''}`} onClick={() => setActiveStoryIndex(index)}>
                                 <div className="nov-story-ring">
                                     <div className="nov-story-img">
-                                        {h.creador?.avatar_emoji || '👤'}
+                                        {h.creador?.avatar_url ? (
+                                            <img src={h.creador.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            h.creador?.avatar_emoji || '👤'
+                                        )}
                                     </div>
                                 </div>
                                 <span className="nov-story-name">{h.creador?.nombre?.split(' ')[0]}</span>
@@ -136,6 +141,7 @@ export default function Novedades() {
                         user={user} 
                         empresaActiva={empresaActiva} 
                         refresh={refresh} 
+                        avatarUrl={avatarUrl}
                     />
                 )}
             </AnimatePresence>
@@ -259,7 +265,13 @@ function StoriesViewer({ historias, initialIndex, onClose, markAsViewed }: any) 
                     ))}
                 </div>
                 <div className="nov-viewer-header">
-                    <div className="nov-post-avatar" style={{ width: 32, height: 32 }}>{story.creador?.avatar_emoji || '👤'}</div>
+                    <div className="nov-post-avatar" style={{ width: 32, height: 32 }}>
+                        {story.creador?.avatar_url ? (
+                            <img src={story.creador.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                            story.creador?.avatar_emoji || '👤'
+                        )}
+                    </div>
                     <span style={{ color: 'white', fontWeight: 600 }}>{story.creador?.nombre}</span>
                 </div>
                 <div className="nov-viewer-content">
@@ -422,7 +434,13 @@ function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenC
     return (
         <div className="nov-post" onMouseEnter={() => !post.is_viewed_by_me && markAsViewed(post.id)}>
             <div className="nov-post-header">
-                <div className="nov-post-avatar">{post.creador?.avatar_emoji || '👤'}</div>
+                <div className="nov-post-avatar">
+                    {post.creador?.avatar_url ? (
+                        <img src={post.creador.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                        post.creador?.avatar_emoji || '👤'
+                    )}
+                </div>
                 <div className="nov-post-meta">
                     <h4>
                         {post.creador?.nombre || 'Usuario'} 
@@ -684,7 +702,13 @@ function FeedPost({ post, user, toggleLike, markAsViewed, openComments, setOpenC
                     <div className="nov-comments-list">
                         {(post.comentarios || []).map((c: any, i: number) => (
                             <div key={i} className="nov-comment">
-                                <span className="nov-comment-avatar">{c.usuario_avatar || '👤'}</span>
+                                <span className="nov-comment-avatar">
+                                    {c.usuario_avatar_url ? (
+                                        <img src={c.usuario_avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                    ) : (
+                                        c.usuario_avatar || '👤'
+                                    )}
+                                </span>
                                 <div className="nov-comment-body">
                                     <span className="nov-comment-author">{c.usuario_nombre || 'Usuario'}</span>
                                     <span className="nov-comment-text">{renderCommentText(c.comentario)}</span>
@@ -844,7 +868,7 @@ function Lightbox({ mediaUrl, onClose }: { mediaUrl: string; onClose: () => void
     );
 }
 
-function CreatePostModal({ onClose, user, empresaActiva, refresh }: any) {
+function CreatePostModal({ onClose, user, empresaActiva, refresh, avatarUrl }: any) {
     const [createTipo, setCreateTipo] = useState<'post' | 'historia'>('post');
     const [contenido, setContenido] = useState('');
     const [files, setFiles] = useState<File[]>([]);
@@ -919,6 +943,7 @@ function CreatePostModal({ onClose, user, empresaActiva, refresh }: any) {
                 creador_id: user.id,
                 creador_nombre: user.user_metadata?.nombre || user.email?.split('@')[0] || 'Usuario',
                 creador_avatar: user.user_metadata?.avatar_emoji || '👤',
+                creador_avatar_url: avatarUrl || null,
                 tipo: createTipo,
                 contenido: contenido.trim(),
                 media_urls: uploadedUrls,
@@ -952,7 +977,13 @@ function CreatePostModal({ onClose, user, empresaActiva, refresh }: any) {
                             )}
                             <div className="nov-post" style={{ borderStyle: 'dashed', padding: '16px', background: 'var(--bg)', pointerEvents: 'none' }}>
                                 <div className="nov-post-header">
-                                    <div className="nov-post-avatar">{user.user_metadata?.avatar_emoji || '👤'}</div>
+                                    <div className="nov-post-avatar">
+                                        {avatarUrl ? (
+                                            <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                        ) : (
+                                            user.user_metadata?.avatar_emoji || '👤'
+                                        )}
+                                    </div>
                                     <div className="nov-post-meta">
                                         <h4 style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                                             {user.user_metadata?.nombre || user.email?.split('@')[0] || 'Usuario'}
@@ -1188,7 +1219,13 @@ function ShareModal({ post, companyUsers, currentUserEmail, empresaId, onClose }
                                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <span style={{ fontSize: '1.4rem' }}>{u.avatar_emoji || '👤'}</span>
+                                        <div className="nov-post-avatar" style={{ width: 32, height: 32, fontSize: '1rem' }}>
+                                            {u.avatar_url ? (
+                                                <img src={u.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                            ) : (
+                                                u.avatar_emoji || '👤'
+                                            )}
+                                        </div>
                                         <div>
                                             <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{u.nombre}</div>
                                             <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{u.email}</div>

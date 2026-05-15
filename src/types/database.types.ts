@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -1170,6 +1170,7 @@ export type Database = {
         Row: {
           activo: boolean
           avatar_emoji: string | null
+          avatar_url: string | null
           email: string | null
           id: string
           last_seen: string | null
@@ -1181,6 +1182,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           avatar_emoji?: string | null
+          avatar_url?: string | null
           email?: string | null
           id: string
           last_seen?: string | null
@@ -1192,6 +1194,7 @@ export type Database = {
         Update: {
           activo?: boolean
           avatar_emoji?: string | null
+          avatar_url?: string | null
           email?: string | null
           id?: string
           last_seen?: string | null
