@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { flushOutbox, clearAllOfflineData } from '../lib/offlineManager';
 import { TenantStore, injectTenantTheme } from '../config/tenant';
+import { logger } from '../lib/logger';
 import toast from 'react-hot-toast';
 
 export interface Empresa {
@@ -214,12 +215,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         supabase.auth.getSession().then(({ data: { session } }) => {
             const u = session?.user ?? null;
             setUser(u);
+            logger.setUserEmail(u?.email ?? null);
             fetchRoleAndName(u).finally(() => setLoading(false));
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             const u = session?.user ?? null;
             setUser(u);
+            logger.setUserEmail(u?.email ?? null);
             fetchRoleAndName(u);
         });
 

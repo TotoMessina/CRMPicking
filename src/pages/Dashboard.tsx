@@ -5,8 +5,9 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
     Activity, Shield, Zap, Target, ArrowRight, Truck, Users, CheckCircle,
-    Search, Plus, MessageSquare, Calendar, MapPin
+    Search, Plus, MessageSquare, Calendar, MapPin, Bug
 } from 'lucide-react';
+import { logger } from '../lib/logger';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { LiveOperationStream } from '../components/ui/LiveOperationStream';
 import { 
@@ -307,6 +308,23 @@ export default function Dashboard() {
                                 value={searchQuery}
                                 onChange={(e) => handleSearch(e.target.value)}
                             />
+                            {/* Secret Debug Button (only in DEV) */}
+                            {import.meta.env.DEV && (
+                                <button 
+                                    onClick={() => {
+                                        const err = new Error('Test Error from Dashboard');
+                                        logger.error('Manual Test Error', err, undefined, { source: 'dashboard_test_btn' });
+                                        alert('Error enviado a Supabase (revisá la consola y la DB)');
+                                    }}
+                                    style={{
+                                        position: 'absolute', right: '-40px', top: '10px',
+                                        background: 'transparent', border: 'none', color: 'var(--border)', cursor: 'pointer'
+                                    }}
+                                    title="Test logger.error()"
+                                >
+                                    <Bug size={14} />
+                                </button>
+                            )}
                             {searchResults.length > 0 && (
                                 <div className="db-search-results">
                                     {searchResults.map(item => (

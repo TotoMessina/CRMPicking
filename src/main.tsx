@@ -10,7 +10,19 @@ import { injectTenantTheme } from './config/tenant';
 import { TenantProvider } from './contexts/TenantContext';
 import './i18n/config';
 
+import { logger } from './lib/logger';
+
 injectTenantTheme();
+
+// --- Global Error Tracking ---
+window.onerror = (message, source, lineno, colno, error) => {
+  logger.error(`Global Error: ${message}`, error, undefined, { source, lineno, colno });
+  return false; // Let default handler run
+};
+
+window.onunhandledrejection = (event) => {
+  logger.error(`Unhandled Rejection: ${event.reason}`, event.reason);
+};
 
 
 const queryClient = new QueryClient({
