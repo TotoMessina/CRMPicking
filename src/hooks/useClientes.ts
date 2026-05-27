@@ -111,15 +111,8 @@ export function useClientes(params: UseClientesParams) {
                 vencidos: fVencidos
             });
 
-            if (fMissingCoords) {
-                // Evaluated via RPC
-            }
-            if (fMissingContact) {
-                // Evaluated via RPC
-            }
-            if (fMissingRubro) {
-                // Evaluated via RPC
-            }
+            // Los filtros fMissingCoords, fMissingContact y fMissingRubro
+            // son evaluados por el RPC a continuación cuando hasTextFilter es true.
 
             // Force RPC path if any advanced missing filters are applied
             const hasTextFilter = fNombre || fTelefono || fDireccion || fMissingCoords || fMissingContact || fMissingRubro;

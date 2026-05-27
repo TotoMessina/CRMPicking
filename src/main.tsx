@@ -59,11 +59,13 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     registerSW({ 
       immediate: true,
-      onRegistered(r: ServiceWorkerRegistration | undefined) {
-        console.log('SW Registered: ', r);
+      onRegistered(_r: ServiceWorkerRegistration | undefined) {
+        if (import.meta.env.DEV) {
+          console.log('[SW] Service Worker registrado correctamente.');
+        }
       },
       onRegisterError(error: any) {
-        console.log('SW registration error', error);
+        logger.error('[SW] Error al registrar el Service Worker', error);
       }
     })();
   });

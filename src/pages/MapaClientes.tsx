@@ -33,12 +33,10 @@ import { useRubros } from '../hooks/useRubros';
 import { ClientFilters } from '../components/clients/ClientFilters';
 import { getChurnRisk, CHURN_COLORS } from '../utils/riskScoring';
 
-// Extensiones para el objeto window para los popups de Leaflet
+// Extensiones para el objeto window para el objeto L de Leaflet
 declare global {
     interface Window {
         L: typeof L;
-        updateZoneColor: (id: string, newColor: string) => Promise<void>;
-        deleteZoneById: (id: string) => Promise<void>;
     }
 }
 
@@ -207,16 +205,22 @@ export default function MapaClientes() {
     const [historicalActivadorId, setHistoricalActivadorId] = useState('');
     const [historicalDate, setHistoricalDate] = useState(() => new Date().toISOString().split('T')[0]);
     const historicalPathLayerRef = useRef<L.LayerGroup | null>(null);
-    
+    // Ref interno para los callbacks de zona — evita exponer funciones en window
+    const zoneCallbacksRef = useRef<{
+        updateColor: (id: string, color: string) => Promise<void>;
+        deleteZone: (id: string) => Promise<void>;
+    } | null>(null);
+
+
     const bindZonePopup = (layer: any, zoneId: string) => {
         const popupContent = `
             <div style="margin-bottom:8px; font-weight:bold;">${t('map.zone.title')}</div>
             <div style="display:flex; flex-direction:column; gap:6px;">
-                <button class="btn-popup-local" style="color:var(--text); border:1px solid var(--border); padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#0c0c0c')">⬛ ${t('map.zone.mark_today')}</button>
-                <button class="btn-popup-local" style="color:#dc2626; border:1px solid #dc2626; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#ef4444')">🔴 ${t('map.zone.mark_done')}</button>
-                <button class="btn-popup-local" style="color:#ea580c; border:1px solid #ea580c; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="window.updateZoneColor('${zoneId}', '#f97316')">🟠 ${t('map.zone.mark_extra')}</button>
+                <button class="btn-popup-local" style="color:var(--text); border:1px solid var(--border); padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="document.dispatchEvent(new CustomEvent('zone-update',{detail:{id:'${zoneId}',color:'#0c0c0c'}}))">⬛ ${t('map.zone.mark_today')}</button>
+                <button class="btn-popup-local" style="color:#dc2626; border:1px solid #dc2626; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="document.dispatchEvent(new CustomEvent('zone-update',{detail:{id:'${zoneId}',color:'#ef4444'}}))">🔴 ${t('map.zone.mark_done')}</button>
+                <button class="btn-popup-local" style="color:#ea580c; border:1px solid #ea580c; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer; background: white;" onclick="document.dispatchEvent(new CustomEvent('zone-update',{detail:{id:'${zoneId}',color:'#f97316'}}))">🟠 ${t('map.zone.mark_extra')}</button>
                 <hr style="width:100%; border:0; border-top:1px solid #eee; margin:4px 0;">
-                <button class="btn-popup-local" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer;" onclick="window.deleteZoneById('${zoneId}')">🗑️ ${t('common.actions.delete')}</button>
+                <button class="btn-popup-local" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding: 4px 8px; font-size: 0.8em; border-radius: 6px; cursor: pointer;" onclick="document.dispatchEvent(new CustomEvent('zone-delete',{detail:{id:'${zoneId}'}}))">🗑️ ${t('common.actions.delete')}</button>
             </div>
         `;
         layer.bindPopup(popupContent);
@@ -248,44 +252,57 @@ export default function MapaClientes() {
         });
     };
 
+    // Registra los callbacks de zona en el ref y escucha los eventos del DOM
+    // que los popups de Leaflet disparan (sin tocar window global).
     useEffect(() => {
-        window.updateZoneColor = async (id: string, newColor: string) => {
-            const { error } = await (supabase as any).from('zones').update({ color: newColor }).eq('id', id).eq('empresa_id', empresaActiva?.id);
-            if (error) {
-                toast.error(t('map.toast.update_zone_error'));
-            } else {
-                if (drawnZonesRef.current) {
-                    drawnZonesRef.current.eachLayer((layer: any) => {
-                        if (layer.zoneId === id) {
-                            layer.setStyle({ color: newColor });
-                            layer.closePopup();
-                        }
-                    });
+        zoneCallbacksRef.current = {
+            updateColor: async (id: string, newColor: string) => {
+                const { error } = await (supabase as any).from('zones').update({ color: newColor }).eq('id', id).eq('empresa_id', empresaActiva?.id);
+                if (error) {
+                    toast.error(t('map.toast.update_zone_error'));
+                } else {
+                    if (drawnZonesRef.current) {
+                        drawnZonesRef.current.eachLayer((layer: any) => {
+                            if (layer.zoneId === id) {
+                                layer.setStyle({ color: newColor });
+                                layer.closePopup();
+                            }
+                        });
+                    }
+                    toast.success(t('map.toast.update_zone_success'));
                 }
-                toast.success(t('map.toast.update_zone_success'));
+            },
+            deleteZone: async (id: string) => {
+                if (!window.confirm(t('map.confirm.delete_zone'))) return;
+                const { error } = await (supabase as any).from('zones').delete().eq('id', id).eq('empresa_id', empresaActiva?.id);
+                if (error) {
+                    toast.error(t('map.toast.delete_zone_error'));
+                } else {
+                    if (drawnZonesRef.current) {
+                        drawnZonesRef.current.eachLayer((layer: any) => {
+                            if (layer.zoneId === id) drawnZonesRef.current?.removeLayer(layer);
+                        });
+                    }
+                    toast.success(t('map.toast.delete_zone_success'));
+                }
             }
         };
 
-        window.deleteZoneById = async (id: string) => {
-            if (!window.confirm(t('map.confirm.delete_zone'))) return;
-            const { error } = await (supabase as any).from('zones').delete().eq('id', id).eq('empresa_id', empresaActiva?.id);
-            if (error) {
-                toast.error(t('map.toast.delete_zone_error'));
-            } else {
-                if (drawnZonesRef.current) {
-                    drawnZonesRef.current.eachLayer((layer: any) => {
-                        if (layer.zoneId === id) {
-                            drawnZonesRef.current?.removeLayer(layer);
-                        }
-                    });
-                }
-                toast.success(t('map.toast.delete_zone_success'));
-            }
+        const handleZoneUpdate = (e: Event) => {
+            const { id, color } = (e as CustomEvent).detail;
+            zoneCallbacksRef.current?.updateColor(id, color);
         };
+        const handleZoneDelete = (e: Event) => {
+            const { id } = (e as CustomEvent).detail;
+            zoneCallbacksRef.current?.deleteZone(id);
+        };
+
+        document.addEventListener('zone-update', handleZoneUpdate);
+        document.addEventListener('zone-delete', handleZoneDelete);
 
         return () => {
-            delete (window as any).updateZoneColor;
-            delete (window as any).deleteZoneById;
+            document.removeEventListener('zone-update', handleZoneUpdate);
+            document.removeEventListener('zone-delete', handleZoneDelete);
         };
     }, [empresaActiva]);
 

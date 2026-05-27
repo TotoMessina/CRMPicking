@@ -22,23 +22,15 @@ export function useSecurityMonitor() {
                 logSuspicious('print_screen_attempt', { page: location.pathname });
             }
 
-            // Atajos de DevTools (que suelen usarse para inspeccionar datos masivamente)
+            // Atajos de DevTools — solo se registra si el uso es muy intensivo
+            // en páginas con datos sensibles (umbral elevado para evitar falsos positivos).
             if ((e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || e.key === 'F12') {
-                // No bloqueamos, pero registramos si es repetitivo en páginas de datos
                 if (location.pathname.includes('clientes') || location.pathname.includes('estadisticas')) {
                     suspiciousCount.current++;
-                    if (suspiciousCount.current > 3) {
+                    if (suspiciousCount.current > 5) {
                         logSuspicious('devtools_heavy_use', { count: suspiciousCount.current, page: location.pathname });
                     }
                 }
-            }
-        };
-
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'hidden') {
-                // Si el usuario cambia de pestaña muy rápido mientras está en la lista de clientes, 
-                // podría estar haciendo capturas externas o copiando datos.
-                // Esta es una heurística muy suave.
             }
         };
 
@@ -58,11 +50,9 @@ export function useSecurityMonitor() {
         };
 
         window.addEventListener('keydown', handleKeyDown);
-        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, [user, empresaActiva, location.pathname]);
 }

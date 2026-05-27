@@ -39,6 +39,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const EMPRESA_KEY = 'pu_empresa_activa';
+const USER_CACHE_KEY = 'pu_user_cache';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -52,14 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [empresaActiva, setEmpresaActivaState] = useState<Empresa | null>(null);
     const [paginasPermitidas, setPaginasPermitidas] = useState<PaginasPermitidas | null>(null);
 
-    const setEmpresaActiva = (empresa: Empresa | null) => {
+    // useCallback garantiza referencia estable para que el contexto no
+    // fuerce re-renders en todos los consumidores con cada render del Provider.
+    const setEmpresaActiva = useCallback((empresa: Empresa | null) => {
         setEmpresaActivaState(empresa);
         if (empresa) {
             localStorage.setItem(EMPRESA_KEY, JSON.stringify(empresa));
         } else {
             localStorage.removeItem(EMPRESA_KEY);
         }
-    };
+    }, []);
 
     const fetchRoleAndName = async (authUser: User | null) => {
         if (!authUser) {
@@ -68,16 +71,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAvatarUrl(null);
             setEmpresasDisponibles([]);
             setEmpresaActivaState(null);
+            localStorage.removeItem(USER_CACHE_KEY);
             return;
         }
 
-        // Si estamos offline, recuperamos al menos la empresa activa del cache
+        // Si estamos offline, recuperamos empresa + rol + nombre del cache local
+        // para que la UI no quede con identidad nula hasta que vuelva la conexión.
         if (!navigator.onLine) {
-            const stored = localStorage.getItem(EMPRESA_KEY);
-            if (stored) {
+            const storedEmpresa = localStorage.getItem(EMPRESA_KEY);
+            if (storedEmpresa) {
                 try {
-                    const parsed = JSON.parse(stored);
-                    setEmpresaActivaState(parsed);
+                    setEmpresaActivaState(JSON.parse(storedEmpresa));
+                } catch { /* ignore */ }
+            }
+            const storedUser = localStorage.getItem(USER_CACHE_KEY);
+            if (storedUser) {
+                try {
+                    const { role: cachedRole, userName: cachedName, avatarUrl: cachedAvatar } = JSON.parse(storedUser);
+                    if (cachedRole) setRole(cachedRole);
+                    if (cachedName) setUserName(cachedName);
+                    if (cachedAvatar) setAvatarUrl(cachedAvatar);
                 } catch { /* ignore */ }
             }
             return;
@@ -89,12 +102,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('email', authUser.email as string)
             .maybeSingle();
 
-        setRole(data?.role?.toLowerCase() || null);
-        setUserName(data?.nombre || null);
-        // Note: usage of avatar_url was in old code, but DB says avatar_emoji.
-        // Assuming avatar_url might be a legacy field or emoji.
-        // Keeping name as avatarUrl for consistency with UI.
-        setAvatarUrl(data?.avatar_url || null);
+        const resolvedRole = data?.role?.toLowerCase() || null;
+        const resolvedName = data?.nombre || null;
+        const resolvedAvatar = data?.avatar_url || null;
+
+        setRole(resolvedRole);
+        setUserName(resolvedName);
+        setAvatarUrl(resolvedAvatar);
+
+        // Guardar en cache local para restaurar la identidad en modo offline
+        localStorage.setItem(USER_CACHE_KEY, JSON.stringify({
+            role: resolvedRole,
+            userName: resolvedName,
+            avatarUrl: resolvedAvatar
+        }));
 
         // Load empresas this user belongs to
         const { data: empData } = await supabase
