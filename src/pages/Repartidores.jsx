@@ -41,7 +41,7 @@ export default function Repartidores() {
 
     const fetchRepartidores = async () => {
         if (!empresaActiva?.id) return;
-        console.log("Repartidores: Fetching for company:", empresaActiva.id);
+        if (import.meta.env.DEV) console.log("Repartidores: Fetching for company:", empresaActiva.id);
         setLoading(true);
         let request = supabase
             .from('repartidores')

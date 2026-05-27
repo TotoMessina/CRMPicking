@@ -207,7 +207,7 @@ export const useStatistics = () => {
             }
 
             const data = rawData as any;
-            console.log('Stats Data Received:', data);
+            if (import.meta.env.DEV) console.log('Stats Data Received:', data);
 
             // Update KPIs with safety checks
             const k = data?.kpis || {};
@@ -285,15 +285,25 @@ export const useStatistics = () => {
                 breakdown.get(k)!.efectivo = cerradosPorActivador.get(k)?.size || 0;
             });
 
-            const arrBreakdown = Array.from(breakdown.entries()).map(([nombre, vals]) => ({
-                nombre, 
-                activos_creados_por_mi: 0,
-                activos_heredados: vals.efectivo,
-                creados_total: vals.total,
-                visitados_total: visitasPorPersona.get(nombre) || 0,
-                visitas_efectivas: vals.efectivo,
-                visitas_no_efectivas: Math.max(0, (visitasPorPersona.get(nombre) || 0) - vals.efectivo)
-            })).sort((a, b) => b.visitas_efectivas - a.visitas_efectivas);
+            const arrBreakdown = Array.from(breakdown.entries()).map(([nombre, vals]) => {
+                const visitados = visitasPorPersona.get(nombre) || 0;
+                return {
+                    nombre,
+                    name: nombre,
+                    total: vals.total,
+                    activos_creados_por_mi: 0,
+                    activos_heredados: vals.efectivo,
+                    creados_total: vals.total,
+                    visitados_total: visitados,
+                    visitas_efectivas: vals.efectivo,
+                    visitas_no_efectivas: Math.max(0, visitados - vals.efectivo),
+                    statuses: [
+                        { st: 'Relevos', count: vals.total, color: '#475569' },
+                        { st: 'Visitas', count: visitados, color: '#f59e0b' },
+                        { st: 'Cierres', count: vals.efectivo, color: '#10b981' }
+                    ]
+                };
+            }).sort((a, b) => b.visitas_efectivas - a.visitas_efectivas);
 
             const statBreakdown = arrBreakdown.filter(x => x.creados_total > 0 || x.visitados_total > 0).map(x => ({
                 name: x.nombre, 

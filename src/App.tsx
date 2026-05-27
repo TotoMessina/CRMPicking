@@ -10,7 +10,7 @@ import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
 const Novedades = lazy(() => import('./pages/Novedades'));
-import InternalAI from './pages/InternalAI';
+const InternalAI = lazy(() => import('./pages/InternalAI'));
 import { CoqueBot } from './components/ui/CoqueBot';
 import { useSecurityMonitor } from './hooks/useSecurityMonitor';
 
@@ -113,7 +113,7 @@ function App(): React.JSX.Element {
             <Route path="/actividad-sistema" element={<Suspense fallback={<GlobalLoader />}><ActividadSistema /></Suspense>} />
             <Route path="/configuracion/pipeline" element={<Suspense fallback={<GlobalLoader />}><PipelineSettings /></Suspense>} />
             <Route path="/campanas" element={<Suspense fallback={<GlobalLoader />}><Campanas /></Suspense>} />
-            <Route path="/ia-interna" element={<InternalAI />} />
+            <Route path="/ia-interna" element={<Suspense fallback={<GlobalLoader />}><InternalAI /></Suspense>} />
             <Route path="/swipe-prospecting" element={<Suspense fallback={<GlobalLoader />}><TinderClientes /></Suspense>} />
             <Route path="/configuracion" element={<Suspense fallback={<GlobalLoader />}><Configuracion /></Suspense>} />
             <Route path="/inventario-marketing" element={<Suspense fallback={<GlobalLoader />}><InventarioMarketing /></Suspense>} />

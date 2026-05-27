@@ -1,0 +1,55 @@
+/* ===========================
+   RESET / BASE
+   =========================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family, 'Outfit'), sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar suave en PC */
+body::-webkit-scrollbar {
+  width: 8px;
+}
+
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.8);
+  border-radius: 999px;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 24px auto;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+  transition: background var(--transition-normal), border-color var(--transition-normal);
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin: 12px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    width: calc(100% - 24px);
+    /* ensure it doesn't overflow horizontally */
+  }
+}

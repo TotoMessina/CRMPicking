@@ -1,22 +1,21 @@
 import { supabase } from './supabase';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import { applyClientFilters, ClientFilters } from '../utils/filterUtils';
 
 export const descargarModeloClientes = () => {
     const toastId = toast.loading("Generando modelo...");
     try {
-        if (!window.XLSX) {
-            throw new Error("La librería de Excel no ha cargado aún. Por favor, refrescá la página.");
-        }
-        const wb = window.XLSX.utils.book_new();
+        const wb = XLSX.utils.book_new();
         const headers = ["nombre", "telefono", "direccion", "rubro", "estado", "responsable", "tipo_contacto", "fecha_proximo_contacto", "hora_proximo_contacto", "notas", "fecha_creacion"];
         const data = [
             headers,
             ["Ejemplo SRL", "11-2345-6789", "Av. Rivadavia 1234", "Almacén", "1 - Cliente relevado", "Toto", "Visita Presencial", "2025-01-15", "09:00", "Ejemplo de nota", "2024-12-01"]
         ];
-        const ws = window.XLSX.utils.aoa_to_sheet(data);
-        window.XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Modelo");
 
-        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
         const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
         const link = document.createElement("a");
         link.href = url;
@@ -27,7 +26,7 @@ export const descargarModeloClientes = () => {
             document.body.removeChild(link);
         }, 1000);
         toast.success("Modelo descargado correctamente", { id: toastId });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error al generar modelo:", error);
         toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
     }
@@ -36,19 +35,16 @@ export const descargarModeloClientes = () => {
 export const descargarModeloConsumidores = () => {
     const toastId = toast.loading("Generando modelo...");
     try {
-        if (!window.XLSX) {
-            throw new Error("La librería de Excel no ha cargado aún. Por favor, refrescá la página.");
-        }
-        const wb = window.XLSX.utils.book_new();
+        const wb = XLSX.utils.book_new();
         const headers = ["nombre", "telefono", "mail", "localidad", "barrio", "notas", "fecha_creacion"];
         const data = [
             headers,
             ["Juan Pérez", "11-2345-6789", "juan.perez@ejemplo.com", "Moreno", "Barrio Norte", "Ejemplo de nota", "2024-11-20"]
         ];
-        const ws = window.XLSX.utils.aoa_to_sheet(data);
-        window.XLSX.utils.book_append_sheet(wb, ws, "Modelo Consumidores");
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Modelo Consumidores");
 
-        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
         const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
         const link = document.createElement("a");
         link.href = url;
@@ -59,7 +55,7 @@ export const descargarModeloConsumidores = () => {
             document.body.removeChild(link);
         }, 1000);
         toast.success("Modelo descargado correctamente", { id: toastId });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error al generar modelo consumidores:", error);
         toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
     }
@@ -68,19 +64,16 @@ export const descargarModeloConsumidores = () => {
 export const descargarModeloRepartidores = () => {
     const toastId = toast.loading("Generando modelo...");
     try {
-        if (!window.XLSX) {
-            throw new Error("La librería de Excel no ha cargado aún. Por favor, refrescá la página.");
-        }
-        const wb = window.XLSX.utils.book_new();
+        const wb = XLSX.utils.book_new();
         const headers = ["nombre", "telefono", "email", "direccion", "localidad", "responsable", "notas", "estado", "fecha_creacion"];
         const data = [
             headers,
             ["Carlos Delivery", "11-9876-5432", "carlos@reparto.com", "Av. Principal 100", "Morón", "Toto", "Tiene moto propia", "Activo", "2025-01-10"]
         ];
-        const ws = window.XLSX.utils.aoa_to_sheet(data);
-        window.XLSX.utils.book_append_sheet(wb, ws, "Modelo Repartidores");
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Modelo Repartidores");
 
-        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
         const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
         const link = document.createElement("a");
         link.href = url;
@@ -91,25 +84,31 @@ export const descargarModeloRepartidores = () => {
             document.body.removeChild(link);
         }, 1000);
         toast.success("Modelo descargado correctamente", { id: toastId });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error al generar modelo repartidores:", error);
         toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
     }
 };
 
-export const importarClientesExcel = async (file, empresaActiva, userName, userEmail, onSuccess) => {
+export const importarClientesExcel = async (
+    file: File | null, 
+    empresaActiva: any, 
+    userName: string | null, 
+    userEmail: string | null, 
+    onSuccess?: () => void
+) => {
     if (!file) return;
 
     const toastId = toast.loading('Procesando archivo...');
     try {
         const reader = new FileReader();
-        reader.onload = async (evt) => {
+        reader.onload = async (evt: any) => {
             try {
                 const bstr = evt.target.result;
-                const wb = window.XLSX.read(bstr, { type: 'binary' });
+                const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = window.XLSX.utils.sheet_to_json(ws);
+                const data: any[] = XLSX.utils.sheet_to_json(ws);
 
                 if (data.length === 0) {
                     toast.error('El archivo está vacío', { id: toastId });
@@ -119,7 +118,6 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
                 let successCount = 0;
                 for (const row of data) {
                     try {
-                        // Intentar obtener la fecha de varias columnas posibles
                         let rawFecha = row.fecha_creacion || row.created_at || row.fecha || row.Fecha || undefined;
                         let fechaNorm = undefined;
                         
@@ -152,7 +150,7 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
                             mail: row.mail || '',
                             cuit: String(row.cuit || ''),
                             created_at: fechaNorm || undefined
-                        }]).select('id').single();
+                        } as any]).select('id').single();
 
                         if (cErr) throw cErr;
 
@@ -171,7 +169,7 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
                             creado_por: userName || userEmail || 'Importación',
                             activo: true,
                             created_at: fechaNorm || undefined
-                        }]);
+                        } as any]);
 
                         if (ecErr) throw ecErr;
                         successCount++;
@@ -194,10 +192,10 @@ export const importarClientesExcel = async (file, empresaActiva, userName, userE
     }
 };
 
-export const exportarClientesExcel = async (empresaActiva, filters = {}, onFinally) => {
+export const exportarClientesExcel = async (empresaActiva: any, filters: ClientFilters = {}, onFinally?: () => void) => {
     const toastId = toast.loading('Generando Excel de clientes conforme a los filtros...');
     try {
-        let allRows = [];
+        let allRows: any[] = [];
         let from = 0;
         let to = 999;
         let hasMore = true;
@@ -217,45 +215,8 @@ export const exportarClientesExcel = async (empresaActiva, filters = {}, onFinal
                 .order('created_at', { ascending: false })
                 .range(from, to);
 
-            // Apply filters (multi-select supported)
-            if (filters.estado && filters.estado.length > 0) query = query.in('estado', filters.estado);
-            if (filters.situacion && filters.situacion.length > 0) query = query.in('situacion', filters.situacion);
-            if (filters.tipoContacto && filters.tipoContacto.length > 0) query = query.in('tipo_contacto', filters.tipoContacto);
-            if (filters.responsable && filters.responsable.length > 0) query = query.in('responsable', filters.responsable);
-            if (filters.creadoPor && filters.creadoPor.length > 0) query = query.in('creado_por', filters.creadoPor);
-            if (filters.rubro && filters.rubro.length > 0) query = query.in('rubro', filters.rubro);
-            if (filters.interes && filters.interes.length > 0) query = query.in('interes', filters.interes);
-            if (filters.estilo && filters.estilo.length > 0) query = query.in('estilo_contacto', filters.estilo);
-            
-            if (filters.creadoDesde) query = query.gte('created_at', `${filters.creadoDesde}T00:00:00.000Z`);
-            if (filters.creadoHasta) query = query.lte('created_at', `${filters.creadoHasta}T23:59:59.999Z`);
-
-            if (filters.contactoDesde) query = query.gte('fecha_proximo_contacto', filters.contactoDesde);
-            if (filters.contactoHasta) query = query.lte('fecha_proximo_contacto', filters.contactoHasta);
-
-            if (filters.isAgendaHoy) {
-                query = query.eq('fecha_proximo_contacto', new Date().toISOString().split('T')[0]);
-            }
-
-            if (filters.proximos7) {
-                const hoy = new Date();
-                const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
-                const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                query = query.gte('fecha_proximo_contacto', fmt(hoy)).lte('fecha_proximo_contacto', fmt(en7));
-            }
-
-            if (filters.vencidos) {
-                const hoy = new Date().toISOString().split('T')[0];
-                query = query.lt('fecha_proximo_contacto', hoy).not('fecha_proximo_contacto', 'is', null);
-            }
-
-            if (filters.grupos && filters.grupos.length > 0) {
-                query = query.in('clientes.cliente_grupos.grupo_id', filters.grupos);
-            }
-
-            if (filters.nombre) query = query.ilike('clientes.nombre_local', `%${filters.nombre}%`);
-            if (filters.telefono) query = query.ilike('clientes.telefono', `%${filters.telefono}%`);
-            if (filters.direccion) query = query.ilike('clientes.direccion', `%${filters.direccion}%`);
+            // Aplicar filtros centralizados (DT-07)
+            query = applyClientFilters(query, filters);
 
             const { data, error: errCli } = await query;
             if (errCli) throw errCli;
@@ -279,8 +240,8 @@ export const exportarClientesExcel = async (empresaActiva, filters = {}, onFinal
         }
 
         // Generate Excel content
-        const wb = window.XLSX.utils.book_new();
-        const ws = window.XLSX.utils.json_to_sheet(allRows.map(r => {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(allRows.map(r => {
             const c = r.clientes || {};
             return {
                 ID: r.cliente_id,
@@ -305,9 +266,9 @@ export const exportarClientesExcel = async (empresaActiva, filters = {}, onFinal
             };
         }));
         
-        window.XLSX.utils.book_append_sheet(wb, ws, "Clientes");
+        XLSX.utils.book_append_sheet(wb, ws, "Clientes");
 
-        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
         const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
         const link = document.createElement("a");
         
@@ -338,10 +299,10 @@ export const exportarClientesExcel = async (empresaActiva, filters = {}, onFinal
 
 export const exportarClientesCSV = exportarClientesExcel;
 
-export const exportarConsumidoresExcel = async (empresaActiva, filters = {}) => {
+export const exportarConsumidoresExcel = async (empresaActiva: any, filters: any = {}) => {
     const toastId = toast.loading('Generando Excel de consumidores...');
     try {
-        let rows = [];
+        let rows: any[] = [];
         let from = 0;
         let to = 999;
         let hasMore = true;
@@ -383,8 +344,8 @@ export const exportarConsumidoresExcel = async (empresaActiva, filters = {}) => 
             return;
         }
 
-        const wb = window.XLSX.utils.book_new();
-        const ws = window.XLSX.utils.json_to_sheet(rows.map(r => ({
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows.map(r => ({
             ID: r.id,
             Nombre: r.nombre,
             Teléfono: r.telefono,
@@ -398,9 +359,9 @@ export const exportarConsumidoresExcel = async (empresaActiva, filters = {}) => 
             Notas: r.notas,
             "Creado en": r.created_at ? new Date(r.created_at).toLocaleDateString() : ""
         })));
-        window.XLSX.utils.book_append_sheet(wb, ws, "Consumidores");
+        XLSX.utils.book_append_sheet(wb, ws, "Consumidores");
 
-        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
         const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
         const link = document.createElement("a");
         link.href = url;
@@ -416,10 +377,10 @@ export const exportarConsumidoresExcel = async (empresaActiva, filters = {}) => 
     }
 };
 
-export const exportarRepartidoresExcel = async (empresaActiva, filters = {}) => {
+export const exportarRepartidoresExcel = async (empresaActiva: any, filters: any = {}) => {
     const toastId = toast.loading('Generando Excel de repartidores...');
     try {
-        let rows = [];
+        let rows: any[] = [];
         let from = 0;
         let to = 999;
         let hasMore = true;
@@ -461,8 +422,8 @@ export const exportarRepartidoresExcel = async (empresaActiva, filters = {}) => 
             return;
         }
 
-        const wb = window.XLSX.utils.book_new();
-        const ws = window.XLSX.utils.json_to_sheet(rows.map(r => ({
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows.map(r => ({
             ID: r.id,
             Nombre: r.nombre,
             Teléfono: r.telefono,
@@ -476,9 +437,9 @@ export const exportarRepartidoresExcel = async (empresaActiva, filters = {}) => 
             Notas: r.notas,
             "Creado en": r.created_at ? new Date(r.created_at).toLocaleDateString() : ""
         })));
-        window.XLSX.utils.book_append_sheet(wb, ws, "Repartidores");
+        XLSX.utils.book_append_sheet(wb, ws, "Repartidores");
 
-        const b64 = window.XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
         const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
         const link = document.createElement("a");
         link.href = url;
@@ -494,19 +455,19 @@ export const exportarRepartidoresExcel = async (empresaActiva, filters = {}) => 
     }
 };
 
-export const importarConsumidoresExcel = async (file, empresaActiva, onSuccess) => {
+export const importarConsumidoresExcel = async (file: File | null, empresaActiva: any, onSuccess?: () => void) => {
     if (!file) return;
 
     const toastId = toast.loading('Procesando archivo...');
     try {
         const reader = new FileReader();
-        reader.onload = async (evt) => {
+        reader.onload = async (evt: any) => {
             try {
                 const bstr = evt.target.result;
-                const wb = window.XLSX.read(bstr, { type: 'binary' });
+                const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = window.XLSX.utils.sheet_to_json(ws);
+                const data: any[] = XLSX.utils.sheet_to_json(ws);
 
                 if (data.length === 0) {
                     toast.error('El archivo está vacío', { id: toastId });
@@ -563,7 +524,7 @@ export const importarConsumidoresExcel = async (file, empresaActiva, onSuccess) 
                             const { error } = await supabase.from('consumidores').insert([{
                                 ...payload,
                                 created_at: fechaNorm
-                            }]);
+                            } as any]);
                             if (error) throw error;
                             successCount++;
                         }
@@ -586,19 +547,19 @@ export const importarConsumidoresExcel = async (file, empresaActiva, onSuccess) 
     }
 };
 
-export const importarRepartidoresExcel = async (file, empresaActiva, onSuccess) => {
+export const importarRepartidoresExcel = async (file: File | null, empresaActiva: any, onSuccess?: () => void) => {
     if (!file) return;
 
     const toastId = toast.loading('Procesando archivo...');
     try {
         const reader = new FileReader();
-        reader.onload = async (evt) => {
+        reader.onload = async (evt: any) => {
             try {
                 const bstr = evt.target.result;
-                const wb = window.XLSX.read(bstr, { type: 'binary' });
+                const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = window.XLSX.utils.sheet_to_json(ws);
+                const data: any[] = XLSX.utils.sheet_to_json(ws);
 
                 if (data.length === 0) {
                     toast.error('El archivo está vacío', { id: toastId });
@@ -675,7 +636,7 @@ export const importarRepartidoresExcel = async (file, empresaActiva, onSuccess) 
                             const { error } = await supabase.from('repartidores').insert([{
                                 ...payload,
                                 created_at: fechaNorm
-                            }]);
+                            } as any]);
                             if (error) throw error;
                             successCount++;
                         }

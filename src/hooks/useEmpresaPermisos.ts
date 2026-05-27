@@ -65,6 +65,139 @@ const FALLBACK_ROLES: CrmRole[] = [
     { nombre: 'empleado',   color_hex: '#10b981' },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Funciones Modulares de Red (Decoupled Layer)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function fetchEmpresasList(supabaseClient: any) {
+    return await supabaseClient
+        .from('empresas')
+        .select('id, nombre, config')
+        .order('nombre');
+}
+
+export async function fetchEmpresaPermisosPaginas(supabaseClient: any, empresaId: string) {
+    const { data, error } = await supabaseClient
+        .from('empresa_permisos_pagina')
+        .select('*')
+        .eq('empresa_id', empresaId);
+    if (error) throw error;
+    return data || [];
+}
+
+export async function fetchEmpresaRoles(supabaseClient: any, empresaId: string) {
+    return await (supabaseClient as any)
+        .from('crm_roles')
+        .select('*')
+        .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
+        .order('created_at', { ascending: true });
+}
+
+export async function fetchEmpresaUsuarios(supabaseClient: any, empresaId: string) {
+    const { data, error } = await supabaseClient
+        .from('empresa_usuario')
+        .select(`
+            role,
+            user:usuarios!fk_empresa_usuario_usuarios (
+                id, nombre, email, activo, avatar_emoji
+            )
+        `)
+        .eq('empresa_id', empresaId);
+    if (error) throw error;
+    return data || [];
+}
+
+export async function upsertPermisosPagina(
+    supabaseClient: any,
+    empresaId: string,
+    permisos: Record<string, { habilitada: boolean; roles: Set<string> }>
+) {
+    const rows = ALL_PAGES.filter(p => p.to).map(p => ({
+        empresa_id: empresaId,
+        pagina: p.to!,
+        habilitada: permisos[p.to!]?.habilitada ?? false,
+        roles_permitidos: Array.from(permisos[p.to!]?.roles || []),
+        updated_at: new Date().toISOString(),
+    }));
+
+    return await (supabaseClient as any)
+        .from('empresa_permisos_pagina')
+        .upsert(rows, { onConflict: 'empresa_id,pagina' });
+}
+
+export async function updateEmpresaConfig(supabaseClient: any, empresaId: string, config: any) {
+    return await (supabaseClient as any).rpc('update_empresa_config', {
+        p_empresa_id: empresaId,
+        p_config: config,
+    });
+}
+
+export async function updateEmpresaUserRole(
+    supabaseClient: any,
+    empresaId: string,
+    userEmail: string,
+    role: string,
+    userId: string,
+    activo: boolean
+) {
+    const { error: relError } = await supabaseClient
+        .from('empresa_usuario')
+        .update({ role })
+        .eq('empresa_id', empresaId)
+        .eq('usuario_email', userEmail);
+    if (relError) throw relError;
+
+    const { error: userError } = await supabaseClient
+        .from('usuarios')
+        .update({ activo })
+        .eq('id', userId);
+    if (userError) throw userError;
+}
+
+export async function unlinkEmpresaUser(supabaseClient: any, empresaId: string, userEmail: string) {
+    const { error } = await supabaseClient
+        .from('empresa_usuario')
+        .delete()
+        .eq('empresa_id', empresaId)
+        .eq('usuario_email', userEmail);
+    if (error) throw error;
+}
+
+export async function createEmpresaRole(supabaseClient: any, empresaId: string, roleName: string, colorHex: string) {
+    const { error } = await (supabaseClient as any).from('crm_roles').insert([{
+        empresa_id: empresaId,
+        nombre: roleName.trim().toLowerCase(),
+        color_hex: colorHex,
+    }]);
+    if (error) throw error;
+}
+
+export async function deleteEmpresaRole(supabaseClient: any, empresaId: string, roleName: string) {
+    const { error } = await supabaseClient
+        .from('crm_roles')
+        .delete()
+        .eq('empresa_id', empresaId)
+        .eq('nombre', roleName.trim().toLowerCase());
+    if (error) throw error;
+}
+
+export async function adminCreateUserRpc(
+    supabaseClient: any,
+    email: string,
+    password: string,
+    nombre: string,
+    role: string,
+    empresaId: string
+) {
+    return await supabaseClient.rpc('admin_create_user', {
+        p_email: email.trim(),
+        p_password: password,
+        p_nombre: nombre.trim(),
+        p_role: role.trim().toLowerCase(),
+        p_empresa_id: empresaId
+    });
+}
+
 interface UseEmpresaPermisosProps {
     branding: BrandingConfig;
 }
@@ -123,16 +256,16 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
 
     // ── Cargar lista de empresas (solo al montar) ─────────────────────────────
     useEffect(() => {
-        const fetchEmpresas = async () => {
-            const { data } = await supabase.from('empresas').select('id, nombre, config').order('nombre');
+        const loadEmpresas = async () => {
+            const { data } = await fetchEmpresasList(supabase);
             setEmpresas(data || []);
             if (data && data.length > 0) setSelectedEmpresa(data[0]);
         };
-        fetchEmpresas();
+        loadEmpresas();
     }, []);
 
     // ── Resolver layout del formulario desde config ────────────────────────────
-    function resolveFormLayout(rawLayout: any, customFields: any[]): FormLayout {
+    const resolveFormLayout = useCallback((rawLayout: any, customFields: any[]): FormLayout => {
         let layout: FormLayout | null = null;
 
         if (rawLayout && Array.isArray(rawLayout)) {
@@ -158,7 +291,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
             if (!s.id) s.id = idx + 1;
         });
         return layout;
-    }
+    }, []);
 
     // ── Cargar todos los datos de la empresa seleccionada ─────────────────────
     const fetchCoreData = useCallback(async () => {
@@ -167,13 +300,9 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
 
         try {
             // 1. Permisos de páginas
-            const { data: permData } = await supabase
-                .from('empresa_permisos_pagina')
-                .select('*')
-                .eq('empresa_id', selectedEmpresa.id);
-
+            const permData = await fetchEmpresaPermisosPaginas(supabase, selectedEmpresa.id);
             const map: Record<string, { habilitada: boolean; roles: Set<string> }> = {};
-            (permData || []).forEach((row: any) => {
+            permData.forEach((row: any) => {
                 map[row.pagina] = { habilitada: row.habilitada, roles: new Set(row.roles_permitidos || []) };
             });
             ALL_PAGES.filter(p => p.to).forEach(p => {
@@ -183,21 +312,16 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
             setDirty(false);
 
             // 2. Roles Dinámicos
-            const { data: rolesData, error: rolesError } = await (supabase as any)
-                .from('crm_roles')
-                .select('*')
-                .or(`empresa_id.eq.${selectedEmpresa.id},empresa_id.is.null`)
-                .order('created_at', { ascending: true });
+            const { data: rolesData, error: rolesError } = await fetchEmpresaRoles(supabase, selectedEmpresa.id);
+            const disabledRoles = selectedEmpresa.config?.disabledRoles || [];
 
             if (!rolesError) {
-                const disabledRoles = selectedEmpresa.config?.disabledRoles || [];
                 const activeRoles = (rolesData || []).filter((r: any) => 
                     !disabledRoles.includes(r.nombre.toLowerCase())
                 );
                 setRolesDinamicos(activeRoles);
             } else {
                 console.error('Error cargando crm_roles (Ignorar si la tabla no existe aún)', rolesError);
-                const disabledRoles = selectedEmpresa.config?.disabledRoles || [];
                 const activeRoles = FALLBACK_ROLES.filter(r => 
                     !disabledRoles.includes(r.nombre.toLowerCase())
                 );
@@ -205,17 +329,8 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
             }
 
             // 3. Usuarios de la Empresa (Filtrado multi-tenant)
-            const { data: relData } = await supabase
-                .from('empresa_usuario')
-                .select(`
-                    role,
-                    user:usuarios!fk_empresa_usuario_usuarios (
-                        id, nombre, email, activo, avatar_emoji
-                    )
-                `)
-                .eq('empresa_id', selectedEmpresa.id);
-
-            const formattedUsers = (relData || [])
+            const relData = await fetchEmpresaUsuarios(supabase, selectedEmpresa.id);
+            const formattedUsers = relData
                 .filter((row: any) => row.user)
                 .map((row: any) => ({
                     id: row.user.id,
@@ -260,7 +375,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         } finally {
             setLoading(false);
         }
-    }, [selectedEmpresa]);
+    }, [selectedEmpresa, resolveFormLayout]);
 
     useEffect(() => {
         fetchCoreData();
@@ -271,18 +386,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         if (!selectedEmpresa || isDemoMode) return;
         setSaving(true);
 
-        // 1. Upsert permisos de páginas
-        const rows = ALL_PAGES.filter(p => p.to).map(p => ({
-            empresa_id: selectedEmpresa.id,
-            pagina: p.to!,
-            habilitada: permisos[p.to!]?.habilitada ?? false,
-            roles_permitidos: Array.from(permisos[p.to!]?.roles || []),
-            updated_at: new Date().toISOString(),
-        }));
-
-        const { error: permError } = await (supabase as any)
-            .from('empresa_permisos_pagina')
-            .upsert(rows, { onConflict: 'empresa_id,pagina' });
+        const { error: permError } = await upsertPermisosPagina(supabase, selectedEmpresa.id, permisos);
 
         if (permError) {
             toast.error('Error al guardar permisos');
@@ -314,10 +418,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
             dashboardWidgets: localDashboardWidgets,
         };
 
-        const { error: configError } = await (supabase as any).rpc('update_empresa_config', {
-            p_empresa_id: selectedEmpresa.id,
-            p_config: updatedConfig,
-        });
+        const { error: configError } = await updateEmpresaConfig(supabase, selectedEmpresa.id, updatedConfig);
 
         if (configError) {
             toast.error('Error al guardar configuración');
@@ -341,22 +442,14 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         if (!selectedUser || isDemoMode || !selectedEmpresa) return;
         setSaving(true);
         try {
-            // 1. Actualizar rol específico en la relación de la empresa
-            const { error: relError } = await supabase
-                .from('empresa_usuario')
-                .update({ role: editUserForm.role })
-                .eq('empresa_id', selectedEmpresa.id)
-                .eq('usuario_email', selectedUser.email);
-            
-            if (relError) throw relError;
-
-            // 2. Actualizar estado activo global (opcional, pero mantenido del comportamiento original)
-            const { error: userError } = await supabase
-                .from('usuarios')
-                .update({ activo: editUserForm.activo })
-                .eq('id', selectedUser.id);
-
-            if (userError) throw userError;
+            await updateEmpresaUserRole(
+                supabase,
+                selectedEmpresa.id,
+                selectedUser.email,
+                editUserForm.role,
+                selectedUser.id,
+                editUserForm.activo
+            );
 
             toast.success('Rol de usuario actualizado');
             setIsUserModalOpen(false);
@@ -381,13 +474,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
 
         setSaving(true);
         try {
-            const { error } = await supabase
-                .from('empresa_usuario')
-                .delete()
-                .eq('empresa_id', selectedEmpresa.id)
-                .eq('usuario_email', userEmail);
-
-            if (error) throw error;
+            await unlinkEmpresaUser(supabase, selectedEmpresa.id, userEmail);
 
             toast.success('Usuario desvinculado exitosamente de la empresa.', { icon: '🗑️' });
             fetchCoreData();
@@ -405,12 +492,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         if (isDemoMode) return;
         setSaving(true);
         try {
-            const { error } = await (supabase as any).from('crm_roles').insert([{
-                empresa_id: selectedEmpresa.id,
-                nombre: newRoleForm.nombre.trim().toLowerCase(),
-                color_hex: newRoleForm.color_hex,
-            }]);
-            if (error) throw error;
+            await createEmpresaRole(supabase, selectedEmpresa.id, newRoleForm.nombre, newRoleForm.color_hex);
             toast.success('Rol creado exitosamente');
             setIsRoleModalOpen(false);
             setNewRoleForm({ nombre: '', color_hex: '#0c0c0c' });
@@ -469,11 +551,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
 
                 const updatedConfig = { ...currentConfig, disabledRoles };
 
-                const { error: configError } = await (supabase as any).rpc('update_empresa_config', {
-                    p_empresa_id: selectedEmpresa.id,
-                    p_config: updatedConfig,
-                });
-
+                const { error: configError } = await updateEmpresaConfig(supabase, selectedEmpresa.id, updatedConfig);
                 if (configError) throw configError;
 
                 // Actualizar memoria de React
@@ -484,14 +562,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
                 toast.success(`Rol base "${roleName.toUpperCase()}" removido de tu empresa.`, { icon: '🗑️' });
             } else {
                 // Caso B: Eliminar fila real de crm_roles
-                const { error } = await supabase
-                    .from('crm_roles')
-                    .delete()
-                    .eq('empresa_id', selectedEmpresa.id)
-                    .eq('nombre', normalizedRole);
-
-                if (error) throw error;
-
+                await deleteEmpresaRole(supabase, selectedEmpresa.id, normalizedRole);
                 toast.success(`Rol personalizado "${roleName.toUpperCase()}" eliminado correctamente.`, { icon: '🗑️' });
             }
 
@@ -512,13 +583,14 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
         const password = userData.password || 'Inside' + Math.random().toString(36).slice(-6) + '!'; 
 
         // Invocar la RPC todo-en-uno que crea el usuario en Auth+Identities e ignora límites de API (429)
-        const { data: newUserId, error: rpcError } = await supabase.rpc('admin_create_user', {
-            p_email: userData.email.trim(),
-            p_password: password,
-            p_nombre: userData.nombre.trim(),
-            p_role: userData.role.trim().toLowerCase(),
-            p_empresa_id: selectedEmpresa.id
-        });
+        const { data: newUserId, error: rpcError } = await adminCreateUserRpc(
+            supabase,
+            userData.email,
+            password,
+            userData.nombre,
+            userData.role,
+            selectedEmpresa.id
+        );
 
         if (rpcError) {
             if (rpcError.message?.includes('does not exist')) {

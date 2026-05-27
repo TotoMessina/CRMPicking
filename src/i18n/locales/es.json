@@ -712,5 +712,503 @@
       "delete_success": "Eliminado"
     },
     "confirm_delete_sprint": "¿Seguro que querés eliminar \"{{name}}\"?"
+  },
+  "audit": {
+    "title": "Inspección & Auditoría",
+    "subtitle": "Visor rastreador de incidentes y modificaciones ejecutadas por los empleados.",
+    "tab_audit": "Auditoría de Datos",
+    "tab_errors": "Telemetría de Errores",
+    "tab_dba": "Consola DBA de Base de Datos",
+    "access_denied": "Acceso Denegado",
+    "no_permissions": "No tenés permisos para ver la auditoría del sistema.",
+    "go_back": "Regresar",
+    "search_id": "Buscar por ID...",
+    "search_errors": "Filtrar por mensaje, email o stack trace...",
+    "tables": {
+      "all": "Todas las tablas (Estructural)",
+      "clients": "📍 Gestor Clientes",
+      "routes": "🗓️ Asignaciones de Rutas",
+      "drivers": "🚚 Gestión Repartidores",
+      "users": "🧑‍💻 Credenciales Usuarios"
+    },
+    "actions": {
+      "all": "Todas las acciones",
+      "insert": "➕ Nuevas (Creaciones)",
+      "update": "✏️ Modificaciones",
+      "delete": "❌ Papelera (Eliminaciones)"
+    },
+    "workers": {
+      "any": "Cualquier Trabajador",
+      "system": "Proceso de Sistema"
+    },
+    "levels": {
+      "any": "Cualquier Nivel",
+      "error": "❌ Error",
+      "warning": "⚠️ Advertencia",
+      "info": "ℹ️ Información"
+    },
+    "environments": {
+      "all": "Todos los Entornos",
+      "production": "🌐 Producción",
+      "development": "💻 Desarrollo"
+    },
+    "loading": "Indagando bitácora de seguridad...",
+    "no_activity": "No hay actividad para este filtro",
+    "no_activity_desc": "Modificá las fechas, el autor o la tabla para descubrir acciones.",
+    "no_errors": "Impecable. No se reportaron errores de aplicación.",
+    "no_errors_desc": "El monitoreo en tiempo real no reporta anomalías ni excepciones de JS.",
+    "headers": {
+      "occurred_on": "Ocurrió El",
+      "employee": "Empleado",
+      "category": "Categoría Origen",
+      "type": "Tipo",
+      "details": "Detalles (Antes 🠖 Después)"
+    },
+    "headers_error": {
+      "date": "Fecha",
+      "level": "Level",
+      "message": "Mensaje de Error",
+      "user_env": "Usuario / Entorno",
+      "device_url": "Dispositivo / URL",
+      "action": "Acción"
+    },
+    "pagination": {
+      "back": "Atrás",
+      "next": "Siguiente"
+    },
+    "inspector": {
+      "inspect": "Inspeccionar",
+      "title": "Inspeccionar Error",
+      "stack_trace": "Rastreo de Pila (Stack Trace)",
+      "component_stack": "Componentes React (Component Tree Stack)",
+      "full_metadata": "Metadatos Completo & Agente de Usuario",
+      "close": "Cerrar Inspección",
+      "occurred_on": "Ocurrió El",
+      "affected_user": "Usuario Afectado",
+      "origin_url": "URL de Origen",
+      "environment": "Entorno de Ejecución",
+      "anonymous": "Anónimo / Sin sesion"
+    },
+    "diff": {
+      "silent": "El sistema ejecutó una rutina silenciosa.",
+      "created_prefix": "Creó el elemento",
+      "created_suffix": "por primera vez en el sistema.",
+      "deleted_prefix": "Eliminó definitivamente a",
+      "deleted_suffix": "de la base de datos.",
+      "shift_end": "Culminó su jornada (Cerró App)",
+      "total_active": "Tiempo total activo:",
+      "updated_label": "Modificaciones realizadas:",
+      "updated_item_prefix": "Actualizó",
+      "updated_item_from": ", pasando de",
+      "updated_item_to": "a",
+      "added_item_prefix": "Actualizó",
+      "added_item_suffix": ", agregando el dato",
+      "internal_adjust": "Ajuste interno automático sin impacto visual."
+    },
+    "dba": {
+      "subtitle": "Rendimiento de consultas SQL, métricas de almacenamiento y optimización de índices de PostgreSQL en tiempo real.",
+      "card_total_size": "Tamaño Total BD",
+      "card_cache_hit": "Ratio Acierto Caché",
+      "card_connections": "Conexiones Activas",
+      "card_unused_indexes": "Índices en Desuso",
+      "storage_distribution": "Distribución del Almacenamiento de BD",
+      "storage_desc": "Relación de peso proporcional entre datos de tablas e índices asociados.",
+      "table_data": "Datos de Tabla",
+      "table_indexes": "Índices de Tabla",
+      "slow_queries": "Telemetría de Consultas Lentas (pg_stat_statements)",
+      "slow_queries_desc": "Sentencias de base de datos que consumen la mayor cantidad de tiempo de CPU o procesamiento.",
+      "query_header": "Sentencia / Consulta SQL",
+      "calls_header": "Llamadas",
+      "total_time_header": "Tiempo Total",
+      "mean_time_header": "Tiempo Promedio",
+      "copy_query": "Copiar Consulta SQL",
+      "copied_success": "¡Consulta SQL copiada al portapapeles!",
+      "connections_monitoring": "Sesiones Activas & Bloqueos",
+      "connections_desc": "Métricas de conexiones concurrentes extraídas de pg_stat_activity.",
+      "active_label": "Consultas Corriendo",
+      "idle_label": "Conexiones Inactivas",
+      "unused_indexes_panel": "Oportunidades de Optimización de Índices",
+      "unused_indexes_desc": "Índices que ocupan espacio en disco y no registraron lecturas desde su creación. Considerá eliminarlos para acelerar escrituras.",
+      "index_name_header": "Nombre del Índice",
+      "scans_header": "Lecturas",
+      "no_unused_indexes": "¡Excelente! No se detectó memoria desperdiciada en índices redundantes.",
+      "no_slow_queries": "No hay métricas registradas o pg_stat_statements está inactivo en el servidor.",
+      "error_loading": "Error al cargar diagnósticos de base de datos. Asegurá que la función get_dba_diagnostics esté compilada en Supabase.",
+      "export_json": "Exportar Diagnóstico (JSON)"
+    }
+  },
+  "stats": {
+    "tabs": {
+      "apps_ecosystem": "Ecosistema de Apps",
+      "activators_management": "Rendimiento de Activadores",
+      "ai_projections": "Proyecciones de IA"
+    },
+    "widgets": {
+      "drivers_evolution": "Evolución de Repartidores",
+      "categories_clients": "Distribución por Rubros de Clientes",
+      "status_clients": "Distribución por Estados de Clientes",
+      "creators_new": "Nuevos Clientes por Creador",
+      "integrity_audit": "Auditoría de Integridad",
+      "geo_density": "Densidad Geográfica de Clientes"
+    },
+    "toast": {
+      "generating_pdf": "Generando informe en PDF...",
+      "pdf_success": "Informe PDF generado correctamente",
+      "pdf_error": "Error al generar informe PDF",
+      "excel_success": "Informe Excel exportado correctamente",
+      "excel_error": "Error al exportar informe Excel"
+    },
+    "export": {
+      "exec_report_title": "Informe Ejecutivo",
+      "summary": "Resumen",
+      "gen_date": "Fecha de Generación",
+      "range_filter": "Filtro de Rango",
+      "metric": "Métrica",
+      "value": "Valor",
+      "activators_performance": "Rendimiento de Activadores",
+      "raw_data_dist": "Distribución de Datos Crudos",
+      "filename_prefix": "reporte_estadisticas",
+      "filename_prefix_xlsx": "reporte_excel",
+      "sheets": {
+        "performance": "Rendimiento",
+        "raw_data": "Datos Crudos"
+      },
+      "cols": {
+        "activator": "Activador",
+        "active_locales": "Locales Activos",
+        "created_locales": "Locales Creados",
+        "visited_locales": "Locales Visitados",
+        "effectiveness": "Efectividad",
+        "conversion_rate": "Tasa de Conversión",
+        "category": "Categoría / Rubro",
+        "quantity": "Cantidad",
+        "status": "Estado"
+      }
+    },
+    "report": {
+      "corp_title": "Consola Corporativa",
+      "exec_title": "REPORTE DE RENDIMIENTO EJECUTIVO",
+      "company": "Empresa",
+      "gen_by": "Generado Por",
+      "date": "Fecha",
+      "audit_id": "ID de Auditoría"
+    }
+  },
+  "ruta": {
+    "title": "Mi Ruta Diaria",
+    "loading": "Cargando tu ruta...",
+    "completed_stats": "{{count}}/{{total}} completados",
+    "unnamed_local": "Local sin nombre",
+    "views": {
+      "list": "Lista",
+      "map": "Mapa",
+      "both": "Ambos"
+    },
+    "empty": {
+      "title": "Sin visitas asignadas",
+      "desc": "No tenés locales programados para el {{date}}.",
+      "this_date": "esta fecha",
+      "contact_coordinator": "Consultá con tu coordinador."
+    },
+    "status": {
+      "pendiente": "Pendiente",
+      "visitado": "Visitado",
+      "ausente": "Ausente",
+      "cancelado": "Cancelado"
+    },
+    "actions": {
+      "mark_visited": "Marcar Visitado"
+    },
+    "toast": {
+      "load_error": "Error al cargar tu ruta",
+      "update_error": "Error al actualizar estado",
+      "marked_as": "Marcado como {{status}}"
+    }
+  },
+  "asignador": {
+    "stats": {
+      "locales": "Locales",
+      "distance": "Distancia",
+      "estimated_time": "Tiempo Est.",
+      "visual_map": "Mapa Visual",
+      "active": "ACTIVO",
+      "hidden": "OCULTO"
+    },
+    "mobile": {
+      "add": "Agregar",
+      "my_route": "Mi Ruta ({{count}})"
+    },
+    "config": {
+      "title": "Configuración de Ruta",
+      "choose_vendor": "Elegir Vendedor"
+    },
+    "tabs": {
+      "risk": "Sugerencias por Riesgo",
+      "search": "Buscar Local"
+    },
+    "risk_days": "{{count}} días sin contacto",
+    "no_alerts": "Sin alertas críticas hoy",
+    "search_placeholder": "Nombre del local...",
+    "route": {
+      "header": "Ruta Diaria",
+      "empty_all": "Vaciar Todo",
+      "updating": "Actualizando lista...",
+      "empty_desc": "No hay locales asignados.",
+      "empty_tip": "Usá la búsqueda o cloná la última ruta."
+    },
+    "actions": {
+      "add_note": "Agregar Nota",
+      "edit_note": "Editar Nota",
+      "view_note": "Ver Nota",
+      "remove_from_list": "Quitar de la lista",
+      "clone_last": "Clonar Última",
+      "clone_tip": "Cargar locales de la visita anterior"
+    },
+    "modal": {
+      "note_title": "Mensaje al Vendedor",
+      "note_placeholder": "Escribí instrucciones especiales, horarios de atención, cobranzas..."
+    },
+    "whatsapp": {
+      "header": "HOJA DE RUTA",
+      "vendor": "Vendedor",
+      "locales": "Locales",
+      "generated_by": "Generado por"
+    },
+    "confirm": {
+      "empty_all": "¿Estás seguro de que deseas eliminar TODAS las visitas planificadas para este vendedor en esta fecha?",
+      "remove_client": "¿Quitar a {{name}} de la ruta?"
+    },
+    "unnamed_local": "local",
+    "toast": {
+      "load_error": "Error al cargar la ruta",
+      "select_user": "Seleccioná un usuario",
+      "already_in_route": "Ya se encuentra en la ruta",
+      "add_error": "Error al agregar",
+      "add_success": "Agregado a la ruta de {{name}}",
+      "delete_error": "Error al eliminar",
+      "empty_error": "Error al vaciar ruta",
+      "empty_success": "Ruta vaciada al 100%",
+      "no_prev_route": "No hay rutas anteriores para clonar",
+      "cloned_success": "Ruta clonada del día {{date}}",
+      "cloning_error": "Error al clonar ruta",
+      "add_more": "Agregá más locales",
+      "optimizing": "Optimizando trayecto...",
+      "optimized_success": "Ruta optimizada sin cruces 🎯",
+      "save_note_error": "No se pudo guardar la nota",
+      "save_note_success": "Nota guardada correctamente"
+    }
+  },
+  "map_global": {
+    "legend": {
+      "title": "Capas Activas",
+      "mobile_btn": "Capas ({{count}})"
+    },
+    "layers": {
+      "cliente": "Cliente",
+      "clientes": "Clientes",
+      "consumidor": "Consumidor",
+      "consumidores": "Consumidores",
+      "repartidor": "Repartidor",
+      "repartidores": "Repartidores",
+      "consum_short": "Consum.",
+      "repart_short": "Repart."
+    },
+    "history": {
+      "title": "Historial de Recorrido",
+      "activator_label": "ACTIVATOR",
+      "select_user": "Seleccionar usuario...",
+      "distance": "Distancia Aprox.",
+      "points_count": "{{count}} puntos registrados cada 1 min.",
+      "start": "Inicio Jornada",
+      "end": "Última Posición",
+      "btn": "Historial Recorrido"
+    },
+    "toast": {
+      "loading": "Cargando datos globales...",
+      "updated": "Mapa global actualizado",
+      "error": "Error al cargar datos",
+      "loading_history": "Cargando recorrido...",
+      "no_history": "No se registraron movimientos en esta fecha",
+      "history_found": "Recorrido cargado ({{count}} puntos)",
+      "history_error": "Error al cargar historial"
+    }
+  },
+  "map_repart": {
+    "status": {
+      "unmanaged": "Documentación sin gestionar",
+      "unconfirmed": "Cuenta sin confirmar",
+      "active": "Cuenta confirmada y activa"
+    },
+    "stats": {
+      "in_zone": "en zona",
+      "total": "Total Repartidores"
+    },
+    "legend": {
+      "title": "Estados",
+      "view_btn": "Ver Leyenda"
+    },
+    "popup": {
+      "responsible": "Resp",
+      "edit_btn": "Editar Repartidor"
+    },
+    "actions": {
+      "locate": "Ubicarme",
+      "register": "Registrar Aquí",
+      "coverage": "Cobertura",
+      "heat": "Calor"
+    },
+    "my_location": "Mi ubicación",
+    "toast": {
+      "load_error": "Error al cargar repartidores",
+      "heat_error": "No se pudo cargar mapa de calor",
+      "geo_unsupported": "Geolocalización no soportada en este navegador",
+      "locating": "Buscando ubicación...",
+      "geo_success": "Ubicación encontrada",
+      "geo_error": "Error al obtener ubicación",
+      "geo_denied": "Permiso de ubicación denegado",
+      "geo_unavailable": "Ubicación no disponible (verifique GPS)",
+      "geo_timeout": "Tiempo de espera agotado",
+      "locate_first": "Primero debés ubicarte en el mapa"
+    }
+  },
+  "users": {
+    "title": "Trabajadores del Sistema",
+    "subtitle": "Administre las cuentas de los operarios, sus accesos de rol y su representación en el mapa.",
+    "search_placeholder": "Buscar trabajador por nombre o correo...",
+    "filter_all": "Todos los Roles",
+    "filter_admins": "Administradores",
+    "filter_standard": "Usuarios Estándar",
+    "table": {
+      "worker": "Trabajador",
+      "security_email": "Correo de Seguridad",
+      "role": "Rol",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "status": {
+      "db_searching": "Buscando operarios registrados...",
+      "no_results": "Sin resultados",
+      "no_results_desc": "Intente otra búsqueda o verifique que el usuario esté asociado a esta empresa.",
+      "enabled": "Activo",
+      "restricted": "Restringido"
+    },
+    "actions": {
+      "edit_contract": "Editar Accesos",
+      "refresh": "Actualizar"
+    },
+    "modal": {
+      "title": "Accesos y Representación",
+      "subtitle": "Configuración del operario",
+      "role_label": "Rol del Usuario en la Empresa",
+      "role_admin": "Admin (Gestión Completa)",
+      "role_user": "User (Solo Lectura / Campo)",
+      "role_custom": "Rol Personalizado de {{company}}",
+      "role_self_edit_error": "No puedes cambiar tu propio rol para evitar bloquearte de la administración.",
+      "role_desc": "El rol define los permisos para realizar operaciones de red y visualizar secciones.",
+      "gps_label": "Icono / Emoji de Rastreo GPS",
+      "gps_desc": "Emoji que representará a este usuario en el mapa de reparto y monitoreo en tiempo real.",
+      "status_label": "Usuario Activo en la Empresa",
+      "status_desc": "Si se desactiva, el usuario no podrá iniciar sesión ni acceder a la información de esta empresa.",
+      "saving": "Guardando cambios...",
+      "save": "Guardar Cambios",
+      "success": "Usuario actualizado con éxito en la empresa",
+      "error": "Error al actualizar información del usuario"
+    }
+  },
+  "companies": {
+    "restricted_access": "Acceso Restringido",
+    "restricted_desc": "Solo los super-administradores pueden ver y configurar la lista de empresas del sistema.",
+    "title": "Empresas del Sistema",
+    "subtitle": "Gestión general de inquilinos, asignación de usuarios y configuraciones de branding.",
+    "new_btn": "Nueva Empresa",
+    "loading": "Cargando consolas corporativas...",
+    "empty": "No hay empresas registradas en el sistema.",
+    "form": {
+      "name_label": "Nombre de la Empresa",
+      "name_placeholder": "Ej. Picking Up Argentina S.A.",
+      "saving": "Creando...",
+      "create": "Crear Empresa"
+    },
+    "card": {
+      "users_count": "{{count}} usuarios vinculados",
+      "assign_user": "Asignar Usuario",
+      "create_success": "Empresa creada exitosamente",
+      "delete_confirm": "¿Está seguro que desea eliminar la empresa \"{{name}}\"? Esta acción es irreversible y borrará los datos asociados.",
+      "delete_success": "Empresa eliminada correctamente",
+      "assign_success": "Usuario asignado con éxito a la empresa",
+      "remove_confirm": "¿Quitar el acceso del usuario {{email}} de esta empresa?",
+      "remove_success": "Usuario desvinculado correctamente"
+    },
+    "assign_modal": {
+      "user": "Usuario a Vincular",
+      "user_placeholder": "Seleccione un usuario registrado...",
+      "role": "Rol Asignado",
+      "assign": "Confirmar Asignación"
+    }
+  },
+  "tickets": {
+    "title": "Mesa de Ayuda (Soporte)",
+    "subtitle": "Canal de atención para resolver inconvenientes, reportes de errores y sugerencias de operarios.",
+    "search_placeholder": "Filtrar tickets por asunto, correo o nombre...",
+    "confirm_delete": "¿Está seguro que desea eliminar este ticket de soporte de forma permanente?",
+    "no_tickets": "No hay tickets de soporte para el estado seleccionado.",
+    "no_subject": "Sin Asunto",
+    "filters": {
+      "all": "Todos los Estados"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "in_progress": "En Proceso",
+      "resolved": "Resuelto"
+    },
+    "modal": {
+      "from": "Enviado por",
+      "tel": "Teléfono",
+      "no_email": "Sin correo",
+      "message": "Mensaje / Descripción del Problema",
+      "no_message": "Sin mensaje descriptivo",
+      "change_status": "Actualizar Estado del Ticket"
+    },
+    "toast": {
+      "load_error": "Error al cargar los tickets de soporte",
+      "status_updated": "Estado del ticket actualizado con éxito",
+      "status_error": "No se pudo actualizar el estado del ticket",
+      "delete_success": "Ticket de soporte eliminado con éxito",
+      "delete_error": "Error al intentar eliminar el ticket de soporte"
+    }
+  },
+  "calendar": {
+    "title": "Agenda & Eventos",
+    "subtitle": "Monitoree las visitas programadas a clientes y programe reuniones o actividades internas.",
+    "filters": {
+      "any_user": "Cualquier Integrante",
+      "all_events": "Todos los Eventos",
+      "only_contacts": "Solo Contactos / Clientes",
+      "only_internal": "Solo Eventos Internos"
+    },
+    "actions": {
+      "new_event": "Nuevo Evento Interno"
+    },
+    "event_types": {
+      "contact": "Contacto Programado"
+    },
+    "toast": {
+      "load_error": "Error al cargar la agenda de eventos",
+      "contact_updated": "Fecha de contacto actualizada correctamente",
+      "event_updated": "Evento interno reprogramado con éxito",
+      "update_error": "Error al intentar reprogramar el evento"
+    }
+  },
+  "horarios": {
+    "title": "Control de Turnos y Horarios",
+    "subtitle": "Gestión de jornadas, horas extra, vacaciones y planificación horaria de los trabajadores.",
+    "new_shift": "Nuevo Turno",
+    "bulk_create": "Planificación Masiva",
+    "stats": {
+      "total": "Horas Ordinarias (Mes)",
+      "extra": "Horas Extra (Mes)",
+      "vacations": "Días Vacaciones / Licencia (Mes)"
+    },
+    "filter_all": "Todos los Empleados"
   }
 }

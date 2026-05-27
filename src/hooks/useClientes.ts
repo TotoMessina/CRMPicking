@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { Client, ClientActivity } from '../types/client';
 import { formatToLocal } from '../utils/dateUtils';
+import { applyClientFilters } from '../utils/filterUtils';
 
 export interface UseClientesParams {
     empresaId: string | null;
@@ -92,45 +93,23 @@ export function useClientes(params: UseClientesParams) {
 
             request = request.range((page - 1) * pageSize, page * pageSize - 1);
 
-            if (isAgendaHoy) {
-                request = request.eq('fecha_proximo_contacto', new Date().toISOString().split('T')[0]);
-            }
-
-            if (fEstado && fEstado.length > 0) request = request.in('estado', fEstado);
-            if (fSituacion && fSituacion.length > 0) request = request.in('situacion', fSituacion);
-            if (fTipoContacto && fTipoContacto.length > 0) request = request.in('tipo_contacto', fTipoContacto);
-            if (fResponsable && fResponsable.length > 0) request = request.in('responsable', fResponsable);
-            if (fCreadoPor && fCreadoPor.length > 0) request = request.in('creado_por', fCreadoPor);
-            if (fRubro && fRubro.length > 0) request = request.in('rubro', fRubro);
-            if (fInteres && fInteres.length > 0) request = request.in('interes', fInteres);
-            if (fEstilo && fEstilo.length > 0) request = request.in('estilo_contacto', fEstilo);
-
-
-            if (fCreadoDesde) {
-                request = request.gte('created_at', `${fCreadoDesde}T00:00:00.000Z`);
-            }
-            if (fCreadoHasta) {
-                request = request.lte('created_at', `${fCreadoHasta}T23:59:59.999Z`);
-            }
-
-            if (fContactoDesde) {
-                request = request.gte('fecha_proximo_contacto', fContactoDesde);
-            }
-            if (fContactoHasta) {
-                request = request.lte('fecha_proximo_contacto', fContactoHasta);
-            }
-
-            if (fProximos7) {
-                const hoy = new Date();
-                const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
-                const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                request = request.gte('fecha_proximo_contacto', fmt(hoy)).lte('fecha_proximo_contacto', fmt(en7));
-            }
-
-            if (fVencidos) {
-                const hoy = new Date().toISOString().split('T')[0];
-                request = request.lt('fecha_proximo_contacto', hoy).not('fecha_proximo_contacto', 'is', null);
-            }
+            request = applyClientFilters(request, {
+                isAgendaHoy,
+                estado: fEstado,
+                situacion: fSituacion,
+                tipoContacto: fTipoContacto,
+                responsable: fResponsable,
+                creadoPor: fCreadoPor,
+                rubro: fRubro,
+                interes: fInteres,
+                estilo: fEstilo,
+                creadoDesde: fCreadoDesde,
+                creadoHasta: fCreadoHasta,
+                contactoDesde: fContactoDesde,
+                contactoHasta: fContactoHasta,
+                proximos7: fProximos7,
+                vencidos: fVencidos
+            });
 
             if (fMissingCoords) {
                 // Evaluated via RPC
@@ -279,7 +258,7 @@ export function useClientes(params: UseClientesParams) {
             return { clientes: mapped, total, activities: actsObj };
         },
         enabled: !!empresaId,
-        staleTime: 0,
+        staleTime: 1000 * 30,
         gcTime: 1000 * 60 * 5,
         placeholderData: (previousData) => previousData,
     });

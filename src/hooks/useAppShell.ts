@@ -174,7 +174,11 @@ export const useAppShell = (): UseAppShellReturn => {
             let subscription = await registration.pushManager.getSubscription();
 
             if (!subscription) {
-                const vapidPublicKey = (import.meta as any).env.VITE_VAPID_PUBLIC_KEY || "BOgAhv4pIXj5g9FXfR7BYaEVnnWSwsgKsgymp0BqOYSaBUnSqtglbkl85wCBP39UTMYGUX_xCQevEcdOKN3OcQY";
+                const vapidPublicKey = (import.meta as any).env.VITE_VAPID_PUBLIC_KEY;
+                if (!vapidPublicKey) {
+                    toast.error('Las notificaciones push no están configuradas en este entorno.');
+                    return;
+                }
                 const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
                 subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,

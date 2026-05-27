@@ -943,5 +943,327 @@
       "delete_success": "Deleted"
     },
     "confirm_delete_sprint": "Are you sure you want to delete \"{{name}}\"?"
+  },
+  "audit": {
+    "title": "System Inspection & Audit",
+    "subtitle": "Activity tracking system and modifications executed by employees.",
+    "tab_audit": "Data Audit",
+    "tab_errors": "Error Telemetry",
+    "tab_dba": "Database DBA Cockpit",
+    "access_denied": "Access Denied",
+    "no_permissions": "You do not have permissions to view the system audit.",
+    "go_back": "Go Back",
+    "search_id": "Search by ID...",
+    "search_errors": "Filter by message, email or stack trace...",
+    "tables": {
+      "all": "All tables (Structural)",
+      "clients": "📍 Clients Manager",
+      "routes": "🗓️ Route Assignments",
+      "drivers": "🚚 Delivery Drivers",
+      "users": "🧑‍💻 User Credentials"
+    },
+    "actions": {
+      "all": "All actions",
+      "insert": "➕ New (Creations)",
+      "update": "✏️ Modifications",
+      "delete": "❌ Bin (Deletions)"
+    },
+    "workers": {
+      "any": "Any Worker",
+      "system": "System Process"
+    },
+    "levels": {
+      "any": "Any Level",
+      "error": "❌ Error",
+      "warning": "⚠️ Warning",
+      "info": "ℹ️ Information"
+    },
+    "environments": {
+      "all": "All Environments",
+      "production": "🌐 Production",
+      "development": "💻 Development"
+    },
+    "loading": "Searching security logs...",
+    "no_activity": "No activity found for this filter",
+    "no_activity_desc": "Modify the dates, the author or the table to discover actions.",
+    "no_errors": "Impeccable. No application errors reported.",
+    "no_errors_desc": "Real-time monitoring reports no anomalies or JS exceptions.",
+    "headers": {
+      "occurred_on": "Occurred On",
+      "employee": "Employee",
+      "category": "Source Category",
+      "type": "Type",
+      "details": "Details (Before 🠖 After)"
+    },
+    "headers_error": {
+      "date": "Date",
+      "level": "Level",
+      "message": "Error Message",
+      "user_env": "User / Environment",
+      "device_url": "Device / URL",
+      "action": "Action"
+    },
+    "pagination": {
+      "back": "Back",
+      "next": "Next"
+    },
+    "inspector": {
+      "inspect": "Inspect",
+      "title": "Inspect Error",
+      "stack_trace": "Trace Stack",
+      "component_stack": "React Component Tree Stack",
+      "full_metadata": "Full Metadata & User Agent",
+      "close": "Close Inspection",
+      "occurred_on": "Occurred On",
+      "affected_user": "Affected User",
+      "origin_url": "Origin URL",
+      "environment": "Execution Environment",
+      "anonymous": "Anonymous / No session"
+    },
+    "diff": {
+      "silent": "The system executed a silent routine.",
+      "created_prefix": "Created the element",
+      "created_suffix": "for the first time in the system.",
+      "deleted_prefix": "Deleted",
+      "deleted_suffix": "permanently from the database.",
+      "shift_end": "Culminated shift (Closed App)",
+      "total_active": "Total active time:",
+      "updated_label": "Modifications performed:",
+      "updated_item_prefix": "Updated",
+      "updated_item_from": ", passing from",
+      "updated_item_to": "to",
+      "added_item_prefix": "Added the field",
+      "added_item_suffix": "with value",
+      "internal_adjust": "Automatic internal adjustment without visual impact."
+    },
+    "dba": {
+      "subtitle": "Real-time query performance, storage metrics, and PostgreSQL index optimization.",
+      "card_total_size": "Total DB Size",
+      "card_cache_hit": "Cache Hit Rate",
+      "card_connections": "Active Connections",
+      "card_unused_indexes": "Unused Indexes",
+      "storage_distribution": "Database Storage Distribution",
+      "storage_desc": "Proportionate weight of data tables vs database indexes.",
+      "table_data": "Table Data",
+      "table_indexes": "Table Indexes",
+      "slow_queries": "Slow Query Telemetry (pg_stat_statements)",
+      "slow_queries_desc": "Database statements that consume the highest CPU time or execution overhead.",
+      "query_header": "SQL Statement / Query",
+      "calls_header": "Calls",
+      "total_time_header": "Total Time",
+      "mean_time_header": "Avg Time",
+      "copy_query": "Copy SQL Query",
+      "copied_success": "SQL Query copied to clipboard!",
+      "connections_monitoring": "Active Sessions & Locks",
+      "connections_desc": "Real-time connection metrics from pg_stat_activity.",
+      "active_label": "Running Queries",
+      "idle_label": "Idle Connections",
+      "unused_indexes_panel": "Index Optimization Opportunities",
+      "unused_indexes_desc": "Indexes occupying memory that have zero scans since creation. Consider dropping them to boost write speeds.",
+      "index_name_header": "Index Name",
+      "scans_header": "Scans",
+      "no_unused_indexes": "Excellent! No redundant index memory found.",
+      "no_slow_queries": "No query metrics registered or pg_stat_statements is currently disabled.",
+      "error_loading": "Error loading database diagnostics. Ensure get_dba_diagnostics RPC is active in Supabase.",
+      "export_json": "Export Diagnostics (JSON)"
+    }
+  },
+  "stats": {
+    "tabs": {
+      "apps_ecosystem": "Apps Ecosystem",
+      "activators_management": "Activators Performance",
+      "ai_projections": "AI Projections"
+    },
+    "widgets": {
+      "drivers_evolution": "Drivers Evolution",
+      "categories_clients": "Distribution by Client Categories",
+      "status_clients": "Distribution by Client Status",
+      "creators_new": "New Clients by Creator",
+      "integrity_audit": "Integrity Audit",
+      "geo_density": "Client Geographic Density"
+    },
+    "toast": {
+      "generating_pdf": "Generating PDF report...",
+      "pdf_success": "PDF report successfully generated",
+      "pdf_error": "Error generating PDF report",
+      "excel_success": "Excel report successfully exported",
+      "excel_error": "Error exporting Excel report"
+    },
+    "export": {
+      "exec_report_title": "Executive Report",
+      "summary": "Summary",
+      "gen_date": "Generation Date",
+      "range_filter": "Range Filter",
+      "metric": "Metric",
+      "value": "Value",
+      "activators_performance": "Activators Performance",
+      "raw_data_dist": "Raw Data Distribution",
+      "filename_prefix": "statistics_report",
+      "filename_prefix_xlsx": "excel_report",
+      "sheets": {
+        "performance": "Performance",
+        "raw_data": "Raw Data"
+      },
+      "cols": {
+        "activator": "Activator",
+        "active_locales": "Active Locations",
+        "created_locales": "Created Locations",
+        "visited_locales": "Visited Locations",
+        "effectiveness": "Effectiveness",
+        "conversion_rate": "Conversion Rate",
+        "category": "Category",
+        "quantity": "Quantity",
+        "status": "Status"
+      }
+    },
+    "report": {
+      "corp_title": "Corporate Console",
+      "exec_title": "EXECUTIVE PERFORMANCE REPORT",
+      "company": "Company",
+      "gen_by": "Generated By",
+      "date": "Date",
+      "audit_id": "Audit ID"
+    }
+  },
+  "users": {
+    "title": "System Workers",
+    "subtitle": "Manage employee accounts, role-based access, and map visual tracking representations.",
+    "search_placeholder": "Search worker by name or email...",
+    "filter_all": "All Roles",
+    "filter_admins": "Administrators",
+    "filter_standard": "Standard Users",
+    "table": {
+      "worker": "Worker",
+      "security_email": "Security Email",
+      "role": "Role",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "db_searching": "Searching registered operators...",
+      "no_results": "No results found",
+      "no_results_desc": "Try a different search or verify that the user is associated with this company.",
+      "enabled": "Active",
+      "restricted": "Restricted"
+    },
+    "actions": {
+      "edit_contract": "Edit Access",
+      "refresh": "Refresh"
+    },
+    "modal": {
+      "title": "Access & Representation",
+      "subtitle": "Operator configuration",
+      "role_label": "User Role in the Company",
+      "role_admin": "Admin (Full Management)",
+      "role_user": "User (Read Only / Field)",
+      "role_custom": "Custom Role for {{company}}",
+      "role_self_edit_error": "You cannot change your own role to avoid blocking yourself out of the admin console.",
+      "role_desc": "The role defines the permissions to perform database operations and view panels.",
+      "gps_label": "GPS Tracking Icon / Emoji",
+      "gps_desc": "Emoji that will represent this user on the delivery map and real-time monitoring.",
+      "status_label": "Active User in Company",
+      "status_desc": "If deactivated, the user will not be able to log in or access information for this company.",
+      "saving": "Saving changes...",
+      "save": "Save Changes",
+      "success": "User successfully updated in the company",
+      "error": "Error updating user information"
+    }
+  },
+  "companies": {
+    "restricted_access": "Restricted Access",
+    "restricted_desc": "Only system super-administrators can view and configure the list of companies.",
+    "title": "System Companies",
+    "subtitle": "General management of tenants, user assignments, and branding configurations.",
+    "new_btn": "New Company",
+    "loading": "Loading corporate consoles...",
+    "empty": "No companies registered in the system.",
+    "form": {
+      "name_label": "Company Name",
+      "name_placeholder": "e.g. Picking Up USA Corp.",
+      "saving": "Creating...",
+      "create": "Create Company"
+    },
+    "card": {
+      "users_count": "{{count}} linked users",
+      "assign_user": "Assign User",
+      "create_success": "Company successfully created",
+      "delete_confirm": "Are you sure you want to delete the company \"{{name}}\"? This action is irreversible and will delete all associated data.",
+      "delete_success": "Company successfully deleted",
+      "assign_success": "User successfully assigned to the company",
+      "remove_confirm": "Remove user access for {{email}} from this company?",
+      "remove_success": "User successfully unlinked"
+    },
+    "assign_modal": {
+      "user": "User to Link",
+      "user_placeholder": "Select a registered user...",
+      "role": "Assigned Role",
+      "assign": "Confirm Assignment"
+    }
+  },
+  "tickets": {
+    "title": "Help Desk (Support)",
+    "subtitle": "Support channel to resolve issues, bug reports, and feedback from operators.",
+    "search_placeholder": "Filter tickets by subject, email or name...",
+    "confirm_delete": "Are you sure you want to delete this support ticket permanently?",
+    "no_tickets": "No support tickets found for the selected status.",
+    "no_subject": "No Subject",
+    "filters": {
+      "all": "All Statuses"
+    },
+    "status": {
+      "pending": "Pending",
+      "in_progress": "In Progress",
+      "resolved": "Resolved"
+    },
+    "modal": {
+      "from": "Sent by",
+      "tel": "Phone",
+      "no_email": "No email",
+      "message": "Message / Problem Description",
+      "no_message": "No descriptive message",
+      "change_status": "Update Ticket Status"
+    },
+    "toast": {
+      "load_error": "Error loading support tickets",
+      "status_updated": "Ticket status successfully updated",
+      "status_error": "Could not update ticket status",
+      "delete_success": "Ticket permanently deleted from database",
+      "delete_error": "Error attempting to delete ticket"
+    }
+  },
+  "calendar": {
+    "title": "Schedule & Events",
+    "subtitle": "Monitor scheduled client visits and schedule meetings or internal activities.",
+    "filters": {
+      "any_user": "Any Team Member",
+      "all_events": "All Events",
+      "only_contacts": "Only Contacts / Clients",
+      "only_internal": "Only Internal Events"
+    },
+    "actions": {
+      "new_event": "New Internal Event"
+    },
+    "event_types": {
+      "contact": "Scheduled Contact"
+    },
+    "toast": {
+      "load_error": "Error loading schedule events",
+      "contact_updated": "Contact date successfully updated",
+      "event_updated": "Internal event successfully rescheduled",
+      "update_error": "Error attempting to reschedule event"
+    }
+  },
+  "horarios": {
+    "title": "Shifts & Schedule Control",
+    "subtitle": "Manage shifts, overtime, vacations, and weekly planning of workers.",
+    "new_shift": "New Shift",
+    "bulk_create": "Bulk Planning",
+    "stats": {
+      "total": "Standard Hours (Month)",
+      "extra": "Overtime Hours (Month)",
+      "vacations": "Vacation / Leave Days (Month)"
+    },
+    "filter_all": "All Employees"
   }
 }
+

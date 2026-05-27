@@ -94,11 +94,62 @@ export const forecastingService = {
             else if (prob > 0.4) estimatedClosings += 0.5; // Mitad de probabilidad
         });
 
+        // Calcular promedio real de velocidad en días (SM-02)
+        let totalDays = 0;
+        let convertedCount = 0;
+        
+        try {
+            const { data: allStateActs } = await supabase
+                .from('actividades')
+                .select('cliente_id, fecha, descripcion')
+                .eq('empresa_id', empresaId)
+                .ilike('descripcion', '%Cambio de estado (Pipeline)%');
+
+            if (allStateActs && allStateActs.length > 0) {
+                const clientTimelines: Record<number, { firstSeen: Date; convertedAt?: Date }> = {};
+
+                allStateActs.forEach(act => {
+                    const cid = act.cliente_id;
+                    const date = new Date(act.fecha);
+                    const desc = act.descripcion;
+
+                    if (!clientTimelines[cid]) {
+                        clientTimelines[cid] = { firstSeen: date };
+                    } else if (date < clientTimelines[cid].firstSeen) {
+                        clientTimelines[cid].firstSeen = date;
+                    }
+
+                    const match = desc.match(/:\s*(.*?)\s*➔\s*(.*)/);
+                    if (match) {
+                        const toStage = match[2].trim();
+                        if (toStage === ESTADO_ACTIVO || toStage.toLowerCase().includes('activo')) {
+                            if (!clientTimelines[cid].convertedAt || date < clientTimelines[cid].convertedAt) {
+                                clientTimelines[cid].convertedAt = date;
+                            }
+                        }
+                    }
+                });
+
+                Object.values(clientTimelines).forEach(timeline => {
+                    if (timeline.convertedAt) {
+                        const diffTime = Math.abs(timeline.convertedAt.getTime() - timeline.firstSeen.getTime());
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        totalDays += diffDays;
+                        convertedCount++;
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Error calculating average velocity days:', err);
+        }
+
+        const calculatedVelocity = convertedCount > 0 ? Math.round(totalDays / convertedCount) : 14;
+
         return {
             monthlyEstimates: Math.round(estimatedClosings),
             weightedValue: Number(totalWeightedValue.toFixed(2)),
             stageProbabilities: probs,
-            avgVelocityDays: 14 // Placeholder hasta implementar cálculo de tiempo
+            avgVelocityDays: calculatedVelocity
         };
     }
 };

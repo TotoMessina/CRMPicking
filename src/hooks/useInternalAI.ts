@@ -14,7 +14,7 @@ export function useInternalAI() {
 
     const trainFromHistory = useCallback(async () => {
         // Legacy method for compatibility with Radar UI
-        console.log('[AI] Sincronizando heurísticas de negocio...');
+        if (import.meta.env.DEV) console.log('[AI] Sincronizando heurísticas de negocio...');
         await new Promise(resolve => setTimeout(resolve, 500));
         setIsTrained(true);
     }, []);

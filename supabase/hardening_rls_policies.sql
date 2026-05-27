@@ -25,18 +25,30 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 -- 2. POLÍTICA UNIVERSAL DE AISLAMIENTO POR EMPRESA
 -- El usuario solo puede ver/tocar filas donde el empresa_id coincida
 -- con una empresa de la que es miembro según 'empresa_usuario'.
+-- Los Súper-Admins puentean este chequeo para poder administrar toda la plataforma.
 
--- Función helper para no repetir la lógica de pertenencia (Opcional pero recomendado para performance)
 CREATE OR REPLACE FUNCTION public.check_user_belongs_to_company(p_emp_id UUID)
 RETURNS BOOLEAN AS $$
+DECLARE
+    v_role TEXT;
 BEGIN
+    -- Obtener rol del usuario actual
+    SELECT role INTO v_role FROM public.usuarios
+    WHERE email = auth.jwt()->>'email';
+
+    -- Si es súper-admin, saltear chequeo de membresía
+    IF v_role = 'super-admin' THEN
+        RETURN TRUE;
+    END IF;
+
+    -- De lo contrario, chequear membresía explícita
     RETURN EXISTS (
         SELECT 1 FROM public.empresa_usuario
         WHERE empresa_id = p_emp_id
           AND usuario_email = auth.jwt()->>'email'
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Función helper para detectar usuarios en modo DEMO
 CREATE OR REPLACE FUNCTION public.is_demo_user()
@@ -48,7 +60,7 @@ BEGIN
           AND role = 'demo'
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 3. APLICAR POLÍTICAS A LAS TABLAS
 
@@ -212,3 +224,9 @@ CREATE POLICY tenant_calificaciones_delete ON public.calificaciones
               AND NOT is_demo_user()
         )
     );
+
+-- 7. ÍNDICES DE RENDIMIENTO (Garantizan que las políticas RLS por fila sean extremadamente veloces)
+CREATE INDEX IF NOT EXISTS idx_empresa_usuario_perf ON public.empresa_usuario(empresa_id, usuario_email);
+CREATE INDEX IF NOT EXISTS idx_empresa_cliente_perf ON public.empresa_cliente(cliente_id, empresa_id);
+
+SELECT 'Blindaje RLS e índices aplicados exitosamente.' AS resultado;

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { flushOutbox, clearAllOfflineData } from '../lib/offlineManager';
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Note: usage of avatar_url was in old code, but DB says avatar_emoji.
         // Assuming avatar_url might be a legacy field or emoji.
         // Keeping name as avatarUrl for consistency with UI.
-        setAvatarUrl((data as any)?.avatar_url || null);
+        setAvatarUrl(data?.avatar_url || null);
 
         // Load empresas this user belongs to
         const { data: empData } = await supabase
@@ -149,6 +149,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [empresaActiva]);
 
+    // signOut declarado aquí (antes del kill-switch) para evitar Temporal Dead Zone.
+    // useCallback garantiza referencia estable para el dep array del useEffect.
+    const signOut = useCallback(async () => {
+        localStorage.removeItem(EMPRESA_KEY);
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+    }, []);
+
     // KILL-SWITCH: Escuchar cambios de estado 'activo' del usuario en tiempo real
     useEffect(() => {
         if (!user || !empresaActiva || !navigator.onLine) return;
@@ -184,15 +192,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user, empresaActiva]);
+    }, [user, empresaActiva, signOut]);
 
-    const fetchPermisosPaginas = async (empresaId: string | undefined, userRole: string | null) => {
+    const fetchPermisosPaginas = async (
+        empresaId: string | undefined, 
+        userRole: string | null,
+        isCurrent?: () => boolean
+    ) => {
         if (userRole === 'super-admin') {
-            setPaginasPermitidas(null);
+            if (!isCurrent || isCurrent()) setPaginasPermitidas(null);
             return;
         }
         if (!empresaId) {
-            setPaginasPermitidas({});
+            if (!isCurrent || isCurrent()) setPaginasPermitidas({});
             return;
         }
 
@@ -203,6 +215,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .select('pagina, habilitada, roles_permitidos')
             .eq('empresa_id', empresaId)
             .eq('habilitada', true);
+
+        if (isCurrent && !isCurrent()) return;
 
         const map: PaginasPermitidas = {};
         (data || []).forEach(row => {
@@ -220,10 +234,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            // INITIAL_SESSION es manejado por getSession() arriba para evitar doble carga
+            if (_event === 'INITIAL_SESSION') return;
             const u = session?.user ?? null;
             setUser(u);
             logger.setUserEmail(u?.email ?? null);
-            fetchRoleAndName(u);
+            setLoading(true);
+            fetchRoleAndName(u).finally(() => setLoading(false));
         });
 
         const handleStorage = (e: StorageEvent) => {
@@ -260,33 +277,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return data;
     };
 
-    const signOut = async () => {
-        localStorage.removeItem(EMPRESA_KEY);
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-    };
 
     useEffect(() => {
-        fetchPermisosPaginas(empresaActiva?.id, role);
+        let active = true;
+        const isCurrent = () => active;
+
+        fetchPermisosPaginas(empresaActiva?.id, role, isCurrent);
         const handleUpdate = async () => {
-            fetchPermisosPaginas(empresaActiva?.id, role);
+            await fetchPermisosPaginas(empresaActiva?.id, role, isCurrent);
             if (empresaActiva?.id) {
                 const { data } = await supabase
                     .from('empresas')
                     .select('id, nombre, logo_url, config')
                     .eq('id', empresaActiva.id)
                     .maybeSingle();
-                if (data) {
-                    const updated = {
+                if (data && active) {
+                    const updated: Empresa = {
                         ...(empresaActiva || {}),
-                        ...(data as any)
-                    } as any;
+                        ...(data as unknown as Empresa)
+                    };
                     setEmpresaActiva(updated);
                 }
             }
         };
         window.addEventListener('permissions-updated', handleUpdate);
-        return () => window.removeEventListener('permissions-updated', handleUpdate);
+        return () => {
+            active = false;
+            window.removeEventListener('permissions-updated', handleUpdate);
+        };
     }, [empresaActiva, role]);
 
     const updateProfile = async (metadata: { display_name?: string }) => {
@@ -308,7 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!user?.email) return;
         const { error } = await supabase
             .from('usuarios')
-            .update({ avatar_url: url } as any)
+            .update({ avatar_url: url })
             .eq('email', user.email);
         if (error) throw error;
         setAvatarUrl(url);

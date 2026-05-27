@@ -304,25 +304,90 @@ const Estadisticas: React.FC = () => {
                 />
             )}
 
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                <div
-                    style={{ flex: 1, padding: '12px', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', background: currentTab === 'tabApps' ? STATS_THEME.colors.primary : 'var(--bg-elevated)', color: currentTab === 'tabApps' ? '#fff' : 'var(--text)' }}
+            <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                marginBottom: '28px', 
+                padding: '6px', 
+                background: 'var(--bg-elevated)', 
+                borderRadius: '16px', 
+                border: '1px solid var(--border)',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.02)',
+                alignItems: 'center',
+                flexWrap: 'wrap'
+            }}>
+                <button
+                    style={{ 
+                        flex: 1, 
+                        minWidth: '120px',
+                        padding: '10px 16px', 
+                        textAlign: 'center', 
+                        borderRadius: '12px', 
+                        cursor: 'pointer', 
+                        fontWeight: 600, 
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        border: 'none',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        background: currentTab === 'tabApps' ? STATS_THEME.colors.primary : 'transparent', 
+                        color: currentTab === 'tabApps' ? '#fff' : 'var(--text-muted)',
+                        boxShadow: currentTab === 'tabApps' ? '0 10px 20px -10px rgba(79, 70, 229, 0.4)' : 'none'
+                    }}
                     onClick={() => setCurrentTab('tabApps')}
                 >
-                    🚀 {t('stats.tabs.apps_ecosystem')}
-                </div>
-                <div
-                    style={{ flex: 1, padding: '12px', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', background: currentTab === 'tabActivadores' ? STATS_THEME.colors.primary : 'var(--bg-elevated)', color: currentTab === 'tabActivadores' ? '#fff' : 'var(--text)' }}
+                    <span style={{ fontSize: '1.1rem' }}>🚀</span> {t('stats.tabs.apps_ecosystem')}
+                </button>
+                <button
+                    style={{ 
+                        flex: 1, 
+                        minWidth: '120px',
+                        padding: '10px 16px', 
+                        textAlign: 'center', 
+                        borderRadius: '12px', 
+                        cursor: 'pointer', 
+                        fontWeight: 600, 
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        border: 'none',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        background: currentTab === 'tabActivadores' ? STATS_THEME.colors.primary : 'transparent', 
+                        color: currentTab === 'tabActivadores' ? '#fff' : 'var(--text-muted)',
+                        boxShadow: currentTab === 'tabActivadores' ? '0 10px 20px -10px rgba(79, 70, 229, 0.4)' : 'none'
+                    }}
                     onClick={() => setCurrentTab('tabActivadores')}
                 >
-                    ⚡ {t('stats.tabs.activators_management')}
-                </div>
-                <div
-                    style={{ flex: 1, padding: '12px', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', background: currentTab === 'tabForecasting' ? STATS_THEME.colors.primary : 'var(--bg-elevated)', color: currentTab === 'tabForecasting' ? '#fff' : 'var(--text)' }}
+                    <span style={{ fontSize: '1.1rem' }}>⚡</span> {t('stats.tabs.activators_management')}
+                </button>
+                <button
+                    style={{ 
+                        flex: 1, 
+                        minWidth: '120px',
+                        padding: '10px 16px', 
+                        textAlign: 'center', 
+                        borderRadius: '12px', 
+                        cursor: 'pointer', 
+                        fontWeight: 600, 
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        border: 'none',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        background: currentTab === 'tabForecasting' ? STATS_THEME.colors.primary : 'transparent', 
+                        color: currentTab === 'tabForecasting' ? '#fff' : 'var(--text-muted)',
+                        boxShadow: currentTab === 'tabForecasting' ? '0 10px 20px -10px rgba(79, 70, 229, 0.4)' : 'none'
+                    }}
                     onClick={() => setCurrentTab('tabForecasting')}
                 >
-                    🎯 {t('stats.tabs.ai_projections')}
-                </div>
+                    <span style={{ fontSize: '1.1rem' }}>🎯</span> {t('stats.tabs.ai_projections')}
+                </button>
             </div>
 
             {currentTab === 'tabApps' && (

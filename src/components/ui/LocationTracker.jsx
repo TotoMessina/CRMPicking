@@ -75,7 +75,7 @@ export const LocationTracker = () => {
                             lng
                         });
                         lastHistoryTime.current = now;
-                        console.log(`📍 Punto de historial guardado [${navigator.onLine ? 'ONLINE' : 'OFFLINE'}]`);
+                        if (import.meta.env.DEV) console.log(`📍 Punto de historial guardado [${navigator.onLine ? 'ONLINE' : 'OFFLINE'}]`);
 
                         // Intentar sincronizar si recuperamos internet en este tick
                         if (navigator.onLine) {

@@ -244,7 +244,7 @@ export const ActivadoresPerformance: React.FC<Props> = ({ stats, detail, chartsD
                                     </td>
                                     <td style={{ padding: '16px 24px' }}>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                            {act.statuses.map(s => (
+                                            {(act.statuses || []).map(s => (
                                                 <span key={s.st} style={{ background: `${s.color}20`, color: s.color, padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700, border: `1px solid ${s.color}30` }}>
                                                     {s.st}: {s.count}
                                                 </span>
