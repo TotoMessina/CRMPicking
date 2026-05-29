@@ -623,7 +623,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     creadoPor = uData?.nombre || user.email;
                 }
 
-                const { data: createdId, error: rpcErr } = await (supabase as any).rpc('crear_cliente_v5_final', {
+                const { data: createdId, error: rpcErr } = await supabase.rpc('crear_cliente_v5_final', {
                     p_payload: {
                         ...payload,
                         p_nombre_local: payload.nombre_local,

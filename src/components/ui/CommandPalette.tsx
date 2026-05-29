@@ -114,8 +114,8 @@ export function CommandPalette() {
                     }));
 
                 const [ { data: clientes }, { data: usuarios } ] = await Promise.all([
-                    (supabase as any).rpc('buscar_clientes_empresa', {
-                        p_empresa_id: empresaActiva?.id,
+                    supabase.rpc('buscar_clientes_empresa', {
+                        p_empresa_id: empresaActiva?.id || '',
                         p_nombre: searchTerm,
                         p_limit: 4
                     }),

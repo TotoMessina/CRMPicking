@@ -121,11 +121,11 @@ export function useClientes(params: UseClientesParams) {
             let actsObj: Record<string, ClientActivity[]> = {};
 
             if (hasTextFilter) {
-                const { data: rpcData, error: rpcError } = await (supabase as any).rpc('buscar_clientes_empresa', {
+                const { data: rpcData, error: rpcError } = await supabase.rpc('buscar_clientes_empresa', {
                     p_empresa_id: empresaId,
-                    p_nombre: fNombre || null,
-                    p_telefono: fTelefono || null,
-                    p_direccion: fDireccion || null,
+                    p_nombre: fNombre || undefined,
+                    p_telefono: fTelefono || undefined,
+                    p_direccion: fDireccion || undefined,
                     p_estados: fEstado && fEstado.length > 0 ? fEstado : null,
                     p_situaciones: fSituacion && fSituacion.length > 0 ? fSituacion : null,
                     p_tipos_contacto: fTipoContacto && fTipoContacto.length > 0 ? fTipoContacto : null,
@@ -134,10 +134,10 @@ export function useClientes(params: UseClientesParams) {
                     p_rubros: fRubro && fRubro.length > 0 ? fRubro : null,
                     p_intereses: fInteres && fInteres.length > 0 ? fInteres : null,
                     p_estilos: fEstilo && fEstilo.length > 0 ? fEstilo : null,
-                    p_creado_desde: fCreadoDesde || null,
-                    p_creado_hasta: fCreadoHasta || null,
-                    p_contacto_desde: fContactoDesde || null,
-                    p_contacto_hasta: fContactoHasta || null,
+                    p_creado_desde: fCreadoDesde || undefined,
+                    p_creado_hasta: fCreadoHasta || undefined,
+                    p_contacto_desde: fContactoDesde || undefined,
+                    p_contacto_hasta: fContactoHasta || undefined,
                     p_grupos: fGrupos && fGrupos.length > 0 ? fGrupos : null,
                     p_missing_coords: fMissingCoords || null,
                     p_missing_contact: fMissingContact || null,

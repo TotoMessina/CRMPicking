@@ -5,13 +5,14 @@ import { flushOutbox, clearAllOfflineData } from '../lib/offlineManager';
 import { TenantStore, injectTenantTheme } from '../config/tenant';
 import { logger } from '../lib/logger';
 import toast from 'react-hot-toast';
+import { EmpresaConfig } from '../types/permisos';
 
 export interface Empresa {
     id: string;
     nombre: string;
     logo_url?: string | null;
     role_en_empresa?: string;
-    config?: any;
+    config?: EmpresaConfig;
     activo?: boolean;
 }
 
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    const fetchRoleAndName = async (authUser: User | null) => {
+    const fetchRoleAndName = useCallback(async (authUser: User | null) => {
         if (!authUser) {
             setRole(null);
             setUserName(null);
@@ -158,12 +159,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             setEmpresaActivaState(null);
         }
-    };
+    }, []);
 
     // Sincronizar TenantStore cuando cambia la empresa activa
     useEffect(() => {
         if (empresaActiva?.config) {
-            TenantStore.setConfig(empresaActiva.config);
+            TenantStore.setConfig(empresaActiva.config as any);
         } else {
             // Reset to default
             TenantStore.setConfig(null);

@@ -79,3 +79,37 @@ export type TabKey =
     | 'campos'
     | 'personalizacion'
     | 'automatizaciones';
+
+export interface EmpresaConfig {
+    disabledRoles?: string[];
+    sidebarGroups?: string[];
+    pageGroups?: { [key: string]: string };
+    customFields?: FormField[];
+    formLayout?: FormLayout;
+    automations?: AutomationRule[];
+    rubros?: string[];
+    landingPage?: string;
+    dashboardWidgets?: {
+        [key: string]: boolean;
+    };
+    theme?: {
+        colors?: {
+            primary?: string;
+            secondary?: string;
+            [key: string]: string | undefined;
+        };
+        [key: string]: any;
+    };
+    ai?: {
+        name?: string;
+        avatarUrl?: string;
+        [key: string]: any;
+    };
+    app?: {
+        logoUrl?: string;
+        shortName?: string;
+        [key: string]: any;
+    };
+    logoUrl?: string;
+    systemName?: string;
+}

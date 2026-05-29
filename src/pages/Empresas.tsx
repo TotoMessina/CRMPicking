@@ -6,12 +6,20 @@ import { useTranslation } from 'react-i18next';
 import { Building2, Plus, Users, Trash2, UserPlus, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 
+interface EnrichedEmpresa {
+    id: string;
+    nombre: string;
+    logo_url?: string | null;
+    created_at?: string;
+    usuarios: any[];
+}
+
 export default function Empresas() {
     const { t } = useTranslation();
-    const { user, role, isDemoMode } = useAuth();
-    const [empresas, setEmpresas] = useState([]);
+    const { role, isDemoMode } = useAuth();
+    const [empresas, setEmpresas] = useState<EnrichedEmpresa[]>([]);
     const [loading, setLoading] = useState(true);
-    const [usuarios, setUsuarios] = useState([]);
+    const [usuarios, setUsuarios] = useState<any[]>([]);
 
     // New company form
     const [showNewEmpresa, setShowNewEmpresa] = useState(false);
@@ -19,7 +27,7 @@ export default function Empresas() {
     const [saving, setSaving] = useState(false);
 
     // Assign user form
-    const [assigningEmpresaId, setAssigningEmpresaId] = useState(null);
+    const [assigningEmpresaId, setAssigningEmpresaId] = useState<string | null>(null);
     const [assignEmail, setAssignEmail] = useState('');
     const [assignRole, setAssignRole] = useState('activador');
 
@@ -41,12 +49,12 @@ export default function Empresas() {
             toast.error(t('common.errors.loading_companies', { defaultValue: 'Error al cargar empresas' }));
         } else {
             // For each company, load its users
-            const enriched = await Promise.all((data || []).map(async (emp) => {
+            const enriched = await Promise.all((data || []).map(async (emp: any) => {
                 const { data: users } = await supabase
                     .from('empresa_usuario')
                     .select('usuario_email, role')
                     .eq('empresa_id', emp.id);
-                return { ...emp, usuarios: users || [] };
+                return { ...emp, usuarios: users || [] } as EnrichedEmpresa;
             }));
             setEmpresas(enriched);
         }
@@ -73,7 +81,7 @@ export default function Empresas() {
         setSaving(false);
     };
 
-    const handleDeleteEmpresa = async (id, nombre) => {
+    const handleDeleteEmpresa = async (id: string, nombre: string) => {
         if (!window.confirm(t('companies.card.delete_confirm', { name: nombre }))) return;
         const { error } = await supabase.from('empresas').delete().eq('id', id);
         if (error) {
@@ -84,7 +92,7 @@ export default function Empresas() {
         }
     };
 
-    const handleAssignUser = async (empresaId) => {
+    const handleAssignUser = async (empresaId: string) => {
         if (!assignEmail) return;
         const { error } = await supabase.from('empresa_usuario').upsert([
             { empresa_id: empresaId, usuario_email: assignEmail, role: assignRole }
@@ -101,7 +109,7 @@ export default function Empresas() {
         }
     };
 
-    const handleRemoveUser = async (empresaId, email) => {
+    const handleRemoveUser = async (empresaId: string, email: string) => {
         if (!window.confirm(t('companies.card.remove_confirm', { email }))) return;
         const { error } = await supabase.from('empresa_usuario')
             .delete().eq('empresa_id', empresaId).eq('usuario_email', email);
@@ -188,10 +196,20 @@ export default function Empresas() {
                             }}>
                                 <div style={{
                                     width: '42px', height: '42px', borderRadius: '10px',
-                                    background: 'var(--accent)', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                    background: emp.logo_url ? 'transparent' : 'var(--accent)', 
+                                    display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                    overflow: 'hidden'
                                 }}>
-                                    <Building2 size={20} color="#fff" />
+                                    {emp.logo_url ? (
+                                        <img 
+                                            src={emp.logo_url} 
+                                            alt={emp.nombre} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                        />
+                                    ) : (
+                                        <Building2 size={20} color="#fff" />
+                                    )}
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{emp.nombre}</div>
@@ -210,7 +228,7 @@ export default function Empresas() {
                                     </Button>
                                     <button
                                         onClick={() => handleDeleteEmpresa(emp.id, emp.nombre)}
-                                        title={t('common.actions.delete', { defaultValue: 'Eliminar' })}
+                                        title={t('common.actions.delete', { defaultValue: 'Eliminar' }) as string}
                                         style={{
                                             background: 'transparent', border: '1px solid var(--border)',
                                             borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
@@ -288,7 +306,7 @@ export default function Empresas() {
                                                         background: 'transparent', border: 'none',
                                                         cursor: 'pointer', color: 'var(--text-muted)', padding: '2px'
                                                     }}
-                                                    title={t('common.actions.remove', { defaultValue: 'Quitar' })}
+                                                    title={t('common.actions.remove', { defaultValue: 'Quitar' }) as string}
                                                 >
                                                     <X size={14} />
                                                 </button>

@@ -115,7 +115,7 @@ function getColorForRubro(rubro: string | null) {
 
 export default function MapaClientes() {
     const { t } = useTranslation();
-    const { empresaActiva } = useAuth();
+    const { empresaActiva, role } = useAuth();
     const { tenantConfig } = useTenant();
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
@@ -230,9 +230,10 @@ export default function MapaClientes() {
         if (!drawnZonesRef.current) return;
         if (!showZones || !empresaActiva?.id) return;
 
-        const { data, error } = await (supabase as any).rpc('get_map_zonas', {
-            p_empresa_id: empresaActiva.id
-        });
+        const { data, error } = await supabase
+            .from('zones')
+            .select('*')
+            .eq('empresa_id', empresaActiva.id);
         if (error) {
             console.error("Error cargando zonas:", error);
             return;
@@ -257,7 +258,7 @@ export default function MapaClientes() {
     useEffect(() => {
         zoneCallbacksRef.current = {
             updateColor: async (id: string, newColor: string) => {
-                const { error } = await (supabase as any).from('zones').update({ color: newColor }).eq('id', id).eq('empresa_id', empresaActiva?.id);
+                const { error } = await supabase.from('zones').update({ color: newColor }).eq('id', Number(id)).eq('empresa_id', empresaActiva?.id || '');
                 if (error) {
                     toast.error(t('map.toast.update_zone_error'));
                 } else {
@@ -274,7 +275,7 @@ export default function MapaClientes() {
             },
             deleteZone: async (id: string) => {
                 if (!window.confirm(t('map.confirm.delete_zone'))) return;
-                const { error } = await (supabase as any).from('zones').delete().eq('id', id).eq('empresa_id', empresaActiva?.id);
+                const { error } = await supabase.from('zones').delete().eq('id', Number(id)).eq('empresa_id', empresaActiva?.id || '');
                 if (error) {
                     toast.error(t('map.toast.delete_zone_error'));
                 } else {

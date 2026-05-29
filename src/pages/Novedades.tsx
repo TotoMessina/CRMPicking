@@ -873,6 +873,7 @@ function Lightbox({ mediaUrl, onClose }: { mediaUrl: string; onClose: () => void
 }
 
 function CreatePostModal({ onClose, user, empresaActiva, refresh, avatarUrl }: any) {
+    const { t } = useTranslation();
     const [createTipo, setCreateTipo] = useState<'post' | 'historia'>('post');
     const [contenido, setContenido] = useState('');
     const [files, setFiles] = useState<File[]>([]);

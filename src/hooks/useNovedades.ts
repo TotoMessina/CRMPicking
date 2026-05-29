@@ -35,7 +35,7 @@ export function useNovedades() {
             });
 
             // Fetch Interacciones
-            const novedadIds = filtered.map(n => n.id);
+            const novedadIds = filtered.map((n: any) => n.id);
             
             const [likesRes, comentariosRes, vistasRes, votosRes] = await Promise.all([
                 novedadIds.length > 0 ? (supabase as any).from('novedades_likes').select('novedad_id, usuario_id, reaccion').in('novedad_id', novedadIds) : Promise.resolve({ data: [] }),
@@ -52,12 +52,12 @@ export function useNovedades() {
             let unread = 0;
 
             const enriched: Novedad[] = filtered.map((n: any) => {
-                const nLikes = likes.filter(l => l.novedad_id === n.id);
-                const nComentarios = comentarios.filter(c => c.novedad_id === n.id);
-                const nVistas = vistas.filter(v => v.novedad_id === n.id);
-                const nVotos = votos.filter(v => v.novedad_id === n.id);
+                const nLikes = likes.filter((l: any) => l.novedad_id === n.id);
+                const nComentarios = comentarios.filter((c: any) => c.novedad_id === n.id);
+                const nVistas = vistas.filter((v: any) => v.novedad_id === n.id);
+                const nVotos = votos.filter((v: any) => v.novedad_id === n.id);
 
-                const isViewed = nVistas.some(v => v.usuario_id === user.id);
+                const isViewed = nVistas.some((v: any) => v.usuario_id === user.id);
                 if (!isViewed && n.creador_id !== user.id) {
                     unread++;
                 }
@@ -69,7 +69,7 @@ export function useNovedades() {
                     avatar_url: n.creador_avatar_url || null
                 };
 
-                const myLike = nLikes.find(l => l.usuario_id === user.id);
+                const myLike = nLikes.find((l: any) => l.usuario_id === user.id);
 
                 return {
                     ...n,

@@ -22,10 +22,10 @@ export interface ClientFilters {
     direccion?: string;
 }
 
-export function applyClientFilters<T, U, V>(
-    query: PostgrestFilterBuilder<T, U, V>,
+export function applyClientFilters(
+    query: any,
     filters: ClientFilters
-): PostgrestFilterBuilder<T, U, V> {
+): any {
     let q = query;
 
     if (filters.estado && filters.estado.length > 0) q = q.in('estado', filters.estado);

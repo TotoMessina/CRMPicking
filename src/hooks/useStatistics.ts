@@ -183,7 +183,7 @@ export const useStatistics = () => {
         if (!empresaActiva?.id || !dateFrom || !dateTo) return;
         setLoading(true);
         try {
-            const { data: rawData, error: rpcError } = await (supabase as any).rpc('get_advanced_stats', {
+            const { data: rawData, error: rpcError } = await supabase.rpc('get_advanced_stats', {
                 p_empresa_id: empresaActiva.id,
                 p_date_from: dateFrom,
                 p_date_to: dateTo,

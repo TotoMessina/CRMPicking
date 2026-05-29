@@ -4,20 +4,32 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
-import { Search, Filter, Trash2, X } from 'lucide-react';
+import { Search, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
 
+interface Ticket {
+    id: number;
+    asunto: string | null;
+    mensaje: string | null;
+    nombre: string | null;
+    email: string | null;
+    telefono: string | null;
+    tipo: string | null;
+    estado: string;
+    created_at: string | null;
+}
+
 export default function Tickets() {
     const { t, i18n } = useTranslation();
-    const { empresaActiva, isDemoMode } = useAuth();
-    const [tickets, setTickets] = useState([]);
+    const { isDemoMode } = useAuth();
+    const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('Pendiente');
 
     // Modal state
-    const [selectedTicket, setSelectedTicket] = useState(null);
+    const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newStatus, setNewStatus] = useState('');
     const [saving, setSaving] = useState(false);
@@ -40,7 +52,7 @@ export default function Tickets() {
 
             const { data, error } = await query;
             if (error) throw error;
-            setTickets(data || []);
+            setTickets((data as Ticket[]) || []);
         } catch (error) {
             console.error('Error fetching tickets:', error);
             toast.error(t('tickets.toast.load_error'));
@@ -59,7 +71,7 @@ export default function Tickets() {
         );
     }, [tickets, searchTerm]);
 
-    const handleOpenModal = (ticket) => {
+    const handleOpenModal = (ticket: Ticket) => {
         setSelectedTicket(ticket);
         setNewStatus(ticket.estado || 'Pendiente');
         setIsModalOpen(true);
@@ -116,7 +128,7 @@ export default function Tickets() {
         }
     };
 
-    const getStatusColor = (status) => {
+    const getStatusColor = (status: string) => {
         if (status === 'Pendiente') return '#ef4444'; // Red
         if (status === 'En Proceso') return '#f59e0b'; // Amber
         if (status === 'Resuelto') return '#10b981'; // Green
@@ -203,11 +215,11 @@ export default function Tickets() {
 
             {/* Modal Ver Ticket */}
             {isModalOpen && selectedTicket && (
-                <div className="modal active">
+                <div className="modal is-open">
                     <div className="modal-content" style={{ maxWidth: '600px' }}>
                         <button className="modal-close" onClick={handleCloseModal}><X size={24} /></button>
-                        <div className="modal-header" style={{ padding: 0, border: 'none' }}>
-                            <h2>{selectedTicket.asunto || `(${t('tickets.no_subject')})`}</h2>
+                        <div className="modal-content-header" style={{ padding: 0, border: 'none', marginBottom: '16px' }}>
+                            <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{selectedTicket.asunto || `(${t('tickets.no_subject')})`}</h2>
                         </div>
 
                          <div className="modal-body" style={{ padding: '16px 0' }}>

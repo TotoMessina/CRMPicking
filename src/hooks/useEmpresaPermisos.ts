@@ -126,7 +126,7 @@ export async function upsertPermisosPagina(
 }
 
 export async function updateEmpresaConfig(supabaseClient: any, empresaId: string, config: any) {
-    return await (supabaseClient as any).rpc('update_empresa_config', {
+    return await supabaseClient.rpc('update_empresa_config', {
         p_empresa_id: empresaId,
         p_config: config,
     });
@@ -252,7 +252,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
     const [newRoleForm, setNewRoleForm] = useState({ nombre: '', color_hex: '#0c0c0c' });
     const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
-    const [createUserForm, setCreateUserForm] = useState({ nombre: '', email: '', role: '', password: '' });
+    const [createUserForm, setCreateUserForm] = useState<{ nombre: string; email: string; role: string; password?: string }>({ nombre: '', email: '', role: '', password: '' });
 
     // ── Cargar lista de empresas (solo al montar) ─────────────────────────────
     useEffect(() => {
@@ -340,7 +340,7 @@ export function useEmpresaPermisos({ branding }: UseEmpresaPermisosProps) {
                     activo: row.user.activo,
                     avatar_emoji: row.user.avatar_emoji
                 }))
-                .sort((a, b) => a.nombre.localeCompare(b.nombre));
+                .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
 
             setUsuariosEmpresa(formattedUsers as UsuarioEmpresa[]);
 

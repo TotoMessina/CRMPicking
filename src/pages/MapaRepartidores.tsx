@@ -6,7 +6,6 @@ import { Button } from '../components/ui/Button';
 import { MapPin, RefreshCw, Navigation, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
 import L from 'leaflet';
-window.L = window.L || L;
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
 
@@ -17,7 +16,29 @@ import { MapLegend } from '../components/map/MapLegend';
 
 import { RepartidorModal } from '../components/ui/RepartidorModal';
 
- export default function MapaRepartidores() {
+interface Repartidor {
+    id: string;
+    nombre: string | null;
+    telefono: string | null;
+    email: string | null;
+    direccion: string | null;
+    localidad: string | null;
+    estado: string;
+    responsable: string | null;
+    lat: number;
+    lng: number;
+}
+
+// Extensiones para el objeto window para el objeto L de Leaflet
+declare global {
+    interface Window {
+        L: typeof L;
+    }
+}
+
+window.L = window.L || L;
+
+export default function MapaRepartidores() {
     const { t } = useTranslation();
     const { empresaActiva } = useAuth();
  
@@ -27,17 +48,18 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
         t('map_repart.status.active')
     ];
  
-    const ESTADO_COLOR = {
+    const ESTADO_COLOR: Record<string, string> = {
         [t('map_repart.status.unmanaged')]: "#ef4444",
         [t('map_repart.status.unconfirmed')]: "#f97316",
         [t('map_repart.status.active')]: "#22c55e"
     };
-    const mapContainerRef = useRef(null);
-    const mapRef = useRef(null);
-    const markersLayerRef = useRef(null);
-    const heatLayerRef = useRef(null);
 
-    const [repartidores, setRepartidores] = useState([]);
+    const mapContainerRef = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<L.Map | null>(null);
+    const markersLayerRef = useRef<L.LayerGroup | null>(null);
+    const heatLayerRef = useRef<any>(null);
+
+    const [repartidores, setRepartidores] = useState<Repartidor[]>([]);
     const [totalAbsoluto, setTotalAbsoluto] = useState(0);
     const [repartidoresEnZona, setRepartidoresEnZona] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -48,13 +70,13 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
 
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    const [selectedLatLng, setSelectedLatLng] = useState(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number; lng: number } | null>(null);
 
     // Geolocation
-    const [myLocation, setMyLocation] = useState(null);
-    const myMarkerRef = useRef(null);
-    const myCircleRef = useRef(null);
+    const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const myMarkerRef = useRef<L.Marker | null>(null);
+    const myCircleRef = useRef<L.Circle | null>(null);
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [showLegendMobile, setShowLegendMobile] = useState(false);
@@ -82,7 +104,9 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
         if (error) {
             toast.error(t('map_repart.toast.load_error'));
         } else {
-            const mapped = (data || []).map(r => ({ ...r, lat: Number(r.lat), lng: Number(r.lng) })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+            const mapped: Repartidor[] = (data || [])
+                .map((r: any) => ({ ...r, lat: Number(r.lat), lng: Number(r.lng) }))
+                .filter((r: any) => Number.isFinite(r.lat) && Number.isFinite(r.lng));
             setRepartidores(mapped);
         }
 
@@ -98,7 +122,7 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
 
     useEffect(() => {
         fetchRepartidores();
-    }, []);
+    }, [empresaActiva]);
 
     // Initialize Map
     useEffect(() => {
@@ -119,7 +143,9 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
             });
 
             setTimeout(() => {
-                m.invalidateSize();
+                if (mapRef.current === m) {
+                    m.invalidateSize();
+                }
             }, 250);
 
             mapRef.current = m;
@@ -137,10 +163,7 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
         if (!mapRef.current) return;
         const bounds = mapRef.current.getBounds();
         const inView = repartidores.filter(r => {
-            const lat = parseFloat(r.lat);
-            const lng = parseFloat(r.lng);
-            if (isNaN(lat) || isNaN(lng)) return false;
-            return bounds.contains(L.latLng(lat, lng));
+            return bounds.contains(L.latLng(r.lat, r.lng));
         }).length;
         setRepartidoresEnZona(inView);
     }, [repartidores]);
@@ -184,8 +207,8 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
 
             if (points.length) {
                 // Leaflet heat requires L.heatLayer which we rely on being attached to L
-                if (L.heatLayer) {
-                    heatLayerRef.current = L.heatLayer(points, {
+                if ((L as any).heatLayer) {
+                    heatLayerRef.current = (L as any).heatLayer(points, {
                         radius: 25,
                         blur: 15,
                         maxZoom: 14,
@@ -215,23 +238,23 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
 
             const icon = L.divIcon({ className: "", html: iconHtml, iconSize: [14, 14], iconAnchor: [7, 7] });
 
-            const marker = L.marker([rec.lat, rec.lng], { icon, title: rec.nombre }).addTo(layer);
+            const marker = L.marker([rec.lat, rec.lng], { icon, title: rec.nombre || '' }).addTo(layer);
 
             marker.bindPopup(`
                 <div style="min-width:200px">
-                    <div style="font-weight:700; margin-bottom:6px;">${rec.nombre}</div>
+                    <div style="font-weight:700; margin-bottom:6px;">${rec.nombre || ''}</div>
                     <div class="muted" style="font-size:0.85rem">${rec.estado}</div>
                     <div style="margin:6px 0; font-size:0.9rem;">
                        <div>📞 ${rec.telefono || "-"}</div>
                        <div>🏠 ${rec.direccion || "-"}</div>
                     </div>
-                    <div>${t('map_repart.popup.responsible')}: <b>${rec.responsable}</b></div>
+                    <div>${t('map_repart.popup.responsible')}: <b>${rec.responsable || ''}</b></div>
                     <button class="btn-popup-edit" style="margin-top: 10px; width: 100%; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">${t('map_repart.popup.edit_btn')}</button>
                 </div>
             `);
 
             marker.on('popupopen', (e) => {
-                const btn = e.popup.getElement().querySelector('.btn-popup-edit');
+                const btn = e.popup.getElement()?.querySelector('.btn-popup-edit') as HTMLElement | null;
                 if (btn) {
                     btn.onclick = () => {
                         setEditingId(rec.id);
@@ -263,7 +286,7 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 toast.success(t('map_repart.toast.geo_success'), { id: 'geo' });
-                const latlng = [pos.coords.latitude, pos.coords.longitude];
+                const latlng: L.LatLngExpression = [pos.coords.latitude, pos.coords.longitude];
                 setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
  
                 if (mapRef.current) {
@@ -272,8 +295,8 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
                         myCircleRef.current = L.circle(latlng, { radius: Math.max(pos.coords.accuracy, 20), opacity: 0.5 }).addTo(mapRef.current);
                     } else {
                         myMarkerRef.current.setLatLng(latlng);
-                        myCircleRef.current.setLatLng(latlng);
-                        myCircleRef.current.setRadius(Math.max(pos.coords.accuracy, 20));
+                        myCircleRef.current!.setLatLng(latlng);
+                        myCircleRef.current!.setRadius(Math.max(pos.coords.accuracy, 20));
                     }
                     mapRef.current.setView(latlng, 15);
                 }
@@ -378,7 +401,7 @@ import { RepartidorModal } from '../components/ui/RepartidorModal';
                 onSaved={() => { setModalOpen(false); fetchRepartidores(); setSelectedLatLng(null); }}
             />
             
-            <style tabIndex="-1">{`
+            <style tabIndex={-1}>{`
                 .leaflet-popup-content-wrapper { border-radius: 12px; padding: 4px; box-shadow: var(--shadow-lg); }
                 .leaflet-popup-tip { box-shadow: var(--shadow-md); }
             `}</style>

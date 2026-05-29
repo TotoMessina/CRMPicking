@@ -4,6 +4,7 @@ export interface Novedad {
     id: string;
     empresa_id: string;
     creador_id: string;
+    creador_nombre?: string | null;
     tipo: NovedadTipo;
     titulo: string | null;
     contenido: string | null;
@@ -11,6 +12,7 @@ export interface Novedad {
     roles_permitidos: string[];
     fijado: boolean;
     created_at: string;
+    encuesta?: any;
     // Agregados por relaciones / vistas
     creador?: {
         nombre?: string;
@@ -19,9 +21,13 @@ export interface Novedad {
     };
     likes_count?: number;
     comentarios_count?: number;
+    comentarios?: any[];
     vistas_count?: number;
     is_liked_by_me?: boolean;
     is_viewed_by_me?: boolean;
+    my_reaction?: string | null;
+    votos?: any[];
+    my_vote?: string | null;
 }
 
 export interface NovedadComentario {

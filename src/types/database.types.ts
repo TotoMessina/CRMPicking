@@ -618,6 +618,45 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          component_stack: string | null
+          created_at: string
+          id: string
+          level: string
+          message: string
+          metadata: Json | null
+          stack: string | null
+          url: string | null
+          user_agent: string | null
+          user_email: string | null
+        }
+        Insert: {
+          component_stack?: string | null
+          created_at?: string
+          id?: string
+          level?: string
+          message: string
+          metadata?: Json | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+        }
+        Update: {
+          component_stack?: string | null
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+        }
+        Relationships: []
+      }
       eventos: {
         Row: {
           all_day: boolean
@@ -1334,6 +1373,16 @@ export type Database = {
         Args: { check_email: string; check_name: string }
         Returns: boolean
       }
+      get_chat_users: { Args: { empresa_id_param: string }; Returns: any }
+      update_usuario_empresa_admin: { Args: { p_empresa_id: string; p_email: string; p_role: string }; Returns: any }
+      get_super_admin_stats: { Args: never; Returns: any }
+      get_company_usage_stats: { Args: { p_empresa_id: string }; Returns: any }
+      get_map_zonas: { Args: { p_empresa_id: string; p_role?: string }; Returns: any }
+      update_dia_reporte: { Args: { p_empresa_id: string; p_dia: string }; Returns: any }
+      get_dba_diagnostics: { Args: never; Returns: any }
+      update_empresa_config: { Args: { p_empresa_id: string; p_config: Json }; Returns: any }
+      admin_create_user: { Args: { p_email: string; p_password?: string; p_nombre: string; p_empresa_id: string; p_role: string }; Returns: any }
+      get_advanced_stats: { Args: { p_empresa_id: string; p_date_from: string; p_date_to: string; p_filter_activator?: string | null }; Returns: any }
     }
     Enums: {
       estado_cliente:

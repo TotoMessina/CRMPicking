@@ -10,12 +10,12 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 import enLocale from '@fullcalendar/core/locales/en-gb';
-import { Calendar as CalendarIcon, Clock, Sun, Target, Filter, Plus, Zap, User, BookOpen } from 'lucide-react';
+import { Clock, Sun, Filter, Plus, Zap } from 'lucide-react';
 
 import { TurnoModal } from '../components/ui/TurnoModal';
 import { MasivoModal } from '../components/ui/MasivoModal';
 
-const TYPE_COLORS = {
+const TYPE_COLORS: Record<string, string> = {
     jornada: "#0c0c0c", // Premium Black
     extra: "#f59e0b",   // Amber/Gold
     vacaciones: "#10b981", // Emerald
@@ -25,8 +25,8 @@ const TYPE_COLORS = {
 export default function Horarios() {
     const { t, i18n } = useTranslation();
     const { empresaActiva } = useAuth();
-    const calendarRef = useRef(null);
-    const [usersCache, setUsersCache] = useState([]);
+    const calendarRef = useRef<any>(null);
+    const [usersCache, setUsersCache] = useState<any[]>([]);
     const [filtroEmpleado, setFiltroEmpleado] = useState("");
 
     // Stats state
@@ -36,18 +36,18 @@ export default function Horarios() {
     const [modalTurnoOpen, setModalTurnoOpen] = useState(false);
     const [modalMasivoOpen, setModalMasivoOpen] = useState(false);
 
-    const [editingTurnoId, setEditingTurnoId] = useState(null);
-    const [initialTurnoData, setInitialTurnoData] = useState(null);
+    const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
+    const [initialTurnoData, setInitialTurnoData] = useState<any>(null);
 
     // Track fetched data for stats calculation
-    const [turnosCache, setTurnosCache] = useState([]);
+    const [turnosCache, setTurnosCache] = useState<any[]>([]);
 
     // Calendar controlled state
-    const [calendarEvents, setCalendarEvents] = useState([]);
-    const [dateRange, setDateRange] = useState({ start: null, end: null });
+    const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+    const [dateRange, setDateRange] = useState<{ start: string | null; end: string | null }>({ start: null, end: null });
 
     // Handle calendar navigation
-    const handleDatesSet = (arg) => {
+    const handleDatesSet = (arg: any) => {
         setDateRange({ start: arg.startStr, end: arg.endStr });
     };
 
@@ -66,7 +66,7 @@ export default function Horarios() {
             const { data: users, error } = await supabase.from("usuarios").select("email, nombre, role").order("nombre");
             if (error) throw error;
             
-            const filtered = (users || []).filter(u => validEmails.has(u.email));
+            const filtered = (users || []).filter(u => u.email && validEmails.has(u.email));
             const formatted = filtered.map(u => {
                 const rel = (rels || []).find(r => r.usuario_email === u.email);
                 return { ...u, role: rel?.role || u.role };
@@ -79,7 +79,7 @@ export default function Horarios() {
         }
     };
 
-    const calculateStats = (turnos, filterVal) => {
+    const calculateStats = (turnos: any[], filterVal: string) => {
         if (!turnos.length || !filterVal) {
             setStats({ total: 0, extra: 0, vacDays: 0, studyDays: 0 });
             return;
@@ -108,7 +108,7 @@ export default function Horarios() {
             } else if (t.tipo === 'estudio') {
                 studyDays += 1;
             } else {
-                const hrs = (end - start) / (1000 * 60 * 60);
+                const hrs = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                 if (hrs > 0) {
                     if (t.tipo === 'extra') {
                         extraHours += hrs;
@@ -123,14 +123,14 @@ export default function Horarios() {
     };
 
     useEffect(() => {
-        if (!dateRange.start || !dateRange.end) return;
+        if (!dateRange.start || !dateRange.end || !empresaActiva?.id) return;
 
         const loadTurnos = async () => {
             try {
                 let query = supabase.from("turnos").select("*")
                     .eq("empresa_id", empresaActiva.id)
                     .gte("start_time", dateRange.start)
-                    .lte("start_time", dateRange.end);
+                    .lte("start_time", dateRange.end as string);
 
                 if (filtroEmpleado) {
                     query = query.eq("usuario_email", filtroEmpleado);
@@ -161,7 +161,7 @@ export default function Horarios() {
 
     const refetchEvents = () => setRefreshCounter(p => p + 1);
 
-    const handleDateSelect = (selectInfo) => {
+    const handleDateSelect = (selectInfo: any) => {
         setEditingTurnoId(null);
         setInitialTurnoData({
             start_time: selectInfo.startStr,
@@ -171,13 +171,13 @@ export default function Horarios() {
         setModalTurnoOpen(true);
     };
 
-    const handleEventClick = (clickInfo) => {
+    const handleEventClick = (clickInfo: any) => {
         setEditingTurnoId(clickInfo.event.id);
         setInitialTurnoData(null);
         setModalTurnoOpen(true);
     };
 
-    const handleEventDropOrResize = async (changeInfo) => {
+    const handleEventDropOrResize = async (changeInfo: any) => {
         const { event } = changeInfo;
         const id = event.id;
         const start = event.startStr;

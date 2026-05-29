@@ -2,10 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
-import { Users, MapPin, RefreshCw, Navigation, Layers, Search } from 'lucide-react';
+import { Layers, RefreshCw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import L from 'leaflet';
-window.L = window.L || L;
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
 
@@ -16,7 +15,18 @@ import { MapLegend } from '../components/map/MapLegend';
 
 import { ConsumidorModal } from '../components/ui/ConsumidorModal';
 
-const ESTADO_COLOR = {
+interface Consumidor {
+    id: string;
+    nombre: string | null;
+    telefono: string | null;
+    mail: string | null;
+    localidad: string | null;
+    estado: string;
+    lat: number;
+    lng: number;
+}
+
+const ESTADO_COLOR: Record<string, string> = {
     "Lead": "#0c0c0c",
     "Contactado": "#3b82f6",
     "Interesado": "#f59e0b",
@@ -24,14 +34,23 @@ const ESTADO_COLOR = {
     "No interesado": "#ef4444"
 };
 
+// Extensiones para el objeto window para el objeto L de Leaflet
+declare global {
+    interface Window {
+        L: typeof L;
+    }
+}
+
+window.L = window.L || L;
+
 export default function MapaConsumidores() {
     const { empresaActiva } = useAuth();
-    const mapContainerRef = useRef(null);
-    const mapRef = useRef(null);
-    const markersLayerRef = useRef(null);
-    const heatLayerRef = useRef(null);
+    const mapContainerRef = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<L.Map | null>(null);
+    const markersLayerRef = useRef<L.LayerGroup | null>(null);
+    const heatLayerRef = useRef<any>(null);
 
-    const [consumidores, setConsumidores] = useState([]);
+    const [consumidores, setConsumidores] = useState<Consumidor[]>([]);
     const [totalAbsoluto, setTotalAbsoluto] = useState(0);
     const [consumidoresEnZona, setConsumidoresEnZona] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -42,8 +61,8 @@ export default function MapaConsumidores() {
 
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    const [selectedLatLng, setSelectedLatLng] = useState(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number; lng: number } | null>(null);
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [showLegendMobile, setShowLegendMobile] = useState(false);
@@ -79,7 +98,9 @@ export default function MapaConsumidores() {
         if (error) {
             toast.error("Error al cargar consumidores");
         } else {
-            const mapped = (data || []).map(r => ({ ...r, lat: Number(r.lat), lng: Number(r.lng) })).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+            const mapped: Consumidor[] = (data || [])
+                .map((r: any) => ({ ...r, lat: Number(r.lat), lng: Number(r.lng) }))
+                .filter((r: any) => Number.isFinite(r.lat) && Number.isFinite(r.lng));
             setConsumidores(mapped);
         }
         setLoading(false);
@@ -108,7 +129,9 @@ export default function MapaConsumidores() {
             });
 
             setTimeout(() => {
-                m.invalidateSize();
+                if (mapRef.current === m) {
+                    m.invalidateSize();
+                }
             }, 250);
 
             mapRef.current = m;
@@ -126,10 +149,7 @@ export default function MapaConsumidores() {
         if (!mapRef.current) return;
         const bounds = mapRef.current.getBounds();
         const inView = consumidores.filter(c => {
-            const lat = parseFloat(c.lat);
-            const lng = parseFloat(c.lng);
-            if (isNaN(lat) || isNaN(lng)) return false;
-            return bounds.contains(L.latLng(lat, lng));
+            return bounds.contains(L.latLng(c.lat, c.lng));
         }).length;
         setConsumidoresEnZona(inView);
     }, [consumidores]);
@@ -167,7 +187,7 @@ export default function MapaConsumidores() {
 
             marker.bindPopup(`
                 <div style="font-family: inherit; min-width: 150px;">
-                    <strong style="display:block; font-size:1.1rem; margin-bottom:4px;">${c.nombre}</strong>
+                    <strong style="display:block; font-size:1.1rem; margin-bottom:4px;">${c.nombre || ''}</strong>
                     <div style="font-size:0.85rem; color:#64748b; margin-bottom:8px;">${c.localidad || 'Sin localidad'}</div>
                     <span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; background:${color}22; color:${color}; border:1px solid ${color}44;">
                         ${c.estado}
@@ -188,14 +208,14 @@ export default function MapaConsumidores() {
                 }
             });
 
-            marker.addTo(markersLayerRef.current);
+            marker.addTo(markersLayerRef.current!);
         });
 
         // Heatmap
-        if (showHeatmap && L.heatLayer) {
+        if (showHeatmap && (L as any).heatLayer) {
             if (heatLayerRef.current) mapRef.current.removeLayer(heatLayerRef.current);
             const intensity = filtered.length > 500 ? 0.3 : 0.6;
-            heatLayerRef.current = L.heatLayer(filtered.map(c => [c.lat, c.lng, intensity]), {
+            heatLayerRef.current = (L as any).heatLayer(filtered.map(c => [c.lat, c.lng, intensity]), {
                 radius: 25,
                 blur: 15,
                 maxZoom: 17
@@ -297,7 +317,7 @@ export default function MapaConsumidores() {
                 onSaved={() => { setModalOpen(false); fetchConsumidores(); }}
             />
 
-            <style tabIndex="-1">{`
+            <style tabIndex={-1}>{`
                 .leaflet-popup-content-wrapper { border-radius: 12px; padding: 4px; box-shadow: var(--shadow-lg); }
                 .leaflet-popup-tip { box-shadow: var(--shadow-md); }
                 .text-accent { color: var(--accent); }
