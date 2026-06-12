@@ -83,6 +83,7 @@ export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, 
         let query = supabase.from("turnos")
             .select("id")
             .eq("usuario_email", email)
+            .neq("tipo", "estudio") // Exclude study days from overlap checks
             .lt("start_time", endIso)
             .gt("end_time", startIso);
 
@@ -108,7 +109,7 @@ export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, 
 
         setLoading(true);
 
-        const isOverlap = await checkOverlap(formData.usuario_email, startIso, endIso, turnoId);
+        const isOverlap = formData.tipo !== 'estudio' && await checkOverlap(formData.usuario_email, startIso, endIso, turnoId);
         if (isOverlap) {
             setLoading(false);
             return toast.error("⚠️ El horario se superpone con otro turno existente para este usuario.");

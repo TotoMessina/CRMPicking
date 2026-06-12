@@ -94,8 +94,9 @@ export function MasivoModal({ isOpen, onClose, usersCache, initialUsuario, onSav
 
             const { data: existingTurnos, error: fetchErr } = await supabase
                 .from("turnos")
-                .select("start_time, end_time")
+                .select("start_time, end_time, tipo")
                 .eq("usuario_email", formData.usuario_email)
+                .neq("tipo", "estudio") // Exclude study days from overlap checks
                 .lt("start_time", currentEndIso)
                 .gt("end_time", currentStartIso);
 
@@ -126,7 +127,9 @@ export function MasivoModal({ isOpen, onClose, usersCache, initialUsuario, onSav
                     const objStart = new Date(isoStart);
                     const objEnd = new Date(isoEnd);
 
-                    if (checkCollision(objStart, objEnd, existingTurnos) || checkCollision(objStart, objEnd, payloadBatch)) {
+                    const hasCollision = formData.tipo !== 'estudio' && (checkCollision(objStart, objEnd, existingTurnos) || checkCollision(objStart, objEnd, payloadBatch));
+
+                    if (hasCollision) {
                         skippedCount++;
                     } else {
                         payloadBatch.push({
