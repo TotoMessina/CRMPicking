@@ -1,0 +1,149 @@
+/* ===========================
+   LOGIN SPLIT LAYOUT
+   =========================== */
+
+.login-page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.login-orb-1 {
+  position: absolute;
+  top: -10vw;
+  left: -10vw;
+  width: 50vw;
+  height: 50vw;
+  max-width: 600px;
+  max-height: 600px;
+  background: var(--accent);
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.25;
+  animation: orbFloat 12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.login-orb-2 {
+  position: absolute;
+  bottom: -10vw;
+  right: -10vw;
+  width: 60vw;
+  height: 60vw;
+  max-width: 700px;
+  max-height: 700px;
+  background: #333;
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.2;
+  animation: orbFloatReverse 15s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes orbFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(50px, 50px) scale(1.1); }
+}
+@keyframes orbFloatReverse {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-50px, -50px) scale(1.05); }
+}
+
+.login-glass-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 48px 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.login-brand-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-brand-logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  background: var(--accent-soft);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+.login-brand-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.login-brand-header p {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-stack .field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.form-stack .field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  font-size: 15px;
+  transition: all 0.2s;
+  color: var(--text);
+}
+
+.form-stack .field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+
+.form-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.btn-block {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 8px;
+}

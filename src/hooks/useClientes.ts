@@ -230,25 +230,7 @@ export function useClientes(params: UseClientesParams) {
                 total = count || 0;
             }
 
-            if (mapped.length > 0) {
-                const ids = mapped.map(c => typeof c.id === 'string' ? parseInt(c.id, 10) : c.id).filter(Boolean) as number[];
-                const { data: acts, error: actsError } = await supabase
-                    .from('actividades')
-                    .select('*')
-                    .in('cliente_id', ids)
-                    .eq('empresa_id', empresaId)
-                    .order('fecha', { ascending: false });
-
-                if (!actsError && acts) {
-                    (acts as any[]).forEach(a => {
-                        const cid = a.cliente_id;
-                        if (!actsObj[cid]) actsObj[cid] = [];
-                        actsObj[cid].push(a as ClientActivity);
-                    });
-                }
-            }
-
-            return { clientes: mapped, total, activities: actsObj };
+            return { clientes: mapped, total, activities: {} as Record<string, ClientActivity[]> };
         },
         enabled: !!empresaId,
         staleTime: 1000 * 30,
@@ -256,6 +238,30 @@ export function useClientes(params: UseClientesParams) {
         placeholderData: (previousData) => previousData,
     });
 }
+
+export function useClientActivities(clienteId: string, enabled: boolean) {
+    return useQuery({
+        queryKey: ['clientActivities', clienteId],
+        queryFn: async () => {
+            if (!clienteId) return [] as ClientActivity[];
+            const numericId = parseInt(clienteId, 10);
+            const { data, error } = await supabase
+                .from('actividades')
+                .select('*')
+                .eq('cliente_id', numericId)
+                .order('fecha', { ascending: false });
+
+            if (error) {
+                console.error("Error loading client activities:", error);
+                throw error;
+            }
+            return (data || []) as unknown as ClientActivity[];
+        },
+        enabled: enabled && !!clienteId,
+        staleTime: 1000 * 30,
+    });
+}
+
 
 export function useDeleteCliente() {
     const queryClient = useQueryClient();

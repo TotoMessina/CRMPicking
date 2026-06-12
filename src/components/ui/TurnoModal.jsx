@@ -5,6 +5,31 @@ import { Button } from './Button';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const formatToLocalDateString = (dateVal) => {
+    if (!dateVal) return '';
+    if (typeof dateVal === 'string' && dateVal.length === 10) {
+        return dateVal;
+    }
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const formatToLocalDatetime = (dateVal, defaultTime = '09:00') => {
+    if (!dateVal) return '';
+    if (typeof dateVal === 'string' && dateVal.length === 10) {
+        return `${dateVal}T${defaultTime}`;
+    }
+    if (typeof dateVal === 'string' && dateVal.length === 16 && !dateVal.endsWith('Z') && !dateVal.includes('+')) {
+        return dateVal;
+    }
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, onSaved, empresaActiva }) {
     const [loading, setLoading] = useState(false);
 
@@ -18,11 +43,24 @@ export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, 
 
     useEffect(() => {
         if (isOpen) {
+            const initialTipo = initialData?.tipo || 'jornada';
+            const startVal = initialData?.inicio || initialData?.start_time;
+            const endVal = initialData?.fin || initialData?.end_time;
+
+            let inicioFormatted = formatToLocalDatetime(startVal, initialTipo === 'estudio' ? '00:00' : '09:00');
+            let finFormatted = formatToLocalDatetime(endVal, initialTipo === 'estudio' ? '23:59' : '17:00');
+
+            if (initialTipo === 'estudio' && startVal) {
+                const dateStr = formatToLocalDateString(startVal);
+                inicioFormatted = `${dateStr}T00:00`;
+                finFormatted = `${dateStr}T23:59`;
+            }
+
             setFormData({
                 usuario_email: initialData?.usuario_email || '',
-                tipo: initialData?.tipo || 'jornada',
-                inicio: initialData?.inicio || '',
-                fin: initialData?.fin || '',
+                tipo: initialTipo,
+                inicio: inicioFormatted,
+                fin: finFormatted,
                 notas: initialData?.notas || ''
             });
         }
@@ -30,7 +68,15 @@ export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, 
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const updated = { ...prev, [name]: value };
+            if (name === 'tipo' && value === 'estudio') {
+                const currentDateStr = prev.inicio ? prev.inicio.substring(0, 10) : formatToLocalDateString(new Date());
+                updated.inicio = `${currentDateStr}T00:00`;
+                updated.fin = `${currentDateStr}T23:59`;
+            }
+            return updated;
+        });
     };
 
     const checkOverlap = async (email, startIso, endIso, excludeId = null) => {
@@ -150,13 +196,33 @@ export function TurnoModal({ isOpen, onClose, turnoId, usersCache, initialData, 
                     <div className="form-row-2">
                         <label className="field">
                             <span className="field-label">Inicio</span>
-                            <input name="inicio" type="datetime-local" className="input" value={formData.inicio} onChange={handleChange} required />
+                            {formData.tipo === 'estudio' ? (
+                                <input
+                                    name="inicio"
+                                    type="date"
+                                    className="input"
+                                    value={formData.inicio ? formData.inicio.substring(0, 10) : ''}
+                                    onChange={(e) => {
+                                        const dateStr = e.target.value;
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            inicio: dateStr ? `${dateStr}T00:00` : '',
+                                            fin: dateStr ? `${dateStr}T23:59` : ''
+                                        }));
+                                    }}
+                                    required
+                                />
+                            ) : (
+                                <input name="inicio" type="datetime-local" className="input" value={formData.inicio} onChange={handleChange} required />
+                            )}
                         </label>
 
-                        <label className="field">
-                            <span className="field-label">Fin</span>
-                            <input name="fin" type="datetime-local" className="input" value={formData.fin} onChange={handleChange} required />
-                        </label>
+                        {formData.tipo !== 'estudio' && (
+                            <label className="field">
+                                <span className="field-label">Fin</span>
+                                <input name="fin" type="datetime-local" className="input" value={formData.fin} onChange={handleChange} required />
+                            </label>
+                        )}
                     </div>
 
                     <label className="field">

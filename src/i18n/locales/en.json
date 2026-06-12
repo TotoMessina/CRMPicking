@@ -1261,9 +1261,17 @@
     "stats": {
       "total": "Standard Hours (Month)",
       "extra": "Overtime Hours (Month)",
-      "vacations": "Vacation / Leave Days (Month)"
+      "vacations": "Vacation / Leave Days (Month)",
+      "study": "Study Days (Month)"
     },
-    "filter_all": "All Employees"
+    "filter_all": "All Employees",
+    "types": {
+      "all": "All types",
+      "jornada": "Standard Shift",
+      "extra": "Overtime",
+      "vacaciones": "Vacation / Leave",
+      "estudio": "Study Day"
+    }
   }
 }
 

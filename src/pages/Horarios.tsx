@@ -10,7 +10,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 import enLocale from '@fullcalendar/core/locales/en-gb';
-import { Clock, Sun, Filter, Plus, Zap } from 'lucide-react';
+import { Clock, Sun, Filter, Plus, Zap, BookOpen } from 'lucide-react';
 
 import { TurnoModal } from '../components/ui/TurnoModal';
 import { MasivoModal } from '../components/ui/MasivoModal';
@@ -19,7 +19,7 @@ const TYPE_COLORS: Record<string, string> = {
     jornada: "#0c0c0c", // Premium Black
     extra: "#f59e0b",   // Amber/Gold
     vacaciones: "#10b981", // Emerald
-    estudio: "#1a1a1a"    // Dark Grey
+    estudio: "#3b82f6"    // Premium Blue
 };
 
 export default function Horarios() {
@@ -28,6 +28,7 @@ export default function Horarios() {
     const calendarRef = useRef<any>(null);
     const [usersCache, setUsersCache] = useState<any[]>([]);
     const [filtroEmpleado, setFiltroEmpleado] = useState("");
+    const [filtroTipo, setFiltroTipo] = useState("");
 
     // Stats state
     const [stats, setStats] = useState({ total: 0, extra: 0, vacDays: 0, studyDays: 0 });
@@ -140,7 +141,13 @@ export default function Horarios() {
                 if (error) throw error;
 
                 setTurnosCache(data || []);
-                const events = (data || []).map(t => ({
+                
+                let filteredData = data || [];
+                if (filtroTipo) {
+                    filteredData = filteredData.filter(t => t.tipo === filtroTipo);
+                }
+
+                const events = filteredData.map(t => ({
                     id: t.id,
                     title: `${t.usuario_email.split('@')[0]} - ${t.tipo}`,
                     start: t.start_time,
@@ -157,7 +164,7 @@ export default function Horarios() {
             }
         };
         loadTurnos();
-    }, [dateRange, filtroEmpleado, empresaActiva, refreshCounter]);
+    }, [dateRange, filtroEmpleado, filtroTipo, empresaActiva, refreshCounter]);
 
     const refetchEvents = () => setRefreshCounter(p => p + 1);
 
@@ -173,7 +180,7 @@ export default function Horarios() {
 
     const handleEventClick = (clickInfo: any) => {
         setEditingTurnoId(clickInfo.event.id);
-        setInitialTurnoData(null);
+        setInitialTurnoData(clickInfo.event.extendedProps);
         setModalTurnoOpen(true);
     };
 
@@ -235,14 +242,29 @@ export default function Horarios() {
                         <div className="stat-label">{t('horarios.stats.vacations')}</div>
                     </div>
                 </div>
+                <div className="stat-card premium blue">
+                    <div className="stat-squircle"><BookOpen size={20} /></div>
+                    <div className="stat-info">
+                        <div className="stat-value">{stats.studyDays}</div>
+                        <div className="stat-label">{t('horarios.stats.study')}</div>
+                    </div>
+                </div>
             </div>
 
             <section className="glass-card" style={{ padding: '20px' }}>
-                <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <Filter size={18} className="text-muted" />
-                    <select className="input" value={filtroEmpleado} onChange={e => setFiltroEmpleado(e.target.value)} style={{ maxWidth: '300px' }}>
+                    <select className="input" value={filtroEmpleado} onChange={e => setFiltroEmpleado(e.target.value)} style={{ maxWidth: '250px' }}>
                         <option value="">{t('horarios.filter_all')}</option>
                         {usersCache.map(u => <option key={u.email} value={u.email}>{u.nombre || u.email}</option>)}
+                    </select>
+
+                    <select className="input" value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ maxWidth: '200px' }}>
+                        <option value="">{t('horarios.types.all')}</option>
+                        <option value="jornada">{t('horarios.types.jornada')}</option>
+                        <option value="extra">{t('horarios.types.extra')}</option>
+                        <option value="vacaciones">{t('horarios.types.vacaciones')}</option>
+                        <option value="estudio">{t('horarios.types.estudio')}</option>
                     </select>
                 </div>
 

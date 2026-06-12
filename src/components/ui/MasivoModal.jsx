@@ -51,7 +51,14 @@ export function MasivoModal({ isOpen, onClose, usersCache, initialUsuario, onSav
                 : formData.dias.filter(d => d !== valNum);
             setFormData(prev => ({ ...prev, dias: newDias }));
         } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
+            setFormData(prev => {
+                const updated = { ...prev, [name]: value };
+                if (name === 'tipo' && value === 'estudio') {
+                    updated.horaInicio = '00:00';
+                    updated.horaFin = '23:59';
+                }
+                return updated;
+            });
         }
     };
 
@@ -218,16 +225,18 @@ export function MasivoModal({ isOpen, onClose, usersCache, initialUsuario, onSav
                         </div>
                     </div>
 
-                    <div className="form-row-2">
-                        <label className="field">
-                            <span className="field-label">Hora Inicio</span>
-                            <input name="horaInicio" type="time" className="input" value={formData.horaInicio} onChange={handleChange} required />
-                        </label>
-                        <label className="field">
-                            <span className="field-label">Hora Fin</span>
-                            <input name="horaFin" type="time" className="input" value={formData.horaFin} onChange={handleChange} required />
-                        </label>
-                    </div>
+                    {formData.tipo !== 'estudio' && (
+                        <div className="form-row-2">
+                            <label className="field">
+                                <span className="field-label">Hora Inicio</span>
+                                <input name="horaInicio" type="time" className="input" value={formData.horaInicio} onChange={handleChange} required />
+                            </label>
+                            <label className="field">
+                                <span className="field-label">Hora Fin</span>
+                                <input name="horaFin" type="time" className="input" value={formData.horaFin} onChange={handleChange} required />
+                            </label>
+                        </div>
+                    )}
 
                     <label className="field">
                         <span className="field-label">Tipo</span>

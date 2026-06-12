@@ -1,0 +1,173 @@
+/* ============================
+   CALENDAR MODULE STYLES
+   ============================ */
+
+.calendar-toolbar {
+  width: 100%;
+}
+
+/* ===========================
+   PREMIUM MODAL STYLES (CALENDAR SPECIFIC)
+   =========================== */
+#modalEvento .modal__dialog {
+  max-width: 600px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#modalEvento .modal__header {
+  padding: 24px 32px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+#modalEvento .modal__title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+#modalEvento .modal__body {
+  padding: 32px;
+  background: var(--bg);
+}
+
+/* Input Fields Override */
+#modalEvento .field {
+  margin-bottom: 20px;
+}
+
+#modalEvento .field-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: block;
+}
+
+#modalEvento input[type="text"],
+#modalEvento input[type="datetime-local"],
+#modalEvento select,
+#modalEvento textarea {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  font-size: 1rem;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+#modalEvento input:focus,
+#modalEvento select:focus,
+#modalEvento textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  outline: none;
+}
+
+/* Color Picker */
+#modalEvento input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#modalEvento input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+#modalEvento input[type="color"]::-webkit-color-swatch {
+  border: none;
+}
+
+/* Checklist Grid */
+#usuariosChecklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.check-item:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.check-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
+
+.check-item span {
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Footer Actions */
+#modalEvento .modal-actions {
+  margin-top: 32px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+#modalEvento .btn-primario {
+  padding: 14px 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent) 0%, #444 100%);
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.4);
+  border: none;
+}
+
+#modalEvento .btn-primario:hover {
+  transform: translateY(-2px);
+}
+
+#modalEvento .btn-delete {
+  margin-right: auto;
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 14px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#modalEvento .btn-delete:hover {
+  background: var(--danger);
+  color: white;
+}

@@ -115,70 +115,87 @@ export const importarClientesExcel = async (
                     return;
                 }
 
-                let successCount = 0;
+                const clientsPayload: any[] = [];
+                const rowsData: any[] = [];
+
                 for (const row of data) {
-                    try {
-                        let rawFecha = row.fecha_creacion || row.created_at || row.fecha || row.Fecha || undefined;
-                        let fechaNorm = undefined;
-                        
-                        if (rawFecha) {
-                            if (typeof rawFecha === 'string') {
-                                if (rawFecha.includes('/')) {
-                                    const parts = rawFecha.split(' ')[0].split('/');
-                                    if (parts.length === 3) {
-                                        const day = parts[0].padStart(2, '0');
-                                        const month = parts[1].padStart(2, '0');
-                                        const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-                                        fechaNorm = `${year}-${month}-${day}T00:00:00Z`;
-                                    }
-                                } else {
-                                    const d = new Date(rawFecha);
-                                    if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
+                    let rawFecha = row.fecha_creacion || row.created_at || row.fecha || row.Fecha || undefined;
+                    let fechaNorm = undefined;
+                    
+                    if (rawFecha) {
+                        if (typeof rawFecha === 'string') {
+                            if (rawFecha.includes('/')) {
+                                const parts = rawFecha.split(' ')[0].split('/');
+                                if (parts.length === 3) {
+                                    const day = parts[0].padStart(2, '0');
+                                    const month = parts[1].padStart(2, '0');
+                                    const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                                    fechaNorm = `${year}-${month}-${day}T00:00:00Z`;
                                 }
-                            } else if (typeof rawFecha === 'number') {
-                                const d = new Date((rawFecha - 25569) * 86400 * 1000);
+                            } else {
+                                const d = new Date(rawFecha);
                                 if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
                             }
+                        } else if (typeof rawFecha === 'number') {
+                            const d = new Date((rawFecha - 25569) * 86400 * 1000);
+                            if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
                         }
-
-                        // 1. Create universal client
-                        const { data: newC, error: cErr } = await supabase.from('clientes').insert([{
-                            nombre: row.nombre || row.nombre_local || 'Nuevo Cliente',
-                            nombre_local: row.nombre_local || row.nombre || '',
-                            direccion: row.direccion || '',
-                            telefono: String(row.telefono || ''),
-                            mail: row.mail || '',
-                            cuit: String(row.cuit || ''),
-                            created_at: fechaNorm || undefined
-                        } as any]).select('id').single();
-
-                        if (cErr) throw cErr;
-
-                        // 2. Link to company
-                        const { error: ecErr } = await supabase.from('empresa_cliente').insert([{
-                            cliente_id: newC.id,
-                            empresa_id: empresaActiva.id,
-                            estado: row.estado || '1 - Cliente relevado',
-                            rubro: row.rubro || '',
-                            responsable: row.responsable || '',
-                            situacion: row.situacion || '',
-                            notas: row.notas || '',
-                            tipo_contacto: row.tipo_contacto || '',
-                            fecha_proximo_contacto: row.fecha_proximo_contacto || null,
-                            hora_proximo_contacto: row.hora_proximo_contacto || null,
-                            creado_por: userName || userEmail || 'Importación',
-                            activo: true,
-                            created_at: fechaNorm || undefined
-                        } as any]);
-
-                        if (ecErr) throw ecErr;
-                        successCount++;
-                    } catch (err) {
-                        console.error('Error importando fila:', row, err);
                     }
+
+                    clientsPayload.push({
+                        nombre: row.nombre || row.nombre_local || 'Nuevo Cliente',
+                        nombre_local: row.nombre_local || row.nombre || '',
+                        direccion: row.direccion || '',
+                        telefono: String(row.telefono || ''),
+                        mail: row.mail || '',
+                        cuit: String(row.cuit || ''),
+                        created_at: fechaNorm || undefined
+                    });
+
+                    rowsData.push({
+                        row,
+                        fechaNorm
+                    });
                 }
 
-                toast.success(`Importación finalizada: ${successCount} clientes cargados`, { id: toastId });
+                // 1. Crear clientes base por lote
+                const { data: newClients, error: cErr } = await supabase
+                    .from('clientes')
+                    .insert(clientsPayload)
+                    .select('id');
+
+                if (cErr) throw cErr;
+                if (!newClients || newClients.length === 0) {
+                    throw new Error('No se pudieron crear los registros de clientes base.');
+                }
+
+                // 2. Asociar a empresa por lote
+                const empresaClientePayload = newClients.map((newC, index) => {
+                    const { row, fechaNorm } = rowsData[index];
+                    return {
+                        cliente_id: newC.id,
+                        empresa_id: empresaActiva.id,
+                        estado: row.estado || '1 - Cliente relevado',
+                        rubro: row.rubro || '',
+                        responsable: row.responsable || '',
+                        situacion: row.situacion || '',
+                        notas: row.notas || '',
+                        tipo_contacto: row.tipo_contacto || '',
+                        fecha_proximo_contacto: row.fecha_proximo_contacto || null,
+                        hora_proximo_contacto: row.hora_proximo_contacto || null,
+                        creado_por: userName || userEmail || 'Importación',
+                        activo: true,
+                        created_at: fechaNorm || undefined
+                    };
+                });
+
+                const { error: ecErr } = await supabase
+                    .from('empresa_cliente')
+                    .insert(empresaClientePayload);
+
+                if (ecErr) throw ecErr;
+
+                toast.success(`Importación finalizada: ${newClients.length} clientes cargados`, { id: toastId });
                 if (onSuccess) onSuccess();
             } catch (err) {
                 console.error(err);

@@ -2,7 +2,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useClientes, UseClientesParams } from './useClientes';
+import { useClientes, UseClientesParams, useClientActivities } from './useClientes';
 import { supabase } from '../lib/supabase';
 
 // 1. Fluent chains for mocked queries
@@ -145,7 +145,7 @@ describe('useClientes Hook', () => {
         expect(supabase.from).not.toHaveBeenCalled();
     });
 
-    it('debe cargar correctamente los clientes y sus actividades (N+1 secuencial)', async () => {
+    it('debe cargar correctamente los clientes sin consultar actividades de forma secuencial', async () => {
         const { result } = renderHook(() => useClientes(defaultParams), {
             wrapper: createWrapper(),
         });
@@ -159,10 +159,23 @@ describe('useClientes Hook', () => {
         expect(data?.clientes[0].grupos).toEqual([{ id: 'grupo-1', nombre: 'Grupo A' }]);
         expect(data?.total).toBe(1);
 
-        // Validamos la consulta de actividades secuencial (N+1)
+        // Validamos que NO se consulten las actividades secuencialmente
+        expect(supabase.from).not.toHaveBeenCalledWith('actividades');
+        expect(data?.activities).toEqual({});
+    });
+
+    it('debe cargar las actividades diferidas usando useClientActivities cuando esté habilitado', async () => {
+        const { result } = renderHook(() => useClientActivities('1', true), {
+            wrapper: createWrapper(),
+        });
+
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+        const data = result.current.data;
+        expect(data).toBeDefined();
+        expect(data).toHaveLength(1);
+        expect(data?.[0].descripcion).toBe('Visita inicial');
         expect(supabase.from).toHaveBeenCalledWith('actividades');
-        expect(data?.activities['1']).toBeDefined();
-        expect(data?.activities['1'][0].descripcion).toBe('Visita inicial');
     });
 
     it('debe delegar en la RPC "buscar_clientes_empresa" cuando se aplican filtros avanzados (fNombre)', async () => {

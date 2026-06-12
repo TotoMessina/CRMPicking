@@ -1207,8 +1207,16 @@
     "stats": {
       "total": "Horas Ordinarias (Mes)",
       "extra": "Horas Extra (Mes)",
-      "vacations": "Días Vacaciones / Licencia (Mes)"
+      "vacations": "Días Vacaciones / Licencia (Mes)",
+      "study": "Días de Estudio (Mes)"
     },
-    "filter_all": "Todos los Empleados"
+    "filter_all": "Todos los Empleados",
+    "types": {
+      "all": "Todos los tipos",
+      "jornada": "Jornada Laboral",
+      "extra": "Horas Extra",
+      "vacaciones": "Vacaciones / Ausencia",
+      "estudio": "Día de Estudio"
+    }
   }
 }

@@ -74,7 +74,6 @@ export const aiProvider = {
      */
     async ask(message: string): Promise<{ text: string, chartData?: any }> {
         const msg = message.toLowerCase();
-        await new Promise(resolve => setTimeout(resolve, 800));
 
         // 0. DETECCIÓN DE CONTEXTO (Pronombres y referencias)
         const contextTriggers = ['como llego', 'como llegar', 'donde queda', 'ubicacion', 'que onda', 'decime mas', 'el', 'ella'];
@@ -288,7 +287,6 @@ export const aiProvider = {
 
     async summarizeActivities(activities: ActivityRecord[], context: ClientContext): Promise<AISummaryResult> {
         const allText = activities.map(a => `${a.descripcion} ${a.notas || ''}`).join(' ').toLowerCase();
-        await new Promise(resolve => setTimeout(resolve, 800));
 
         const scores = {
             resistencia: this._calcScore(allText, SEMANTIC_DICO.ADOPCION.resistencia) * 2,
@@ -477,7 +475,6 @@ export const aiProvider = {
     },
 
     async summarizePost(content: string): Promise<string> {
-        await new Promise(resolve => setTimeout(resolve, 900));
         const normalized = content.toLowerCase();
         
         // Detección de Eje Central (Foco)

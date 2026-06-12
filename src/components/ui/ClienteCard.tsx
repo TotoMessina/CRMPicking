@@ -11,11 +11,12 @@ import { getChurnRisk } from '../../utils/riskScoring';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { aiProvider } from '../../lib/aiProvider';
+import { useClientActivities } from '../../hooks/useClientes';
 import toast from 'react-hot-toast';
 
 interface Props {
     cliente: Client;
-    acts: ClientActivity[];
+    acts?: ClientActivity[];
     isExpanded: boolean;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
@@ -56,7 +57,7 @@ const getAISmartTags = (activities: ClientActivity[], c: Client, t: any) => {
 
 export const ClienteCard = memo<Props>(({
     cliente: c,
-    acts,
+    acts: passedActs,
     isExpanded,
     onEdit,
     onDelete,
@@ -70,6 +71,9 @@ export const ClienteCard = memo<Props>(({
     const { isDemoMode, empresaActiva }: any = useAuth();
     const [aiResult, setAiResult] = useState<any>(null);
     const [isSummarizing, setIsSummarizing] = useState(false);
+    
+    const { data: lazyActs = [] } = useClientActivities(c.id, isExpanded || isSummarizing || !!aiResult);
+    const acts = lazyActs;
 
     const handleSummarize = async () => {
         setIsSummarizing(true);

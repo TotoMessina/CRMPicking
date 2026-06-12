@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { flushOutbox, clearAllOfflineData } from '../lib/offlineManager';
@@ -44,10 +44,15 @@ const USER_CACHE_KEY = 'pu_user_cache';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
+    const userRef = useRef<User | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        userRef.current = user;
+    }, [user]);
 
     // Multi-empresa
     const [empresasDisponibles, setEmpresasDisponibles] = useState<Empresa[]>([]);
@@ -259,10 +264,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // INITIAL_SESSION es manejado por getSession() arriba para evitar doble carga
             if (_event === 'INITIAL_SESSION') return;
             const u = session?.user ?? null;
+            const prevUser = userRef.current;
             setUser(u);
             logger.setUserEmail(u?.email ?? null);
-            setLoading(true);
-            fetchRoleAndName(u).finally(() => setLoading(false));
+            
+            if (prevUser && u && prevUser.id === u.id) {
+                // Mismo usuario, actualizar datos en segundo plano sin desmontar
+                fetchRoleAndName(u);
+            } else {
+                // Cambio de usuario / login / logout, requiere estado de carga
+                setLoading(true);
+                fetchRoleAndName(u).finally(() => setLoading(false));
+            }
         });
 
         const handleStorage = (e: StorageEvent) => {
