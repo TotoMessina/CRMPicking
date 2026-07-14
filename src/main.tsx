@@ -12,8 +12,18 @@ import './index.css';
 import './styles/pipeline.css';
 import './styles/calendar.css';
 import './styles/login.css';
+import './styles/dashboard.css';
+import './styles/modals.css';
+import './styles/client_card.css';
+import './styles/configuracion.css';
+import './styles/superadmin.css';
+import './styles/proveedores.css';
+import './styles/actividad.css';
+import './styles/permisos.css';
+import './styles/stats_editor.css';
 import { injectTenantTheme } from './config/tenant';
 import { TenantProvider } from './contexts/TenantContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import './i18n/config';
 
 import { logger } from './lib/logger';
@@ -49,7 +59,9 @@ createRoot(rootElement).render(
       <ThemeProvider>
         <AuthProvider>
           <TenantProvider>
-            <App />
+            <ConfirmProvider>
+              <App />
+            </ConfirmProvider>
           </TenantProvider>
         </AuthProvider>
       </ThemeProvider>

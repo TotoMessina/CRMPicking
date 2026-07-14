@@ -71,6 +71,14 @@
   flex-shrink: 0;
   letter-spacing: 0.02em;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.sidebar-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
 }
 
 .sidebar-user-info {

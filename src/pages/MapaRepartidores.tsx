@@ -70,7 +70,7 @@ export default function MapaRepartidores() {
 
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number; lng: number } | null>(null);
 
     // Geolocation
@@ -257,7 +257,7 @@ export default function MapaRepartidores() {
                 const btn = e.popup.getElement()?.querySelector('.btn-popup-edit') as HTMLElement | null;
                 if (btn) {
                     btn.onclick = () => {
-                        setEditingId(rec.id);
+                        setEditingId(Number(rec.id));
                         setSelectedLatLng(null);
                         setModalOpen(true);
                         marker.closePopup();

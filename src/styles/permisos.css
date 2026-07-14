@@ -1,0 +1,649 @@
+/* Stylesheet for Permisos components (TabUsuarios and TabCampos) */
+
+.tab-campos-container input.premium-input {
+  background: var(--bg-elevated) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
+  font-size: 0.9rem !important;
+  outline: none !important;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.tab-campos-container input.premium-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-alpha) !important;
+}
+.tab-campos-container input.premium-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.6;
+}
+.tab-campos-container .danger-hover:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+.tab-campos-container .danger-hover-text:hover {
+  color: #ef4444 !important;
+  opacity: 1 !important;
+}
+.tab-campos-container .btn-secundario {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+}
+.tab-campos-container .btn-secundario:hover:not(:disabled) {
+  background: #f9fafb !important;
+  border-color: #9ca3af !important;
+}
+
+.usuarios-roles-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.permisos-header-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--bg-elevated);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+}
+
+.permisos-header-title {
+  margin: 0;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.permisos-header-desc {
+  margin: 4px 0 0 0;
+  font-size: 0.85rem;
+}
+
+.permisos-header-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.permisos-header-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.permisos-roles-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-card);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.permisos-roles-title {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.permisos-roles-list {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.permisos-role-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.permisos-role-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.permisos-role-delete-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.permisos-role-delete-btn:hover {
+  color: var(--danger);
+}
+
+.permisos-table-container {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  background: var(--bg-card);
+}
+
+.permisos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.permisos-table tr.header-row {
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.permisos-table th {
+  padding: 12px 16px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.permisos-table td {
+  padding: 12px 16px;
+}
+
+.permisos-table td.empty-cell {
+  padding: 24px;
+  text-align: center;
+}
+
+.permisos-role-tag {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.permisos-actions-cell {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.permisos-action-btn-edit {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.permisos-action-btn-delete {
+  padding: 6px 10px;
+  color: var(--danger, #ef4444);
+  border-color: rgba(239, 68, 68, 0.15);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: auto;
+}
+
+/* Modales */
+
+.permisos-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.permisos-modal-content {
+  width: 90%;
+  max-width: 420px;
+  padding: 24px;
+}
+
+.permisos-modal-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.permisos-modal-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.permisos-modal-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.permisos-modal-subtitle {
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.permisos-field-group {
+  margin-bottom: 16px;
+}
+
+.permisos-field-group-large {
+  margin-bottom: 24px;
+}
+
+.permisos-field-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.permisos-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.permisos-checkbox-input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.permisos-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.permisos-modal-btn {
+  flex: 1;
+}
+
+.permisos-color-picker-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.permisos-color-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.permisos-color-dot.active {
+  border-color: var(--accent);
+  transform: scale(1.1);
+}
+
+.permisos-tabs-wrapper {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.permisos-tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.permisos-tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* TabCampos Designer Styles */
+
+.tab-campos-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.tab-campos-card {
+  background: var(--bg-elevated);
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+}
+
+.tab-campos-title {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tab-campos-desc {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.tab-campos-list {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tab-campos-empty {
+  padding: 24px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.tab-campos-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tab-campos-field-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.tab-campos-field-input {
+  height: 38px;
+  font-size: 0.9rem;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.tab-campos-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 18px;
+}
+
+.tab-campos-btn-group button {
+  padding: 6px;
+  min-width: auto;
+  width: auto;
+  height: 38px;
+}
+
+.tab-campos-add-row {
+  margin-top: 24px;
+  display: flex;
+  gap: 12px;
+  max-width: 500px;
+}
+
+.tab-campos-add-input {
+  flex: 1;
+  height: 40px;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.tab-campos-add-btn {
+  height: 40px;
+  padding: 0 16px;
+  width: auto;
+  min-width: fit-content;
+}
+
+.tab-campos-designer-box {
+  background: var(--bg-elevated);
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+}
+
+.tab-campos-designer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.tab-campos-designer-title {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-campos-designer-reset-btn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  height: 32px;
+  width: auto;
+  min-width: fit-content;
+}
+
+.tab-campos-designer-desc {
+  margin: 0;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+}
+
+.tab-campos-designer-empty-wizard {
+  padding: 32px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.tab-campos-designer-wizard-desc {
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+}
+
+.tab-campos-designer-wizard-btn {
+  width: auto;
+  min-width: fit-content;
+  padding: 0 20px;
+}
+
+.tab-campos-designer-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tab-campos-designer-step-card {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.tab-campos-designer-step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.tab-campos-designer-step-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.tab-campos-designer-step-number {
+  font-size: 0.85rem;
+  font-weight: 800;
+  background: var(--accent);
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-campos-designer-step-title-input {
+  height: 38px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  max-width: 300px;
+  width: 100%;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.tab-campos-designer-step-delete-btn {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  height: 28px;
+  width: auto;
+  min-width: fit-content;
+}
+
+.tab-campos-designer-fields-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tab-campos-designer-field-empty {
+  margin: 0;
+  font-size: 0.8rem;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.tab-campos-designer-field-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.tab-campos-designer-field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tab-campos-designer-field-title-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tab-campos-designer-field-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.tab-campos-designer-field-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.tab-campos-designer-field-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tab-campos-designer-field-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.tab-campos-designer-field-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tab-campos-designer-field-btn {
+  padding: 4px 6px;
+  min-width: auto;
+  width: auto;
+  height: 28px;
+}
+
+.tab-campos-designer-add-step-btn {
+  border: 2px dashed var(--border);
+  padding: 16px;
+  text-align: center;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.tab-campos-designer-add-step-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-elevated);
+}
+

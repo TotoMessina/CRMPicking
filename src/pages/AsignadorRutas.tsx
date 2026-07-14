@@ -1,46 +1,17 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '../lib/supabase';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../contexts/AuthContext';
 import {
     Plus, Trash2, X, Search, ChevronUp, ChevronDown,
-    Route as RouteIcon, User, Calendar, MessageSquare, Save, Users, Map as MapIcon, Zap, List,
-    GripVertical, Copy, Share2, Clock, MapPin, TrendingDown, Info
+    Route as RouteIcon, User, MessageSquare, Users, Map as MapIcon, Zap, List,
+    GripVertical, Copy, Share2, Clock, TrendingDown
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getChurnRisk } from '../utils/riskScoring';
-import { useTenant } from '../contexts/TenantContext';
-
-// ─── Estilos de colores por estado ──────────────────────────────────────────
-const ESTADOS_COLORES: Record<string, { badge: string; badgeBg: string; pin: string }> = {
-    'Pendiente': { badge: '#f59e0b', badgeBg: 'rgba(245,158,11,0.15)', pin: '#f59e0b' },
-    'Visitado':  { badge: '#10b981', badgeBg: 'rgba(16,185,129,0.15)', pin: '#10b981' },
-    'Ausente':   { badge: '#ef4444', badgeBg: 'rgba(239,68,68,0.12)', pin: '#ef4444' },
-    'Cancelado': { badge: '#64748b', badgeBg: 'rgba(100,116,139,0.12)', pin: '#64748b' },
-};
-
-// Genera un ícono de pin numerado premium
-const makeNumberedIcon = (num: number, color: string, done: boolean, isRisk: boolean) => L.divIcon({
-    className: '',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-    html: `<div style="
-        width:32px;height:32px;border-radius:50% 50% 50% 0;
-        transform:rotate(-45deg);
-        background:${done ? '#64748b' : color};
-        border: 2.5px solid ${isRisk ? '#f87171' : 'white'};
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        display:flex;align-items:center;justify-content:center;
-    ">
-        <span style="transform:rotate(45deg);color:white;font-weight:900;font-size:12px;">${num}</span>
-    </div>`
-});
+import { useAsignadorRutas } from '../hooks/useAsignadorRutas';
+import { ESTADOS_COLORES, makeNumberedIcon } from '../utils/mapUtils';
 
 // Helper: Centrar mapa en la ruta
 function FitBounds({ points }: { points: L.LatLngExpression[] }) {
@@ -64,309 +35,41 @@ function MapResizer({ mobileTab, verMapa }: { mobileTab: string; verMapa: boolea
     return null;
 }
 
-// Helper: Distancia Haversine
-const getDistance = (lat1: number | undefined, lon1: number | undefined, lat2: number | undefined, lon2: number | undefined) => {
-    if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return 0;
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-};
-
-interface Visita {
-    id: string | number;
-    cliente_id: string;
-    usuario_asignado_email: string;
-    fecha_asignada: string;
-    estado: string;
-    orden: number;
-    comentarios_admin?: string;
-    clientes: {
-        id: string;
-        nombre_local: string;
-        direccion: string;
-        lat?: number;
-        lng?: number;
-    } | null;
-}
-
 export default function AsignadorRutas() {
     const { t } = useTranslation();
-    const { empresaActiva } = useAuth();
-    const { tenantConfig } = useTenant();
-
-    const [distanciaTotal, setDistanciaTotal] = useState(0);
-    const [usuarios, setUsuarios] = useState<{email: string, nombre: string}[]>([]);
-    const [usuarioSeleccionado, setUsuarioSeleccionado] = useState('');
-    const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
-        const date = new Date();
-        const offset = date.getTimezoneOffset() * 60000;
-        return new Date(date.getTime() - offset).toISOString().split('T')[0];
-    });
-    const [rutaActual, setRutaActual] = useState<Visita[]>([]);
-    const [loadingRuta, setLoadingRuta] = useState(false);
-
-    const [tabActiva, setTabActiva] = useState<'riesgo' | 'buscar'>('riesgo'); 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [sugerenciasRiesgo, setSugerenciasRiesgo] = useState<any[]>([]);
-    const [searching, setSearching] = useState(false);
-
-    const [editingComentario, setEditingComentario] = useState<{id: string | number, texto: string} | null>(null);
-    const [verMapa, setVerMapa] = useState(true);
-    const [mobileTab, setMobileTab] = useState<'buscar' | 'ruta'>('buscar'); 
-
-    useEffect(() => {
-        if (!empresaActiva?.id) return;
-        const fetchUsuarios = async () => {
-            const { data: euData } = await (supabase as any).from('empresa_usuario').select('usuario_email').eq('empresa_id', empresaActiva.id);
-            const emails = (euData || []).map((e: any) => e.usuario_email);
-            if (emails.length === 0) return;
-            const { data: usersData } = await (supabase as any).from('usuarios').select('email, nombre').in('email', emails).order('nombre');
-            setUsuarios((usersData || []).map((u: any) => ({ 
-                email: u.email || '', 
-                nombre: u.nombre || u.email || '' 
-            })));
-        };
-        fetchUsuarios();
-    }, [empresaActiva]);
-
-    useEffect(() => {
-        if (!empresaActiva?.id) return;
-        const fetchRiesgo = async () => {
-            const { data } = await (supabase as any)
-                .from('empresa_cliente')
-                .select('id, cliente_id, estado, fecha_proximo_contacto, ultima_actividad, updated_at, created_at')
-                .eq('empresa_id', empresaActiva.id)
-                .eq('activo', true)
-                .limit(50);
-            
-            if (data && data.length > 0) {
-                const clienteIds = (data as any[])
-                    .filter(ec => ec.cliente_id !== null && ec.cliente_id !== undefined)
-                    .map(ec => ec.cliente_id);
-                
-                const uniqueIds = [...new Set(clienteIds)];
-                
-                const { data: clientesRaw } = await (supabase as any)
-                    .from('clientes')
-                    .select('id, nombre_local, direccion, lat, lng')
-                    .in('id', uniqueIds);
-                
-                const clienteMap: Record<string, any> = {};
-                (clientesRaw || []).forEach((c: any) => { if (c.id) clienteMap[c.id] = c; });
-
-                const dataConClientes = (data as any[]).map(ec => ({
-                    ...ec,
-                    clientes: ec.cliente_id ? (clienteMap[ec.cliente_id] || null) : null
-                }));
-
-                const conRiesgo = dataConClientes
-                    .filter(ec => ec.clientes)
-                    .map(ec => ({ ...ec, risk: getChurnRisk(ec) }))
-                    .filter(ec => ec.risk.level !== 'bajo')
-                    .sort((a, b) => b.risk.score - a.risk.score)
-                    .slice(0, 15);
-                setSugerenciasRiesgo(conRiesgo);
-            } else {
-                setSugerenciasRiesgo([]);
-            }
-        };
-        fetchRiesgo();
-    }, [empresaActiva]);
-
-    const fetchRuta = useCallback(async () => {
-        if (!usuarioSeleccionado || !fechaSeleccionada || !empresaActiva?.id) {
-            setRutaActual([]); setDistanciaTotal(0); return;
-        }
-        setLoadingRuta(true);
-        try {
-            const { data: visitasRaw, error } = await (supabase as any).from('visitas_diarias').select('*').eq('empresa_id', empresaActiva.id).eq('usuario_asignado_email', usuarioSeleccionado).eq('fecha_asignada', fechaSeleccionada).order('orden', { ascending: true });
-            if (error) throw error;
-            
-            let rutasArmadas: Visita[] = [];
-            if (visitasRaw && (visitasRaw as any[]).length > 0) {
-                const clienteIds = [...new Set((visitasRaw as any[]).map(v => v.cliente_id))];
-                const { data: clientesRaw } = await (supabase as any).from('clientes').select('id, nombre_local, direccion, lat, lng').in('id', clienteIds);
-                const clienteMap: Record<string, any> = {};
-                (clientesRaw || []).forEach((c: any) => { clienteMap[c.id] = c; });
-                rutasArmadas = (visitasRaw as any[]).map(v => ({ ...v, clientes: clienteMap[v.cliente_id] || null }));
-            }
-            setRutaActual(rutasArmadas);
-            
-            let dist = 0;
-            for (let i = 0; i < (rutasArmadas.length || 0) - 1; i++) {
-                const v1 = rutasArmadas[i].clientes; const v2 = rutasArmadas[i+1].clientes;
-                dist += getDistance(v1?.lat, v1?.lng, v2?.lat, v2?.lng);
-            }
-            setDistanciaTotal(dist);
-        } catch (e) {
-            toast.error(t('asignador.toast.load_error'));
-        } finally {
-            setLoadingRuta(false);
-        }
-    }, [usuarioSeleccionado, fechaSeleccionada, empresaActiva]);
-
-    useEffect(() => { fetchRuta(); }, [fetchRuta]);
-
-    useEffect(() => {
-        if (searchTerm.length < 2) { setSearchResults([]); return; }
-        const t = setTimeout(async () => {
-            setSearching(true);
-            const { data } = await (supabase as any).rpc('buscar_clientes_empresa', { p_empresa_id: empresaActiva?.id, p_nombre: searchTerm, p_limit: 8 });
-            if (data) {
-                setSearchResults((data as any[]).map((d: any) => ({ id: d.ec_id, clientes: { id: d.cliente_id, nombre_local: d.nombre_local, direccion: d.direccion, lat: d.lat, lng: d.lng } })));
-            }
-            setSearching(false);
-        }, 400);
-        return () => clearTimeout(t);
-    }, [searchTerm, empresaActiva]);
-
-    const agregarAFila = async (ec: any) => {
-        if (!usuarioSeleccionado) return toast.error(t('asignador.toast.select_user'));
-        const yaExiste = rutaActual.find(v => String(v.cliente_id) === String(ec.clientes.id));
-        if (yaExiste) return toast.error(t('asignador.toast.already_in_route'));
-
-        const newOrder = rutaActual.length;
-        const { data, error } = await (supabase as any).from('visitas_diarias').insert([{
-            empresa_id: empresaActiva?.id, cliente_id: ec.clientes.id, usuario_asignado_email: usuarioSeleccionado, fecha_asignada: fechaSeleccionada, estado: 'Pendiente', orden: newOrder
-        }]).select('*').single();
-
-        if (error) return toast.error(t('asignador.toast.add_error'));
-        const dataConClientes: Visita = { ...data, clientes: ec.clientes };
-        setRutaActual([...rutaActual, dataConClientes]);
-        toast.success(t('asignador.toast.add_success', { name: usuarioSeleccionado.split('@')[0] }));
-    };
-
-    const quitarVisita = async (id: string | number) => {
-        const { error } = await (supabase as any).from('visitas_diarias').delete().eq('id', id);
-        if (error) return toast.error(t('asignador.toast.delete_error'));
-        const nueva = rutaActual.filter(v => v.id !== id);
-        setRutaActual(nueva);
-        const updates = nueva.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id));
-        await Promise.all(updates);
-    };
-
-    const moverVisita = async (index: number, direccion: number) => {
-        const nuevoIndex = index + direccion;
-        if (nuevoIndex < 0 || nuevoIndex >= rutaActual.length) return;
-        
-        const items = [...rutaActual];
-        const [movedItem] = items.splice(index, 1);
-        items.splice(nuevoIndex, 0, movedItem);
-        setRutaActual(items);
-        
-        const updates = items.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id));
-        await Promise.all(updates);
-    };
-
-    const onDragEnd = async (result: DropResult) => {
-        if (!result.destination) return;
-        const items = Array.from(rutaActual);
-        const [reorderedItem] = items.splice(result.source.index, 1);
-        items.splice(result.destination.index, 0, reorderedItem);
-        setRutaActual(items);
-        
-        const updates = items.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id));
-        await Promise.all(updates);
-    };
-
-    const vaciarRuta = async () => {
-        if (!usuarioSeleccionado || !fechaSeleccionada || rutaActual.length === 0) return;
-        if (!window.confirm(t('asignador.confirm.empty_all'))) return;
-        
-        const ids = rutaActual.map(v => v.id);
-        const { error } = await (supabase as any).from('visitas_diarias').delete().in('id', ids);
-        
-        if (error) {
-            toast.error(t('asignador.toast.empty_error'));
-        } else {
-            setRutaActual([]);
-            toast.success(t('asignador.toast.empty_success'));
-        }
-    };
-
-    const clonarUltimaRuta = async () => {
-        if (!usuarioSeleccionado) return;
-        setLoadingRuta(true);
-        const { data: lastOne } = await (supabase as any)
-            .from('visitas_diarias')
-            .select('fecha_asignada')
-            .eq('usuario_asignado_email', usuarioSeleccionado)
-            .lt('fecha_asignada', fechaSeleccionada)
-            .order('fecha_asignada', { ascending: false })
-            .limit(1);
-        
-        if (!lastOne?.[0]) { toast.error(t('asignador.toast.no_prev_route')); setLoadingRuta(false); return; }
-
-        const lastDate = lastOne[0].fecha_asignada;
-
-        const { data: aClonar } = await (supabase as any).from('visitas_diarias').select('cliente_id, orden, comentarios_admin').eq('usuario_asignado_email', usuarioSeleccionado).eq('fecha_asignada', lastDate);
-        
-        if (aClonar) {
-            const logs = (aClonar as any[]).map(v => ({
-                empresa_id: empresaActiva?.id,
-                cliente_id: v.cliente_id,
-                usuario_asignado_email: usuarioSeleccionado,
-                fecha_asignada: fechaSeleccionada,
-                estado: 'Pendiente',
-                orden: v.orden,
-                comentarios_admin: v.comentarios_admin
-            }));
-            const { error } = await (supabase as any).from('visitas_diarias').insert(logs);
-            if (!error) {
-                toast.success(t('asignador.toast.cloned_success', { date: lastDate }));
-                fetchRuta();
-            } else toast.error(t('asignador.toast.cloning_error'));
-        }
-        setLoadingRuta(false);
-    };
-
-    const compartirWhatsApp = () => {
-        if (rutaActual.length === 0) return;
-        const nombreVendedor = usuarios.find(u => u.email === usuarioSeleccionado)?.nombre || usuarioSeleccionado;
-        const header = `📍 *HOJA DE RUTA - ${fechaSeleccionada}*\n👤 Vendedor: ${nombreVendedor}\n📊 Locales: ${rutaActual.length}\n---------------------------\n\n`;
-        const body = rutaActual.map((v, i) => {
-            const c = v.clientes;
-            const mapsLink = c?.lat ? `https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}` : '';
-            return `${i + 1}. *${c?.nombre_local}*\n🏠 ${c?.direccion}\n${v.comentarios_admin ? `📝 _${v.comentarios_admin}_\n` : ''}${mapsLink ? `🔗 GPS: ${mapsLink}\n` : ''}`;
-        }).join('\n');
-        
-        const texto = encodeURIComponent(header + body + `\n\n${t('asignador.whatsapp.generated_by')} ${tenantConfig.app.name}`);
-        window.open(`https://wa.me/?text=${texto}`, '_blank');
-    };
-
-    const optimizarRuta = async () => {
-        if (rutaActual.length < 3) return toast(t('asignador.toast.add_more'), { icon: 'ℹ️' });
-        
-        toast.loading(t('asignador.toast.optimizing'), { id: 'opt' });
-        let ruta = [...rutaActual];
-        let optimizada: Visita[] = [];
-        let p = [...ruta];
-        let actual = p.shift()!;
-        optimizada.push(actual);
-        while (p.length > 0) {
-            let idx = 0, minDist = Infinity;
-            for (let i = 0; i < p.length; i++) {
-                const d = getDistance(actual.clientes?.lat, actual.clientes?.lng, p[i].clientes?.lat, p[i].clientes?.lng);
-                if (d < minDist) { minDist = d; idx = i; }
-            }
-            actual = p.splice(idx, 1)[0];
-            optimizada.push(actual);
-        }
-        
-        setRutaActual(optimizada);
-        await Promise.all(optimizada.map((v, i) => (supabase as any).from('visitas_diarias').update({ orden: i }).eq('id', v.id)));
-        toast.success(t('asignador.toast.optimized_success'), { id: 'opt' });
-    };
-
-    const polylinePoints = useMemo(() => 
-        rutaActual.map(v => v.clientes?.lat && v.clientes?.lng ? [v.clientes.lat, v.clientes.lng] as L.LatLngExpression : null).filter((p): p is L.LatLngExpression => p !== null)
-    , [rutaActual]);
+    
+    const {
+        distanciaTotal,
+        usuarios,
+        usuarioSeleccionado,
+        setUsuarioSeleccionado,
+        fechaSeleccionada,
+        setFechaSeleccionada,
+        rutaActual,
+        loadingRuta,
+        tabActiva,
+        setTabActiva,
+        searchTerm,
+        setSearchTerm,
+        searchResults,
+        sugerenciasRiesgo,
+        editingComentario,
+        setEditingComentario,
+        verMapa,
+        setVerMapa,
+        mobileTab,
+        setMobileTab,
+        agregarAFila,
+        quitarVisita,
+        moverVisita,
+        onDragEnd,
+        vaciarRuta,
+        clonarUltimaRuta,
+        compartirWhatsApp,
+        optimizarRuta,
+        polylinePoints,
+        guardarComentario
+    } = useAsignadorRutas();
 
     return (
         <div className="asign-pro-container">
@@ -555,16 +258,7 @@ export default function AsignadorRutas() {
                                     <textarea className="input premium-input" autoFocus value={editingComentario.texto} onChange={e => setEditingComentario({...editingComentario!, texto: e.target.value})} rows={4} style={{ width: '100%', marginBottom: 20, resize: 'none', fontSize: '0.95rem' }} placeholder={t('asignador.modal.note_placeholder')} />
                                     <div style={{ display: 'flex', gap: 12 }}>
                                         <button className="btn-secundario" onClick={() => setEditingComentario(null)} style={{ flex: 1 }}>{t('common.actions.cancel')}</button>
-                                        <button className="btn-primario" onClick={async () => {
-                                            const { error } = await (supabase as any).from('visitas_diarias').update({ comentarios_admin: editingComentario.texto }).eq('id', editingComentario.id);
-                                            if (error) {
-                                                toast.error(t('asignador.toast.save_note_error'));
-                                                return;
-                                            }
-                                            setRutaActual(prev => prev.map(v => v.id === editingComentario.id ? { ...v, comentarios_admin: editingComentario.texto } : v));
-                                            setEditingComentario(null);
-                                            toast.success(t('asignador.toast.save_note_success'));
-                                        }} style={{ flex: 1.5 }}>{t('common.actions.complete')}</button>
+                                        <button className="btn-primario" onClick={guardarComentario} style={{ flex: 1.5 }}>{t('common.actions.complete')}</button>
                                     </div>
                                 </motion.div>
                             </div>
@@ -583,7 +277,7 @@ export default function AsignadorRutas() {
                                     {polylinePoints.length > 1 && <Polyline positions={polylinePoints} pathOptions={{ color: 'var(--accent)', weight: 3, opacity: 0.6, dashArray: '5, 10' }} />}
                                     {rutaActual.map((v, idx) => {
                                         if (!v.clientes?.lat || !v.clientes?.lng) return null;
-                                        const col = ESTADOS_COLORES[v.estado] || ESTADOS_COLORES['Pendiente'];
+                                        const col = (v.estado && ESTADOS_COLORES[v.estado]) || ESTADOS_COLORES['Pendiente'];
                                         return (
                                             <Marker key={v.id} position={[v.clientes.lat, v.clientes.lng]} icon={makeNumberedIcon(idx + 1, col.pin, v.estado === 'Visitado', false)}>
                                                 <Popup><strong>{v.clientes.nombre_local}</strong><br/>{v.clientes.direccion}</Popup>

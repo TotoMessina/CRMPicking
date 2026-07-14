@@ -5,7 +5,8 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true,
-    "allowJs": true
+    "allowJs": true,
+    "outDir": "dist/tsconfig.node"
   },
   "include": ["vite.config.js"]
 }

@@ -1,0 +1,236 @@
+/* Stats Editor & Custom Widget Panel styling */
+
+.layout-tab-content, .create-tab-content {
+    animation: fadeIn 0.25s ease-out;
+}
+
+.layout-preview-banner {
+    padding: 18px 18px 14px;
+    background: var(--accent-alpha);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.preview-banner-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.banner-title-group {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.banner-small-title {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.banner-active-count {
+    font-size: 0.66rem;
+    color: var(--text-muted);
+}
+
+.preview-grid-container {
+    background: var(--bg);
+    border-radius: 14px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 170px;
+    overflow-y: auto;
+}
+
+.empty-grid-msg {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+.preview-grid-row {
+    display: flex;
+    gap: 5px;
+}
+
+.preview-grid-item {
+    height: 36px;
+    border-radius: 9px;
+    background: var(--accent-alpha);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.item-icon {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.item-label-text {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--accent);
+    opacity: 0.85;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item-size-badge {
+    margin-left: auto;
+    font-size: 0.55rem;
+    background: var(--accent-alpha);
+    color: var(--accent);
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 99px;
+    flex-shrink: 0;
+}
+
+.drag-hint-bar {
+    padding: 7px 18px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.widget-drag-list {
+    padding: 12px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.drag-list-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
+    margin-bottom: 5px;
+    border-radius: 13px;
+    cursor: grab;
+    transition: all 0.15s ease;
+}
+
+.drag-list-item.drag-over {
+    border-color: var(--accent) !important;
+    background: var(--accent-alpha) !important;
+}
+
+.drag-list-item:not(.drag-over) {
+    border: 1.5px solid var(--border);
+    background: var(--bg-elevated);
+}
+
+.drag-handle-icon {
+    flex-shrink: 0;
+}
+
+.item-emoji-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.item-info-wrapper {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-label-bold {
+    font-size: 0.82rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item-desc-muted {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+
+.size-dropdown {
+    font-size: 0.66rem;
+    padding: 4px 6px;
+    border-radius: 8px;
+    background: var(--accent-alpha);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    flex-shrink: 0;
+}
+
+.visibility-btn {
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.delete-custom-btn {
+    background: rgba(239,68,68,0.07);
+    border: 1px solid rgba(239,68,68,0.2);
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    color: #ef4444;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.layout-actions-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.reset-btn {
+    padding: 10px 14px;
+    border-radius: 11px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.save-layout-btn {
+    flex: 1;
+    padding: 10px 18px;
+    border-radius: 11px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+}

@@ -40,6 +40,14 @@ declare global {
     }
 }
 
+interface ZoneLayer extends L.Layer {
+    zoneId?: string;
+}
+
+interface CustomPolygon extends L.Polygon {
+    zoneId?: string;
+}
+
 const ZONE_COLORS = {
     today: "#0c0c0c",
     done: "#ef4444",
@@ -166,7 +174,7 @@ export default function MapaClientes() {
     useEffect(() => {
         const fetchTotal = async () => {
             if (!empresaActiva?.id) return;
-            const { count } = await (supabase as any)
+            const { count } = await supabase
                 .from('empresa_cliente')
                 .select('*', { count: 'exact', head: true })
                 .eq('empresa_id', empresaActiva.id);
@@ -247,7 +255,7 @@ export default function MapaClientes() {
                 weight: 2,
                 bubblingMouseEvents: false
             });
-            (polygon as any).zoneId = zone.id;
+            (polygon as CustomPolygon).zoneId = zone.id;
             bindZonePopup(polygon, zone.id);
             drawnZonesRef.current?.addLayer(polygon);
         });
@@ -313,7 +321,7 @@ export default function MapaClientes() {
         try {
             if (!navigator.onLine) return;
 
-            const { data: euData, error: euError } = await (supabase as any)
+            const { data: euData, error: euError } = await supabase
                 .from('empresa_usuario')
                 .select('usuario_email')
                 .eq('empresa_id', empresaActiva.id);
@@ -326,7 +334,7 @@ export default function MapaClientes() {
 
             const emails = euData.map((e: any) => e.usuario_email);
 
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from("usuarios")
                 .select("id, nombre, email, role, lat, lng, last_seen, avatar_emoji")
                 .in("email", emails)
@@ -369,16 +377,17 @@ export default function MapaClientes() {
             markersActivadoresLayerRef.current = L.layerGroup().addTo(m);
             drawnZonesRef.current = new L.FeatureGroup().addTo(m);
 
-            (m as any).isDrawing = false;
-            m.on('draw:drawstart' as any, () => { (m as any).isDrawing = true; });
-            m.on('draw:drawstop' as any, () => { setTimeout(() => { (m as any).isDrawing = false; }, 100); });
-            m.on('draw:editstart' as any, () => { (m as any).isDrawing = true; });
-            m.on('draw:editstop' as any, () => { setTimeout(() => { (m as any).isDrawing = false; }, 100); });
-            m.on('draw:deletestart' as any, () => { (m as any).isDrawing = true; });
-            m.on('draw:deletestop' as any, () => { setTimeout(() => { (m as any).isDrawing = false; }, 100); });
+            const mapObj = m as L.Map & { isDrawing?: boolean };
+            mapObj.isDrawing = false;
+            m.on('draw:drawstart' as any, () => { mapObj.isDrawing = true; });
+            m.on('draw:drawstop' as any, () => { setTimeout(() => { mapObj.isDrawing = false; }, 100); });
+            m.on('draw:editstart' as any, () => { mapObj.isDrawing = true; });
+            m.on('draw:editstop' as any, () => { setTimeout(() => { mapObj.isDrawing = false; }, 100); });
+            m.on('draw:deletestart' as any, () => { mapObj.isDrawing = true; });
+            m.on('draw:deletestop' as any, () => { setTimeout(() => { mapObj.isDrawing = false; }, 100); });
 
             m.on('click', (e) => {
-                if ((m as any).isDrawing) return;
+                if (mapObj.isDrawing) return;
                 if (e.originalEvent && (e.originalEvent.target as any).tagName && (e.originalEvent.target as any).tagName.toLowerCase() === 'path') {
                     return;
                 }
@@ -407,7 +416,7 @@ export default function MapaClientes() {
                 const layer = e.layer;
                 const selectElement = document.getElementById("zoneSelectorInputClientes") as HTMLSelectElement;
                 const currentZone = selectElement ? selectElement.value : 'today';
-                const color = (ZONE_COLORS as any)[currentZone] || ZONE_COLORS.today;
+                const color = ZONE_COLORS[currentZone as keyof typeof ZONE_COLORS] || ZONE_COLORS.today;
 
                 layer.setStyle({ color: color, fillOpacity: 0.2 });
                 drawnZonesRef.current?.addLayer(layer);
@@ -418,7 +427,7 @@ export default function MapaClientes() {
                 if (!coords || coords.length < 3) return;
 
                 toast.loading(t('map.toast.saving_zone'), { id: 'save-zone' });
-                const { data, error } = await (supabase as any).from('zones').insert([{
+                const { data, error } = await supabase.from('zones').insert([{
                     coordinates: coords,
                     color: color,
                     scope: 'kiosco_map',
@@ -430,17 +439,17 @@ export default function MapaClientes() {
                     drawnZonesRef.current?.removeLayer(layer);
                 } else {
                     const newId = data[0].id;
-                    (layer as any).zoneId = newId;
-                    bindZonePopup(layer, newId);
+                    (layer as ZoneLayer).zoneId = newId.toString();
+                    bindZonePopup(layer, newId.toString());
                     toast.success(t('map.toast.save_zone_success'), { id: 'save-zone' });
                 }
             });
 
             m.on('draw:deleted' as any, async function (e: any) {
                 const layers = e.layers;
-                layers.eachLayer(async function (layer: any) {
-                    if (layer.zoneId) {
-                        const { error } = await (supabase as any).from('zones').delete().eq('id', layer.zoneId).eq('empresa_id', empresaActiva?.id);
+                layers.eachLayer(async function (layer: ZoneLayer) {
+                    if (layer.zoneId && empresaActiva?.id) {
+                        const { error } = await supabase.from('zones').delete().eq('id', Number(layer.zoneId)).eq('empresa_id', empresaActiva.id);
                         if (error) toast.error(t('map.toast.delete_zone_error'));
                     }
                 });
@@ -704,12 +713,13 @@ export default function MapaClientes() {
 
     const exportarReporteRecorrido = async () => {
         if (!historicalActivadorId) return toast.error(t('map.toast.select_activator'));
+        if (!empresaActiva?.id) return;
         toast.loading(t('map.toast.exporting_report'), { id: 'export' });
 
         const startDate = new Date(`${historicalDate}T00:00:00`).toISOString();
         const endDate = new Date(`${historicalDate}T23:59:59.999`).toISOString();
 
-        const { data: historial, error: histErr } = await (supabase as any)
+        const { data: historial, error: histErr } = await supabase
             .from('historial_ubicaciones')
             .select('lat, lng, fecha')
             .eq('empresa_id', empresaActiva?.id)
@@ -724,8 +734,7 @@ export default function MapaClientes() {
             return;
         }
 
-        const hData = historial as any[];
-        if (hData.length === 0) {
+        if (!historial || historial.length === 0) {
             toast.error(t('map.toast.no_gps_data'));
             return;
         }
@@ -734,7 +743,7 @@ export default function MapaClientes() {
         const activadorEmail = activador?.email || '';
         const activadorName = activador?.nombre || 'Activador';
 
-        const { data: actividades } = await (supabase as any)
+        const { data: actividades } = await supabase
             .from('actividades')
             .select('id, descripcion, fecha')
             .eq('empresa_id', empresaActiva?.id)

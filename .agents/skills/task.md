@@ -1,0 +1,35 @@
+- [ ] Reemplazar `window.confirm` en hooks y páginas TSX:
+  - [ ] `useClientsLogic.ts`
+  - [ ] `useAppShell.ts`
+  - [ ] `AsignadorRutas.tsx`
+  - [ ] `Empresas.tsx`
+  - [ ] `InventarioMarketing.tsx`
+  - [ ] `MapaClientes.tsx`
+  - [ ] `Novedades.tsx`
+  - [ ] `TableroTareas.tsx`
+  - [ ] `Tickets.tsx`
+- [ ] Migrar y refactorizar páginas de `.jsx` a `.tsx` con confirmaciones:
+  - [ ] `Configuracion.jsx` -> `Configuracion.tsx`
+  - [ ] `Consumidores.jsx` -> `Consumidores.tsx`
+  - [ ] `Repartidores.jsx` -> `Repartidores.tsx`
+  - [ ] `Proveedores.jsx` -> `Proveedores.tsx`
+  - [ ] `Usuarios.jsx` -> `Usuarios.tsx`
+  - [ ] `SuperAdmin.jsx` -> `SuperAdmin.tsx`
+  - [ ] `RutaDiaria.jsx` -> `RutaDiaria.tsx`
+  - [ ] `Calendario.jsx` -> `Calendario.tsx`
+  - [ ] `Historial.jsx` -> `Historial.tsx`
+  - [ ] `TinderClientes.jsx` -> `TinderClientes.tsx`
+  - [ ] `PipelineSettings.jsx` -> `PipelineSettings.tsx`
+  - [ ] `MapaGlobal.jsx` -> `MapaGlobal.tsx`
+- [ ] Migrar modales y subcomponentes de `.jsx` a `.tsx`:
+  - [ ] `HistoryTimeline.jsx` -> `HistoryTimeline.tsx`
+  - [ ] `EventoCalendarioModal.jsx` -> `EventoCalendarioModal.tsx`
+  - [ ] `EventoProveedorModal.jsx` -> `EventoProveedorModal.tsx`
+  - [ ] `MasivoModal.jsx` -> `MasivoModal.tsx`
+  - [ ] `ProveedorModal.jsx` -> `ProveedorModal.tsx`
+  - [ ] `SprintModal.jsx` -> `SprintModal.tsx`
+  - [ ] `ConsumidorModal.jsx` -> `ConsumidorModal.tsx`
+  - [ ] `RepartidorModal.jsx` -> `RepartidorModal.tsx`
+  - [ ] `ActividadConsumidorModal.jsx` -> `ActividadConsumidorModal.tsx`
+  - [ ] `ActividadRepartidorModal.jsx` -> `ActividadRepartidorModal.tsx`
+- [ ] Ejecutar comprobaciones de tipos y build de validación.

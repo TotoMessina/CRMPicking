@@ -89,6 +89,7 @@ export interface EmpresaConfig {
     automations?: AutomationRule[];
     rubros?: string[];
     landingPage?: string;
+    kanbanColumns?: { id: string; title: string; color: string }[];
     dashboardWidgets?: {
         [key: string]: boolean;
     };

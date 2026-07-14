@@ -1,287 +1,43 @@
-import { useState, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import React from 'react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Plus, CheckSquare, Clock, User, Trash2, Edit2, X, Activity } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import toast from 'react-hot-toast';
 import { formatToLocal } from '../utils/dateUtils';
+import { useTableroTareas } from '../hooks/useTableroTareas';
 
-const COLUMNS = [
-    { id: 'Pendiente', title: 'Pendientes', color: 'var(--text)' },
-    { id: 'En Proceso', title: 'En Proceso', color: 'var(--accent)' },
-    { id: 'Finalizado', title: 'Finalizados', color: '#10b981' }
-];
-
-interface ChecklistItem {
-    id: string;
-    text: string;
-    completed: boolean;
-    assigned_to?: string[];
-}
-
-interface Task {
-    id: string;
-    titulo: string;
-    descripcion?: string;
-    estado: string;
-    asignado_a?: string; // Comma separated emails
-    fecha_vencimiento?: string;
-    checklist?: ChecklistItem[];
-    orden: number;
-    empresa_id?: string;
-    created_at?: string;
-}
-
-/**
- * Tasks Kanban Board Page
- */
 export default function TableroTareas() {
-    const { user, userName, empresaActiva, role, isDemoMode } = useAuth();
-
-    const [tasks, setTasks] = useState<Record<string, Task[]>>({
-        'Pendiente': [],
-        'En Proceso': [],
-        'Finalizado': []
-    });
-    const [usuarios, setUsuarios] = useState<{email: string, nombre?: string}[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingTask, setEditingTask] = useState<Task | null>(null);
-    const [form, setForm] = useState<{
-        titulo: string;
-        descripcion: string;
-        estado: string;
-        asignado_a: string[];
-        fecha_vencimiento: string;
-        checklist: ChecklistItem[];
-    }>({
-        titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: [], fecha_vencimiento: '', checklist: []
-    });
-    const [newChecklistText, setNewChecklistText] = useState('');
-    const [assigneeForNewItem, setAssigneeForNewItem] = useState<string[]>([]); 
-    const [editingItemId, setEditingItemId] = useState<string | null>(null);
-    const [saving, setSaving] = useState(false);
-
-    useEffect(() => {
-        fetchUsuarios();
-        fetchTasks();
-    }, [empresaActiva]);
-
-    const fetchUsuarios = async () => {
-        if (!empresaActiva) return;
-        
-        const { data, error } = await supabase
-            .from('empresa_usuario')
-            .select('usuarios!inner(email, nombre)')
-            .eq('empresa_id', empresaActiva.id);
-            
-        if (error) {
-            console.error('Error cargando usuarios de la empresa:', error);
-            return;
-        }
-        
-        const mappedUsers = (data || []).map((item: any) => item.usuarios);
-        setUsuarios(mappedUsers);
-    };
-
-    const fetchTasks = async () => {
-        if (!empresaActiva) return;
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('tareas_tablero')
-            .select('*')
-            .eq('empresa_id', empresaActiva.id)
-            .order('orden', { ascending: true })
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            toast.error('Error al cargar tareas');
-        } else {
-            const grouped: Record<string, Task[]> = { 'Pendiente': [], 'En Proceso': [], 'Finalizado': [] };
-            const rawData = data as any[] || [];
-            rawData.forEach(t => {
-                const estado = t.estado || 'Pendiente';
-                if (grouped[estado]) {
-                    grouped[estado].push(t as Task);
-                }
-            });
-            setTasks(grouped);
-        }
-        setLoading(false);
-    };
-
-    const onDragEnd = async (result: DropResult) => {
-        const { source, destination } = result;
-        if (!destination) return;
-        if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-
-        const sourceCol = source.droppableId;
-        const destCol = destination.droppableId;
-        const sourceTasks = Array.from(tasks[sourceCol]);
-        const destTasks = sourceCol === destCol ? sourceTasks : Array.from(tasks[destCol]);
-
-        const [movedTask] = sourceTasks.splice(source.index, 1);
-        movedTask.estado = destCol;
-        destTasks.splice(destination.index, 0, movedTask);
-
-        const newTasks = { ...tasks, [sourceCol]: sourceTasks };
-        if (sourceCol !== destCol) newTasks[destCol] = destTasks;
-
-        setTasks(newTasks);
-
-        const updates = destTasks.map((t, i) => ({
-            id: t.id,
-            estado: destCol,
-            orden: i
-        }));
-
-        try {
-            for (let up of updates) {
-                await supabase.from('tareas_tablero').update({ estado: up.estado, orden: up.orden } as any).eq('id', up.id);
-            }
-        } catch (e) {
-            console.error(e);
-            toast.error('Error guardando el orden');
-            fetchTasks(); 
-        }
-    };
-
-    const openModal = (task: Task | null = null) => {
-        if (task) {
-            setEditingTask(task);
-            setForm({
-                titulo: task.titulo,
-                descripcion: task.descripcion || '',
-                estado: task.estado,
-                asignado_a: task.asignado_a ? task.asignado_a.split(',') : [],
-                fecha_vencimiento: task.fecha_vencimiento || '',
-                checklist: task.checklist || [] 
-            });
-        } else {
-            setEditingTask(null);
-            setForm({ titulo: '', descripcion: '', estado: 'Pendiente', asignado_a: [], fecha_vencimiento: '', checklist: [] });
-        }
-        setNewChecklistText('');
-        setAssigneeForNewItem([]);
-        setEditingItemId(null);
-        setIsModalOpen(true);
-    };
-
-    const saveTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSaving(true);
-
-        const payload: any = { 
-            titulo: form.titulo,
-            descripcion: form.descripcion,
-            estado: form.estado,
-            fecha_vencimiento: form.fecha_vencimiento || null,
-            checklist: form.checklist,
-            empresa_id: empresaActiva?.id,
-            asignado_a: form.asignado_a && form.asignado_a.length > 0 ? form.asignado_a.join(',') : null
-        };
-
-        if (editingTask) {
-            const { error } = await supabase.from('tareas_tablero').update(payload).eq('id', editingTask.id);
-            if (error) {
-                console.error('Error actualizando la tarea:', error);
-                toast.error('Error actualizando la tarea');
-            } else {
-                toast.success('Tarea guardada');
-            }
-        } else {
-            payload.orden = tasks['Pendiente'] ? tasks['Pendiente'].length : 0;
-            const { error } = await supabase.from('tareas_tablero').insert([payload]);
-            if (error) {
-                console.error('Error creando tarea:', error);
-                toast.error('Error creando tarea');
-            } else {
-                toast.success('Tarea creada');
-            }
-        }
-
-        setSaving(false);
-        setIsModalOpen(false);
-        fetchTasks();
-    };
-
-    const deleteTask = async (id: string) => {
-        if (!window.confirm('¿Eliminar esta tarea definitivamente?')) return;
-        const { error } = await supabase.from('tareas_tablero').delete().eq('id', id);
-        if (error) toast.error('Error eliminando tarea');
-        else {
-            toast.success('Tarea eliminada');
-            fetchTasks();
-        }
-    };
-
-    const addChecklistItem = () => {
-        if (!newChecklistText.trim()) return;
-        setForm(prev => ({
-            ...prev,
-            checklist: [...prev.checklist, { 
-                id: Date.now().toString(), 
-                text: newChecklistText.trim(), 
-                completed: false,
-                assigned_to: assigneeForNewItem || []
-            }]
-        }));
-        setNewChecklistText('');
-        setAssigneeForNewItem([]);
-    };
-
-    const updateChecklistItemAssignees = (itemId: string, email: string) => {
-        setForm(prev => ({
-            ...prev,
-            checklist: prev.checklist.map(i => {
-                if (i.id !== itemId) return i;
-                const current = i.assigned_to || [];
-                const next = current.includes(email) 
-                    ? current.filter(e => e !== email) 
-                    : [...current, email];
-                return { ...i, assigned_to: next };
-            })
-        }));
-    };
-
-    const toggleCheckitem = (itemId: string) => {
-        setForm(prev => ({
-            ...prev,
-            checklist: prev.checklist.map(i => i.id === itemId ? { ...i, completed: !i.completed } : i)
-        }));
-    };
-
-    const updateChecklistText = (itemId: string, newText: string) => {
-        setForm(prev => ({
-            ...prev,
-            checklist: prev.checklist.map(i => i.id === itemId ? { ...i, text: newText } : i)
-        }));
-    };
-
-    const removeChecklist = (itemId: string) => {
-        setForm(prev => ({
-            ...prev,
-            checklist: prev.checklist.filter(i => i.id !== itemId)
-        }));
-    };
-
-    const getProgress = (cl: ChecklistItem[] | undefined) => {
-        if (!cl || cl.length === 0) return 0;
-        return Math.round((cl.filter(i => i.completed).length / cl.length) * 100);
-    };
-
-    const getUserName = (email: string) => {
-        const u = usuarios.find(x => x.email === email);
-        return u ? u.nombre || u.email.split('@')[0] : email;
-    };
-
-    const getUserInitials = (email: string) => {
-        const u = usuarios.find(x => x.email === email);
-        if (!u) return email.substring(0, 2).toUpperCase();
-        return u.nombre ? u.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : email.substring(0, 2).toUpperCase();
-    };
+    const {
+        tasks,
+        usuarios,
+        loading,
+        isModalOpen,
+        setIsModalOpen,
+        editingTask,
+        form,
+        setForm,
+        newChecklistText,
+        setNewChecklistText,
+        assigneeForNewItem,
+        setAssigneeForNewItem,
+        editingItemId,
+        setEditingItemId,
+        saving,
+        onDragEnd,
+        openModal,
+        saveTask,
+        deleteTask,
+        addChecklistItem,
+        updateChecklistItemAssignees,
+        toggleCheckitem,
+        updateChecklistText,
+        removeChecklist,
+        getProgress,
+        getUserName,
+        getUserInitials,
+        fetchTasks,
+        isDemoMode,
+        columns
+    } = useTableroTareas();
 
     return (
         <div style={{ 
@@ -332,7 +88,7 @@ export default function TableroTareas() {
             ) : (
                 <DragDropContext onDragEnd={onDragEnd}>
                     <div className="kanban-container" style={{ display: 'flex', gap: '20px', flex: 1, overflowX: 'auto', overflowY: 'hidden', paddingBottom: '20px' }}>
-                        {COLUMNS.map(col => (
+                        {columns.map(col => (
                             <Droppable droppableId={col.id} key={col.id}>
                                 {(provided, snapshot) => (
                                     <div
@@ -347,9 +103,10 @@ export default function TableroTareas() {
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '2px dashed var(--border)' }}>
                                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: col.color, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
-                                                {col.id === 'Pendiente' && <Clock size={18} />}
-                                                {col.id === 'En Proceso' && <Activity size={18} />}
-                                                {col.id === 'Finalizado' && <CheckSquare size={18} />}
+                                                {col.id.toLowerCase().includes('pend') && <Clock size={18} />}
+                                                {col.id.toLowerCase().includes('proc') && <Activity size={18} />}
+                                                {col.id.toLowerCase().includes('fin') && <CheckSquare size={18} />}
+                                                {!['pend', 'proc', 'fin'].some(key => col.id.toLowerCase().includes(key)) && <CheckSquare size={18} />}
                                                 {col.title}
                                             </h3>
                                             <span style={{ fontSize: '0.85rem', background: 'var(--bg-elevated)', color: 'var(--text)', padding: '4px 12px', borderRadius: '16px', fontWeight: 'bold', border: '1px solid var(--border)' }}>
@@ -446,9 +203,9 @@ export default function TableroTareas() {
                                     <div>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}><Activity size={16} /> Estado</label>
                                         <select className="input" style={{ width: '100%', padding: '10px' }} value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })}>
-                                            <option value="Pendiente">Pendiente</option>
-                                            <option value="En Proceso">En Proceso</option>
-                                            <option value="Finalizado">Finalizado</option>
+                                            {columns.map(col => (
+                                                <option key={col.id} value={col.id}>{col.title}</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div>

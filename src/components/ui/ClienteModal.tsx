@@ -40,19 +40,19 @@ interface FormData {
     telefono: string;
     mail: string;
     cuit: string;
-    horarios_atencion: string;
-    rubro: string;
-    estado: string;
-    responsable: string;
-    estilo_contacto: string;
-    interes: string;
+    horarios_atencion: string | null;
+    rubro: string | null;
+    estado: string | null;
+    responsable: string | null;
+    estilo_contacto: string | null;
+    interes: string | null;
     venta_digital: string;
-    venta_digital_cual: string;
-    situacion: string;
-    notas: string;
-    tipo_contacto: string;
-    fecha_proximo_contacto: string;
-    hora_proximo_contacto: string;
+    venta_digital_cual: string | null;
+    situacion: string | null;
+    notas: string | null;
+    tipo_contacto: string | null;
+    fecha_proximo_contacto: string | null;
+    hora_proximo_contacto: string | null;
     lat: number | null | string;
     lng: number | null | string;
     registrar_visita: string;
@@ -110,6 +110,45 @@ const DEFAULT_FORM_LAYOUT = {
 };
 
 const ERR_STYLE = { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.18)' };
+
+interface EmpresaClienteWithNested {
+    id: string | number;
+    nombre_local?: string;
+    direccion?: string;
+    nombre?: string;
+    telefono?: string;
+    mail?: string;
+    cuit?: string;
+    estado?: string;
+    rubro?: string;
+    responsable?: string;
+    situacion?: string;
+    notas?: string;
+    tipo_contacto?: string;
+    fecha_proximo_contacto?: string;
+    hora_proximo_contacto?: string;
+    venta_digital?: boolean;
+    metadata?: Record<string, any> | null;
+    clientes?: {
+        nombre_local?: string;
+        direccion?: string;
+        nombre?: string;
+        telefono?: string;
+        mail?: string;
+        cuit?: string;
+        estado?: string;
+        rubro?: string;
+        responsable?: string;
+        situacion?: string;
+        notas?: string;
+        tipo_contacto?: string;
+        fecha_proximo_contacto?: string;
+        hora_proximo_contacto?: string;
+        venta_digital?: boolean;
+        metadata?: Record<string, any> | null;
+        cliente_grupos?: { grupo_id: string | number }[];
+    } | null;
+}
 
 export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: initialClienteId, initialLocation, onSaved }) => {
     const { t } = useTranslation();
@@ -313,7 +352,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         setLoading(true);
         try {
             const numericId = parseInt(id, 10);
-            const { data: ecData, error: ecError } = await (supabase as any)
+            const { data: ecData, error: ecError } = await supabase
                 .from('empresa_cliente')
                 .select('*, clientes(*, cliente_grupos(grupo_id))')
                 .eq('cliente_id', numericId)
@@ -325,42 +364,44 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             let finalData: FormData;
 
             if (ecData) {
-                const rawClientes = (ecData as any).clientes || {};
+                const ec = ecData as unknown as EmpresaClienteWithNested;
+                const rawClientes = ec.clientes || {};
                 finalData = {
                     ...emptyForm(),
                     ...rawClientes,
-                    ...ecData,
-                    nombre_local: (ecData as any).nombre_local || rawClientes.nombre_local || '',
-                    direccion: (ecData as any).direccion || rawClientes.direccion || '',
-                    nombre: (ecData as any).nombre || rawClientes.nombre || '',
-                    telefono: (ecData as any).telefono || rawClientes.telefono || '',
-                    mail: (ecData as any).mail || rawClientes.mail || '',
-                    cuit: (ecData as any).cuit || rawClientes.cuit || '',
-                    estado: (ecData as any).estado || rawClientes.estado || defaultState || ESTADO_DEFAULT,
-                    rubro: (ecData as any).rubro || rawClientes.rubro || '',
-                    responsable: (ecData as any).responsable || rawClientes.responsable || '',
-                    situacion: (ecData as any).situacion || rawClientes.situacion || defaultSituation || SITUACION_DEFAULT,
-                    notas: (ecData as any).notas || rawClientes.notas || '',
-                    tipo_contacto: (ecData as any).tipo_contacto || rawClientes.tipo_contacto || 'Visita Presencial',
-                    fecha_proximo_contacto: (ecData as any).fecha_proximo_contacto || rawClientes.fecha_proximo_contacto || '',
-                    hora_proximo_contacto: (ecData as any).hora_proximo_contacto || rawClientes.hora_proximo_contacto || '',
-                    venta_digital: ((ecData as any).venta_digital || rawClientes.venta_digital) ? 'true' : 'false',
-                    metadata: (ecData as any).metadata || {}
+                    ...ec,
+                    nombre_local: ec.nombre_local || rawClientes.nombre_local || '',
+                    direccion: ec.direccion || rawClientes.direccion || '',
+                    nombre: ec.nombre || rawClientes.nombre || '',
+                    telefono: ec.telefono || rawClientes.telefono || '',
+                    mail: ec.mail || rawClientes.mail || '',
+                    cuit: ec.cuit || rawClientes.cuit || '',
+                    estado: ec.estado || rawClientes.estado || defaultState || ESTADO_DEFAULT,
+                    rubro: ec.rubro || rawClientes.rubro || '',
+                    responsable: ec.responsable || rawClientes.responsable || '',
+                    situacion: ec.situacion || rawClientes.situacion || defaultSituation || SITUACION_DEFAULT,
+                    notas: ec.notas || rawClientes.notas || '',
+                    tipo_contacto: ec.tipo_contacto || rawClientes.tipo_contacto || 'Visita Presencial',
+                    fecha_proximo_contacto: ec.fecha_proximo_contacto || rawClientes.fecha_proximo_contacto || '',
+                    hora_proximo_contacto: ec.hora_proximo_contacto || rawClientes.hora_proximo_contacto || '',
+                    venta_digital: (ec.venta_digital || rawClientes.venta_digital) ? 'true' : 'false',
+                    metadata: ec.metadata || {}
                 };
 
                 if (finalData.direccion && finalData.lat && finalData.lng) {
                     setLastGeocodedAddress(finalData.direccion.trim());
                 }
 
-                delete (finalData as any).clientes;
+                const finalDataObj = finalData as Record<string, any>;
+                delete finalDataObj.clientes;
                 
-                if ((ecData as any).clientes && (ecData as any).clientes.cliente_grupos) {
-                    setSelectedGrupos(((ecData as any).clientes.cliente_grupos as any[]).map((cg: any) => cg.grupo_id.toString()));
+                if (ec.clientes && ec.clientes.cliente_grupos) {
+                    setSelectedGrupos((ec.clientes.cliente_grupos).map(cg => cg.grupo_id.toString()));
                 } else {
                     setSelectedGrupos([]);
                 }
             } else {
-                const { data, error } = await (supabase as any).from('clientes').select('*').eq('id', id).single();
+                const { data, error } = await supabase.from('clientes').select('*').eq('id', numericId).single();
                 if (error) throw error;
                 
                 finalData = { 
@@ -440,11 +481,11 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
         if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
             e.preventDefault();
             if (step < totalSteps) handleNextPhase(e);
-            else handleSubmit(e as any);
+            else handleSubmit(e);
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SyntheticEvent) => {
         e.preventDefault();
 
         if (step === layout.steps.length && Date.now() - stepEnteredAt < 500) {
@@ -493,8 +534,8 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
             const payload = { ...rawPayload };
 
             if (initialLocation && !clienteId) {
-                payload.lng = parseFloat(initialLocation.lng as any);
-                payload.lat = parseFloat(initialLocation.lat as any);
+                payload.lng = initialLocation.lng;
+                payload.lat = initialLocation.lat;
             }
 
             const shouldRecordVisit = payload.estado !== ESTADO_RELEVADO || formData.registrar_visita === 'true';
@@ -888,7 +929,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                     (clienteId || esEstadoFinal(formData.estado)) && (
                         <select name="situacion" value={formData.situacion || defaultSituation || SITUACION_SIN_COMUNICACION} onChange={handleInputChange}>
                             {SITUACIONES
-                                .filter(s => !s.estados_visibles || s.estados_visibles.length === 0 || s.estados_visibles.includes(formData.estado))
+                                .filter(s => !s.estados_visibles || s.estados_visibles.length === 0 || s.estados_visibles.includes(formData.estado || ''))
                                 .map(s => (
                                     <option key={s.id} value={s.id}>
                                         {s.label}
@@ -1031,7 +1072,7 @@ export const ClienteModal: React.FC<Props> = ({ isOpen, onClose, clienteId: init
                                         <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                                             <div className="field">
                                                 <label>{t('clients.modal.fields.phone')} *</label>
-                                                <input type="text" {...inp('telefono')} placeholder="Ej: 112345678" onKeyDown={(e) => e.key === 'Enter' && handleVerifyPhone(e as any)} />
+                                                <input type="text" {...inp('telefono')} placeholder="Ej: 112345678" onKeyDown={(e) => e.key === 'Enter' && handleVerifyPhone(e)} />
                                                 <FieldError msg={errors.telefono} />
                                             </div>
                                         </div>

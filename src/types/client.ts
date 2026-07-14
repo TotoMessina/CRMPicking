@@ -28,9 +28,13 @@ export interface Client {
         created_at: string;
     };
     grupos?: Group[]; // Added for group support
-    metadata?: Record<string, any>; // Critical: Added for dynamic custom fields
+    metadata?: Record<string, string | number | boolean | null>; // Critical: Added for dynamic custom fields
     cuit?: string;
     venta_digital?: boolean;
+    lat?: number | null;
+    lng?: number | null;
+    creado_por?: string | null;
+    ultima_actividad?: string | null;
 }
 
 export interface ClientActivity {

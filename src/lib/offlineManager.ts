@@ -1,6 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../types/database.types';
-import { TenantStore } from '../config/tenant';
 
 /**
  * offlineManager.ts
@@ -97,7 +96,9 @@ export async function saveClientsLocally(clientes: any[]): Promise<void> {
             store.put(cliente);
         }
     } catch (err) {
-        console.warn('[OfflineManager] Error saving clients locally:', err);
+        if (import.meta.env.DEV) {
+            console.warn('[OfflineManager] Error saving clients locally:', err);
+        }
     }
 }
 
@@ -111,7 +112,9 @@ export async function getLocalClients(empresaId: string): Promise<any[]> {
             req.onerror = () => reject(req.error);
         });
     } catch (err) {
-        console.warn('[OfflineManager] Error reading local clients:', err);
+        if (import.meta.env.DEV) {
+            console.warn('[OfflineManager] Error reading local clients:', err);
+        }
         return [];
     }
 }
@@ -127,7 +130,9 @@ export async function queueMutation(table: string, method: Mutation['method'], p
             retries: 0,
         });
     } catch (err) {
-        console.warn('[OfflineManager] Error queuing mutation:', err);
+        if (import.meta.env.DEV) {
+            console.warn('[OfflineManager] Error queuing mutation:', err);
+        }
     }
 }
 
@@ -139,7 +144,9 @@ export async function saveTrackingPoint(point: Omit<TrackingPoint, 'id' | 'creat
             created_at: new Date().toISOString()
         });
     } catch (err) {
-        console.warn('[OfflineManager] Error saving tracking point:', err);
+        if (import.meta.env.DEV) {
+            console.warn('[OfflineManager] Error saving tracking point:', err);
+        }
     }
 }
 
@@ -195,12 +202,16 @@ export async function flushOutbox(supabaseClient: SupabaseClient<Database>): Pro
                     failed++;
                 }
             } catch (err) {
-                console.warn('[OfflineManager] Mutation error:', err);
+                if (import.meta.env.DEV) {
+                    console.warn('[OfflineManager] Mutation error:', err);
+                }
                 failed++;
             }
         }
     } catch (err) {
-        console.warn('[OfflineManager] Outbox flush error:', err);
+        if (import.meta.env.DEV) {
+            console.warn('[OfflineManager] Outbox flush error:', err);
+        }
     }
 
     try {
@@ -229,11 +240,15 @@ export async function flushOutbox(supabaseClient: SupabaseClient<Database>): Pro
                 clearStore.clear();
                 synced += points.length;
             } else {
-                console.error('[OfflineManager] ❌ Fallo al sincronizar puntos GPS:', tErr.message);
+                if (import.meta.env.DEV) {
+                    console.error('[OfflineManager] ❌ Fallo al sincronizar puntos GPS:', tErr.message);
+                }
             }
         }
     } catch (err) {
-        console.error('[OfflineManager] ❌ Error inesperado en sincronización de tracking:', err);
+        if (import.meta.env.DEV) {
+            console.error('[OfflineManager] ❌ Error inesperado en sincronización de tracking:', err);
+        }
     }
 
     return { synced, failed };
@@ -244,7 +259,9 @@ export async function clearLocalClients(): Promise<void> {
         const store = await tx(STORES.CLIENTES, 'readwrite');
         store.clear();
     } catch (err) {
-        console.warn('[OfflineManager] Error clearing local clients:', err);
+        if (import.meta.env.DEV) {
+            console.warn('[OfflineManager] Error clearing local clients:', err);
+        }
     }
 }
 
@@ -260,17 +277,22 @@ export async function clearAllOfflineData(): Promise<void> {
         return new Promise((resolve, reject) => {
             const req = indexedDB.deleteDatabase(DB_NAME);
             req.onsuccess = () => {
-                console.log('[OfflineManager] 🛑 Base de datos local borrada exitosamente.');
+                if (import.meta.env.DEV) {
+                    console.log('[OfflineManager] 🛑 Base de datos local borrada exitosamente.');
+                }
                 resolve();
             };
             req.onerror = () => reject(req.error);
             req.onblocked = () => {
-                console.warn('[OfflineManager] Borrado bloqueado, reintentando tras recarga.');
+                if (import.meta.env.DEV) {
+                    console.warn('[OfflineManager] Borrado bloqueado, reintentando tras recarga.');
+                }
                 resolve();
             };
         });
     } catch (err) {
-        console.error('[OfflineManager] Error fatal al borrar base de datos:', err);
+        if (import.meta.env.DEV) {
+            console.error('[OfflineManager] Error fatal al borrar base de datos:', err);
+        }
     }
 }
-

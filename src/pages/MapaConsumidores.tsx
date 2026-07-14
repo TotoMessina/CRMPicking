@@ -61,7 +61,7 @@ export default function MapaConsumidores() {
 
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number; lng: number } | null>(null);
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -201,7 +201,7 @@ export default function MapaConsumidores() {
                 const btn = document.getElementById(`edit-${c.id}`);
                 if (btn) {
                     btn.onclick = () => {
-                        setEditingId(c.id);
+                        setEditingId(Number(c.id));
                         setSelectedLatLng(null);
                         setModalOpen(true);
                     };

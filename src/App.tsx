@@ -8,7 +8,7 @@ import { AppShell } from './components/layout/AppShell';
 import { GlobalLoader } from './components/ui/GlobalLoader';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
-import Dashboard from './pages/Dashboard';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Novedades = lazy(() => import('./pages/Novedades'));
 const InternalAI = lazy(() => import('./pages/InternalAI'));
 import { CoqueBot } from './components/ui/CoqueBot';
@@ -85,8 +85,8 @@ function App(): React.JSX.Element {
           <Route path="/update-password" element={<UpdatePassword />} />
 
           <Route element={<AppShell />}>
-            <Route path="/" element={<HomeRedirect />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/" element={<Suspense fallback={<GlobalLoader />}><HomeRedirect /></Suspense>} />
+            <Route path="/dashboard" element={<Suspense fallback={<GlobalLoader />}><Dashboard /></Suspense>} />
             <Route path="/chat" element={<Suspense fallback={<GlobalLoader />}><Chat /></Suspense>} />
             <Route path="/tablero" element={<Suspense fallback={<GlobalLoader />}><TableroTareas /></Suspense>} />
             <Route path="/clientes" element={<Suspense fallback={<GlobalLoader />}><Clientes /></Suspense>} />
