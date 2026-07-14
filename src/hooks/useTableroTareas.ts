@@ -76,16 +76,17 @@ export function useTableroTareas() {
         if (!empresaActiva) return;
 
         const { data, error } = await supabase
-            .from('empresa_usuario')
-            .select('usuarios!inner(email, nombre)')
-            .eq('empresa_id', empresaActiva.id);
+            .rpc('get_chat_users', { empresa_id_param: empresaActiva.id });
 
         if (error) {
             console.error('Error cargando usuarios de la empresa:', error);
             return;
         }
 
-        const mappedUsers = (data || []).map((item: any) => item.usuarios);
+        const mappedUsers = (data || []).map((u: any) => ({
+            email: u.user_email,
+            nombre: u.user_nombre || u.user_email?.split('@')[0] || 'Usuario'
+        }));
         setUsuarios(mappedUsers);
     };
 
