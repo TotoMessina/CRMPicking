@@ -142,10 +142,13 @@ export function useTableroTareas() {
 
         const sourceCol = source.droppableId;
         const destCol = destination.droppableId;
-        const sourceTasks = Array.from(tasks[sourceCol]);
-        const destTasks = sourceCol === destCol ? sourceTasks : Array.from(tasks[destCol]);
+        
+        const sourceTasks = Array.from(tasks[sourceCol] || []);
+        const destTasks = sourceCol === destCol ? sourceTasks : Array.from(tasks[destCol] || []);
 
         const [movedTask] = sourceTasks.splice(source.index, 1);
+        if (!movedTask) return;
+        
         movedTask.estado = destCol;
         destTasks.splice(destination.index, 0, movedTask);
 
@@ -154,19 +157,35 @@ export function useTableroTareas() {
 
         setTasks(newTasks);
 
-        const updates = destTasks.map((t, i) => ({
-            id: t.id,
-            estado: destCol,
-            orden: i
-        }));
+        const updates: any[] = [];
+        destTasks.forEach((t, i) => {
+            updates.push({
+                id: t.id,
+                titulo: t.titulo,
+                estado: destCol,
+                orden: i,
+                empresa_id: empresaActiva?.id
+            });
+        });
+
+        if (sourceCol !== destCol) {
+            sourceTasks.forEach((t, i) => {
+                updates.push({
+                    id: t.id,
+                    titulo: t.titulo,
+                    estado: sourceCol,
+                    orden: i,
+                    empresa_id: empresaActiva?.id
+                });
+            });
+        }
 
         try {
-            for (let up of updates) {
-                await supabase.from('tareas_tablero').update({ estado: up.estado, orden: up.orden } as any).eq('id', up.id);
-            }
+            const { error } = await supabase.from('tareas_tablero').upsert(updates);
+            if (error) throw error;
         } catch (e) {
-            console.error(e);
-            toast.error('Error guardando el orden');
+            console.error('Error saving task drag and drop order:', e);
+            toast.error('Error al guardar el orden del tablero');
             fetchTasks();
         }
     };

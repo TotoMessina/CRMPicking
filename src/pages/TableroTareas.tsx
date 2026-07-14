@@ -39,6 +39,21 @@ export default function TableroTareas() {
         columns
     } = useTableroTareas();
 
+    const [ready, setReady] = React.useState(false);
+    const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = React.useState(false);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        setReady(true);
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsAssigneeDropdownOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     return (
         <div style={{ 
             padding: 'max(16px, 2vw)', 
@@ -63,6 +78,7 @@ export default function TableroTareas() {
                 }
                 .progress-bar-container { width: 100%; height: 6px; background: var(--bg); border-radius: 10px; overflow: hidden; margin: 4px 0; border: 1px solid var(--border); }
                 .progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+                .dropdown-item-hover:hover { background: var(--bg-hover) !important; }
             `}</style>
 
             <header style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -81,7 +97,7 @@ export default function TableroTareas() {
                 </div>
             </header>
 
-            {loading ? (
+            {loading || !ready ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                     <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                 </div>
@@ -208,19 +224,97 @@ export default function TableroTareas() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div>
+                                     <div ref={dropdownRef} style={{ position: 'relative' }}>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}><User size={16} /> Asignados</label>
-                                        <div style={{ background: 'var(--bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            {usuarios.map(u => (
-                                                <label key={u.email} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
-                                                    <input type="checkbox" checked={form.asignado_a.includes(u.email)} onChange={(e) => {
-                                                        if (e.target.checked) setForm({ ...form, asignado_a: [...form.asignado_a, u.email] });
-                                                        else setForm({ ...form, asignado_a: form.asignado_a.filter(email => email !== u.email) });
-                                                    }} style={{ accentColor: 'var(--accent)' }} />
-                                                    {u.nombre || u.email.split('@')[0]}
-                                                </label>
-                                            ))}
-                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAssigneeDropdownOpen(!isAssigneeDropdownOpen)}
+                                            className="input"
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                borderRadius: '12px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                background: 'var(--bg)',
+                                                border: '1px solid var(--border)',
+                                                color: 'var(--text)',
+                                                cursor: 'pointer',
+                                                textAlign: 'left'
+                                            }}
+                                        >
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '90%' }}>
+                                                {form.asignado_a.length === 0
+                                                    ? 'Sin asignar'
+                                                    : form.asignado_a.map(email => getUserName(email)).join(', ')
+                                                }
+                                            </span>
+                                            <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>▼</span>
+                                        </button>
+
+                                        {isAssigneeDropdownOpen && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: 0,
+                                                right: 0,
+                                                marginTop: '6px',
+                                                background: 'var(--bg-elevated)',
+                                                border: '1px solid var(--border)',
+                                                borderRadius: '12px',
+                                                boxShadow: 'var(--shadow-lg)',
+                                                zIndex: 100,
+                                                maxHeight: '200px',
+                                                overflowY: 'auto',
+                                                padding: '8px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '6px'
+                                            }}>
+                                                {usuarios.length === 0 ? (
+                                                    <div style={{ padding: '8px', fontSize: '0.9rem', color: 'var(--text-muted)', textAlign: 'center' }}>No hay usuarios</div>
+                                                ) : (
+                                                    usuarios.map(u => {
+                                                        const isChecked = form.asignado_a.includes(u.email);
+                                                        return (
+                                                            <label
+                                                                key={u.email}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '8px',
+                                                                    padding: '8px',
+                                                                    borderRadius: '8px',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '0.9rem',
+                                                                    background: isChecked ? 'var(--bg-active)' : 'transparent',
+                                                                    transition: 'background 0.2s ease',
+                                                                    userSelect: 'none'
+                                                                }}
+                                                                className="dropdown-item-hover"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setForm({ ...form, asignado_a: [...form.asignado_a, u.email] });
+                                                                        } else {
+                                                                            setForm({ ...form, asignado_a: form.asignado_a.filter(email => email !== u.email) });
+                                                                        }
+                                                                    }}
+                                                                    style={{ accentColor: 'var(--accent)' }}
+                                                                />
+                                                                <span style={{ color: isChecked ? 'var(--accent)' : 'var(--text)', fontWeight: isChecked ? 600 : 400 }}>
+                                                                    {u.nombre || u.email.split('@')[0]}
+                                                                </span>
+                                                            </label>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}><Clock size={16} /> Vencimiento</label>
@@ -258,7 +352,7 @@ export default function TableroTareas() {
 
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         <input type="text" className="input" style={{ flex: 1, padding: '12px', borderRadius: '12px' }} placeholder="Nueva subtarea..." value={newChecklistText} onChange={e => setNewChecklistText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChecklistItem(); } }} />
-                                        <Button type="button" variant="secondary" onClick={addChecklistItem}>Añadir</Button>
+                                        <Button type="button" variant="secondary" onClick={addChecklistItem} style={{ width: 'auto', flexShrink: 0 }}>Añadir</Button>
                                     </div>
                                 </div>
                             </form>
@@ -267,8 +361,8 @@ export default function TableroTareas() {
                         <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             {editingTask && !isDemoMode && <button type="button" onClick={() => deleteTask(editingTask.id)} style={{ color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Eliminar</button>}
                             <div style={{ display: 'flex', gap: '12px' }}>
-                                <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-                                <Button type="submit" form="task-form" disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+                                <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ width: 'auto' }}>Cancelar</Button>
+                                <Button type="submit" form="task-form" disabled={saving} style={{ width: 'auto' }}>{saving ? 'Guardando...' : 'Guardar'}</Button>
                             </div>
                         </div>
                     </div>
