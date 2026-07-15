@@ -1,6 +1,6 @@
 import React from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, CheckSquare, Clock, User, Trash2, Edit2, X, Activity } from 'lucide-react';
+import { Plus, CheckSquare, Clock, User, Trash2, Edit2, X, Activity, Search } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { formatToLocal } from '../utils/dateUtils';
 import { useTableroTareas } from '../hooks/useTableroTareas';
@@ -41,6 +41,7 @@ export default function TableroTareas() {
 
     const [ready, setReady] = React.useState(false);
     const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = React.useState(false);
+    const [boardSearch, setBoardSearch] = React.useState('');
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
@@ -53,6 +54,15 @@ export default function TableroTareas() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const getUserAvatar = (email: string) => {
+        const u = usuarios.find(user => user.email === email);
+        return {
+            url: u?.avatar_url,
+            emoji: u?.avatar_emoji || '👤',
+            nombre: u?.nombre || email.split('@')[0]
+        };
+    };
 
     return (
         <div style={{ 
@@ -97,6 +107,23 @@ export default function TableroTareas() {
                 </div>
             </header>
 
+            <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+                    <Search size={16} className="muted" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                    <input
+                        type="text"
+                        placeholder="Buscar tarea..."
+                        className="input"
+                        value={boardSearch}
+                        onChange={e => setBoardSearch(e.target.value)}
+                        style={{ paddingLeft: '36px', width: '100%', borderRadius: '12px' }}
+                    />
+                </div>
+                {boardSearch && (
+                    <Button variant="text" onClick={() => setBoardSearch('')} style={{ color: 'var(--text-muted)' }}>Limpiar</Button>
+                )}
+            </div>
+
             {loading || !ready ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                     <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
@@ -126,67 +153,122 @@ export default function TableroTareas() {
                                                 {col.title}
                                             </h3>
                                             <span style={{ fontSize: '0.85rem', background: 'var(--bg-elevated)', color: 'var(--text)', padding: '4px 12px', borderRadius: '16px', fontWeight: 'bold', border: '1px solid var(--border)' }}>
-                                                {tasks[col.id]?.length || 0}
+                                                {(tasks[col.id] || []).filter(task => {
+                                                    const q = boardSearch.trim().toLowerCase();
+                                                    if (!q) return true;
+                                                    return (task.titulo || '').toLowerCase().includes(q) ||
+                                                           (task.descripcion || '').toLowerCase().includes(q) ||
+                                                           (task.asignado_a || '').toLowerCase().includes(q);
+                                                }).length}
                                             </span>
                                         </div>
 
                                         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
-                                            {(tasks[col.id] || []).map((task, index) => (
-                                                <Draggable key={task.id} draggableId={task.id} index={index}>
-                                                    {(provided, snapshot) => (
-                                                        <div
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            {...provided.dragHandleProps}
-                                                            onClick={() => openModal(task)}
-                                                            className="bento-card" 
-                                                            style={{
-                                                                ...provided.draggableProps.style,
-                                                                background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)',
-                                                                borderLeft: `4px solid ${col.color}`, cursor: 'grab', display: 'flex', flexDirection: 'column', gap: '12px',
-                                                                boxShadow: snapshot.isDragging ? '0 15px 30px rgba(0,0,0,0.2)' : 'var(--shadow-sm)',
-                                                                transition: snapshot.isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)', zIndex: snapshot.isDragging ? 99 : 1
-                                                            } as any}
-                                                        >
-                                                            <strong style={{ fontSize: '1.05rem', lineHeight: '1.4', color: 'var(--text)' }}>{task.titulo}</strong>
+                                            {(() => {
+                                                const filteredTasks = (tasks[col.id] || []).filter(task => {
+                                                    const q = boardSearch.trim().toLowerCase();
+                                                    if (!q) return true;
+                                                    return (task.titulo || '').toLowerCase().includes(q) ||
+                                                           (task.descripcion || '').toLowerCase().includes(q) ||
+                                                           (task.asignado_a || '').toLowerCase().includes(q);
+                                                });
 
-                                                            {task.checklist && task.checklist.length > 0 && (
-                                                                <div className="progress-bar-container">
-                                                                    <div className="progress-bar-fill" style={{ 
-                                                                        width: `${getProgress(task.checklist)}%`,
-                                                                        backgroundColor: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--accent)'
-                                                                    }} />
-                                                                </div>
-                                                            )}
-
-                                                            {task.descripcion && (
-                                                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.descripcion}</p>
-                                                            )}
-
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                                    {task.asignado_a ? task.asignado_a.split(',').map((email, idx) => (
-                                                                        <div key={email} title={getUserName(email)} style={{
-                                                                            width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent)', color: '#fff',
-                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold',
-                                                                            boxShadow: 'var(--shadow-sm)', border: '2px solid var(--bg-elevated)', marginLeft: idx > 0 ? '-8px' : '0px', zIndex: 10 - idx
-                                                                        }}>{getUserName(email).substring(0, 2).toUpperCase()}</div>
-                                                                    )) : <div />}
-                                                                </div>
-
-                                                                {task.fecha_vencimiento && (
-                                                                    <div style={{
-                                                                        display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600,
-                                                                        color: new Date(task.fecha_vencimiento) < new Date() && task.estado !== 'Finalizado' ? '#ef4444' : 'var(--text-muted)',
-                                                                        background: new Date(task.fecha_vencimiento) < new Date() && task.estado !== 'Finalizado' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg)',
-                                                                        padding: '4px 8px', borderRadius: '12px'
-                                                                    }}><Clock size={12} /> {formatToLocal(task.fecha_vencimiento)}</div>
-                                                                )}
-                                                            </div>
+                                                if (filteredTasks.length === 0) {
+                                                    return (
+                                                        <div style={{
+                                                            flex: 1,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            flexDirection: 'column',
+                                                            border: '2px dashed var(--border)',
+                                                            borderRadius: '16px',
+                                                            padding: '24px 16px',
+                                                            color: 'var(--text-muted)',
+                                                            fontSize: '0.85rem',
+                                                            textAlign: 'center',
+                                                            minHeight: '100px',
+                                                            gap: '6px',
+                                                            background: 'var(--bg-glass)'
+                                                        }}>
+                                                            <span style={{ fontSize: '1.4rem' }}>📭</span>
+                                                            <span>Sin tareas</span>
                                                         </div>
-                                                    )}
-                                                </Draggable>
-                                            ))}
+                                                    );
+                                                }
+
+                                                return filteredTasks.map((task, index) => (
+                                                    <Draggable key={task.id} draggableId={task.id} index={index}>
+                                                        {(provided, snapshot) => (
+                                                            <div
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                {...provided.dragHandleProps}
+                                                                onClick={() => openModal(task)}
+                                                                className="bento-card" 
+                                                                style={{
+                                                                    ...provided.draggableProps.style,
+                                                                    background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)',
+                                                                    borderLeft: `4px solid ${col.color}`, cursor: 'grab', display: 'flex', flexDirection: 'column', gap: '12px',
+                                                                    boxShadow: snapshot.isDragging ? '0 15px 30px rgba(0,0,0,0.2)' : 'var(--shadow-sm)',
+                                                                    transition: snapshot.isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)', zIndex: snapshot.isDragging ? 99 : 1
+                                                                } as any}
+                                                            >
+                                                                <strong style={{ fontSize: '1.05rem', lineHeight: '1.4', color: 'var(--text)' }}>{task.titulo}</strong>
+
+                                                                {task.checklist && task.checklist.length > 0 && (
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                        <div className="progress-bar-container" style={{ flex: 1 }}>
+                                                                            <div className="progress-bar-fill" style={{ 
+                                                                                width: `${getProgress(task.checklist)}%`,
+                                                                                backgroundColor: getProgress(task.checklist) === 100 ? '#10b981' : 'var(--accent)'
+                                                                            }} />
+                                                                        </div>
+                                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, flexShrink: 0 }}>
+                                                                            {task.checklist.filter(c => c.completed).length}/{task.checklist.length}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+
+                                                                {task.descripcion && (
+                                                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.descripcion}</p>
+                                                                )}
+
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                                        {task.asignado_a ? task.asignado_a.split(',').map((email, idx) => {
+                                                                            const avatar = getUserAvatar(email);
+                                                                            return (
+                                                                                <div key={email} title={avatar.nombre} style={{
+                                                                                    width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent)', color: '#fff',
+                                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold',
+                                                                                    boxShadow: 'var(--shadow-sm)', border: '2px solid var(--bg-elevated)', marginLeft: idx > 0 ? '-8px' : '0px', zIndex: 10 - idx,
+                                                                                    overflow: 'hidden'
+                                                                                }}>
+                                                                                    {avatar.url ? (
+                                                                                        <img src={avatar.url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                                    ) : (
+                                                                                        avatar.emoji
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        }) : <div />}
+                                                                    </div>
+
+                                                                    {task.fecha_vencimiento && (
+                                                                        <div style={{
+                                                                            display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600,
+                                                                            color: new Date(task.fecha_vencimiento) < new Date() && task.estado !== 'Finalizado' ? '#ef4444' : 'var(--text-muted)',
+                                                                            background: new Date(task.fecha_vencimiento) < new Date() && task.estado !== 'Finalizado' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg)',
+                                                                            padding: '4px 8px', borderRadius: '12px'
+                                                                        }}><Clock size={12} /> {formatToLocal(task.fecha_vencimiento)}</div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </Draggable>
+                                                ));
+                                            })()}
                                             {provided.placeholder}
                                         </div>
                                     </div>

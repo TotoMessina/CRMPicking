@@ -47,7 +47,7 @@ export function useTableroTareas() {
         });
         return initial;
     });
-    const [usuarios, setUsuarios] = useState<{ email: string; nombre?: string }[]>([]);
+    const [usuarios, setUsuarios] = useState<{ email: string; nombre?: string; avatar_url?: string | null; avatar_emoji?: string }[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -85,7 +85,9 @@ export function useTableroTareas() {
 
         const mappedUsers = (data || []).map((u: any) => ({
             email: u.user_email,
-            nombre: u.user_nombre || u.user_email?.split('@')[0] || 'Usuario'
+            nombre: u.user_nombre || u.user_email?.split('@')[0] || 'Usuario',
+            avatar_url: u.user_avatar_url || null,
+            avatar_emoji: u.user_avatar_emoji || '👤'
         }));
         setUsuarios(mappedUsers);
     };
