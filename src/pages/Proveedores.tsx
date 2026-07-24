@@ -90,6 +90,7 @@ export default function Proveedores() {
     // Roadmap Filters
     const [roadmapPriorityFilter, setRoadmapPriorityFilter] = useState('');
     const [roadmapDependencyFilter, setRoadmapDependencyFilter] = useState('');
+    const [roadmapTypeFilter, setRoadmapTypeFilter] = useState('');
     const [roadmapGroupBy, setRoadmapGroupBy] = useState('sprint');
 
     // Modals
@@ -167,25 +168,25 @@ export default function Proveedores() {
     };
 
     // --- Roadmap logic ---
-    const rawIdeas = events.filter(e => e.tipo === 'idea');
-    const filteredIdeas = rawIdeas.filter(idea => {
-        if (roadmapPriorityFilter && idea.prioridad !== roadmapPriorityFilter) return false;
+    const filteredEvents = events.filter(item => {
+        if (roadmapTypeFilter && item.tipo !== roadmapTypeFilter) return false;
+        if (roadmapPriorityFilter && item.prioridad !== roadmapPriorityFilter) return false;
         if (roadmapDependencyFilter) {
             const expectTrue = roadmapDependencyFilter === 'interna';
-            if (idea.depende_de_nosotros !== expectTrue) return false;
+            if (item.depende_de_nosotros !== expectTrue) return false;
         }
         return true;
     });
 
     const priorityCols = [
-        { key: 'alta', label: t('providers.priority_high'), icon: <Flame size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'alta'), bg: '#fef2f2', border: '#fecaca', color: '#ef4444' },
-        { key: 'media', label: t('providers.priority_medium'), icon: <CheckCircle2 size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'media' || !i.prioridad), bg: '#f0f9ff', border: '#bae6fd', color: '#3b82f6' },
-        { key: 'baja', label: t('providers.priority_low'), icon: <Coffee size={17} />, ideas: filteredIdeas.filter(i => i.prioridad === 'baja'), bg: 'var(--bg-elevated)', border: 'var(--border)', color: 'var(--text-muted)' },
+        { key: 'alta', label: t('providers.priority_high'), icon: <Flame size={17} />, ideas: filteredEvents.filter(i => i.prioridad === 'alta'), bg: '#fef2f2', border: '#fecaca', color: '#ef4444' },
+        { key: 'media', label: t('providers.priority_medium'), icon: <CheckCircle2 size={17} />, ideas: filteredEvents.filter(i => i.prioridad === 'media' || !i.prioridad), bg: '#f0f9ff', border: '#bae6fd', color: '#3b82f6' },
+        { key: 'baja', label: t('providers.priority_low'), icon: <Coffee size={17} />, ideas: filteredEvents.filter(i => i.prioridad === 'baja'), bg: 'var(--bg-elevated)', border: 'var(--border)', color: 'var(--text-muted)' },
     ].filter(c => c.ideas.length > 0);
 
     const sprintBlocks = [
-        ...sprints.map(s => ({ id: s.id, name: s.nombre, ideas: filteredIdeas.filter(i => String(i.sprint_id) === String(s.id)) })),
-        { id: '__backlog__', name: 'Sin Sprint / Ideas Sueltas', ideas: filteredIdeas.filter(i => !i.sprint_id) }
+        ...sprints.map(s => ({ id: s.id, name: s.nombre, ideas: filteredEvents.filter(i => String(i.sprint_id) === String(s.id)) })),
+        { id: '__backlog__', name: 'Sin Sprint / Sueltos', ideas: filteredEvents.filter(i => !i.sprint_id) }
     ].filter(b => b.id === '__backlog__' ? b.ideas.length > 0 : true);
 
     const onDragEnd = async (result: DropResult) => {
@@ -285,13 +286,20 @@ export default function Proveedores() {
             media: ['⭐ Media', '#3b82f6', 'rgba(59,130,246,0.1)'], 
             baja: ['☕ Baja', '#64748b', 'rgba(100,116,139,0.1)'] 
         }[idea.prioridad || 'media'] || ['⭐ Media', '#3b82f6', 'rgba(59,130,246,0.1)'];
-        
+
+        const typeBadge = {
+            pedido: ['📦 Pedido', '#0c0c0c', 'rgba(0,0,0,0.08)'],
+            idea: ['💡 Idea', '#d97706', 'rgba(245,158,11,0.12)'],
+            plazo: ['⏰ Plazo', '#ef4444', 'rgba(239,68,68,0.1)'],
+            otro: ['📌 Otro', '#64748b', 'rgba(100,116,139,0.1)']
+        }[idea.tipo] || ['📦 Pedido', '#0c0c0c', 'rgba(0,0,0,0.08)'];
+
         const content = (provided?: any, snapshot?: any) => (
             <div 
                 ref={provided?.innerRef}
                 {...(provided?.draggableProps || {})}
                 {...(provided?.dragHandleProps || {})}
-                onClick={() => { setIsIdea(true); setEditingEventId(idea.id); setModalEventOpen(true); }}
+                onClick={() => { setIsIdea(idea.tipo === 'idea'); setEditingEventId(idea.id); setModalEventOpen(true); }}
                 className="proveedores-idea-card"
                 style={{ 
                     ...(provided?.draggableProps?.style || {}),
@@ -310,7 +318,10 @@ export default function Proveedores() {
                     </div>
                 )}
                 <div className="proveedores-idea-card-badges">
-                    <span className="proveedores-idea-card-badge" style={{ background: badge[2], color: badge[1] }}>{badge[0]}</span>
+                    <span className="proveedores-idea-card-badge" style={{ background: typeBadge[2], color: typeBadge[1], fontWeight: 600 }}>{typeBadge[0]}</span>
+                    {idea.tipo === 'idea' && (
+                        <span className="proveedores-idea-card-badge" style={{ background: badge[2], color: badge[1] }}>{badge[0]}</span>
+                    )}
                     <span className="proveedores-idea-card-badge" style={{ background: idea.depende_de_nosotros ? 'var(--accent-soft)' : 'rgba(0,0,0,0.05)', color: idea.depende_de_nosotros ? 'var(--accent)' : '#0c0c0c' }}>
                         {idea.depende_de_nosotros ? '👨‍💻 Equipo' : `⏳ ${idea.proveedores?.nombre || 'Proveedor'}`}
                     </span>
@@ -360,6 +371,13 @@ export default function Proveedores() {
                         </div>
                         <div className="proveedores-roadmap-filters">
                             <span className="proveedores-roadmap-filter-label"><Filter size={14} /> {t('providers.filter_by')}</span>
+                            <select className="input" style={{ width: 'auto', minWidth: '150px' }} value={roadmapTypeFilter} onChange={e => setRoadmapTypeFilter(e.target.value)}>
+                                <option value="">Todos los tipos</option>
+                                <option value="pedido">📦 Pedidos</option>
+                                <option value="idea">💡 Ideas</option>
+                                <option value="plazo">⏰ Plazos</option>
+                                <option value="otro">📌 Otros</option>
+                            </select>
                             <select className="input" style={{ width: 'auto', minWidth: '180px' }} value={roadmapPriorityFilter} onChange={e => setRoadmapPriorityFilter(e.target.value)}>
                                 <option value="">{t('providers.all_priorities')}</option>
                                 <option value="alta">{t('providers.priority_high')}</option><option value="media">{t('providers.priority_medium')}</option><option value="baja">{t('providers.priority_low')}</option>
