@@ -15,6 +15,7 @@ import { ActividadRepartidorModal } from '../components/ui/ActividadRepartidorMo
 import { importarRepartidoresExcel, descargarModeloRepartidores, exportarRepartidoresExcel } from '../lib/excelExport';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RepartidorFilters } from '../components/repartidores/RepartidorFilters';
+import { BotoneraAudio } from '../components/repartidores/BotoneraAudio';
 
 interface Repartidor {
     id: string | number;
@@ -238,6 +239,9 @@ export default function Repartidores() {
                     </AnimatePresence>
                 </div>
             </header>
+
+            {/* BOTONERA DE AUDIO REPARTIDORES */}
+            <BotoneraAudio />
 
             {/* 2. FILTERS bar */}
             <RepartidorFilters
