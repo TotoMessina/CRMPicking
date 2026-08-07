@@ -1,6 +1,6 @@
 import { 
     MapPin, Users, Activity, Map, Settings, Calendar, Clock, 
-    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain, Megaphone, Package, LucideIcon, Newspaper
+    ShoppingCart, Truck, Ticket, Star, MessageCircle, LayoutDashboard, Building2, Shield, Database, Route, ClipboardList, Brain, Megaphone, Package, LucideIcon, Newspaper, Phone
 } from 'lucide-react';
 
 export interface PageItem {
@@ -24,6 +24,7 @@ export const ALL_PAGES: PageItem[] = [
     { to: '/novedades', icon: Newspaper, label: 'Novedades', group: 'Activaciones' },
     { to: '/chat', icon: MessageCircle, label: 'Chat Interno', group: 'Activaciones' },
     { to: '/clientes', icon: Activity, label: 'Clientes', group: 'Activaciones' },
+    { to: '/llamadas', icon: Phone, label: 'Llamadas', group: 'Activaciones' },
     { to: '/pipeline', icon: Activity, label: 'Pipeline', group: 'Activaciones' },
     { to: '/ruta', icon: Route, label: 'Ruta de Hoy', group: 'Activaciones' },
     { to: '/historial', icon: Clock, label: 'Buscador Historial', group: 'Activaciones' },
