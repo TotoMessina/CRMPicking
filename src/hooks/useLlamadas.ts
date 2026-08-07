@@ -290,26 +290,55 @@ export function useCreateLlamada() {
 
     return useMutation({
         mutationFn: async (data: Partial<Llamada>) => {
-            const { data: result, error } = await (supabase as any)
-                .from('llamadas')
-                .insert({ ...data, empresa_id: empresaActiva?.id })
-                .select()
-                .single();
-            if (error) throw error;
+            if (!empresaActiva?.id) throw new Error('No hay empresa activa');
+
+            // Verificar si ya existe una llamada para este número de teléfono en la misma empresa
+            let existing: any = null;
+            if (data.telefono && data.telefono.trim()) {
+                const cleanPhone = data.telefono.trim();
+                const { data: found } = await (supabase as any)
+                    .from('llamadas')
+                    .select('id')
+                    .eq('empresa_id', empresaActiva.id)
+                    .eq('telefono', cleanPhone)
+                    .maybeSingle();
+                existing = found;
+            }
+
+            let result: any;
+            if (existing) {
+                // Actualizar ficha existente
+                const { data: updated, error: updateErr } = await (supabase as any)
+                    .from('llamadas')
+                    .update({ ...data, updated_at: new Date().toISOString() })
+                    .eq('id', existing.id)
+                    .select()
+                    .single();
+                if (updateErr) throw updateErr;
+                result = updated;
+                toast.success('Ficha existente actualizada por teléfono');
+            } else {
+                // Crear nueva ficha
+                const { data: inserted, error: insertErr } = await (supabase as any)
+                    .from('llamadas')
+                    .insert({ ...data, empresa_id: empresaActiva.id })
+                    .select()
+                    .single();
+                if (insertErr) throw insertErr;
+                result = inserted;
+                toast.success('Ficha de llamada creada');
+            }
 
             // Sincronizar con la lista de clientes (solo si el cliente ya existe por teléfono)
-            if (empresaActiva?.id) {
-                await syncClientWithLlamada(empresaActiva.id, data);
-            }
+            await syncClientWithLlamada(empresaActiva.id, data);
 
             return result;
         },
         onSuccess: () => {
-            toast.success('Ficha de llamada creada');
             queryClient.invalidateQueries({ queryKey: ['llamadas'] });
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
-        onError: (err: any) => toast.error(`Error al crear: ${err.message}`),
+        onError: (err: any) => toast.error(`Error al guardar: ${err.message}`),
     });
 }
 

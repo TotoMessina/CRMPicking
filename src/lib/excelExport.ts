@@ -675,3 +675,300 @@ export const importarRepartidoresExcel = async (file: File | null, empresaActiva
         toast.error('Error al leer el archivo', { id: toastId });
     }
 };
+
+// ── LLAMADAS EXCEL UTILS ───────────────────────────────────
+
+export const descargarModeloLlamadas = () => {
+    const toastId = toast.loading("Generando modelo de llamadas...");
+    try {
+        const wb = XLSX.utils.book_new();
+        const headers = [
+            "nombre", "apellido", "telefono", "mail",
+            "direccion", "localidad", "provincia", "nombre_comercio", "rol_contacto", "instagram",
+            "rubro", "nombre_operador", "respuesta_llamado", "tiempo_llamado",
+            "envio_whatsapp", "siguio_redes", "completo_formulario", "envio_listo"
+        ];
+        const sampleRow = [
+            "Juan", "Pérez", "+54 11 2345-6789", "juan@ejemplo.com",
+            "Av. Rivadavia 1234", "Morón", "Buenos Aires", "Kiosco Juan", "Dueño", "@kioscojuan",
+            "Kiosco / Almacén", "Operador 1", "Llamada Exitosa", "3 minutos",
+            "Sí", "Instagram", "Sí", "Sí"
+        ];
+        const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+        XLSX.utils.book_append_sheet(wb, ws, "Modelo Llamadas");
+
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "modelo_llamadas_crm.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            if (document.body.contains(link)) document.body.removeChild(link);
+        }, 1000);
+        toast.success("Modelo descargado correctamente", { id: toastId });
+    } catch (error: any) {
+        console.error("Error al generar modelo llamadas:", error);
+        toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
+    }
+};
+
+export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {}, onFinally?: () => void) => {
+    const toastId = toast.loading('Generando Excel de llamadas...');
+    try {
+        if (!empresaActiva?.id) throw new Error('No hay empresa activa');
+
+        let allRows: any[] = [];
+        let from = 0;
+        let to = 999;
+        let hasMore = true;
+
+        while (hasMore) {
+            let query = (supabase as any)
+                .from('llamadas')
+                .select('*')
+                .eq('empresa_id', empresaActiva.id)
+                .order('created_at', { ascending: false })
+                .range(from, to);
+
+            if (filters.busqueda && filters.busqueda.trim()) {
+                const rawTerm = filters.busqueda.trim().replace(/"/g, '');
+                const safeTerm = `"%${rawTerm}%"`;
+                query = query.or(
+                    `nombre.ilike.${safeTerm},apellido.ilike.${safeTerm},telefono.ilike.${safeTerm},nombre_comercio.ilike.${safeTerm},direccion.ilike.${safeTerm},localidad.ilike.${safeTerm},provincia.ilike.${safeTerm},mail.ilike.${safeTerm},nombre_operador.ilike.${safeTerm}`
+                );
+            }
+            if (filters.operador) {
+                query = query.ilike('nombre_operador', `%${filters.operador.trim()}%`);
+            }
+            if (filters.rubro) {
+                query = query.eq('rubro', filters.rubro);
+            }
+            if (filters.respuesta) {
+                query = query.eq('respuesta_llamado', filters.respuesta);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                hasMore = false;
+            } else {
+                allRows = [...allRows, ...data];
+                if (data.length < 1000) {
+                    hasMore = false;
+                } else {
+                    from += 1000;
+                    to += 1000;
+                }
+            }
+        }
+
+        if (allRows.length === 0) {
+            toast.error('No hay fichas de llamada para exportar', { id: toastId });
+            if (onFinally) onFinally();
+            return;
+        }
+
+        const formatted = allRows.map((l: any) => ({
+            "Nombre": l.nombre || '',
+            "Apellido": l.apellido || '',
+            "Teléfono": l.telefono || '',
+            "Mail": l.mail || '',
+            "Dirección": l.direccion || '',
+            "Localidad": l.localidad || '',
+            "Provincia": l.provincia || '',
+            "Nombre del Comercio": l.nombre_comercio || '',
+            "Rol Contacto": l.rol_contacto || '',
+            "Instagram": l.instagram || '',
+            "Rubro": l.rubro || '',
+            "Operador": l.nombre_operador || '',
+            "Respuesta del Llamado": l.respuesta_llamado || '',
+            "Tiempo Llamado": l.tiempo_llamado || '',
+            "Envío WhatsApp": l.envio_whatsapp ? 'Sí' : l.envio_whatsapp === false ? 'No' : '',
+            "Siguió en Redes": l.siguio_redes || '',
+            "Completó Formulario": l.completo_formulario ? 'Sí' : l.completo_formulario === false ? 'No' : '',
+            "Envió Listo": l.envio_listo ? 'Sí' : l.envio_listo === false ? 'No' : '',
+            "Fecha Creación": l.created_at ? new Date(l.created_at).toLocaleString() : ''
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(formatted);
+        XLSX.utils.book_append_sheet(wb, ws, "Llamadas");
+
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `llamadas_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            if (document.body.contains(link)) document.body.removeChild(link);
+        }, 1000);
+
+        toast.success(`Exportadas ${allRows.length} llamadas a Excel`, { id: toastId });
+    } catch (error: any) {
+        console.error('Error al exportar llamadas:', error);
+        toast.error(error.message || 'Error al exportar llamadas', { id: toastId });
+    } finally {
+        if (onFinally) onFinally();
+    }
+};
+
+export const importarLlamadasExcel = async (
+    file: File | null,
+    empresaActiva: any,
+    onSuccess?: () => void
+) => {
+    if (!file || !empresaActiva?.id) return;
+    const toastId = toast.loading("Leyendo archivo Excel...");
+
+    try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+                if (!json || json.length === 0) {
+                    toast.error("El archivo está vacío", { id: toastId });
+                    return;
+                }
+
+                let insertCount = 0;
+                let updateCount = 0;
+
+                const getVal = (row: any, ...possibleKeys: string[]) => {
+                    if (!row) return null;
+                    const rowKeys = Object.keys(row);
+                    for (const key of possibleKeys) {
+                        if (row[key] !== undefined && row[key] !== null) return row[key];
+                    }
+                    const normPossible = possibleKeys.map(k => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim());
+                    for (const rKey of rowKeys) {
+                        const normRKey = rKey.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                        if (normPossible.includes(normRKey)) {
+                            const val = row[rKey];
+                            if (val !== undefined && val !== null) return val;
+                        }
+                    }
+                    return null;
+                };
+
+                const parseBool = (v: any) => {
+                    if (v === true || v === 'Sí' || v === 'si' || v === 'SI' || v === '1' || v === 1) return true;
+                    if (v === false || v === 'No' || v === 'no' || v === 'NO' || v === '0' || v === 0) return false;
+                    return null;
+                };
+
+                for (const row of json) {
+                    const nombre = getVal(row, "nombre", "Nombre");
+                    const apellido = getVal(row, "apellido", "Apellido");
+                    const telefono = getVal(row, "telefono", "Teléfono", "TELÉFONO", "Telefono", "celular", "Phone");
+                    const mail = getVal(row, "mail", "Mail", "email", "Email");
+                    const direccion = getVal(row, "direccion", "Dirección", "Direccion");
+                    const localidad = getVal(row, "localidad", "Localidad");
+                    const provincia = getVal(row, "provincia", "Provincia");
+                    const nombre_comercio = getVal(row, "nombre_comercio", "Nombre del Comercio", "comercio", "Comercio");
+                    const rol_contacto = getVal(row, "rol_contacto", "Rol Contacto", "Dueño/Empleado", "rol");
+                    const instagram = getVal(row, "instagram", "Instagram", "IG");
+                    const rubro = getVal(row, "rubro", "Rubro");
+                    const nombre_operador = getVal(row, "nombre_operador", "Operador", "Nombre del Operador");
+                    const respuesta_llamado = getVal(row, "respuesta_llamado", "Respuesta del Llamado", "respuesta", "Respuesta");
+                    const tiempo_llamado = getVal(row, "tiempo_llamado", "Tiempo Llamado", "tiempo", "Tiempo");
+                    const envio_whatsapp = parseBool(getVal(row, "envio_whatsapp", "Envío WhatsApp", "Envio WhatsApp", "whatsapp"));
+                    const siguio_redes = getVal(row, "siguio_redes", "Siguió en Redes", "Siguio en Redes", "redes");
+                    const completo_formulario = parseBool(getVal(row, "completo_formulario", "Completó Formulario", "Completo Formulario", "formulario"));
+                    const envio_listo = parseBool(getVal(row, "envio_listo", "Envió Listo", "Envio Listo", "listo"));
+
+                    if (!telefono && !nombre && !nombre_comercio) continue;
+
+                    const cleanPhone = telefono ? String(telefono).trim() : null;
+
+                    const payload: Record<string, any> = {
+                        empresa_id: empresaActiva.id,
+                        nombre: nombre ? String(nombre).trim() : null,
+                        apellido: apellido ? String(apellido).trim() : null,
+                        telefono: cleanPhone,
+                        mail: mail ? String(mail).trim() : null,
+                        direccion: direccion ? String(direccion).trim() : null,
+                        localidad: localidad ? String(localidad).trim() : null,
+                        provincia: provincia ? String(provincia).trim() : null,
+                        nombre_comercio: nombre_comercio ? String(nombre_comercio).trim() : null,
+                        rol_contacto: rol_contacto ? String(rol_contacto).trim() : null,
+                        instagram: instagram ? String(instagram).trim() : null,
+                        rubro: rubro ? String(rubro).trim() : null,
+                        nombre_operador: nombre_operador ? String(nombre_operador).trim() : null,
+                        respuesta_llamado: respuesta_llamado ? String(respuesta_llamado).trim() : null,
+                        tiempo_llamado: tiempo_llamado ? String(tiempo_llamado).trim() : null,
+                        envio_whatsapp,
+                        siguio_redes: siguio_redes ? String(siguio_redes).trim() : null,
+                        completo_formulario,
+                        envio_listo,
+                    };
+
+                    let existing: any = null;
+                    if (cleanPhone) {
+                        const digitsOnly = cleanPhone.replace(/\D/g, '');
+                        const { data: foundExact } = await (supabase as any)
+                            .from('llamadas')
+                            .select('id')
+                            .eq('empresa_id', empresaActiva.id)
+                            .eq('telefono', cleanPhone)
+                            .maybeSingle();
+
+                        if (foundExact) {
+                            existing = foundExact;
+                        } else if (digitsOnly && digitsOnly.length >= 6) {
+                            const { data: foundDigits } = await (supabase as any)
+                                .from('llamadas')
+                                .select('id')
+                                .eq('empresa_id', empresaActiva.id)
+                                .ilike('telefono', `%${digitsOnly}%`)
+                                .limit(1);
+
+                            if (foundDigits && foundDigits.length > 0) {
+                                existing = foundDigits[0];
+                            }
+                        }
+                    }
+
+                    if (existing) {
+                        // Actualizar ficha existente
+                        await (supabase as any)
+                            .from('llamadas')
+                            .update({ ...payload, updated_at: new Date().toISOString() })
+                            .eq('id', existing.id);
+                        updateCount++;
+                    } else {
+                        // Crear nueva ficha
+                        await (supabase as any)
+                            .from('llamadas')
+                            .insert(payload);
+                        insertCount++;
+                    }
+                }
+
+                if (insertCount === 0 && updateCount === 0) {
+                    toast.error("No se procesaron registros válidos del Excel", { id: toastId });
+                    return;
+                }
+
+                toast.success(`Importación finalizada: ${insertCount} nuevas y ${updateCount} actualizadas por teléfono`, { id: toastId });
+                if (onSuccess) onSuccess();
+            } catch (err: any) {
+                console.error(err);
+                toast.error(err.message || 'Error al procesar el Excel', { id: toastId });
+            }
+        };
+        reader.readAsBinaryString(file);
+    } catch (error: any) {
+        console.error(error);
+        toast.error('Error al leer el archivo', { id: toastId });
+    }
+};

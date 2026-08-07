@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, ChevronLeft, ChevronRight, Phone } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Phone, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { LlamadaModal } from '../components/llamadas/LlamadaModal';
 import { LlamadaFilters } from '../components/llamadas/LlamadaFilters';
 import { Button } from '../components/ui/Button';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { descargarModeloLlamadas, exportarLlamadasExcel, importarLlamadasExcel } from '../lib/excelExport';
 
 const PAGE_SIZE = 24;
 
@@ -25,6 +26,7 @@ const Llamadas: React.FC = () => {
     const queryClient = useQueryClient();
     const askConfirm = useConfirm();
     const deleteMutation = useDeleteLlamada();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -61,8 +63,26 @@ const Llamadas: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['llamadas'] });
     };
 
+    const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] || null;
+        if (file && empresaActiva) {
+            importarLlamadasExcel(file, empresaActiva, () => {
+                queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+                queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            });
+        }
+        e.target.value = '';
+    };
+
     return (
         <div className="page-container" style={{ padding: '0', maxWidth: '100%', margin: '0 auto', position: 'relative' }}>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImportFile}
+                accept=".xlsx, .xls, .csv"
+                style={{ display: 'none' }}
+            />
 
             {/* ── HEADER ─────────────────────────────── */}
             <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', gap: '16px' }}>
@@ -80,18 +100,47 @@ const Llamadas: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Leyenda de colores */}
-                <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {[
-                        { color: '#3b82f6', label: 'Base de Datos' },
-                        { color: '#10b981', label: 'Formulario' },
-                        { color: '#f59e0b', label: 'Operador' },
-                    ].map(({ color, label }) => (
-                        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</span>
-                        </div>
-                    ))}
+                {/* Acciones Excel & Leyenda */}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginRight: '8px' }}>
+                        <Button
+                            variant="secondary"
+                            onClick={descargarModeloLlamadas}
+                            title="Descargar plantilla de ejemplo en Excel"
+                            style={{ gap: '6px', fontSize: '0.84rem' }}
+                        >
+                            <FileSpreadsheet size={15} /> Plantilla
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            onClick={() => fileInputRef.current?.click()}
+                            title="Cargar fichas desde un archivo Excel"
+                            style={{ gap: '6px', fontSize: '0.84rem' }}
+                        >
+                            <Upload size={15} /> Cargar Excel
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            onClick={() => exportarLlamadasExcel(empresaActiva, filters)}
+                            title="Exportar todas las llamadas filtradas a Excel"
+                            style={{ gap: '6px', fontSize: '0.84rem' }}
+                        >
+                            <Download size={15} /> Exportar Excel
+                        </Button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', borderLeft: '1px solid var(--border)', paddingLeft: '14px' }}>
+                        {[
+                            { color: '#3b82f6', label: 'Base de Datos' },
+                            { color: '#10b981', label: 'Formulario' },
+                            { color: '#f59e0b', label: 'Operador' },
+                        ].map(({ color, label }) => (
+                            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </header>
 
