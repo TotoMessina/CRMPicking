@@ -1,6 +1,8 @@
 import React from 'react';
 import { LlamadaFilters as Filters } from '../../hooks/useLlamadas';
 import { Search, Filter } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 
 const RUBROS = [
     { value: '', label: 'Todos los rubros' },
@@ -39,6 +41,9 @@ const inputStyle: React.CSSProperties = {
 };
 
 export function LlamadaFilters({ filters, updateFilter }: Props) {
+    const { empresaActiva } = useAuth();
+    const { data: usuarios = [] } = useCompanyUsers(empresaActiva?.id || null);
+
     return (
         <div style={{
             background: 'var(--bg-card)',
@@ -73,14 +78,17 @@ export function LlamadaFilters({ filters, updateFilter }: Props) {
 
             {/* Operador */}
             <div style={{ flex: '1 1 180px', minWidth: '150px' }}>
-                <input
+                <select
                     id="llamadas-filter-operador"
-                    type="text"
-                    placeholder="Operador..."
                     value={filters.operador}
                     onChange={e => updateFilter('operador', e.target.value)}
                     style={inputStyle}
-                />
+                >
+                    <option value="">Todos los operadores</option>
+                    {usuarios.map(u => (
+                        <option key={u} value={u}>{u}</option>
+                    ))}
+                </select>
             </div>
 
             {/* Rubro */}

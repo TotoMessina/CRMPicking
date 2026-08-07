@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Database, FileText, User } from 'lucide-react';
-import { Llamada, useCreateLlamada, useUpdateLlamada } from '../../hooks/useLlamadas';
+import { X, Database, FileText, User, Sparkles } from 'lucide-react';
+import { Llamada, useCreateLlamada, useUpdateLlamada, findClientByPhone } from '../../hooks/useLlamadas';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 import toast from 'react-hot-toast';
 
 // ── Color tokens ──────────────────────────────────────────
@@ -49,10 +50,18 @@ const REDES = [
     { value: 'no', label: 'No' },
 ];
 
+const ROLES_CONTACTO = [
+    { value: '', label: 'Seleccionar...' },
+    { value: 'dueño', label: 'Dueño / Propietario' },
+    { value: 'empleado', label: 'Empleado / Encargado' },
+    { value: 'otro', label: 'Otro' },
+];
+
 // ── Helpers ───────────────────────────────────────────────
 const EMPTY_FORM: Partial<Llamada> = {
     nombre: '', apellido: '', telefono: '', mail: '',
-    direccion: '', localidad: '', nombre_comercio: '',
+    direccion: '', localidad: '', provincia: '', nombre_comercio: '',
+    rol_contacto: '', instagram: '',
     rubro: '', nombre_operador: '', respuesta_llamado: '',
     tiempo_llamado: '', siguio_redes: '',
     envio_whatsapp: null, completo_formulario: null, envio_listo: null,
@@ -136,17 +145,28 @@ interface Props {
 }
 
 export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
-    const { empresaActiva } = useAuth();
+    const { empresaActiva, userName } = useAuth();
+    const { data: usuarios = [] } = useCompanyUsers(empresaActiva?.id || null);
     const createMutation = useCreateLlamada();
     const updateMutation = useUpdateLlamada();
     const [form, setForm] = useState<Partial<Llamada>>(EMPTY_FORM);
     const [loading, setLoading] = useState(false);
 
-    // Load existing llamada if editing
+    const [clientMatchName, setClientMatchName] = useState<string | null>(null);
+    const [searchingClient, setSearchingClient] = useState(false);
+
+    // Reset state when modal opens or closes
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            setClientMatchName(null);
+            return;
+        }
         if (!llamadaId) {
-            setForm(EMPTY_FORM);
+            setForm({
+                ...EMPTY_FORM,
+                nombre_operador: userName || (usuarios.length > 0 ? usuarios[0] : ''),
+            });
+            setClientMatchName(null);
             return;
         }
         setLoading(true);
@@ -160,20 +180,71 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                 if (error) { toast.error('Error al cargar la ficha'); return; }
                 setForm(data || EMPTY_FORM);
             });
-    }, [isOpen, llamadaId]);
+    }, [isOpen, llamadaId, userName]);
 
     const set = (key: keyof Llamada, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+
+    // Buscar y autocompletar cliente si existe por teléfono
+    const checkPhoneMatch = async (phoneToTest?: string) => {
+        const phone = phoneToTest || form.telefono;
+        if (!phone || !empresaActiva?.id) return;
+        const clean = phone.trim();
+        if (clean.length < 4) return;
+
+        setSearchingClient(true);
+        const client = await findClientByPhone(empresaActiva.id, clean);
+        setSearchingClient(false);
+
+        if (client) {
+            setForm(prev => ({
+                ...prev,
+                nombre: prev.nombre || client.nombre || '',
+                apellido: prev.apellido || client.apellido || '',
+                mail: prev.mail || client.mail || '',
+                direccion: prev.direccion || client.direccion || '',
+                localidad: prev.localidad || client.localidad || '',
+                nombre_comercio: prev.nombre_comercio || client.nombre_comercio || '',
+                rubro: prev.rubro || client.rubro || '',
+            }));
+            const displayName = [client.nombre, client.apellido].filter(Boolean).join(' ') || client.nombre_comercio || 'Cliente registrado';
+            setClientMatchName(displayName);
+            toast.success(`✨ Datos precargados de cliente existente (${displayName})`, { id: 'client-autofill' });
+        } else {
+            setClientMatchName(null);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!empresaActiva?.id) { toast.error('No hay empresa activa'); return; }
 
-        const payload = { ...form, empresa_id: empresaActiva.id };
+        if (!form.nombre?.trim()) {
+            toast.error('El campo "Nombre" es obligatorio (*)');
+            return;
+        }
+        if (!form.telefono?.trim()) {
+            toast.error('El campo "Teléfono" es obligatorio (*)');
+            return;
+        }
+        if (!form.nombre_operador?.trim()) {
+            toast.error('El campo "Nombre del Operador" es obligatorio (*)');
+            return;
+        }
+        if (!form.respuesta_llamado?.trim()) {
+            toast.error('El campo "Respuesta del Llamado" es obligatorio (*)');
+            return;
+        }
+
+        const rawPayload = { ...form, empresa_id: empresaActiva.id };
+        const payload: Record<string, any> = {};
+        Object.entries(rawPayload).forEach(([key, value]) => {
+            payload[key] = value === '' ? null : value;
+        });
 
         if (llamadaId) {
-            await updateMutation.mutateAsync({ id: llamadaId, data: payload });
+            await updateMutation.mutateAsync({ id: llamadaId, data: payload as Partial<Llamada> });
         } else {
-            await createMutation.mutateAsync(payload);
+            await createMutation.mutateAsync(payload as Partial<Llamada>);
         }
         onSaved();
     };
@@ -278,14 +349,39 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                 {/* 🔵 BASE DE DATOS */}
                                 <SectionBlock color={COLOR_BD} icon={Database} title="Base de Datos – Pre-cargado">
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
-                                        <Field label="Nombre">
+                                        <Field label="Nombre" required>
                                             <input id="llamada-nombre" style={inputSt} value={form.nombre || ''} onChange={e => set('nombre', e.target.value)} placeholder="Nombre..." />
                                         </Field>
                                         <Field label="Apellido">
                                             <input id="llamada-apellido" style={inputSt} value={form.apellido || ''} onChange={e => set('apellido', e.target.value)} placeholder="Apellido..." />
                                         </Field>
-                                        <Field label="Teléfono">
-                                            <input id="llamada-telefono" style={inputSt} value={form.telefono || ''} onChange={e => set('telefono', e.target.value)} placeholder="+54..." />
+                                        <Field label="Teléfono" required>
+                                            <input
+                                                id="llamada-telefono"
+                                                style={inputSt}
+                                                value={form.telefono || ''}
+                                                onChange={e => {
+                                                    set('telefono', e.target.value);
+                                                    if (e.target.value.trim().length >= 6) {
+                                                        checkPhoneMatch(e.target.value);
+                                                    }
+                                                }}
+                                                onBlur={() => checkPhoneMatch()}
+                                                placeholder="+54..."
+                                            />
+                                            {searchingClient && (
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                                                    Buscando cliente coincidente...
+                                                </span>
+                                            )}
+                                            {clientMatchName && !searchingClient && (
+                                                <span style={{
+                                                    fontSize: '0.75rem', color: '#10b981', fontWeight: 600,
+                                                    marginTop: 4, display: 'flex', alignItems: 'center', gap: 4
+                                                }}>
+                                                    <Sparkles size={12} /> Cliente vinculado: {clientMatchName}
+                                                </span>
+                                            )}
                                         </Field>
                                         <Field label="Mail">
                                             <input id="llamada-mail" style={inputSt} type="email" value={form.mail || ''} onChange={e => set('mail', e.target.value)} placeholder="correo@..." />
@@ -302,10 +398,23 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                         <Field label="Localidad">
                                             <input id="llamada-localidad" style={inputSt} value={form.localidad || ''} onChange={e => set('localidad', e.target.value)} placeholder="Ciudad..." />
                                         </Field>
+                                        <Field label="Provincia">
+                                            <input id="llamada-provincia" style={inputSt} value={form.provincia || ''} onChange={e => set('provincia', e.target.value)} placeholder="Provincia..." />
+                                        </Field>
+                                        <Field label="Dueño / Empleado">
+                                            <select id="llamada-rol" style={inputSt} value={form.rol_contacto || ''} onChange={e => set('rol_contacto', e.target.value)}>
+                                                {ROLES_CONTACTO.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                            </select>
+                                        </Field>
                                     </div>
-                                    <Field label="Nombre del Comercio">
-                                        <input id="llamada-nombre-comercio" style={inputSt} value={form.nombre_comercio || ''} onChange={e => set('nombre_comercio', e.target.value)} placeholder="Nombre del comercio..." />
-                                    </Field>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+                                        <Field label="Nombre del Comercio">
+                                            <input id="llamada-nombre-comercio" style={inputSt} value={form.nombre_comercio || ''} onChange={e => set('nombre_comercio', e.target.value)} placeholder="Nombre del comercio..." />
+                                        </Field>
+                                        <Field label="Instagram (Negocio o Personal)">
+                                            <input id="llamada-instagram" style={inputSt} value={form.instagram || ''} onChange={e => set('instagram', e.target.value)} placeholder="@usuario..." />
+                                        </Field>
+                                    </div>
                                 </SectionBlock>
 
                                 {/* 🟠 OPERADOR */}
@@ -316,10 +425,23 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                                 {RUBROS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                                             </select>
                                         </Field>
-                                        <Field label="Nombre del Operador">
-                                            <input id="llamada-operador" style={inputSt} value={form.nombre_operador || ''} onChange={e => set('nombre_operador', e.target.value)} placeholder="Nombre del operador..." />
+                                        <Field label="Nombre del Operador" required>
+                                            <select
+                                                id="llamada-operador"
+                                                style={inputSt}
+                                                value={form.nombre_operador || ''}
+                                                onChange={e => set('nombre_operador', e.target.value)}
+                                            >
+                                                <option value="">Seleccionar operador...</option>
+                                                {usuarios.map(u => (
+                                                    <option key={u} value={u}>{u}</option>
+                                                ))}
+                                                {form.nombre_operador && !usuarios.includes(form.nombre_operador) && (
+                                                    <option value={form.nombre_operador}>{form.nombre_operador}</option>
+                                                )}
+                                            </select>
                                         </Field>
-                                        <Field label="Respuesta del Llamado">
+                                        <Field label="Respuesta del Llamado" required>
                                             <select id="llamada-respuesta" style={inputSt} value={form.respuesta_llamado || ''} onChange={e => set('respuesta_llamado', e.target.value)}>
                                                 {RESPUESTAS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                                             </select>

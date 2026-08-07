@@ -184,13 +184,16 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                 </div>
 
                 {/* 🟢 FORMULARIO */}
-                {(l.direccion || l.localidad || l.nombre_comercio) && (
+                {(l.direccion || l.localidad || l.provincia || l.nombre_comercio || l.rol_contacto || l.instagram) && (
                     <div style={{ border: `1px solid ${COLOR_FORMS.border}`, borderRadius: '12px', overflow: 'hidden', background: COLOR_FORMS.bg }}>
                         <SectionHeader color={COLOR_FORMS} label="Formulario" />
                         <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <InfoRow icon={MapPin} label="Dirección" value={l.direccion} color={COLOR_FORMS.text} />
                             <InfoRow icon={MapPin} label="Localidad" value={l.localidad} color={COLOR_FORMS.text} />
+                            <InfoRow icon={MapPin} label="Provincia" value={l.provincia} color={COLOR_FORMS.text} />
                             <InfoRow icon={Store} label="Comercio" value={l.nombre_comercio} color={COLOR_FORMS.text} />
+                            <InfoRow icon={User} label="Rol" value={l.rol_contacto} color={COLOR_FORMS.text} />
+                            <InfoRow icon={Instagram} label="Instagram" value={l.instagram} color={COLOR_FORMS.text} />
                         </div>
                     </div>
                 )}
