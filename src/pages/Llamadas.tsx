@@ -107,7 +107,7 @@ const Llamadas: React.FC = () => {
                     </h2>
                 </header>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', width: '100%' }}>
                     {isLoading ? (
                         Array.from({ length: 6 }).map((_, i) => (
                             <div key={i} className="bento-card" style={{ padding: '24px', minHeight: '280px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -137,6 +137,7 @@ const Llamadas: React.FC = () => {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.4, delay: index * 0.04, ease: 'easeOut' }}
+                                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
                             >
                                 <LlamadaCard
                                     llamada={l}

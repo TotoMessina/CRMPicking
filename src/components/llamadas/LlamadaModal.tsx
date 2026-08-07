@@ -198,13 +198,14 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
         if (client) {
             setForm(prev => ({
                 ...prev,
-                nombre: prev.nombre || client.nombre || '',
-                apellido: prev.apellido || client.apellido || '',
-                mail: prev.mail || client.mail || '',
-                direccion: prev.direccion || client.direccion || '',
-                localidad: prev.localidad || client.localidad || '',
-                nombre_comercio: prev.nombre_comercio || client.nombre_comercio || '',
-                rubro: prev.rubro || client.rubro || '',
+                nombre: client.nombre || prev.nombre || '',
+                apellido: client.apellido || prev.apellido || '',
+                mail: client.mail || prev.mail || '',
+                direccion: client.direccion || prev.direccion || '',
+                localidad: client.localidad || prev.localidad || '',
+                provincia: client.provincia || prev.provincia || '',
+                nombre_comercio: client.nombre_comercio || prev.nombre_comercio || '',
+                rubro: client.rubro || prev.rubro || '',
             }));
             const displayName = [client.nombre, client.apellido].filter(Boolean).join(' ') || client.nombre_comercio || 'Cliente registrado';
             setClientMatchName(displayName);

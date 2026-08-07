@@ -50,19 +50,83 @@ export interface UseLlamadasParams {
  * Utilizado para autocompletar la ficha en el modal.
  */
 export async function findClientByPhone(empresaId: string, phone: string) {
-    if (!empresaId || !phone || phone.trim().length < 4) return null;
+    if (!empresaId || !phone) return null;
     const clean = phone.trim();
+    const digitsOnly = clean.replace(/\D/g, '');
+    if (clean.length < 4 && digitsOnly.length < 4) return null;
 
     try {
-        const { data: matches } = await (supabase as any)
+        let { data: ecData } = await (supabase as any)
             .from('empresa_cliente')
             .select('*, clientes(*)')
             .eq('empresa_id', empresaId)
-            .or(`telefono.eq.${clean},clientes.telefono.eq.${clean}`)
+            .ilike('telefono', `%${clean}%`)
             .limit(1);
 
-        if (matches && matches.length > 0) {
-            const m = matches[0];
+        if ((!ecData || ecData.length === 0) && digitsOnly.length >= 6) {
+            const { data: ecDigits } = await (supabase as any)
+                .from('empresa_cliente')
+                .select('*, clientes(*)')
+                .eq('empresa_id', empresaId)
+                .ilike('telefono', `%${digitsOnly}%`)
+                .limit(1);
+            if (ecDigits && ecDigits.length > 0) ecData = ecDigits;
+        }
+
+        if (!ecData || ecData.length === 0) {
+            let { data: cData } = await (supabase as any)
+                .from('clientes')
+                .select('id, nombre, nombre_local, direccion, localidad, provincia, mail, telefono, rubro')
+                .ilike('telefono', `%${clean}%`)
+                .limit(5);
+
+            if ((!cData || cData.length === 0) && digitsOnly.length >= 6) {
+                const { data: cDigits } = await (supabase as any)
+                    .from('clientes')
+                    .select('id, nombre, nombre_local, direccion, localidad, provincia, mail, telefono, rubro')
+                    .ilike('telefono', `%${digitsOnly}%`)
+                    .limit(5);
+                if (cDigits && cDigits.length > 0) cData = cDigits;
+            }
+
+            if (cData && cData.length > 0) {
+                const clientIds = cData.map((c: any) => c.id);
+                const { data: ecMatches } = await (supabase as any)
+                    .from('empresa_cliente')
+                    .select('*, clientes(*)')
+                    .eq('empresa_id', empresaId)
+                    .in('cliente_id', clientIds)
+                    .limit(1);
+
+                if (ecMatches && ecMatches.length > 0) {
+                    ecData = ecMatches;
+                } else {
+                    const c = cData[0];
+                    const rawNombre = (c.nombre || '').trim();
+                    let nombre = rawNombre;
+                    let apellido = '';
+                    if (rawNombre.includes(' ')) {
+                        const parts = rawNombre.split(' ');
+                        nombre = parts[0];
+                        apellido = parts.slice(1).join(' ');
+                    }
+                    return {
+                        nombre,
+                        apellido,
+                        telefono: c.telefono || clean,
+                        mail: c.mail || '',
+                        direccion: c.direccion || '',
+                        localidad: c.localidad || '',
+                        provincia: c.provincia || '',
+                        nombre_comercio: c.nombre_local || '',
+                        rubro: c.rubro || '',
+                    };
+                }
+            }
+        }
+
+        if (ecData && ecData.length > 0) {
+            const m = ecData[0];
             const c = m.clientes || {};
             const rawNombre = (m.nombre || c.nombre || '').trim();
             let nombre = rawNombre;
@@ -81,6 +145,7 @@ export async function findClientByPhone(empresaId: string, phone: string) {
                 mail: m.mail || c.mail || '',
                 direccion: m.direccion || c.direccion || '',
                 localidad: m.localidad || c.localidad || '',
+                provincia: m.provincia || c.provincia || '',
                 nombre_comercio: m.nombre_local || c.nombre_local || '',
                 rubro: m.rubro || c.rubro || '',
             };
@@ -99,13 +164,40 @@ export async function findClientByPhone(empresaId: string, phone: string) {
 async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) {
     if (!empresaId || !data.telefono || !data.telefono.trim()) return;
     const rawPhone = data.telefono.trim();
+    const digitsOnly = rawPhone.replace(/\D/g, '');
 
     try {
-        const { data: matches } = await (supabase as any)
+        let { data: matches } = await (supabase as any)
             .from('empresa_cliente')
             .select('id, cliente_id, clientes(*)')
             .eq('empresa_id', empresaId)
-            .or(`telefono.eq.${rawPhone},clientes.telefono.eq.${rawPhone}`);
+            .ilike('telefono', `%${rawPhone}%`);
+
+        if ((!matches || matches.length === 0) && digitsOnly.length >= 6) {
+            const { data: mDigits } = await (supabase as any)
+                .from('empresa_cliente')
+                .select('id, cliente_id, clientes(*)')
+                .eq('empresa_id', empresaId)
+                .ilike('telefono', `%${digitsOnly}%`);
+            if (mDigits && mDigits.length > 0) matches = mDigits;
+        }
+
+        if (!matches || matches.length === 0) {
+            const { data: cMatches } = await (supabase as any)
+                .from('clientes')
+                .select('id')
+                .ilike('telefono', `%${digitsOnly || rawPhone}%`);
+
+            if (cMatches && cMatches.length > 0) {
+                const ids = cMatches.map((c: any) => c.id);
+                const { data: ecFound } = await (supabase as any)
+                    .from('empresa_cliente')
+                    .select('id, cliente_id, clientes(*)')
+                    .eq('empresa_id', empresaId)
+                    .in('cliente_id', ids);
+                if (ecFound && ecFound.length > 0) matches = ecFound;
+            }
+        }
 
         if (matches && matches.length > 0) {
             const fullNombre = [data.nombre, data.apellido].filter(Boolean).join(' ') || data.nombre_comercio || null;
@@ -119,6 +211,8 @@ async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) 
                 if (data.telefono) ecUpdates.telefono = data.telefono;
                 if (data.mail !== undefined) ecUpdates.mail = data.mail;
                 if (data.direccion !== undefined) ecUpdates.direccion = data.direccion;
+                if (data.localidad !== undefined) ecUpdates.localidad = data.localidad;
+                if (data.provincia !== undefined) ecUpdates.provincia = data.provincia;
                 if (data.rubro !== undefined) ecUpdates.rubro = data.rubro;
 
                 await (supabase as any)
@@ -133,6 +227,8 @@ async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) 
                     if (data.telefono) cUpdates.telefono = data.telefono;
                     if (data.mail !== undefined) cUpdates.mail = data.mail;
                     if (data.direccion !== undefined) cUpdates.direccion = data.direccion;
+                    if (data.localidad !== undefined) cUpdates.localidad = data.localidad;
+                    if (data.provincia !== undefined) cUpdates.provincia = data.provincia;
                     if (data.rubro !== undefined) cUpdates.rubro = data.rubro;
 
                     if (Object.keys(cUpdates).length > 0) {
@@ -161,13 +257,15 @@ export function useLlamadas({ empresaId, page, pageSize, filters }: UseLlamadasP
                 .eq('empresa_id', empresaId)
                 .order('created_at', { ascending: false });
 
-            if (filters.busqueda) {
+            if (filters.busqueda && filters.busqueda.trim()) {
+                const rawTerm = filters.busqueda.trim().replace(/"/g, '');
+                const safeTerm = `"%${rawTerm}%"`;
                 query = query.or(
-                    `nombre.ilike.%${filters.busqueda}%,apellido.ilike.%${filters.busqueda}%,telefono.ilike.%${filters.busqueda}%`
+                    `nombre.ilike.${safeTerm},apellido.ilike.${safeTerm},telefono.ilike.${safeTerm},nombre_comercio.ilike.${safeTerm},direccion.ilike.${safeTerm},localidad.ilike.${safeTerm},provincia.ilike.${safeTerm},mail.ilike.${safeTerm},nombre_operador.ilike.${safeTerm}`
                 );
             }
             if (filters.operador) {
-                query = query.ilike('nombre_operador', `%${filters.operador}%`);
+                query = query.ilike('nombre_operador', `%${filters.operador.trim()}%`);
             }
             if (filters.rubro) {
                 query = query.eq('rubro', filters.rubro);
