@@ -528,8 +528,15 @@ export const importarConsumidoresExcel = async (file: File | null, empresaActiva
                         };
 
                         if (existing) {
-                            // Update existing (don't touch created_at)
-                            const { error } = await supabase.from('consumidores').update(payload).eq('id', existing.id);
+                            // Update existing (don't touch created_at, don't overwrite with empty values)
+                            const updatePayload: Record<string, any> = {};
+                            for (const [key, value] of Object.entries(payload)) {
+                                if (key === 'empresa_id') continue;
+                                if (value !== null && value !== undefined && value !== '') {
+                                    updatePayload[key] = value;
+                                }
+                            }
+                            const { error } = await supabase.from('consumidores').update(updatePayload).eq('id', existing.id);
                             if (error) throw error;
                             updateCount++;
                         } else {
@@ -624,8 +631,15 @@ export const importarRepartidoresExcel = async (file: File | null, empresaActiva
                         };
 
                         if (existing) {
-                            // Update existing (don't touch created_at)
-                            const { error } = await supabase.from('repartidores').update(payload).eq('id', existing.id);
+                            // Update existing (don't touch created_at, don't overwrite with empty values)
+                            const updatePayload: Record<string, any> = {};
+                            for (const [key, value] of Object.entries(payload)) {
+                                if (key === 'empresa_id') continue;
+                                if (value !== null && value !== undefined && value !== '') {
+                                    updatePayload[key] = value;
+                                }
+                            }
+                            const { error } = await supabase.from('repartidores').update(updatePayload).eq('id', existing.id);
                             if (error) throw error;
                             updateCount++;
                         } else {
@@ -967,10 +981,20 @@ export const importarLlamadasExcel = async (
                     }
 
                     if (existing) {
-                        // Actualizar ficha existente
+                        // Actualizar ficha existente sólo con los campos que vienen con datos en el Excel (no sobrescribir con nulo/vacío)
+                        const updatePayload: Record<string, any> = {
+                            updated_at: new Date().toISOString()
+                        };
+                        for (const [key, value] of Object.entries(payload)) {
+                            if (key === 'empresa_id') continue;
+                            if (value !== null && value !== undefined && value !== '') {
+                                updatePayload[key] = value;
+                            }
+                        }
+
                         await (supabase as any)
                             .from('llamadas')
-                            .update({ ...payload, updated_at: new Date().toISOString() })
+                            .update(updatePayload)
                             .eq('id', existing.id);
                         updateCount++;
                     } else {
