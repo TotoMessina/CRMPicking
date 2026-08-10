@@ -43,6 +43,7 @@ export interface UseLlamadasParams {
     page: number;
     pageSize: number;
     filters: LlamadaFilters;
+    sortBy?: string;
 }
 
 /**
@@ -245,17 +246,44 @@ async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) 
     }
 }
 
-export function useLlamadas({ empresaId, page, pageSize, filters }: UseLlamadasParams) {
+export function useLlamadas({ empresaId, page, pageSize, filters, sortBy = 'created_desc' }: UseLlamadasParams) {
     return useQuery({
-        queryKey: ['llamadas', { empresaId, page, pageSize, filters }],
+        queryKey: ['llamadas', { empresaId, page, pageSize, filters, sortBy }],
         queryFn: async () => {
             if (!empresaId) return { llamadas: [] as Llamada[], total: 0 };
 
             let query = (supabase as any)
                 .from('llamadas')
                 .select('*', { count: 'exact' })
-                .eq('empresa_id', empresaId)
-                .order('created_at', { ascending: false });
+                .eq('empresa_id', empresaId);
+
+            switch (sortBy) {
+                case 'updated_desc':
+                    query = query.order('updated_at', { ascending: false, nullsFirst: false });
+                    break;
+                case 'created_asc':
+                    query = query.order('created_at', { ascending: true });
+                    break;
+                case 'nombre_asc':
+                    query = query.order('nombre', { ascending: true, nullsFirst: false }).order('apellido', { ascending: true, nullsFirst: false });
+                    break;
+                case 'nombre_desc':
+                    query = query.order('nombre', { ascending: false, nullsFirst: false }).order('apellido', { ascending: false, nullsFirst: false });
+                    break;
+                case 'comercio_asc':
+                    query = query.order('nombre_comercio', { ascending: true, nullsFirst: false });
+                    break;
+                case 'comercio_desc':
+                    query = query.order('nombre_comercio', { ascending: false, nullsFirst: false });
+                    break;
+                case 'operador_asc':
+                    query = query.order('nombre_operador', { ascending: true, nullsFirst: false });
+                    break;
+                case 'created_desc':
+                default:
+                    query = query.order('created_at', { ascending: false });
+                    break;
+            }
 
             if (filters.busqueda && filters.busqueda.trim()) {
                 const rawTerm = filters.busqueda.trim().replace(/"/g, '');

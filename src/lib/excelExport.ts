@@ -714,7 +714,7 @@ export const descargarModeloLlamadas = () => {
     }
 };
 
-export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {}, onFinally?: () => void) => {
+export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {}, onFinally?: () => void, sortBy: string = 'created_desc') => {
     const toastId = toast.loading('Generando Excel de llamadas...');
     try {
         if (!empresaActiva?.id) throw new Error('No hay empresa activa');
@@ -728,9 +728,37 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             let query = (supabase as any)
                 .from('llamadas')
                 .select('*')
-                .eq('empresa_id', empresaActiva.id)
-                .order('created_at', { ascending: false })
-                .range(from, to);
+                .eq('empresa_id', empresaActiva.id);
+
+            switch (sortBy) {
+                case 'updated_desc':
+                    query = query.order('updated_at', { ascending: false, nullsFirst: false });
+                    break;
+                case 'created_asc':
+                    query = query.order('created_at', { ascending: true });
+                    break;
+                case 'nombre_asc':
+                    query = query.order('nombre', { ascending: true, nullsFirst: false }).order('apellido', { ascending: true, nullsFirst: false });
+                    break;
+                case 'nombre_desc':
+                    query = query.order('nombre', { ascending: false, nullsFirst: false }).order('apellido', { ascending: false, nullsFirst: false });
+                    break;
+                case 'comercio_asc':
+                    query = query.order('nombre_comercio', { ascending: true, nullsFirst: false });
+                    break;
+                case 'comercio_desc':
+                    query = query.order('nombre_comercio', { ascending: false, nullsFirst: false });
+                    break;
+                case 'operador_asc':
+                    query = query.order('nombre_operador', { ascending: true, nullsFirst: false });
+                    break;
+                case 'created_desc':
+                default:
+                    query = query.order('created_at', { ascending: false });
+                    break;
+            }
+
+            query = query.range(from, to);
 
             if (filters.busqueda && filters.busqueda.trim()) {
                 const rawTerm = filters.busqueda.trim().replace(/"/g, '');

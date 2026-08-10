@@ -30,6 +30,7 @@ const Llamadas: React.FC = () => {
 
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+    const [sortBy, setSortBy] = useState('created_desc');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -43,6 +44,7 @@ const Llamadas: React.FC = () => {
         page,
         pageSize: PAGE_SIZE,
         filters,
+        sortBy,
     });
 
     const llamadas = data?.llamadas || [];
@@ -53,7 +55,12 @@ const Llamadas: React.FC = () => {
     const handleEdit = (id: number) => { setEditingId(id); setModalOpen(true); };
 
     const handleDelete = async (id: number) => {
-        const ok = await askConfirm('¿Eliminar esta ficha de llamada? Esta acción no se puede deshacer.');
+        const ok = await askConfirm({
+            title: 'Eliminar ficha',
+            message: '¿Eliminar esta ficha de llamada? Esta acción no se puede deshacer.',
+            variant: 'danger',
+            confirmText: 'Eliminar',
+        });
         if (!ok) return;
         await deleteMutation.mutateAsync(id);
     };
@@ -121,7 +128,7 @@ const Llamadas: React.FC = () => {
                         </Button>
                         <Button
                             variant="secondary"
-                            onClick={() => exportarLlamadasExcel(empresaActiva, filters)}
+                            onClick={() => exportarLlamadasExcel(empresaActiva, filters, undefined, sortBy)}
                             title="Exportar todas las llamadas filtradas a Excel"
                             style={{ gap: '6px', fontSize: '0.84rem' }}
                         >
@@ -149,11 +156,45 @@ const Llamadas: React.FC = () => {
 
             {/* ── LIST ───────────────────────────────── */}
             <section style={{ marginBottom: '32px' }}>
-                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: 'var(--text)' }}>
                         Fichas{' '}
                         <span className="muted" style={{ fontWeight: 500, fontSize: '1.2rem' }}>({total})</span>
                     </h2>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Ordenar por
+                        </span>
+                        <select
+                            id="llamadas-sort-select"
+                            value={sortBy}
+                            onChange={(e) => {
+                                setSortBy(e.target.value);
+                                setPage(1);
+                            }}
+                            style={{
+                                padding: '8px 14px',
+                                borderRadius: '12px',
+                                background: 'var(--bg-elevated)',
+                                border: '1px solid var(--border)',
+                                fontWeight: 500,
+                                fontSize: '0.88rem',
+                                color: 'var(--text)',
+                                outline: 'none',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            <option value="created_desc">Fecha de creación (Más reciente)</option>
+                            <option value="created_asc">Fecha de creación (Más antigua)</option>
+                            <option value="updated_desc">Última modificación</option>
+                            <option value="nombre_asc">Nombre (A - Z)</option>
+                            <option value="nombre_desc">Nombre (Z - A)</option>
+                            <option value="comercio_asc">Comercio (A - Z)</option>
+                            <option value="comercio_desc">Comercio (Z - A)</option>
+                            <option value="operador_asc">Operador (A - Z)</option>
+                        </select>
+                    </div>
                 </header>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', width: '100%' }}>
