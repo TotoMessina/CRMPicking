@@ -170,14 +170,14 @@ async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) 
     try {
         let { data: matches } = await (supabase as any)
             .from('empresa_cliente')
-            .select('id, cliente_id, clientes(*)')
+            .select('id, cliente_id')
             .eq('empresa_id', empresaId)
             .ilike('telefono', `%${rawPhone}%`);
 
         if ((!matches || matches.length === 0) && digitsOnly.length >= 6) {
             const { data: mDigits } = await (supabase as any)
                 .from('empresa_cliente')
-                .select('id, cliente_id, clientes(*)')
+                .select('id, cliente_id')
                 .eq('empresa_id', empresaId)
                 .ilike('telefono', `%${digitsOnly}%`);
             if (mDigits && mDigits.length > 0) matches = mDigits;
@@ -193,7 +193,7 @@ async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) 
                 const ids = cMatches.map((c: any) => c.id);
                 const { data: ecFound } = await (supabase as any)
                     .from('empresa_cliente')
-                    .select('id, cliente_id, clientes(*)')
+                    .select('id, cliente_id')
                     .eq('empresa_id', empresaId)
                     .in('cliente_id', ids);
                 if (ecFound && ecFound.length > 0) matches = ecFound;

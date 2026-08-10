@@ -52,14 +52,18 @@ export const LocationTracker = () => {
             try {
                 // Actualizar posición "en vivo" SOLO si hay internet
                 if (navigator.onLine) {
-                    await supabase
-                        .from('usuarios')
-                        .update({
-                            lat,
-                            lng,
-                            last_seen: new Date().toISOString()
-                        })
-                        .eq('id', user.id);
+                    try {
+                        await supabase
+                            .from('usuarios')
+                            .update({
+                                lat,
+                                lng,
+                                last_seen: new Date().toISOString()
+                            })
+                            .eq('id', user.id);
+                    } catch (uErr) {
+                        console.warn('⚠️ No se pudo actualizar ubicación en vivo en usuarios:', uErr);
+                    }
                 }
                 
                 // Marcamos que ya procesamos este "tick" de ubicación
