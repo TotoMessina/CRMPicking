@@ -1,6 +1,6 @@
 import React from 'react';
-import { Llamada } from '../../hooks/useLlamadas';
-import { Pencil, Trash2, Phone, Mail, MapPin, Store, User, Clock, MessageCircle, Instagram, Facebook, CheckCircle2, XCircle, FileText } from 'lucide-react';
+import { Llamada, useIncrementLlamadaCount } from '../../hooks/useLlamadas';
+import { Pencil, Trash2, Phone, Mail, MapPin, Store, User, Clock, MessageCircle, Instagram, Facebook, CheckCircle2, XCircle, FileText, Sparkles, RefreshCw, PhoneCall, Plus, Minus } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // ── Color tokens ──────────────────────────────────────────
@@ -21,6 +21,23 @@ const COLOR_OP = {
     border: 'rgba(245,158,11,0.25)',
     text: '#f59e0b',
     header: 'rgba(245,158,11,0.12)',
+};
+
+const ETIQUETA_STYLES: Record<string, { label: string; bg: string; border: string; text: string; icon: any }> = {
+    'cliente nuevo': {
+        label: 'Cliente Nuevo',
+        bg: 'rgba(16,185,129,0.12)',
+        border: 'rgba(16,185,129,0.35)',
+        text: '#10b981',
+        icon: Sparkles,
+    },
+    'cliente actualizado': {
+        label: 'Cliente Actualizado',
+        bg: 'rgba(59,130,246,0.12)',
+        border: 'rgba(59,130,246,0.35)',
+        text: '#3b82f6',
+        icon: RefreshCw,
+    },
 };
 
 // ── Helpers ───────────────────────────────────────────────
@@ -110,8 +127,13 @@ interface Props {
 }
 
 export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
+    const incrementMutation = useIncrementLlamadaCount();
     const fullName = [l.nombre, l.apellido].filter(Boolean).join(' ') || '—';
     const respuestaColor = l.respuesta_llamado ? RESPUESTA_COLORS[l.respuesta_llamado] || '#94a3b8' : '#94a3b8';
+    const callCount = Math.max(1, Number(l.cantidad_llamadas) || 1);
+
+    const normEtiqueta = (l.etiqueta || '').toLowerCase().trim();
+    const etiquetaConfig = ETIQUETA_STYLES[normEtiqueta] || (normEtiqueta.includes('nuevo') ? ETIQUETA_STYLES['cliente nuevo'] : normEtiqueta.includes('actualiz') ? ETIQUETA_STYLES['cliente actualizado'] : null);
 
     return (
         <div
@@ -145,7 +167,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                 alignItems: 'flex-start',
                 gap: '8px',
             }}>
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
                     <h3 style={{
                         margin: 0, fontSize: '1.05rem', fontWeight: 700,
                         color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
@@ -158,7 +180,26 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                         </span>
                     )}
                 </div>
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flexShrink: 0 }}>
+                    {etiquetaConfig && (
+                        <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '3px 9px',
+                            borderRadius: '20px',
+                            background: etiquetaConfig.bg,
+                            color: etiquetaConfig.text,
+                            border: `1px solid ${etiquetaConfig.border}`,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                        }}>
+                            <etiquetaConfig.icon size={11} />
+                            {etiquetaConfig.label}
+                        </span>
+                    )}
                     {l.respuesta_llamado && (
                         <span style={{
                             fontSize: '0.7rem', fontWeight: 700, padding: '3px 9px', borderRadius: '20px',
@@ -224,36 +265,104 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                 borderTop: '1px solid var(--border)',
                 display: 'flex',
                 gap: '8px',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
             }}>
-                <button
-                    id={`btn-edit-llamada-${l.id}`}
-                    onClick={() => onEdit(l.id)}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '7px 14px', borderRadius: '10px',
-                        border: '1px solid var(--border)', background: 'var(--bg-elevated)',
-                        color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
-                        transition: 'background 0.15s',
-                    }}
-                    title="Editar ficha"
-                >
-                    <Pencil size={13} /> Editar
-                </button>
-                <button
-                    id={`btn-delete-llamada-${l.id}`}
-                    onClick={() => onDelete(l.id)}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '7px 14px', borderRadius: '10px',
-                        border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.07)',
-                        color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
-                        transition: 'background 0.15s',
-                    }}
-                    title="Eliminar ficha"
-                >
-                    <Trash2 size={13} /> Eliminar
-                </button>
+                {/* Contador de llamadas con botón interactivo +1 */}
+                <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'var(--bg-elevated)',
+                    padding: '3px 6px 3px 10px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border)',
+                }}>
+                    <PhoneCall size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)' }}>
+                        {callCount} {callCount === 1 ? 'llamada' : 'llamadas'}
+                    </span>
+
+                    {/* Botón Decrementar (-) si es mayor a 1 */}
+                    {callCount > 1 && (
+                        <button
+                            type="button"
+                            id={`btn-dec-llamada-${l.id}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                incrementMutation.mutate({ id: l.id, delta: -1, currentCount: callCount });
+                            }}
+                            disabled={incrementMutation.isPending}
+                            title="Restar 1 llamada"
+                            style={{
+                                width: '20px', height: '20px', borderRadius: '6px',
+                                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                                color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', cursor: 'pointer', marginLeft: '2px',
+                                padding: 0,
+                            }}
+                        >
+                            <Minus size={11} />
+                        </button>
+                    )}
+
+                    {/* Botón Sumar (+1) */}
+                    <button
+                        type="button"
+                        id={`btn-inc-llamada-${l.id}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            incrementMutation.mutate({ id: l.id, delta: 1, currentCount: callCount });
+                        }}
+                        disabled={incrementMutation.isPending}
+                        title="Registrar +1 llamada realizada a este cliente"
+                        style={{
+                            padding: '3px 8px', borderRadius: '8px',
+                            border: 'none', background: 'var(--accent)',
+                            color: 'white', display: 'flex', alignItems: 'center',
+                            gap: '2px', cursor: 'pointer', marginLeft: '2px',
+                            fontSize: '0.74rem', fontWeight: 700,
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                            transition: 'transform 0.1s, opacity 0.1s',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+                        onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                    >
+                        <Plus size={11} strokeWidth={3} /> 1
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <button
+                        id={`btn-edit-llamada-${l.id}`}
+                        onClick={() => onEdit(l.id)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '7px 12px', borderRadius: '10px',
+                            border: '1px solid var(--border)', background: 'var(--bg-elevated)',
+                            color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
+                            transition: 'background 0.15s',
+                        }}
+                        title="Editar ficha"
+                    >
+                        <Pencil size={13} /> Editar
+                    </button>
+                    <button
+                        id={`btn-delete-llamada-${l.id}`}
+                        onClick={() => onDelete(l.id)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '7px 10px', borderRadius: '10px',
+                            border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.07)',
+                            color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
+                            transition: 'background 0.15s',
+                        }}
+                        title="Eliminar ficha"
+                    >
+                        <Trash2 size={13} />
+                    </button>
+                </div>
             </div>
         </div>
     );

@@ -23,6 +23,12 @@ const RESPUESTAS = [
     { value: 'sin_comercio', label: 'Sin Comercio' },
 ];
 
+const ETIQUETAS = [
+    { value: '', label: 'Todas las etiquetas' },
+    { value: 'cliente nuevo', label: '✨ Cliente Nuevo' },
+    { value: 'cliente actualizado', label: '🔄 Cliente Actualizado' },
+];
+
 interface Props {
     filters: Filters;
     updateFilter: (key: keyof Filters, value: string) => void;
@@ -106,7 +112,7 @@ export function LlamadaFilters({ filters, updateFilter }: Props) {
             </div>
 
             {/* Respuesta */}
-            <div style={{ flex: '1 1 220px', minWidth: '180px' }}>
+            <div style={{ flex: '1 1 200px', minWidth: '160px' }}>
                 <select
                     id="llamadas-filter-respuesta"
                     value={filters.respuesta}
@@ -119,14 +125,29 @@ export function LlamadaFilters({ filters, updateFilter }: Props) {
                 </select>
             </div>
 
+            {/* Etiqueta (Nuevo / Actualizado) */}
+            <div style={{ flex: '1 1 180px', minWidth: '150px' }}>
+                <select
+                    id="llamadas-filter-etiqueta"
+                    value={filters.etiqueta || ''}
+                    onChange={e => updateFilter('etiqueta', e.target.value)}
+                    style={inputStyle}
+                >
+                    {ETIQUETAS.map(e => (
+                        <option key={e.value} value={e.value}>{e.label}</option>
+                    ))}
+                </select>
+            </div>
+
             {/* Reset */}
-            {(filters.busqueda || filters.operador || filters.rubro || filters.respuesta) && (
+            {(filters.busqueda || filters.operador || filters.rubro || filters.respuesta || filters.etiqueta) && (
                 <button
                     onClick={() => {
                         updateFilter('busqueda', '');
                         updateFilter('operador', '');
                         updateFilter('rubro', '');
                         updateFilter('respuesta', '');
+                        updateFilter('etiqueta', '');
                     }}
                     style={{
                         padding: '9px 16px',

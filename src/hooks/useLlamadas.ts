@@ -27,6 +27,8 @@ export interface Llamada {
     siguio_redes: string | null;
     completo_formulario: boolean | null;
     envio_listo: boolean | null;
+    etiqueta?: string | null;
+    cantidad_llamadas?: number | null;
     created_at: string;
     updated_at: string;
 }
@@ -36,6 +38,7 @@ export interface LlamadaFilters {
     operador: string;
     rubro: string;
     respuesta: string;
+    etiqueta?: string;
 }
 
 export interface UseLlamadasParams {
@@ -301,6 +304,9 @@ export function useLlamadas({ empresaId, page, pageSize, filters, sortBy = 'crea
             if (filters.respuesta) {
                 query = query.eq('respuesta_llamado', filters.respuesta);
             }
+            if (filters.etiqueta) {
+                query = query.eq('etiqueta', filters.etiqueta);
+            }
 
             query = query.range((page - 1) * pageSize, page * pageSize - 1);
 
@@ -333,27 +339,61 @@ export function useCreateLlamada() {
                 existing = found;
             }
 
+            // Determinar etiqueta ('cliente nuevo' o 'cliente actualizado')
+            let isExistingClient = !!existing;
+            if (!isExistingClient && data.telefono && data.telefono.trim()) {
+                const clientMatch = await findClientByPhone(empresaActiva.id, data.telefono.trim());
+                if (clientMatch) isExistingClient = true;
+            }
+
+            const calculatedEtiqueta = data.etiqueta || (isExistingClient ? 'cliente actualizado' : 'cliente nuevo');
+
             let result: any;
             if (existing) {
                 // Actualizar ficha existente
-                const { data: updated, error: updateErr } = await (supabase as any)
+                const updatePayload = { ...data, etiqueta: calculatedEtiqueta, updated_at: new Date().toISOString() };
+                let updateRes = await (supabase as any)
                     .from('llamadas')
-                    .update({ ...data, updated_at: new Date().toISOString() })
+                    .update(updatePayload)
                     .eq('id', existing.id)
                     .select()
                     .single();
-                if (updateErr) throw updateErr;
-                result = updated;
+
+                if (updateRes.error && updateRes.error.message?.includes('etiqueta')) {
+                    // Fallback si la columna no existe aún en la base de datos
+                    delete (updatePayload as any).etiqueta;
+                    updateRes = await (supabase as any)
+                        .from('llamadas')
+                        .update(updatePayload)
+                        .eq('id', existing.id)
+                        .select()
+                        .single();
+                }
+
+                if (updateRes.error) throw updateRes.error;
+                result = updateRes.data;
                 toast.success('Ficha existente actualizada por teléfono');
             } else {
                 // Crear nueva ficha
-                const { data: inserted, error: insertErr } = await (supabase as any)
+                const insertPayload = { ...data, etiqueta: calculatedEtiqueta, empresa_id: empresaActiva.id };
+                let insertRes = await (supabase as any)
                     .from('llamadas')
-                    .insert({ ...data, empresa_id: empresaActiva.id })
+                    .insert(insertPayload)
                     .select()
                     .single();
-                if (insertErr) throw insertErr;
-                result = inserted;
+
+                if (insertRes.error && insertRes.error.message?.includes('etiqueta')) {
+                    // Fallback si la columna no existe aún en la base de datos
+                    delete (insertPayload as any).etiqueta;
+                    insertRes = await (supabase as any)
+                        .from('llamadas')
+                        .insert(insertPayload)
+                        .select()
+                        .single();
+                }
+
+                if (insertRes.error) throw insertRes.error;
+                result = insertRes.data;
                 toast.success('Ficha de llamada creada');
             }
 
@@ -413,5 +453,47 @@ export function useDeleteLlamada() {
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
         onError: (err: any) => toast.error(`Error al eliminar: ${err.message}`),
+    });
+}
+
+export function useIncrementLlamadaCount() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, delta = 1, currentCount = 1 }: { id: number; delta?: number; currentCount?: number }) => {
+            const nextCount = Math.max(1, (currentCount || 1) + delta);
+
+            const updatePayload: Record<string, any> = {
+                cantidad_llamadas: nextCount,
+                updated_at: new Date().toISOString()
+            };
+
+            let res = await (supabase as any)
+                .from('llamadas')
+                .update(updatePayload)
+                .eq('id', id);
+
+            if (res.error && res.error.message?.includes('cantidad_llamadas')) {
+                delete updatePayload.cantidad_llamadas;
+                res = await (supabase as any)
+                    .from('llamadas')
+                    .update(updatePayload)
+                    .eq('id', id);
+            }
+
+            if (res.error) throw res.error;
+            return { id, nextCount };
+        },
+        onSuccess: ({ nextCount }, { delta = 1 }) => {
+            if (delta > 0) {
+                toast.success(`📞 Llamada registrada (Total: ${nextCount})`, { id: 'llamada-count-toast' });
+            } else {
+                toast.success(`Contador ajustado a ${nextCount}`, { id: 'llamada-count-toast' });
+            }
+            queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+        },
+        onError: (err: any) => {
+            toast.error(`Error al actualizar llamadas: ${err.message}`);
+        }
     });
 }

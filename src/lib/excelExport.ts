@@ -700,13 +700,13 @@ export const descargarModeloLlamadas = () => {
             "nombre", "apellido", "telefono", "mail",
             "direccion", "localidad", "provincia", "nombre_comercio", "rol_contacto", "instagram",
             "rubro", "nombre_operador", "respuesta_llamado", "tiempo_llamado",
-            "envio_whatsapp", "siguio_redes", "completo_formulario", "envio_listo"
+            "envio_whatsapp", "siguio_redes", "completo_formulario", "envio_listo", "cantidad_llamadas"
         ];
         const sampleRow = [
             "Juan", "Pérez", "+54 11 2345-6789", "juan@ejemplo.com",
             "Av. Rivadavia 1234", "Morón", "Buenos Aires", "Kiosco Juan", "Dueño", "@kioscojuan",
             "Kiosco / Almacén", "Operador 1", "Llamada Exitosa", "3 minutos",
-            "Sí", "Instagram", "Sí", "Sí"
+            "Sí", "Instagram", "Sí", "Sí", 1
         ];
         const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
         XLSX.utils.book_append_sheet(wb, ws, "Modelo Llamadas");
@@ -790,6 +790,9 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             if (filters.respuesta) {
                 query = query.eq('respuesta_llamado', filters.respuesta);
             }
+            if (filters.etiqueta) {
+                query = query.eq('etiqueta', filters.etiqueta);
+            }
 
             const { data, error } = await query;
             if (error) throw error;
@@ -832,6 +835,8 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             "Siguió en Redes": l.siguio_redes || '',
             "Completó Formulario": l.completo_formulario ? 'Sí' : l.completo_formulario === false ? 'No' : '',
             "Envió Listo": l.envio_listo ? 'Sí' : l.envio_listo === false ? 'No' : '',
+            "Cantidad de Llamadas": l.cantidad_llamadas || 1,
+            "Etiqueta": l.etiqueta ? (l.etiqueta.toLowerCase() === 'cliente nuevo' ? 'Cliente Nuevo' : l.etiqueta.toLowerCase() === 'cliente actualizado' ? 'Cliente Actualizado' : l.etiqueta) : '',
             "Fecha Creación": l.created_at ? new Date(l.created_at).toLocaleString() : ''
         }));
 
@@ -911,7 +916,7 @@ export const importarLlamadasExcel = async (
                 for (const row of json) {
                     const nombre = getVal(row, "nombre", "Nombre");
                     const apellido = getVal(row, "apellido", "Apellido");
-                    const telefono = getVal(row, "telefono", "Teléfono", "TELÉFONO", "Telefono", "celular", "Phone");
+                    const telefono = getVal(row, "telefono", "Teléfono", "TELÉFONO", "Telefono", "celular", "Phone", "Celular");
                     const mail = getVal(row, "mail", "Mail", "email", "Email");
                     const direccion = getVal(row, "direccion", "Dirección", "Direccion");
                     const localidad = getVal(row, "localidad", "Localidad");
@@ -927,6 +932,7 @@ export const importarLlamadasExcel = async (
                     const siguio_redes = getVal(row, "siguio_redes", "Siguió en Redes", "Siguio en Redes", "redes");
                     const completo_formulario = parseBool(getVal(row, "completo_formulario", "Completó Formulario", "Completo Formulario", "formulario"));
                     const envio_listo = parseBool(getVal(row, "envio_listo", "Envió Listo", "Envio Listo", "listo"));
+                    const rawLlamadas = getVal(row, "cantidad_llamadas", "Cantidad de Llamadas", "llamadas", "Llamadas", "intentos", "Intentos");
 
                     if (!telefono && !nombre && !nombre_comercio) continue;
 
@@ -954,35 +960,71 @@ export const importarLlamadasExcel = async (
                         envio_listo,
                     };
 
-                    let existing: any = null;
+                    let existingInLlamadas: any = null;
+                    let existingInClientes: any = null;
+
                     if (cleanPhone) {
                         const digitsOnly = cleanPhone.replace(/\D/g, '');
+                        
+                        // 1. Buscar en llamadas
                         const { data: foundExact } = await (supabase as any)
                             .from('llamadas')
-                            .select('id')
+                            .select('id, cantidad_llamadas')
                             .eq('empresa_id', empresaActiva.id)
                             .eq('telefono', cleanPhone)
                             .maybeSingle();
 
                         if (foundExact) {
-                            existing = foundExact;
+                            existingInLlamadas = foundExact;
                         } else if (digitsOnly && digitsOnly.length >= 6) {
                             const { data: foundDigits } = await (supabase as any)
                                 .from('llamadas')
-                                .select('id')
+                                .select('id, cantidad_llamadas')
                                 .eq('empresa_id', empresaActiva.id)
                                 .ilike('telefono', `%${digitsOnly}%`)
                                 .limit(1);
 
                             if (foundDigits && foundDigits.length > 0) {
-                                existing = foundDigits[0];
+                                existingInLlamadas = foundDigits[0];
+                            }
+                        }
+
+                        // 2. Buscar en empresa_cliente / clientes si no está en llamadas
+                        if (!existingInLlamadas) {
+                            const { data: foundEC } = await (supabase as any)
+                                .from('empresa_cliente')
+                                .select('id, cliente_id, clientes(id, nombre, nombre_local, telefono, direccion, mail, rubro)')
+                                .eq('empresa_id', empresaActiva.id)
+                                .ilike('telefono', `%${digitsOnly || cleanPhone}%`)
+                                .limit(1);
+
+                            if (foundEC && foundEC.length > 0) {
+                                existingInClientes = foundEC[0];
+                            } else if (digitsOnly && digitsOnly.length >= 6) {
+                                const { data: foundC } = await (supabase as any)
+                                    .from('clientes')
+                                    .select('id, nombre, nombre_local, telefono, direccion, mail, rubro')
+                                    .ilike('telefono', `%${digitsOnly}%`)
+                                    .limit(1);
+                                if (foundC && foundC.length > 0) {
+                                    existingInClientes = foundC[0];
+                                }
                             }
                         }
                     }
 
-                    if (existing) {
-                        // Actualizar ficha existente sólo con los campos que vienen con datos en el Excel (no sobrescribir con nulo/vacío)
+                    const isExisting = !!(existingInLlamadas || existingInClientes);
+                    const calculatedEtiqueta = isExisting ? 'cliente actualizado' : 'cliente nuevo';
+
+                    if (existingInLlamadas) {
+                        // Actualizar ficha existente e incrementar contador de llamadas
+                        const currentCalls = Number(existingInLlamadas.cantidad_llamadas) || 1;
+                        const parsedRaw = rawLlamadas ? parseInt(rawLlamadas) : null;
+                        const newCalls = parsedRaw && !isNaN(parsedRaw) ? parsedRaw : currentCalls + 1;
+
                         const updatePayload: Record<string, any> = {
+                            etiqueta: calculatedEtiqueta,
+                            cantidad_llamadas: newCalls,
                             updated_at: new Date().toISOString()
                         };
                         for (const [key, value] of Object.entries(payload)) {
@@ -992,17 +1034,59 @@ export const importarLlamadasExcel = async (
                             }
                         }
 
-                        await (supabase as any)
+                        let updateRes = await (supabase as any)
                             .from('llamadas')
                             .update(updatePayload)
-                            .eq('id', existing.id);
-                        updateCount++;
+                            .eq('id', existingInLlamadas.id);
+
+                        if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas'))) {
+                            // Fallback en caso de que alguna columna no esté presente en la BD
+                            if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
+                            if (updateRes.error.message?.includes('cantidad_llamadas')) delete updatePayload.cantidad_llamadas;
+                            updateRes = await (supabase as any)
+                                .from('llamadas')
+                                .update(updatePayload)
+                                .eq('id', existingInLlamadas.id);
+                        }
+
+                        if (updateRes.error) {
+                            console.error('Error al actualizar llamada:', updateRes.error);
+                        } else {
+                            updateCount++;
+                        }
                     } else {
-                        // Crear nueva ficha
-                        await (supabase as any)
+                        // Crear nueva ficha con su etiqueta y cantidad de llamadas inicial
+                        const parsedRaw = rawLlamadas ? parseInt(rawLlamadas) : null;
+                        const initialCalls = parsedRaw && !isNaN(parsedRaw) ? Math.max(1, parsedRaw) : 1;
+
+                        const insertPayload: Record<string, any> = {
+                            ...payload,
+                            etiqueta: calculatedEtiqueta,
+                            cantidad_llamadas: initialCalls,
+                        };
+
+                        let insertRes = await (supabase as any)
                             .from('llamadas')
-                            .insert(payload);
-                        insertCount++;
+                            .insert(insertPayload);
+
+                        if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas'))) {
+                            // Fallback en caso de que alguna columna no esté presente en la BD
+                            if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
+                            if (insertRes.error.message?.includes('cantidad_llamadas')) delete insertPayload.cantidad_llamadas;
+                            insertRes = await (supabase as any)
+                                .from('llamadas')
+                                .insert(insertPayload);
+                        }
+
+                        if (insertRes.error) {
+                            console.error('Error al insertar llamada:', insertRes.error);
+                        } else {
+                            if (isExisting) {
+                                updateCount++;
+                            } else {
+                                insertCount++;
+                            }
+                        }
                     }
                 }
 
@@ -1011,7 +1095,7 @@ export const importarLlamadasExcel = async (
                     return;
                 }
 
-                toast.success(`Importación finalizada: ${insertCount} nuevas y ${updateCount} actualizadas por teléfono`, { id: toastId });
+                toast.success(`Importación finalizada: ${insertCount} nuevos y ${updateCount} actualizados`, { id: toastId });
                 if (onSuccess) onSuccess();
             } catch (err: any) {
                 console.error(err);

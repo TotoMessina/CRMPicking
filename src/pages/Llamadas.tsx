@@ -19,6 +19,7 @@ const DEFAULT_FILTERS: Filters = {
     operador: '',
     rubro: '',
     respuesta: '',
+    etiqueta: '',
 };
 
 const Llamadas: React.FC = () => {

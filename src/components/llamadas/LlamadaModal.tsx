@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Database, FileText, User, Sparkles } from 'lucide-react';
+import { X, Database, FileText, User, Sparkles, RefreshCw } from 'lucide-react';
 import { Llamada, useCreateLlamada, useUpdateLlamada, findClientByPhone } from '../../hooks/useLlamadas';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -65,6 +65,8 @@ const EMPTY_FORM: Partial<Llamada> = {
     rubro: '', nombre_operador: '', respuesta_llamado: '',
     tiempo_llamado: '', siguio_redes: '',
     envio_whatsapp: null, completo_formulario: null, envio_listo: null,
+    etiqueta: null,
+    cantidad_llamadas: 1,
 };
 
 function SectionBlock({ color, icon: Icon, title, children }: {
@@ -304,9 +306,28 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                             position: 'sticky', top: 0, background: 'var(--bg-card)', zIndex: 2, borderRadius: '24px 24px 0 0',
                         }}>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)' }}>
-                                    {llamadaId ? 'Editar Ficha de Llamada' : 'Nueva Ficha de Llamada'}
-                                </h2>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)' }}>
+                                        {llamadaId ? 'Editar Ficha de Llamada' : 'Nueva Ficha de Llamada'}
+                                    </h2>
+                                    {form.etiqueta && (
+                                        <span style={{
+                                            fontSize: '0.72rem',
+                                            fontWeight: 700,
+                                            padding: '3px 9px',
+                                            borderRadius: '20px',
+                                            background: form.etiqueta.toLowerCase().includes('nuevo') ? 'rgba(16,185,129,0.12)' : 'rgba(59,130,246,0.12)',
+                                            color: form.etiqueta.toLowerCase().includes('nuevo') ? '#10b981' : '#3b82f6',
+                                            border: `1px solid ${form.etiqueta.toLowerCase().includes('nuevo') ? 'rgba(16,185,129,0.35)' : 'rgba(59,130,246,0.35)'}`,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                        }}>
+                                            {form.etiqueta.toLowerCase().includes('nuevo') ? <Sparkles size={11} /> : <RefreshCw size={11} />}
+                                            {form.etiqueta.toLowerCase().includes('nuevo') ? 'Cliente Nuevo' : 'Cliente Actualizado'}
+                                        </span>
+                                    )}
+                                </div>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                                     Completá los datos de la llamada
                                 </p>
@@ -456,6 +477,44 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             <select id="llamada-redes" style={inputSt} value={form.siguio_redes || ''} onChange={e => set('siguio_redes', e.target.value)}>
                                                 {REDES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                                             </select>
+                                        </Field>
+                                        <Field label="Cantidad de llamadas realizadas">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => set('cantidad_llamadas', Math.max(1, (Number(form.cantidad_llamadas) || 1) - 1))}
+                                                    style={{
+                                                        width: '38px', height: '38px', borderRadius: '10px',
+                                                        border: '1px solid var(--border)', background: 'var(--bg-elevated)',
+                                                        color: 'var(--text)', display: 'flex', alignItems: 'center',
+                                                        justifyContent: 'center', cursor: 'pointer', fontSize: '1.1rem',
+                                                        fontWeight: 700, flexShrink: 0,
+                                                    }}
+                                                >
+                                                    -
+                                                </button>
+                                                <input
+                                                    id="llamada-cantidad-llamadas"
+                                                    type="number"
+                                                    min="1"
+                                                    style={{ ...inputSt, textAlign: 'center', fontWeight: 700 }}
+                                                    value={form.cantidad_llamadas ?? 1}
+                                                    onChange={e => set('cantidad_llamadas', Math.max(1, parseInt(e.target.value) || 1))}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => set('cantidad_llamadas', (Number(form.cantidad_llamadas) || 1) + 1)}
+                                                    style={{
+                                                        width: '38px', height: '38px', borderRadius: '10px',
+                                                        border: '1px solid var(--border)', background: 'var(--bg-elevated)',
+                                                        color: 'var(--text)', display: 'flex', alignItems: 'center',
+                                                        justifyContent: 'center', cursor: 'pointer', fontSize: '1.1rem',
+                                                        fontWeight: 700, flexShrink: 0,
+                                                    }}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
                                         </Field>
                                     </div>
 
