@@ -73,7 +73,7 @@ const EMPTY_FORM: Partial<Llamada> = {
     tiempo_llamado: '', siguio_redes: '',
     envio_whatsapp: null, completo_formulario: null, envio_listo: null,
     etiqueta: null,
-    cantidad_llamadas: 1,
+    cantidad_llamadas: 0,
 };
 
 function SectionBlock({ color, icon: Icon, title, children }: {
@@ -494,7 +494,7 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <button
                                                     type="button"
-                                                    onClick={() => set('cantidad_llamadas', Math.max(1, (Number(form.cantidad_llamadas) || 1) - 1))}
+                                                    onClick={() => set('cantidad_llamadas', Math.max(0, (Number(form.cantidad_llamadas) || 0) - 1))}
                                                     style={{
                                                         width: '38px', height: '38px', borderRadius: '10px',
                                                         border: '1px solid var(--border)', background: 'var(--bg-elevated)',
@@ -508,14 +508,17 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                                 <input
                                                     id="llamada-cantidad-llamadas"
                                                     type="number"
-                                                    min="1"
+                                                    min="0"
                                                     style={{ ...inputSt, textAlign: 'center', fontWeight: 700 }}
-                                                    value={form.cantidad_llamadas ?? 1}
-                                                    onChange={e => set('cantidad_llamadas', Math.max(1, parseInt(e.target.value) || 1))}
+                                                    value={form.cantidad_llamadas ?? 0}
+                                                    onChange={e => {
+                                                        const val = parseInt(e.target.value);
+                                                        set('cantidad_llamadas', isNaN(val) ? 0 : Math.max(0, val));
+                                                    }}
                                                 />
                                                 <button
                                                     type="button"
-                                                    onClick={() => set('cantidad_llamadas', (Number(form.cantidad_llamadas) || 1) + 1)}
+                                                    onClick={() => set('cantidad_llamadas', (Number(form.cantidad_llamadas) || 0) + 1)}
                                                     style={{
                                                         width: '38px', height: '38px', borderRadius: '10px',
                                                         border: '1px solid var(--border)', background: 'var(--bg-elevated)',

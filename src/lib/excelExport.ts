@@ -706,7 +706,7 @@ export const descargarModeloLlamadas = () => {
             "Juan", "Pérez", "+54 11 2345-6789", "juan@ejemplo.com",
             "Av. Rivadavia 1234", "Morón", "Buenos Aires", "Kiosco Juan", "Dueño", "@kioscojuan",
             "Publicidad en instagram", "Kiosco / Almacén", "Operador 1", "Llamada Exitosa", "3 minutos",
-            "Sí", "Instagram", "Sí", "Sí", 1
+            "Sí", "Instagram", "Sí", "Sí", 0
         ];
         const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
         XLSX.utils.book_append_sheet(wb, ws, "Modelo Llamadas");
@@ -839,7 +839,7 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             "Siguió en Redes": l.siguio_redes || '',
             "Completó Formulario": l.completo_formulario ? 'Sí' : l.completo_formulario === false ? 'No' : '',
             "Envió Listo": l.envio_listo ? 'Sí' : l.envio_listo === false ? 'No' : '',
-            "Cantidad de Llamadas": l.cantidad_llamadas || 1,
+            "Cantidad de Llamadas": l.cantidad_llamadas ?? 0,
             "Etiqueta": l.etiqueta ? (l.etiqueta.toLowerCase() === 'cliente nuevo' ? 'Cliente Nuevo' : l.etiqueta.toLowerCase() === 'cliente actualizado' ? 'Cliente Actualizado' : l.etiqueta) : '',
             "Fecha Creación": l.created_at ? new Date(l.created_at).toLocaleString() : ''
         }));
@@ -1024,7 +1024,7 @@ export const importarLlamadasExcel = async (
 
                     if (existingInLlamadas) {
                         // Actualizar ficha existente e incrementar contador de llamadas
-                        const currentCalls = Number(existingInLlamadas.cantidad_llamadas) || 1;
+                        const currentCalls = Number(existingInLlamadas.cantidad_llamadas ?? 0);
                         const parsedRaw = rawLlamadas ? parseInt(rawLlamadas) : null;
                         const newCalls = parsedRaw && !isNaN(parsedRaw) ? parsedRaw : currentCalls + 1;
 
@@ -1062,9 +1062,9 @@ export const importarLlamadasExcel = async (
                             updateCount++;
                         }
                     } else {
-                        // Crear nueva ficha con su etiqueta y cantidad de llamadas inicial
+                        // Crear nueva ficha con su etiqueta y cantidad de llamadas inicial (default 0)
                         const parsedRaw = rawLlamadas ? parseInt(rawLlamadas) : null;
-                        const initialCalls = parsedRaw && !isNaN(parsedRaw) ? Math.max(1, parsedRaw) : 1;
+                        const initialCalls = parsedRaw !== null && !isNaN(parsedRaw) ? Math.max(0, parsedRaw) : 0;
 
                         const insertPayload: Record<string, any> = {
                             ...payload,

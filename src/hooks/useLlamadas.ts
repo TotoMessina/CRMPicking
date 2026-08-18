@@ -465,8 +465,8 @@ export function useIncrementLlamadaCount() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, delta = 1, currentCount = 1 }: { id: number; delta?: number; currentCount?: number }) => {
-            const nextCount = Math.max(1, (currentCount || 1) + delta);
+        mutationFn: async ({ id, delta = 1, currentCount = 0 }: { id: number; delta?: number; currentCount?: number }) => {
+            const nextCount = Math.max(0, (Number(currentCount) || 0) + delta);
 
             const updatePayload: Record<string, any> = {
                 cantidad_llamadas: nextCount,

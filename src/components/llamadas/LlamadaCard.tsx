@@ -130,7 +130,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
     const incrementMutation = useIncrementLlamadaCount();
     const fullName = [l.nombre, l.apellido].filter(Boolean).join(' ') || '—';
     const respuestaColor = l.respuesta_llamado ? RESPUESTA_COLORS[l.respuesta_llamado] || '#94a3b8' : '#94a3b8';
-    const callCount = Math.max(1, Number(l.cantidad_llamadas) || 1);
+    const callCount = Math.max(0, Number(l.cantidad_llamadas ?? 0));
 
     const normEtiqueta = (l.etiqueta || '').toLowerCase().trim();
     const etiquetaConfig = ETIQUETA_STYLES[normEtiqueta] || (normEtiqueta.includes('nuevo') ? ETIQUETA_STYLES['cliente nuevo'] : normEtiqueta.includes('actualiz') ? ETIQUETA_STYLES['cliente actualizado'] : null);
@@ -285,8 +285,8 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                         {callCount} {callCount === 1 ? 'llamada' : 'llamadas'}
                     </span>
 
-                    {/* Botón Decrementar (-) si es mayor a 1 */}
-                    {callCount > 1 && (
+                    {/* Botón Decrementar (-) si es mayor a 0 */}
+                    {callCount > 0 && (
                         <button
                             type="button"
                             id={`btn-dec-llamada-${l.id}`}
