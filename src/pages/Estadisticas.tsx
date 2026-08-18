@@ -28,6 +28,7 @@ import * as XLSX from 'xlsx';
 import { useTenant } from '../contexts/TenantContext';
 import { securityService } from '../lib/securityService';
 import { ForecastingRadar } from '../components/stats/ForecastingRadar';
+import { LlamadasStats } from '../components/stats/LlamadasStats';
 
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip, Legend, Filler);
@@ -380,6 +381,30 @@ const Estadisticas: React.FC = () => {
                         gap: '8px',
                         border: 'none',
                         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        background: currentTab === 'tabLlamadas' ? STATS_THEME.colors.primary : 'transparent', 
+                        color: currentTab === 'tabLlamadas' ? '#fff' : 'var(--text-muted)',
+                        boxShadow: currentTab === 'tabLlamadas' ? '0 10px 20px -10px rgba(79, 70, 229, 0.4)' : 'none'
+                    }}
+                    onClick={() => setCurrentTab('tabLlamadas')}
+                >
+                    <span style={{ fontSize: '1.1rem' }}>📞</span> Llamadas & Contactos
+                </button>
+                <button
+                    style={{ 
+                        flex: 1, 
+                        minWidth: '120px',
+                        padding: '10px 16px', 
+                        textAlign: 'center', 
+                        borderRadius: '12px', 
+                        cursor: 'pointer', 
+                        fontWeight: 600, 
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        border: 'none',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                         background: currentTab === 'tabForecasting' ? STATS_THEME.colors.primary : 'transparent', 
                         color: currentTab === 'tabForecasting' ? '#fff' : 'var(--text-muted)',
                         boxShadow: currentTab === 'tabForecasting' ? '0 10px 20px -10px rgba(79, 70, 229, 0.4)' : 'none'
@@ -482,6 +507,12 @@ const Estadisticas: React.FC = () => {
                         chartsData={chartsData}
                         filterActivator={Array.isArray(filterActivator) ? filterActivator : (filterActivator ? [filterActivator as string] : [])} 
                     />
+                </ErrorBoundary>
+            )}
+
+            {currentTab === 'tabLlamadas' && (
+                <ErrorBoundary>
+                    <LlamadasStats dateFrom={dateFrom} dateTo={dateTo} />
                 </ErrorBoundary>
             )}
 
