@@ -20,6 +20,7 @@ const DEFAULT_FILTERS: Filters = {
     rubro: '',
     respuesta: '',
     etiqueta: '',
+    origen_contacto: '',
 };
 
 const Llamadas: React.FC = () => {

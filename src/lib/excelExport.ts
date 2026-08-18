@@ -699,13 +699,13 @@ export const descargarModeloLlamadas = () => {
         const headers = [
             "nombre", "apellido", "telefono", "mail",
             "direccion", "localidad", "provincia", "nombre_comercio", "rol_contacto", "instagram",
-            "rubro", "nombre_operador", "respuesta_llamado", "tiempo_llamado",
+            "origen_contacto", "rubro", "nombre_operador", "respuesta_llamado", "tiempo_llamado",
             "envio_whatsapp", "siguio_redes", "completo_formulario", "envio_listo", "cantidad_llamadas"
         ];
         const sampleRow = [
             "Juan", "Pérez", "+54 11 2345-6789", "juan@ejemplo.com",
             "Av. Rivadavia 1234", "Morón", "Buenos Aires", "Kiosco Juan", "Dueño", "@kioscojuan",
-            "Kiosco / Almacén", "Operador 1", "Llamada Exitosa", "3 minutos",
+            "Publicidad en instagram", "Kiosco / Almacén", "Operador 1", "Llamada Exitosa", "3 minutos",
             "Sí", "Instagram", "Sí", "Sí", 1
         ];
         const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
@@ -793,6 +793,9 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             if (filters.etiqueta) {
                 query = query.eq('etiqueta', filters.etiqueta);
             }
+            if (filters.origen_contacto) {
+                query = query.eq('origen_contacto', filters.origen_contacto);
+            }
 
             const { data, error } = await query;
             if (error) throw error;
@@ -827,6 +830,7 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             "Nombre del Comercio": l.nombre_comercio || '',
             "Rol Contacto": l.rol_contacto || '',
             "Instagram": l.instagram || '',
+            "Cómo llegaron a la BD": l.origen_contacto || '',
             "Rubro": l.rubro || '',
             "Operador": l.nombre_operador || '',
             "Respuesta del Llamado": l.respuesta_llamado || '',
@@ -924,6 +928,7 @@ export const importarLlamadasExcel = async (
                     const nombre_comercio = getVal(row, "nombre_comercio", "Nombre del Comercio", "comercio", "Comercio");
                     const rol_contacto = getVal(row, "rol_contacto", "Rol Contacto", "Dueño/Empleado", "rol");
                     const instagram = getVal(row, "instagram", "Instagram", "IG");
+                    const origen_contacto = getVal(row, "origen_contacto", "Cómo llegaron a la BD", "Como llegaron a la BD", "origen", "Origen", "como_llegaron", "Como llegaron", "como_nos_conocio", "Como nos conocio");
                     const rubro = getVal(row, "rubro", "Rubro");
                     const nombre_operador = getVal(row, "nombre_operador", "Operador", "Nombre del Operador");
                     const respuesta_llamado = getVal(row, "respuesta_llamado", "Respuesta del Llamado", "respuesta", "Respuesta");
@@ -950,6 +955,7 @@ export const importarLlamadasExcel = async (
                         nombre_comercio: nombre_comercio ? String(nombre_comercio).trim() : null,
                         rol_contacto: rol_contacto ? String(rol_contacto).trim() : null,
                         instagram: instagram ? String(instagram).trim() : null,
+                        origen_contacto: origen_contacto ? String(origen_contacto).trim() : null,
                         rubro: rubro ? String(rubro).trim() : null,
                         nombre_operador: nombre_operador ? String(nombre_operador).trim() : null,
                         respuesta_llamado: respuesta_llamado ? String(respuesta_llamado).trim() : null,
@@ -1039,10 +1045,11 @@ export const importarLlamadasExcel = async (
                             .update(updatePayload)
                             .eq('id', existingInLlamadas.id);
 
-                        if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas'))) {
+                        if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas') || updateRes.error.message?.includes('origen_contacto'))) {
                             // Fallback en caso de que alguna columna no esté presente en la BD
                             if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
                             if (updateRes.error.message?.includes('cantidad_llamadas')) delete updatePayload.cantidad_llamadas;
+                            if (updateRes.error.message?.includes('origen_contacto')) delete updatePayload.origen_contacto;
                             updateRes = await (supabase as any)
                                 .from('llamadas')
                                 .update(updatePayload)
@@ -1069,10 +1076,11 @@ export const importarLlamadasExcel = async (
                             .from('llamadas')
                             .insert(insertPayload);
 
-                        if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas'))) {
+                        if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas') || insertRes.error.message?.includes('origen_contacto'))) {
                             // Fallback en caso de que alguna columna no esté presente en la BD
                             if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
                             if (insertRes.error.message?.includes('cantidad_llamadas')) delete insertPayload.cantidad_llamadas;
+                            if (insertRes.error.message?.includes('origen_contacto')) delete insertPayload.origen_contacto;
                             insertRes = await (supabase as any)
                                 .from('llamadas')
                                 .insert(insertPayload);

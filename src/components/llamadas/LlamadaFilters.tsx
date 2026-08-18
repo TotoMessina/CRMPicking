@@ -29,6 +29,13 @@ const ETIQUETAS = [
     { value: 'cliente actualizado', label: '🔄 Cliente Actualizado' },
 ];
 
+const ORIGENES_CONTACTO = [
+    { value: '', label: 'Todos los orígenes' },
+    { value: 'Me contactaron por llamada', label: 'Me contactaron por llamada' },
+    { value: 'Publicidad en instagram', label: 'Publicidad en instagram' },
+    { value: 'Ya conocia Instalshop', label: 'Ya conocia Instalshop' },
+];
+
 interface Props {
     filters: Filters;
     updateFilter: (key: keyof Filters, value: string) => void;
@@ -126,7 +133,7 @@ export function LlamadaFilters({ filters, updateFilter }: Props) {
             </div>
 
             {/* Etiqueta (Nuevo / Actualizado) */}
-            <div style={{ flex: '1 1 180px', minWidth: '150px' }}>
+            <div style={{ flex: '1 1 170px', minWidth: '140px' }}>
                 <select
                     id="llamadas-filter-etiqueta"
                     value={filters.etiqueta || ''}
@@ -139,8 +146,22 @@ export function LlamadaFilters({ filters, updateFilter }: Props) {
                 </select>
             </div>
 
+            {/* Origen de Contacto (Cómo llegaron) */}
+            <div style={{ flex: '1 1 200px', minWidth: '160px' }}>
+                <select
+                    id="llamadas-filter-origen"
+                    value={filters.origen_contacto || ''}
+                    onChange={e => updateFilter('origen_contacto', e.target.value)}
+                    style={inputStyle}
+                >
+                    {ORIGENES_CONTACTO.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                </select>
+            </div>
+
             {/* Reset */}
-            {(filters.busqueda || filters.operador || filters.rubro || filters.respuesta || filters.etiqueta) && (
+            {(filters.busqueda || filters.operador || filters.rubro || filters.respuesta || filters.etiqueta || filters.origen_contacto) && (
                 <button
                     onClick={() => {
                         updateFilter('busqueda', '');
@@ -148,6 +169,7 @@ export function LlamadaFilters({ filters, updateFilter }: Props) {
                         updateFilter('rubro', '');
                         updateFilter('respuesta', '');
                         updateFilter('etiqueta', '');
+                        updateFilter('origen_contacto', '');
                     }}
                     style={{
                         padding: '9px 16px',

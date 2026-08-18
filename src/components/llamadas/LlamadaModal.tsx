@@ -57,11 +57,18 @@ const ROLES_CONTACTO = [
     { value: 'otro', label: 'Otro' },
 ];
 
+const ORIGENES_CONTACTO = [
+    { value: '', label: 'Seleccionar...' },
+    { value: 'Me contactaron por llamada', label: 'Me contactaron por llamada' },
+    { value: 'Publicidad en instagram', label: 'Publicidad en instagram' },
+    { value: 'Ya conocia Instalshop', label: 'Ya conocia Instalshop' },
+];
+
 // ── Helpers ───────────────────────────────────────────────
 const EMPTY_FORM: Partial<Llamada> = {
     nombre: '', apellido: '', telefono: '', mail: '',
     direccion: '', localidad: '', provincia: '', nombre_comercio: '',
-    rol_contacto: '', instagram: '',
+    rol_contacto: '', instagram: '', origen_contacto: '',
     rubro: '', nombre_operador: '', respuesta_llamado: '',
     tiempo_llamado: '', siguio_redes: '',
     envio_whatsapp: null, completo_formulario: null, envio_listo: null,
@@ -429,12 +436,17 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             </select>
                                         </Field>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 14px' }}>
                                         <Field label="Nombre del Comercio">
                                             <input id="llamada-nombre-comercio" style={inputSt} value={form.nombre_comercio || ''} onChange={e => set('nombre_comercio', e.target.value)} placeholder="Nombre del comercio..." />
                                         </Field>
                                         <Field label="Instagram (Negocio o Personal)">
                                             <input id="llamada-instagram" style={inputSt} value={form.instagram || ''} onChange={e => set('instagram', e.target.value)} placeholder="@usuario..." />
+                                        </Field>
+                                        <Field label="Cómo llegaron a la BD">
+                                            <select id="llamada-origen-contacto" style={inputSt} value={form.origen_contacto || ''} onChange={e => set('origen_contacto', e.target.value)}>
+                                                {ORIGENES_CONTACTO.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                            </select>
                                         </Field>
                                     </div>
                                 </SectionBlock>

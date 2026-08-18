@@ -18,6 +18,7 @@ export interface Llamada {
     nombre_comercio: string | null;
     rol_contacto: string | null;
     instagram: string | null;
+    origen_contacto?: string | null;
     // 🟠 OPERADOR
     rubro: string | null;
     nombre_operador: string | null;
@@ -39,6 +40,7 @@ export interface LlamadaFilters {
     rubro: string;
     respuesta: string;
     etiqueta?: string;
+    origen_contacto?: string;
 }
 
 export interface UseLlamadasParams {
@@ -306,6 +308,9 @@ export function useLlamadas({ empresaId, page, pageSize, filters, sortBy = 'crea
             }
             if (filters.etiqueta) {
                 query = query.eq('etiqueta', filters.etiqueta);
+            }
+            if (filters.origen_contacto) {
+                query = query.eq('origen_contacto', filters.origen_contacto);
             }
 
             query = query.range((page - 1) * pageSize, page * pageSize - 1);

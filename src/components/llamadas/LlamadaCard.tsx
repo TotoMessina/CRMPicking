@@ -1,6 +1,6 @@
 import React from 'react';
 import { Llamada, useIncrementLlamadaCount } from '../../hooks/useLlamadas';
-import { Pencil, Trash2, Phone, Mail, MapPin, Store, User, Clock, MessageCircle, Instagram, Facebook, CheckCircle2, XCircle, FileText, Sparkles, RefreshCw, PhoneCall, Plus, Minus } from 'lucide-react';
+import { Pencil, Trash2, Phone, Mail, MapPin, Store, User, Clock, MessageCircle, Instagram, Facebook, CheckCircle2, XCircle, FileText, Sparkles, RefreshCw, PhoneCall, Plus, Minus, Compass } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // ── Color tokens ──────────────────────────────────────────
@@ -225,7 +225,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                 </div>
 
                 {/* 🟢 FORMULARIO */}
-                {(l.direccion || l.localidad || l.provincia || l.nombre_comercio || l.rol_contacto || l.instagram) && (
+                {(l.direccion || l.localidad || l.provincia || l.nombre_comercio || l.rol_contacto || l.instagram || l.origen_contacto) && (
                     <div style={{ border: `1px solid ${COLOR_FORMS.border}`, borderRadius: '12px', overflow: 'hidden', background: COLOR_FORMS.bg }}>
                         <SectionHeader color={COLOR_FORMS} label="Formulario" />
                         <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -235,6 +235,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                             <InfoRow icon={Store} label="Comercio" value={l.nombre_comercio} color={COLOR_FORMS.text} />
                             <InfoRow icon={User} label="Rol" value={l.rol_contacto} color={COLOR_FORMS.text} />
                             <InfoRow icon={Instagram} label="Instagram" value={l.instagram} color={COLOR_FORMS.text} />
+                            <InfoRow icon={Compass} label="Origen BD" value={l.origen_contacto} color={COLOR_FORMS.text} />
                         </div>
                     </div>
                 )}
