@@ -30,6 +30,7 @@ export interface Llamada {
     envio_listo: boolean | null;
     etiqueta?: string | null;
     cantidad_llamadas?: number | null;
+    fecha_ultima_llamada?: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -280,6 +281,12 @@ export function useLlamadas({ empresaId, page, pageSize = 24, filters, sortBy = 
                 case 'operador_asc':
                     query = query.order('nombre_operador', { ascending: true, nullsFirst: false });
                     break;
+                case 'fecha_llamada_desc':
+                    query = query.order('fecha_ultima_llamada', { ascending: false, nullsLast: true });
+                    break;
+                case 'fecha_llamada_asc':
+                    query = query.order('fecha_ultima_llamada', { ascending: true, nullsLast: true });
+                    break;
                 case 'created_desc':
                 default:
                     query = query.order('created_at', { ascending: false });
@@ -409,11 +416,20 @@ export function useCreateLlamada() {
             }
 
             const calculatedEtiqueta = data.etiqueta || (isExistingClient ? 'cliente actualizado' : 'cliente nuevo');
+            const hasCallActivity = (data.cantidad_llamadas && data.cantidad_llamadas > 0) || (data.respuesta_llamado && data.respuesta_llamado.trim() !== '');
 
             let result: any;
             if (existing) {
                 // Actualizar ficha existente
-                const updatePayload = { ...data, etiqueta: calculatedEtiqueta, updated_at: new Date().toISOString() };
+                const updatePayload: Record<string, any> = {
+                    ...data,
+                    etiqueta: calculatedEtiqueta,
+                    updated_at: new Date().toISOString()
+                };
+                if (hasCallActivity && !data.fecha_ultima_llamada) {
+                    updatePayload.fecha_ultima_llamada = new Date().toISOString();
+                }
+
                 let updateRes = await (supabase as any)
                     .from('llamadas')
                     .update(updatePayload)
@@ -421,9 +437,10 @@ export function useCreateLlamada() {
                     .select()
                     .single();
 
-                if (updateRes.error && updateRes.error.message?.includes('etiqueta')) {
+                if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('fecha_ultima_llamada'))) {
                     // Fallback si la columna no existe aún en la base de datos
-                    delete (updatePayload as any).etiqueta;
+                    if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
+                    if (updateRes.error.message?.includes('fecha_ultima_llamada')) delete updatePayload.fecha_ultima_llamada;
                     updateRes = await (supabase as any)
                         .from('llamadas')
                         .update(updatePayload)
@@ -437,16 +454,25 @@ export function useCreateLlamada() {
                 toast.success('Ficha existente actualizada por teléfono');
             } else {
                 // Crear nueva ficha
-                const insertPayload = { ...data, etiqueta: calculatedEtiqueta, empresa_id: empresaActiva.id };
+                const insertPayload: Record<string, any> = {
+                    ...data,
+                    etiqueta: calculatedEtiqueta,
+                    empresa_id: empresaActiva.id
+                };
+                if (hasCallActivity && !data.fecha_ultima_llamada) {
+                    insertPayload.fecha_ultima_llamada = new Date().toISOString();
+                }
+
                 let insertRes = await (supabase as any)
                     .from('llamadas')
                     .insert(insertPayload)
                     .select()
                     .single();
 
-                if (insertRes.error && insertRes.error.message?.includes('etiqueta')) {
+                if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('fecha_ultima_llamada'))) {
                     // Fallback si la columna no existe aún en la base de datos
-                    delete (insertPayload as any).etiqueta;
+                    if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
+                    if (insertRes.error.message?.includes('fecha_ultima_llamada')) delete insertPayload.fecha_ultima_llamada;
                     insertRes = await (supabase as any)
                         .from('llamadas')
                         .insert(insertPayload)
@@ -484,7 +510,16 @@ export function useUpdateLlamada() {
         mutationFn: async ({ id, data }: { id: number; data: Partial<Llamada> }) => {
             if (!empresaActiva?.id) throw new Error('No hay empresa activa');
 
-            const payload = { ...data, updated_at: new Date().toISOString() };
+            const hasCallActivity = (data.cantidad_llamadas && data.cantidad_llamadas > 0) || (data.respuesta_llamado && data.respuesta_llamado.trim() !== '');
+
+            const payload: Record<string, any> = {
+                ...data,
+                updated_at: new Date().toISOString()
+            };
+            if (hasCallActivity && !data.fecha_ultima_llamada) {
+                payload.fecha_ultima_llamada = new Date().toISOString();
+            }
+
             let res = await (supabase as any)
                 .from('llamadas')
                 .update(payload)
@@ -493,9 +528,10 @@ export function useUpdateLlamada() {
                 .select()
                 .single();
 
-            if (res.error && res.error.message?.includes('etiqueta')) {
+            if (res.error && (res.error.message?.includes('etiqueta') || res.error.message?.includes('fecha_ultima_llamada'))) {
                 // Fallback si la columna no existe aún
-                delete (payload as any).etiqueta;
+                if (res.error.message?.includes('etiqueta')) delete payload.etiqueta;
+                if (res.error.message?.includes('fecha_ultima_llamada')) delete payload.fecha_ultima_llamada;
                 res = await (supabase as any)
                     .from('llamadas')
                     .update(payload)
@@ -534,16 +570,35 @@ export function useIncrementLlamadaCount() {
             if (!empresaActiva?.id) throw new Error('No hay empresa activa');
 
             const newCount = Math.max(0, currentCount + delta);
-            const { data, error } = await (supabase as any)
+            const updatePayload: Record<string, any> = { 
+                cantidad_llamadas: newCount,
+                updated_at: new Date().toISOString()
+            };
+            if (delta > 0) {
+                updatePayload.fecha_ultima_llamada = new Date().toISOString();
+            }
+
+            let { data, error } = await (supabase as any)
                 .from('llamadas')
-                .update({ 
-                    cantidad_llamadas: newCount,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updatePayload)
                 .eq('id', id)
                 .eq('empresa_id', empresaActiva.id)
                 .select()
                 .single();
+
+            if (error && error.message?.includes('fecha_ultima_llamada')) {
+                // Fallback si la columna aún no está creada en la base de datos
+                delete updatePayload.fecha_ultima_llamada;
+                const fallbackRes = await (supabase as any)
+                    .from('llamadas')
+                    .update(updatePayload)
+                    .eq('id', id)
+                    .eq('empresa_id', empresaActiva.id)
+                    .select()
+                    .single();
+                data = fallbackRes.data;
+                error = fallbackRes.error;
+            }
 
             if (error) throw error;
             return data;

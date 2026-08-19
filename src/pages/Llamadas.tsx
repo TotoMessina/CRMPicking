@@ -198,6 +198,8 @@ const Llamadas: React.FC = () => {
                             }}
                         >
                             <option value="updated_desc">🕒 Última modificación (Más reciente)</option>
+                            <option value="fecha_llamada_desc">📞 Fecha de llamada (Más reciente)</option>
+                            <option value="fecha_llamada_asc">📞 Fecha de llamada (Más antigua)</option>
                             <option value="updated_asc">🕒 Última modificación (Más antigua)</option>
                             <option value="llamadas_desc">📞 Mayor cantidad de llamadas</option>
                             <option value="llamadas_asc">📞 Menor cantidad de llamadas</option>

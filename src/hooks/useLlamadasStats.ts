@@ -231,25 +231,29 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                 if (r.envio_listo) listoCount++;
                 if (r.siguio_redes && r.siguio_redes !== 'no') redesCount++;
 
-                // Agrupación por día
-                const dStr = r.updated_at || r.created_at;
-                const dateKey = dStr ? dStr.substring(0, 10) : new Date().toISOString().substring(0, 10);
-                if (!diasMap[dateKey]) {
-                    diasMap[dateKey] = { creados: 0, modificados: 0, totalLlamadas: 0, contactosAtendidos: 0, exitosas: 0 };
-                }
-                if (hasTimeDiff || calls > 0) diasMap[dateKey].modificados += 1;
-                else diasMap[dateKey].creados += 1;
-
-                // Solo sumar llamadas reales
-                diasMap[dateKey].totalLlamadas += calls;
-
-                // Contactos atendidos por día: SOLO si efectivamente tuvieron al menos 1 llamada o respuesta activa
-                if (hasBeenCalled) {
-                    diasMap[dateKey].contactosAtendidos += 1;
+                // Agrupación de actividad de llamadas usando fecha_ultima_llamada real
+                const callDateStr = r.fecha_ultima_llamada || (hasBeenCalled ? (r.updated_at || r.created_at) : null);
+                if (callDateStr && hasBeenCalled) {
+                    const callDateKey = callDateStr.substring(0, 10);
+                    if (!diasMap[callDateKey]) {
+                        diasMap[callDateKey] = { creados: 0, modificados: 0, totalLlamadas: 0, contactosAtendidos: 0, exitosas: 0 };
+                    }
+                    diasMap[callDateKey].totalLlamadas += calls;
+                    diasMap[callDateKey].contactosAtendidos += 1;
+                    if (respKey === 'exitosa') {
+                        diasMap[callDateKey].exitosas += 1;
+                    }
                 }
 
-                if (respKey === 'exitosa') {
-                    diasMap[dateKey].exitosas += 1;
+                // Agrupación de altas y modificaciones en base de datos
+                const modDateStr = r.updated_at || r.created_at;
+                if (modDateStr) {
+                    const modDateKey = modDateStr.substring(0, 10);
+                    if (!diasMap[modDateKey]) {
+                        diasMap[modDateKey] = { creados: 0, modificados: 0, totalLlamadas: 0, contactosAtendidos: 0, exitosas: 0 };
+                    }
+                    if (hasTimeDiff || calls > 0) diasMap[modDateKey].modificados += 1;
+                    else diasMap[modDateKey].creados += 1;
                 }
             }
 

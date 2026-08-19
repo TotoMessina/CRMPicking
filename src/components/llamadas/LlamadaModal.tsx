@@ -74,6 +74,7 @@ const EMPTY_FORM: Partial<Llamada> = {
     envio_whatsapp: null, completo_formulario: null, envio_listo: null,
     etiqueta: null,
     cantidad_llamadas: 0,
+    fecha_ultima_llamada: null,
 };
 
 function SectionBlock({ color, icon: Icon, title, children }: {
@@ -530,6 +531,29 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                                     +
                                                 </button>
                                             </div>
+                                        </Field>
+                                        <Field label="Fecha y hora de la llamada">
+                                            <input
+                                                id="llamada-fecha-llamada"
+                                                type="datetime-local"
+                                                style={inputSt}
+                                                value={form.fecha_ultima_llamada ? (() => {
+                                                    try {
+                                                        const d = new Date(form.fecha_ultima_llamada);
+                                                        if (isNaN(d.getTime())) return '';
+                                                        const tzOffset = d.getTimezoneOffset() * 60000;
+                                                        const localISOTime = (new Date(d.getTime() - tzOffset)).toISOString().slice(0, 16);
+                                                        return localISOTime;
+                                                    } catch { return ''; }
+                                                })() : ''}
+                                                onChange={e => {
+                                                    if (!e.target.value) {
+                                                        set('fecha_ultima_llamada', null);
+                                                    } else {
+                                                        set('fecha_ultima_llamada', new Date(e.target.value).toISOString());
+                                                    }
+                                                }}
+                                            />
                                         </Field>
                                     </div>
 

@@ -700,13 +700,13 @@ export const descargarModeloLlamadas = () => {
             "nombre", "apellido", "telefono", "mail",
             "direccion", "localidad", "provincia", "nombre_comercio", "rol_contacto", "instagram",
             "origen_contacto", "rubro", "nombre_operador", "respuesta_llamado", "tiempo_llamado",
-            "envio_whatsapp", "siguio_redes", "completo_formulario", "envio_listo", "cantidad_llamadas"
+            "envio_whatsapp", "siguio_redes", "completo_formulario", "envio_listo", "cantidad_llamadas", "fecha_ultima_llamada"
         ];
         const sampleRow = [
             "Juan", "Pérez", "+54 11 2345-6789", "juan@ejemplo.com",
             "Av. Rivadavia 1234", "Morón", "Buenos Aires", "Kiosco Juan", "Dueño", "@kioscojuan",
             "Publicidad en instagram", "Kiosco / Almacén", "Operador 1", "Llamada Exitosa", "3 minutos",
-            "Sí", "Instagram", "Sí", "Sí", 0
+            "Sí", "Instagram", "Sí", "Sí", 0, "2026-08-18 15:30"
         ];
         const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
         XLSX.utils.book_append_sheet(wb, ws, "Modelo Llamadas");
@@ -840,6 +840,7 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             "Completó Formulario": l.completo_formulario ? 'Sí' : l.completo_formulario === false ? 'No' : '',
             "Envió Listo": l.envio_listo ? 'Sí' : l.envio_listo === false ? 'No' : '',
             "Cantidad de Llamadas": l.cantidad_llamadas ?? 0,
+            "Fecha Última Llamada": l.fecha_ultima_llamada ? new Date(l.fecha_ultima_llamada).toLocaleString() : '',
             "Etiqueta": l.etiqueta ? (l.etiqueta.toLowerCase() === 'cliente nuevo' ? 'Cliente Nuevo' : l.etiqueta.toLowerCase() === 'cliente actualizado' ? 'Cliente Actualizado' : l.etiqueta) : '',
             "Fecha Creación": l.created_at ? new Date(l.created_at).toLocaleString() : ''
         }));
@@ -938,6 +939,18 @@ export const importarLlamadasExcel = async (
                     const completo_formulario = parseBool(getVal(row, "completo_formulario", "Completó Formulario", "Completo Formulario", "formulario"));
                     const envio_listo = parseBool(getVal(row, "envio_listo", "Envió Listo", "Envio Listo", "listo"));
                     const rawLlamadas = getVal(row, "cantidad_llamadas", "Cantidad de Llamadas", "llamadas", "Llamadas", "intentos", "Intentos");
+                    const rawFechaLlamada = getVal(row, "fecha_ultima_llamada", "Fecha de Llamada", "Fecha Llamada", "Fecha de llamada", "Fecha Llamado", "fecha_llamada", "fecha");
+
+                    let fechaLlamadaIso: string | null = null;
+                    if (rawFechaLlamada) {
+                        if (typeof rawFechaLlamada === 'string') {
+                            const d = new Date(rawFechaLlamada);
+                            if (!isNaN(d.getTime())) fechaLlamadaIso = d.toISOString();
+                        } else if (typeof rawFechaLlamada === 'number') {
+                            const d = new Date((rawFechaLlamada - 25569) * 86400 * 1000);
+                            if (!isNaN(d.getTime())) fechaLlamadaIso = d.toISOString();
+                        }
+                    }
 
                     if (!telefono && !nombre && !nombre_comercio) continue;
 
@@ -1033,6 +1046,10 @@ export const importarLlamadasExcel = async (
                             cantidad_llamadas: newCalls,
                             updated_at: new Date().toISOString()
                         };
+                        if (fechaLlamadaIso) {
+                            updatePayload.fecha_ultima_llamada = fechaLlamadaIso;
+                        }
+
                         for (const [key, value] of Object.entries(payload)) {
                             if (key === 'empresa_id') continue;
                             if (value !== null && value !== undefined && value !== '') {
@@ -1045,11 +1062,12 @@ export const importarLlamadasExcel = async (
                             .update(updatePayload)
                             .eq('id', existingInLlamadas.id);
 
-                        if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas') || updateRes.error.message?.includes('origen_contacto'))) {
+                        if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas') || updateRes.error.message?.includes('origen_contacto') || updateRes.error.message?.includes('fecha_ultima_llamada'))) {
                             // Fallback en caso de que alguna columna no esté presente en la BD
                             if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
                             if (updateRes.error.message?.includes('cantidad_llamadas')) delete updatePayload.cantidad_llamadas;
                             if (updateRes.error.message?.includes('origen_contacto')) delete updatePayload.origen_contacto;
+                            if (updateRes.error.message?.includes('fecha_ultima_llamada')) delete updatePayload.fecha_ultima_llamada;
                             updateRes = await (supabase as any)
                                 .from('llamadas')
                                 .update(updatePayload)
@@ -1071,16 +1089,20 @@ export const importarLlamadasExcel = async (
                             etiqueta: calculatedEtiqueta,
                             cantidad_llamadas: initialCalls,
                         };
+                        if (fechaLlamadaIso) {
+                            insertPayload.fecha_ultima_llamada = fechaLlamadaIso;
+                        }
 
                         let insertRes = await (supabase as any)
                             .from('llamadas')
                             .insert(insertPayload);
 
-                        if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas') || insertRes.error.message?.includes('origen_contacto'))) {
+                        if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas') || insertRes.error.message?.includes('origen_contacto') || insertRes.error.message?.includes('fecha_ultima_llamada'))) {
                             // Fallback en caso de que alguna columna no esté presente en la BD
                             if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
                             if (insertRes.error.message?.includes('cantidad_llamadas')) delete insertPayload.cantidad_llamadas;
                             if (insertRes.error.message?.includes('origen_contacto')) delete insertPayload.origen_contacto;
+                            if (insertRes.error.message?.includes('fecha_ultima_llamada')) delete insertPayload.fecha_ultima_llamada;
                             insertRes = await (supabase as any)
                                 .from('llamadas')
                                 .insert(insertPayload);

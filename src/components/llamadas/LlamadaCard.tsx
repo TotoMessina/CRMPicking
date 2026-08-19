@@ -180,8 +180,14 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                                 <User size={11} /> {l.nombre_operador}
                             </span>
                         )}
+                        {l.fecha_ultima_llamada && (
+                            <span style={{ fontSize: '0.73rem', color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }} title="Fecha en que se realizó la llamada">
+                                <PhoneCall size={11} />
+                                {new Date(l.fecha_ultima_llamada).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        )}
                         {(l.updated_at || l.created_at) && (
-                            <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }} title={`Creado: ${l.created_at ? new Date(l.created_at).toLocaleString() : '—'}`}>
+                            <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }} title={`Creado: ${l.created_at ? new Date(l.created_at).toLocaleString() : '—'} | Modificado: ${l.updated_at ? new Date(l.updated_at).toLocaleString() : '—'}`}>
                                 <Clock size={11} style={{ opacity: 0.6 }} />
                                 {new Date(l.updated_at || l.created_at).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                             </span>
