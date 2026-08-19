@@ -3,7 +3,7 @@ import { useLlamadasStats } from '../../hooks/useLlamadasStats';
 import {
     PhoneCall, Users, CheckCircle2, RefreshCw, Sparkles,
     MessageCircle, FileText, User, Compass, Clock, Search,
-    TrendingUp, Store, ChevronRight, Activity, Calendar, AlertCircle
+    TrendingUp, Store, ChevronRight, Activity, Calendar, AlertCircle, BarChart3, Award, PhoneMissed
 } from 'lucide-react';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
 import { motion } from 'framer-motion';
@@ -94,6 +94,47 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
         );
     }
 
+    // Chart: Llamadas Realizadas por Día (Mixto: Barras de Llamadas + Línea de Contactos)
+    const llamadasPorDiaChartData: any = {
+        labels: stats.llamadasPorDia.labels,
+        datasets: [
+            {
+                type: 'bar' as const,
+                label: 'Llamadas / Intentos Realizados',
+                data: stats.llamadasPorDia.totalLlamadas,
+                backgroundColor: 'rgba(59, 130, 246, 0.85)',
+                hoverBackgroundColor: '#2563eb',
+                borderRadius: 8,
+                order: 2,
+            },
+            {
+                type: 'bar' as const,
+                label: 'Llamadas Exitosas',
+                data: stats.llamadasPorDia.llamadasExitosas,
+                backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                hoverBackgroundColor: '#059669',
+                borderRadius: 8,
+                order: 3,
+            },
+            {
+                type: 'line' as const,
+                label: 'Contactos Llamados',
+                data: stats.llamadasPorDia.contactosAtendidos,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                borderWidth: 3,
+                pointBackgroundColor: '#f59e0b',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: false,
+                tension: 0.35,
+                order: 1,
+            }
+        ]
+    };
+
     // Chart: Respuestas
     const respuestasChartData = {
         labels: stats.respuestas.map(r => r.label),
@@ -127,8 +168,8 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                 borderRadius: 8,
             },
             {
-                label: 'Fichas Atendidas',
-                data: stats.operadores.map(o => o.totalFichas),
+                label: 'Contactos Llamados',
+                data: stats.operadores.map(o => o.contactosLlamados),
                 backgroundColor: 'rgba(16, 185, 129, 0.85)',
                 borderRadius: 8,
             },
@@ -154,7 +195,7 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                 tension: 0.35,
             },
             {
-                label: 'Nuevos Contactos',
+                label: 'Nuevos Contactos en BD',
                 data: stats.evolucionDiaria.creados,
                 borderColor: '#10b981',
                 backgroundColor: 'rgba(16, 185, 129, 0.15)',
@@ -167,6 +208,44 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom' as const,
+                labels: {
+                    boxWidth: 12,
+                    padding: 14,
+                    color: '#94a3b8',
+                    font: { size: 11, weight: 600 as const }
+                }
+            }
+        }
+    };
+
+    const barOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    precision: 0,
+                    color: '#94a3b8',
+                    font: { size: 11, weight: 600 as const }
+                },
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.05)'
+                }
+            },
+            x: {
+                ticks: {
+                    color: '#94a3b8',
+                    font: { size: 11, weight: 600 as const }
+                },
+                grid: {
+                    display: false
+                }
+            }
+        },
         plugins: {
             legend: {
                 position: 'bottom' as const,
@@ -198,7 +277,7 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', color: 'var(--text)' }}>
                     <Calendar size={16} style={{ color: 'var(--accent)' }} />
                     <span>
-                        Mostrando: <strong>{useDateFilter ? 'Período seleccionado en filtros' : `Todo el histórico (${stats.totalHistorico} fichas)`}</strong>
+                        Mostrando: <strong>{useDateFilter ? 'Período seleccionado en filtros' : `Todo el histórico (${stats.totalHistorico} fichas en BD)`}</strong>
                     </span>
                 </div>
 
@@ -239,7 +318,7 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
             {/* ── TOP KPI CARDS ─────────────────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
 
-                {/* KPI: Total Llamadas */}
+                {/* KPI: Total Llamadas Realizadas */}
                 <motion.div
                     whileHover={{ translateY: -3 }}
                     style={{
@@ -260,11 +339,11 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                         {stats.totalIntentos.toLocaleString()}
                     </span>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        Promedio: {stats.totalFichas > 0 ? (stats.totalIntentos / stats.totalFichas).toFixed(1) : 0} llamadas/contacto
+                        Promedio: {stats.contactosLlamados > 0 ? (stats.totalIntentos / stats.contactosLlamados).toFixed(1) : 0} llamadas por contacto llamado
                     </span>
                 </motion.div>
 
-                {/* KPI: Total Contactos */}
+                {/* KPI: Contactos Atendidos / Llamados */}
                 <motion.div
                     whileHover={{ translateY: -3 }}
                     style={{
@@ -275,18 +354,20 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Total Contactos
+                            Contactos Llamados
                         </span>
                         <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(16,185,129,0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Users size={18} />
                         </div>
                     </div>
                     <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text)' }}>
-                        {stats.totalFichas.toLocaleString()}
+                        {stats.contactosLlamados.toLocaleString()}
                     </span>
-                    <div style={{ display: 'flex', gap: '10px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        <span style={{ color: '#10b981', fontWeight: 600 }}>✨ {stats.clientesNuevos} nuevos</span>
-                        <span style={{ color: '#3b82f6', fontWeight: 600 }}>🔄 {stats.clientesActualizados} actualizados</span>
+                    <div style={{ display: 'flex', gap: '8px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        <span>De {stats.totalFichas} fichas</span>
+                        {stats.contactosSinLlamar > 0 && (
+                            <span style={{ color: '#f59e0b', fontWeight: 600 }}>({stats.contactosSinLlamar} pendientes)</span>
+                        )}
                     </div>
                 </motion.div>
 
@@ -311,11 +392,11 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                         {stats.tasaExito}%
                     </span>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        {stats.respuestas.find(r => r.label === 'Llamada Exitosa')?.count || 0} llamadas exitosas
+                        {stats.respuestas.find(r => r.label === 'Llamada Exitosa')?.count || 0} exitosas sobre contactados
                     </span>
                 </motion.div>
 
-                {/* KPI: Modificaciones & Actividad */}
+                {/* KPI: Fichas Modificadas & Actividad */}
                 <motion.div
                     whileHover={{ translateY: -3 }}
                     style={{
@@ -335,10 +416,55 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                     <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text)' }}>
                         {stats.totalModificados.toLocaleString()}
                     </span>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        Actualizados / recontactados en el período
-                    </span>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        <span style={{ color: '#10b981', fontWeight: 600 }}>✨ {stats.clientesNuevos} nuevos</span>
+                        <span style={{ color: '#3b82f6', fontWeight: 600 }}>🔄 {stats.clientesActualizados} actualizados</span>
+                    </div>
                 </motion.div>
+            </div>
+
+            {/* ── GRÁFICO DESTACADO: LLAMADAS POR DÍA ─────────── */}
+            <div style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderRadius: '20px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                        <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <BarChart3 size={20} style={{ color: 'var(--accent)' }} /> Llamadas Realizadas por Día
+                        </h3>
+                        <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            Cantidad exacta de llamadas realizadas cada día, contactos que fueron llamados y llamadas exitosas
+                        </p>
+                    </div>
+
+                    {/* Resumen numérico rápido */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ padding: '6px 12px', borderRadius: '12px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', fontSize: '0.8rem', fontWeight: 700, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <PhoneCall size={13} /> {stats.totalIntentos} llamadas totales
+                        </div>
+                        <div style={{ padding: '6px 12px', borderRadius: '12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', fontSize: '0.8rem', fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <Users size={13} /> {stats.contactosLlamados} contactos llamados
+                        </div>
+                        <div style={{ padding: '6px 12px', borderRadius: '12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', fontSize: '0.8rem', fontWeight: 700, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <TrendingUp size={13} /> Promedio: {stats.llamadasPorDia.promedioDiario} llamadas/día
+                        </div>
+                        {stats.llamadasPorDia.diaPico.total > 0 && (
+                            <div style={{ padding: '6px 12px', borderRadius: '12px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', fontSize: '0.8rem', fontWeight: 700, color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <Award size={13} /> Día pico: {stats.llamadasPorDia.diaPico.fecha} ({stats.llamadasPorDia.diaPico.total} llamadas)
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ height: '340px', position: 'relative', width: '100%' }}>
+                    <Bar data={llamadasPorDiaChartData} options={barOptions} />
+                </div>
             </div>
 
             {/* ── CONVERSIONES EMBARRADAS ──────────────────────── */}
@@ -456,7 +582,7 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                         <User size={16} style={{ color: 'var(--accent)' }} /> Rendimiento y Llamadas por Operador
                     </h3>
                     <div style={{ flex: 1, position: 'relative' }}>
-                        <Bar data={operadoresChartData} options={chartOptions} />
+                        <Bar data={operadoresChartData} options={barOptions} />
                     </div>
                 </div>
 
@@ -472,7 +598,7 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                     minHeight: '340px'
                 }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <TrendingUp size={16} style={{ color: 'var(--accent)' }} /> Evolución Temporal
+                        <TrendingUp size={16} style={{ color: 'var(--accent)' }} /> Evolución de Altas y Modificaciones
                     </h3>
                     <div style={{ flex: 1, position: 'relative' }}>
                         <Line data={evolucionChartData} options={chartOptions} />

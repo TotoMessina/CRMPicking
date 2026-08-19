@@ -21,6 +21,11 @@ const DEFAULT_FILTERS: Filters = {
     respuesta: '',
     etiqueta: '',
     origen_contacto: '',
+    cantidad_llamadas: '',
+    fecha_modificacion: '',
+    fecha_desde: '',
+    fecha_hasta: '',
+    estado_conversion: '',
 };
 
 const Llamadas: React.FC = () => {
@@ -32,12 +37,17 @@ const Llamadas: React.FC = () => {
 
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-    const [sortBy, setSortBy] = useState('created_desc');
+    const [sortBy, setSortBy] = useState('updated_desc');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
 
     const updateFilter = useCallback((key: keyof Filters, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
+        setPage(1);
+    }, []);
+
+    const handleResetFilters = useCallback(() => {
+        setFilters(DEFAULT_FILTERS);
         setPage(1);
     }, []);
 
@@ -154,7 +164,7 @@ const Llamadas: React.FC = () => {
             </header>
 
             {/* ── FILTERS ────────────────────────────── */}
-            <LlamadaFilters filters={filters} updateFilter={updateFilter} />
+            <LlamadaFilters filters={filters} updateFilter={updateFilter} onReset={handleResetFilters} />
 
             {/* ── LIST ───────────────────────────────── */}
             <section style={{ marginBottom: '32px' }}>
@@ -187,14 +197,17 @@ const Llamadas: React.FC = () => {
                                 cursor: 'pointer',
                             }}
                         >
-                            <option value="created_desc">Fecha de creación (Más reciente)</option>
-                            <option value="created_asc">Fecha de creación (Más antigua)</option>
-                            <option value="updated_desc">Última modificación</option>
-                            <option value="nombre_asc">Nombre (A - Z)</option>
-                            <option value="nombre_desc">Nombre (Z - A)</option>
-                            <option value="comercio_asc">Comercio (A - Z)</option>
-                            <option value="comercio_desc">Comercio (Z - A)</option>
-                            <option value="operador_asc">Operador (A - Z)</option>
+                            <option value="updated_desc">🕒 Última modificación (Más reciente)</option>
+                            <option value="updated_asc">🕒 Última modificación (Más antigua)</option>
+                            <option value="llamadas_desc">📞 Mayor cantidad de llamadas</option>
+                            <option value="llamadas_asc">📞 Menor cantidad de llamadas</option>
+                            <option value="created_desc">✨ Fecha de creación (Más reciente)</option>
+                            <option value="created_asc">✨ Fecha de creación (Más antigua)</option>
+                            <option value="nombre_asc">👤 Nombre (A - Z)</option>
+                            <option value="nombre_desc">👤 Nombre (Z - A)</option>
+                            <option value="comercio_asc">🏪 Comercio (A - Z)</option>
+                            <option value="comercio_desc">🏪 Comercio (Z - A)</option>
+                            <option value="operador_asc">🎧 Operador (A - Z)</option>
                         </select>
                     </div>
                 </header>

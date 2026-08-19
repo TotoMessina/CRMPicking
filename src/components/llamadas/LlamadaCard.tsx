@@ -174,11 +174,19 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                     }}>
                         {fullName}
                     </h3>
-                    {l.nombre_operador && (
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                            <User size={11} /> {l.nombre_operador}
-                        </span>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: 3 }}>
+                        {l.nombre_operador && (
+                            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <User size={11} /> {l.nombre_operador}
+                            </span>
+                        )}
+                        {(l.updated_at || l.created_at) && (
+                            <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }} title={`Creado: ${l.created_at ? new Date(l.created_at).toLocaleString() : '—'}`}>
+                                <Clock size={11} style={{ opacity: 0.6 }} />
+                                {new Date(l.updated_at || l.created_at).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        )}
+                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flexShrink: 0 }}>
                     {etiquetaConfig && (

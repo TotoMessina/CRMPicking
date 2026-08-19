@@ -1023,10 +1023,10 @@ export const importarLlamadasExcel = async (
                     const calculatedEtiqueta = isExisting ? 'cliente actualizado' : 'cliente nuevo';
 
                     if (existingInLlamadas) {
-                        // Actualizar ficha existente e incrementar contador de llamadas
+                        // Actualizar ficha existente sin alterar el contador de llamadas a menos que venga especificado en el Excel
                         const currentCalls = Number(existingInLlamadas.cantidad_llamadas ?? 0);
-                        const parsedRaw = rawLlamadas ? parseInt(rawLlamadas) : null;
-                        const newCalls = parsedRaw && !isNaN(parsedRaw) ? parsedRaw : currentCalls + 1;
+                        const parsedRaw = rawLlamadas !== null && rawLlamadas !== undefined && String(rawLlamadas).trim() !== '' ? parseInt(String(rawLlamadas)) : null;
+                        const newCalls = parsedRaw !== null && !isNaN(parsedRaw) ? Math.max(0, parsedRaw) : currentCalls;
 
                         const updatePayload: Record<string, any> = {
                             etiqueta: calculatedEtiqueta,

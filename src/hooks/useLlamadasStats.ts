@@ -7,14 +7,28 @@ export interface OperadorStat {
     nombre: string;
     totalFichas: number;
     totalLlamadas: number;
+    contactosLlamados: number;
     exitosas: number;
     tasaExito: number;
+}
+
+export interface LlamadasPorDiaData {
+    labels: string[];
+    fullDates: string[];
+    totalLlamadas: number[];
+    contactosAtendidos: number[];
+    llamadasExitosas: number[];
+    promedioDiario: number;
+    diaPico: { fecha: string; total: number };
+    totalDiasActivos: number;
 }
 
 export interface LlamadasStatsData {
     totalFichas: number;
     totalHistorico: number;
     totalIntentos: number;
+    contactosLlamados: number;
+    contactosSinLlamar: number;
     clientesNuevos: number;
     clientesActualizados: number;
     totalModificados: number;
@@ -38,6 +52,7 @@ export interface LlamadasStatsData {
         creados: number[];
         modificados: number[];
     };
+    llamadasPorDia: LlamadasPorDiaData;
     ultimasModificaciones: Llamada[];
     isFilteredByDate: boolean;
 }
@@ -69,6 +84,8 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                 totalFichas: 0,
                 totalHistorico: 0,
                 totalIntentos: 0,
+                contactosLlamados: 0,
+                contactosSinLlamar: 0,
                 clientesNuevos: 0,
                 clientesActualizados: 0,
                 totalModificados: 0,
@@ -84,13 +101,23 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                     redesCount: 0, redesPct: 0
                 },
                 evolucionDiaria: { labels: [], creados: [], modificados: [] },
+                llamadasPorDia: {
+                    labels: [],
+                    fullDates: [],
+                    totalLlamadas: [],
+                    contactosAtendidos: [],
+                    llamadasExitosas: [],
+                    promedioDiario: 0,
+                    diaPico: { fecha: '—', total: 0 },
+                    totalDiasActivos: 0
+                },
                 ultimasModificaciones: [],
                 isFilteredByDate: false
             };
 
             if (!empresaActiva?.id) return emptyResult;
 
-            // Consultar todos los registros de la empresa sin filtrar rígidamente en Postgres para no perder NULLs
+            // Consultar todos los registros de la empresa
             const { data, error } = await (supabase as any)
                 .from('llamadas')
                 .select('*')
@@ -120,7 +147,6 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                     return t >= fromTime && t <= toTime;
                 });
 
-                // Si el filtro tiene datos, lo aplicamos; de lo contrario dejamos todo el histórico
                 if (filtered.length > 0) {
                     rows = filtered;
                     isFiltered = true;
@@ -130,6 +156,8 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
             const totalFichas = rows.length;
 
             let totalIntentos = 0;
+            let contactosLlamados = 0;
+            let contactosSinLlamar = 0;
             let clientesNuevos = 0;
             let clientesActualizados = 0;
             let totalModificados = 0;
@@ -138,8 +166,8 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
             const respuestasMap: Record<string, number> = {};
             const origenesMap: Record<string, number> = {};
             const rubrosMap: Record<string, number> = {};
-            const operadoresMap: Record<string, { totalFichas: number; totalLlamadas: number; exitosas: number }> = {};
-            const diasMap: Record<string, { creados: number; modificados: number }> = {};
+            const operadoresMap: Record<string, { totalFichas: number; totalLlamadas: number; contactosLlamados: number; exitosas: number }> = {};
+            const diasMap: Record<string, { creados: number; modificados: number; totalLlamadas: number; contactosAtendidos: number; exitosas: number }> = {};
 
             let whatsappCount = 0;
             let formularioCount = 0;
@@ -149,6 +177,13 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
             for (const r of rows) {
                 const calls = Number(r.cantidad_llamadas ?? 0);
                 totalIntentos += calls;
+
+                const hasBeenCalled = calls > 0 || (!!r.respuesta_llamado && r.respuesta_llamado.trim() !== '');
+                if (hasBeenCalled) {
+                    contactosLlamados++;
+                } else {
+                    contactosSinLlamar++;
+                }
 
                 const etiq = (r.etiqueta || '').toLowerCase().trim();
                 if (etiq.includes('nuevo')) clientesNuevos++;
@@ -179,10 +214,13 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                 // Operadores
                 const opName = r.nombre_operador?.trim() || 'Sin asignar';
                 if (!operadoresMap[opName]) {
-                    operadoresMap[opName] = { totalFichas: 0, totalLlamadas: 0, exitosas: 0 };
+                    operadoresMap[opName] = { totalFichas: 0, totalLlamadas: 0, contactosLlamados: 0, exitosas: 0 };
                 }
                 operadoresMap[opName].totalFichas += 1;
                 operadoresMap[opName].totalLlamadas += calls;
+                if (hasBeenCalled) {
+                    operadoresMap[opName].contactosLlamados += 1;
+                }
                 if (respKey === 'exitosa') {
                     operadoresMap[opName].exitosas += 1;
                 }
@@ -193,15 +231,31 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                 if (r.envio_listo) listoCount++;
                 if (r.siguio_redes && r.siguio_redes !== 'no') redesCount++;
 
-                // Evolución por día
+                // Agrupación por día
                 const dStr = r.updated_at || r.created_at;
                 const dateKey = dStr ? dStr.substring(0, 10) : new Date().toISOString().substring(0, 10);
-                if (!diasMap[dateKey]) diasMap[dateKey] = { creados: 0, modificados: 0 };
+                if (!diasMap[dateKey]) {
+                    diasMap[dateKey] = { creados: 0, modificados: 0, totalLlamadas: 0, contactosAtendidos: 0, exitosas: 0 };
+                }
                 if (hasTimeDiff || calls > 0) diasMap[dateKey].modificados += 1;
                 else diasMap[dateKey].creados += 1;
+
+                // Solo sumar llamadas reales
+                diasMap[dateKey].totalLlamadas += calls;
+
+                // Contactos atendidos por día: SOLO si efectivamente tuvieron al menos 1 llamada o respuesta activa
+                if (hasBeenCalled) {
+                    diasMap[dateKey].contactosAtendidos += 1;
+                }
+
+                if (respKey === 'exitosa') {
+                    diasMap[dateKey].exitosas += 1;
+                }
             }
 
-            const tasaExito = totalFichas > 0 ? Math.round((exitosasCount / totalFichas) * 100) : 0;
+            // Tasa de éxito calculada sobre contactos que realmente fueron llamados (o total si no hay llamadas)
+            const denominator = contactosLlamados > 0 ? contactosLlamados : totalFichas;
+            const tasaExito = denominator > 0 ? Math.round((exitosasCount / denominator) * 100) : 0;
 
             // Formatear respuestas
             const respuestas = Object.entries(respuestasMap).map(([key, count]) => ({
@@ -227,17 +281,51 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                 nombre,
                 totalFichas: stat.totalFichas,
                 totalLlamadas: stat.totalLlamadas,
+                contactosLlamados: stat.contactosLlamados,
                 exitosas: stat.exitosas,
-                tasaExito: stat.totalFichas > 0 ? Math.round((stat.exitosas / stat.totalFichas) * 100) : 0
+                tasaExito: (stat.contactosLlamados > 0 ? Math.round((stat.exitosas / stat.contactosLlamados) * 100) : (stat.totalFichas > 0 ? Math.round((stat.exitosas / stat.totalFichas) * 100) : 0))
             })).sort((a, b) => b.totalLlamadas - a.totalLlamadas);
 
-            // Evolución diaria ordenada
+            // Evolución y Llamadas diarias ordenadas
             const sortedDates = Object.keys(diasMap).sort();
-            const evolucionDiaria = {
-                labels: sortedDates.map(d => {
+            const dailyLabels = sortedDates.map(d => {
+                const [, m, day] = d.split('-');
+                return `${day}/${m}`;
+            });
+
+            const dailyLlamadas = sortedDates.map(d => diasMap[d].totalLlamadas);
+            const dailyContactos = sortedDates.map(d => diasMap[d].contactosAtendidos);
+            const dailyExitosas = sortedDates.map(d => diasMap[d].exitosas);
+
+            let maxCalls = 0;
+            let peakDate = '—';
+            sortedDates.forEach((d, idx) => {
+                if (dailyLlamadas[idx] > maxCalls) {
+                    maxCalls = dailyLlamadas[idx];
                     const [, m, day] = d.split('-');
-                    return `${day}/${m}`;
-                }),
+                    peakDate = `${day}/${m}`;
+                }
+            });
+
+            // Días con llamadas efectivas realizadas
+            const diasConLlamadas = sortedDates.filter(d => diasMap[d].totalLlamadas > 0);
+            const totalDiasActivos = diasConLlamadas.length > 0 ? diasConLlamadas.length : sortedDates.length;
+            const sumLlamadas = dailyLlamadas.reduce((a, b) => a + b, 0);
+            const promedioDiario = totalDiasActivos > 0 ? parseFloat((sumLlamadas / totalDiasActivos).toFixed(1)) : 0;
+
+            const llamadasPorDia: LlamadasPorDiaData = {
+                labels: dailyLabels,
+                fullDates: sortedDates,
+                totalLlamadas: dailyLlamadas,
+                contactosAtendidos: dailyContactos,
+                llamadasExitosas: dailyExitosas,
+                promedioDiario,
+                diaPico: { fecha: peakDate, total: maxCalls },
+                totalDiasActivos
+            };
+
+            const evolucionDiaria = {
+                labels: dailyLabels,
                 creados: sortedDates.map(d => diasMap[d].creados),
                 modificados: sortedDates.map(d => diasMap[d].modificados)
             };
@@ -251,6 +339,8 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                 totalFichas,
                 totalHistorico,
                 totalIntentos,
+                contactosLlamados,
+                contactosSinLlamar,
                 clientesNuevos,
                 clientesActualizados,
                 totalModificados,
@@ -270,6 +360,7 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                     redesPct: totalFichas > 0 ? Math.round((redesCount / totalFichas) * 100) : 0,
                 },
                 evolucionDiaria,
+                llamadasPorDia,
                 ultimasModificaciones,
                 isFilteredByDate: isFiltered
             };

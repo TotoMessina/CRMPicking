@@ -41,6 +41,11 @@ export interface LlamadaFilters {
     respuesta: string;
     etiqueta?: string;
     origen_contacto?: string;
+    cantidad_llamadas?: string;
+    fecha_modificacion?: string;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    estado_conversion?: string;
 }
 
 export interface UseLlamadasParams {
@@ -103,57 +108,28 @@ export async function findClientByPhone(empresaId: string, phone: string) {
                     .eq('empresa_id', empresaId)
                     .in('cliente_id', clientIds)
                     .limit(1);
-
-                if (ecMatches && ecMatches.length > 0) {
-                    ecData = ecMatches;
-                } else {
-                    const c = cData[0];
-                    const rawNombre = (c.nombre || '').trim();
-                    let nombre = rawNombre;
-                    let apellido = '';
-                    if (rawNombre.includes(' ')) {
-                        const parts = rawNombre.split(' ');
-                        nombre = parts[0];
-                        apellido = parts.slice(1).join(' ');
-                    }
-                    return {
-                        nombre,
-                        apellido,
-                        telefono: c.telefono || clean,
-                        mail: c.mail || '',
-                        direccion: c.direccion || '',
-                        localidad: c.localidad || '',
-                        provincia: c.provincia || '',
-                        nombre_comercio: c.nombre_local || '',
-                        rubro: c.rubro || '',
-                    };
-                }
+                if (ecMatches && ecMatches.length > 0) ecData = ecMatches;
             }
         }
 
         if (ecData && ecData.length > 0) {
-            const m = ecData[0];
-            const c = m.clientes || {};
-            const rawNombre = (m.nombre || c.nombre || '').trim();
-            let nombre = rawNombre;
-            let apellido = '';
-
-            if (rawNombre.includes(' ')) {
-                const parts = rawNombre.split(' ');
-                nombre = parts[0];
-                apellido = parts.slice(1).join(' ');
-            }
+            const match = ecData[0];
+            const c = match.clientes || {};
+            const fullNom = match.nombre || c.nombre || '';
+            const parts = fullNom.trim().split(' ');
+            const nom = parts[0] || '';
+            const ape = parts.slice(1).join(' ') || '';
 
             return {
-                nombre,
-                apellido,
-                telefono: m.telefono || c.telefono || clean,
-                mail: m.mail || c.mail || '',
-                direccion: m.direccion || c.direccion || '',
-                localidad: m.localidad || c.localidad || '',
-                provincia: m.provincia || c.provincia || '',
-                nombre_comercio: m.nombre_local || c.nombre_local || '',
-                rubro: m.rubro || c.rubro || '',
+                found: true,
+                nombre: nom,
+                apellido: ape,
+                nombre_comercio: match.nombre_local || c.nombre_local || '',
+                direccion: match.direccion || c.direccion || '',
+                localidad: match.localidad || c.localidad || '',
+                provincia: match.provincia || c.provincia || '',
+                mail: match.mail || c.mail || '',
+                rubro: match.rubro || c.rubro || '',
             };
         }
     } catch (err) {
@@ -163,21 +139,19 @@ export async function findClientByPhone(empresaId: string, phone: string) {
 }
 
 /**
- * Si existe un cliente en la BD con el mismo teléfono, actualiza sus datos
- * para mantener sincronizada la lista de clientes con la ficha de llamada.
- * NO crea un cliente nuevo si no existe.
+ * Sincroniza datos de la llamada con empresa_cliente y clientes si existe coincidencia de teléfono
  */
 async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) {
-    if (!empresaId || !data.telefono || !data.telefono.trim()) return;
-    const rawPhone = data.telefono.trim();
-    const digitsOnly = rawPhone.replace(/\D/g, '');
+    if (!data.telefono || !empresaId) return;
+    const phone = data.telefono.trim();
+    const digitsOnly = phone.replace(/\D/g, '');
 
     try {
         let { data: matches } = await (supabase as any)
             .from('empresa_cliente')
             .select('id, cliente_id')
             .eq('empresa_id', empresaId)
-            .ilike('telefono', `%${rawPhone}%`);
+            .ilike('telefono', `%${phone}%`);
 
         if ((!matches || matches.length === 0) && digitsOnly.length >= 6) {
             const { data: mDigits } = await (supabase as any)
@@ -189,10 +163,18 @@ async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) 
         }
 
         if (!matches || matches.length === 0) {
-            const { data: cMatches } = await (supabase as any)
+            let { data: cMatches } = await (supabase as any)
                 .from('clientes')
                 .select('id')
-                .ilike('telefono', `%${digitsOnly || rawPhone}%`);
+                .ilike('telefono', `%${phone}%`);
+
+            if ((!cMatches || cMatches.length === 0) && digitsOnly.length >= 6) {
+                const { data: cDigits } = await (supabase as any)
+                    .from('clientes')
+                    .select('id')
+                    .ilike('telefono', `%${digitsOnly}%`);
+                if (cDigits && cDigits.length > 0) cMatches = cDigits;
+            }
 
             if (cMatches && cMatches.length > 0) {
                 const ids = cMatches.map((c: any) => c.id);
@@ -251,20 +233,34 @@ async function syncClientWithLlamada(empresaId: string, data: Partial<Llamada>) 
     }
 }
 
-export function useLlamadas({ empresaId, page, pageSize, filters, sortBy = 'created_desc' }: UseLlamadasParams) {
+// ─────────────────────────────────────────────────────────────
+// HOOKS CRUD
+// ─────────────────────────────────────────────────────────────
+
+export function useLlamadas({ empresaId, page, pageSize = 24, filters, sortBy = 'created_desc' }: UseLlamadasParams) {
     return useQuery({
-        queryKey: ['llamadas', { empresaId, page, pageSize, filters, sortBy }],
+        queryKey: ['llamadas', empresaId, page, pageSize, filters, sortBy],
         queryFn: async () => {
-            if (!empresaId) return { llamadas: [] as Llamada[], total: 0 };
+            if (!empresaId) return { llamadas: [], total: 0 };
 
             let query = (supabase as any)
                 .from('llamadas')
                 .select('*', { count: 'exact' })
                 .eq('empresa_id', empresaId);
 
+            // Ordenamiento
             switch (sortBy) {
                 case 'updated_desc':
                     query = query.order('updated_at', { ascending: false, nullsFirst: false });
+                    break;
+                case 'updated_asc':
+                    query = query.order('updated_at', { ascending: true, nullsFirst: false });
+                    break;
+                case 'llamadas_desc':
+                    query = query.order('cantidad_llamadas', { ascending: false, nullsFirst: false });
+                    break;
+                case 'llamadas_asc':
+                    query = query.order('cantidad_llamadas', { ascending: true, nullsFirst: false });
                     break;
                 case 'created_asc':
                     query = query.order('created_at', { ascending: true });
@@ -311,6 +307,67 @@ export function useLlamadas({ empresaId, page, pageSize, filters, sortBy = 'crea
             }
             if (filters.origen_contacto) {
                 query = query.eq('origen_contacto', filters.origen_contacto);
+            }
+
+            // Filtro por cantidad de llamadas
+            if (filters.cantidad_llamadas) {
+                switch (filters.cantidad_llamadas) {
+                    case '0':
+                        query = query.or('cantidad_llamadas.is.null,cantidad_llamadas.eq.0');
+                        break;
+                    case '1+':
+                        query = query.gte('cantidad_llamadas', 1);
+                        break;
+                    case '2+':
+                        query = query.gte('cantidad_llamadas', 2);
+                        break;
+                    case '3+':
+                        query = query.gte('cantidad_llamadas', 3);
+                        break;
+                    case '5+':
+                        query = query.gte('cantidad_llamadas', 5);
+                        break;
+                }
+            }
+
+            // Filtro por fecha de última modificación
+            if (filters.fecha_modificacion) {
+                const now = new Date();
+                if (filters.fecha_modificacion === 'hoy') {
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+                    query = query.gte('updated_at', today);
+                } else if (filters.fecha_modificacion === '7d') {
+                    const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+                    query = query.gte('updated_at', d7);
+                } else if (filters.fecha_modificacion === '30d') {
+                    const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+                    query = query.gte('updated_at', d30);
+                } else if (filters.fecha_modificacion === 'custom') {
+                    if (filters.fecha_desde) {
+                        query = query.gte('updated_at', new Date(filters.fecha_desde + 'T00:00:00').toISOString());
+                    }
+                    if (filters.fecha_hasta) {
+                        query = query.lte('updated_at', new Date(filters.fecha_hasta + 'T23:59:59.999').toISOString());
+                    }
+                }
+            }
+
+            // Filtro por estado de conversión
+            if (filters.estado_conversion) {
+                switch (filters.estado_conversion) {
+                    case 'whatsapp':
+                        query = query.eq('envio_whatsapp', true);
+                        break;
+                    case 'formulario':
+                        query = query.eq('completo_formulario', true);
+                        break;
+                    case 'listo':
+                        query = query.eq('envio_listo', true);
+                        break;
+                    case 'redes':
+                        query = query.not('siguio_redes', 'is', null).neq('siguio_redes', 'no');
+                        break;
+                }
             }
 
             query = query.range((page - 1) * pageSize, page * pageSize - 1);
@@ -410,8 +467,12 @@ export function useCreateLlamada() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['llamadas'] });
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            queryClient.invalidateQueries({ queryKey: ['llamadas-stats'] });
         },
-        onError: (err: any) => toast.error(`Error al guardar: ${err.message}`),
+        onError: (err: any) => {
+            console.error('Error al guardar llamada:', err);
+            toast.error(err.message || 'Error al guardar ficha de llamada');
+        },
     });
 }
 
@@ -421,84 +482,108 @@ export function useUpdateLlamada() {
 
     return useMutation({
         mutationFn: async ({ id, data }: { id: number; data: Partial<Llamada> }) => {
-            const { error } = await (supabase as any)
-                .from('llamadas')
-                .update(data)
-                .eq('id', id);
-            if (error) throw error;
+            if (!empresaActiva?.id) throw new Error('No hay empresa activa');
 
-            // Sincronizar con la lista de clientes (solo si el cliente ya existe por teléfono)
-            if (empresaActiva?.id) {
-                await syncClientWithLlamada(empresaActiva.id, data);
+            const payload = { ...data, updated_at: new Date().toISOString() };
+            let res = await (supabase as any)
+                .from('llamadas')
+                .update(payload)
+                .eq('id', id)
+                .eq('empresa_id', empresaActiva.id)
+                .select()
+                .single();
+
+            if (res.error && res.error.message?.includes('etiqueta')) {
+                // Fallback si la columna no existe aún
+                delete (payload as any).etiqueta;
+                res = await (supabase as any)
+                    .from('llamadas')
+                    .update(payload)
+                    .eq('id', id)
+                    .eq('empresa_id', empresaActiva.id)
+                    .select()
+                    .single();
             }
+
+            if (res.error) throw res.error;
+
+            // Sincronizar con la lista de clientes si aplica
+            await syncClientWithLlamada(empresaActiva.id, data);
+
+            return res.data;
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            queryClient.invalidateQueries({ queryKey: ['llamadas-stats'] });
             toast.success('Ficha actualizada');
-            queryClient.invalidateQueries({ queryKey: ['llamadas'] });
-            queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
-        onError: (err: any) => toast.error(`Error al actualizar: ${err.message}`),
-    });
-}
-
-export function useDeleteLlamada() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (id: number) => {
-            const { error } = await (supabase as any)
-                .from('llamadas')
-                .delete()
-                .eq('id', id);
-            if (error) throw error;
+        onError: (err: any) => {
+            console.error('Error al actualizar llamada:', err);
+            toast.error(err.message || 'Error al actualizar ficha');
         },
-        onSuccess: () => {
-            toast.success('Ficha eliminada');
-            queryClient.invalidateQueries({ queryKey: ['llamadas'] });
-            queryClient.invalidateQueries({ queryKey: ['clientes'] });
-        },
-        onError: (err: any) => toast.error(`Error al eliminar: ${err.message}`),
     });
 }
 
 export function useIncrementLlamadaCount() {
+    const { empresaActiva } = useAuth();
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async ({ id, delta = 1, currentCount = 0 }: { id: number; delta?: number; currentCount?: number }) => {
-            const nextCount = Math.max(0, (Number(currentCount) || 0) + delta);
+            if (!empresaActiva?.id) throw new Error('No hay empresa activa');
 
-            const updatePayload: Record<string, any> = {
-                cantidad_llamadas: nextCount,
-                updated_at: new Date().toISOString()
-            };
-
-            let res = await (supabase as any)
+            const newCount = Math.max(0, currentCount + delta);
+            const { data, error } = await (supabase as any)
                 .from('llamadas')
-                .update(updatePayload)
-                .eq('id', id);
+                .update({ 
+                    cantidad_llamadas: newCount,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .eq('empresa_id', empresaActiva.id)
+                .select()
+                .single();
 
-            if (res.error && res.error.message?.includes('cantidad_llamadas')) {
-                delete updatePayload.cantidad_llamadas;
-                res = await (supabase as any)
-                    .from('llamadas')
-                    .update(updatePayload)
-                    .eq('id', id);
-            }
-
-            if (res.error) throw res.error;
-            return { id, nextCount };
+            if (error) throw error;
+            return data;
         },
-        onSuccess: ({ nextCount }, { delta = 1 }) => {
-            if (delta > 0) {
-                toast.success(`📞 Llamada registrada (Total: ${nextCount})`, { id: 'llamada-count-toast' });
-            } else {
-                toast.success(`Contador ajustado a ${nextCount}`, { id: 'llamada-count-toast' });
-            }
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+            queryClient.invalidateQueries({ queryKey: ['llamadas-stats'] });
         },
         onError: (err: any) => {
-            toast.error(`Error al actualizar llamadas: ${err.message}`);
-        }
+            console.error('Error al actualizar cantidad de llamadas:', err);
+            toast.error(err.message || 'Error al registrar llamada');
+        },
+    });
+}
+
+export function useDeleteLlamada() {
+    const { empresaActiva } = useAuth();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: number) => {
+            if (!empresaActiva?.id) throw new Error('No hay empresa activa');
+
+            const { error } = await (supabase as any)
+                .from('llamadas')
+                .delete()
+                .eq('id', id)
+                .eq('empresa_id', empresaActiva.id);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            queryClient.invalidateQueries({ queryKey: ['llamadas-stats'] });
+            toast.success('Ficha eliminada');
+        },
+        onError: (err: any) => {
+            console.error('Error al eliminar llamada:', err);
+            toast.error(err.message || 'Error al eliminar ficha');
+        },
     });
 }
