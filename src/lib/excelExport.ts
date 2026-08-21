@@ -1110,6 +1110,12 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             if (filters.origen_contacto) {
                 query = query.eq('origen_contacto', filters.origen_contacto);
             }
+            if (filters.localidad && filters.localidad.trim()) {
+                query = query.ilike('localidad', `%${filters.localidad.trim()}%`);
+            }
+            if (filters.provincia && filters.provincia.trim()) {
+                query = query.ilike('provincia', `%${filters.provincia.trim()}%`);
+            }
             if (filters.cantidad_llamadas) {
                 switch (filters.cantidad_llamadas) {
                     case '0':

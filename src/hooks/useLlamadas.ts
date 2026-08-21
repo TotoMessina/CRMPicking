@@ -47,6 +47,8 @@ export interface LlamadaFilters {
     fecha_desde?: string;
     fecha_hasta?: string;
     estado_conversion?: string;
+    localidad?: string;
+    provincia?: string;
 }
 
 export interface UseLlamadasParams {
@@ -319,6 +321,12 @@ export function useLlamadas({ empresaId, page, pageSize = 24, filters, sortBy = 
             }
             if (filters.origen_contacto) {
                 query = query.eq('origen_contacto', filters.origen_contacto);
+            }
+            if (filters.localidad && filters.localidad.trim()) {
+                query = query.ilike('localidad', `%${filters.localidad.trim()}%`);
+            }
+            if (filters.provincia && filters.provincia.trim()) {
+                query = query.ilike('provincia', `%${filters.provincia.trim()}%`);
             }
 
             // Filtro por cantidad de llamadas

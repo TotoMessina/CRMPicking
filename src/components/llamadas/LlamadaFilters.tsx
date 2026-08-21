@@ -1,6 +1,6 @@
 import React from 'react';
 import { LlamadaFilters as Filters } from '../../hooks/useLlamadas';
-import { Search, Filter, PhoneCall, Calendar, Sparkles, MessageCircle, X } from 'lucide-react';
+import { Search, Filter, PhoneCall, Calendar, Sparkles, MessageCircle, X, MapPin } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyUsers } from '../../hooks/useCompanyUsers';
 
@@ -95,7 +95,9 @@ export function LlamadaFilters({ filters, updateFilter, onReset }: Props) {
         filters.fecha_modificacion,
         filters.fecha_desde,
         filters.fecha_hasta,
-        filters.estado_conversion
+        filters.estado_conversion,
+        filters.localidad,
+        filters.provincia
     ].filter(Boolean).length;
 
     const handleClearAll = () => {
@@ -113,6 +115,8 @@ export function LlamadaFilters({ filters, updateFilter, onReset }: Props) {
             updateFilter('fecha_desde', '');
             updateFilter('fecha_hasta', '');
             updateFilter('estado_conversion', '');
+            updateFilter('localidad', '');
+            updateFilter('provincia', '');
         }
     };
 
@@ -335,6 +339,32 @@ export function LlamadaFilters({ filters, updateFilter, onReset }: Props) {
                             <option key={c.value} value={c.value}>{c.label}</option>
                         ))}
                     </select>
+                </div>
+
+                {/* Localidad */}
+                <div style={{ position: 'relative' }}>
+                    <MapPin size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                        id="llamadas-filter-localidad"
+                        type="text"
+                        placeholder="Localidad..."
+                        value={filters.localidad || ''}
+                        onChange={e => updateFilter('localidad', e.target.value)}
+                        style={{ ...inputStyle, paddingLeft: '34px' }}
+                    />
+                </div>
+
+                {/* Provincia */}
+                <div style={{ position: 'relative' }}>
+                    <MapPin size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                        id="llamadas-filter-provincia"
+                        type="text"
+                        placeholder="Provincia..."
+                        value={filters.provincia || ''}
+                        onChange={e => updateFilter('provincia', e.target.value)}
+                        style={{ ...inputStyle, paddingLeft: '34px' }}
+                    />
                 </div>
             </div>
         </div>
