@@ -77,9 +77,15 @@ export default function Repartidores() {
         if (fEstado !== 'Todos') request = request.eq('estado', fEstado);
         if (fResponsable) request = request.eq('responsable', fResponsable);
         
-        if (fSearch) {
-            const term = `%${fSearch}%`;
-            request = request.or(`nombre.ilike.${term},telefono.ilike.${term},localidad.ilike.${term},estado.ilike.${term},responsable.ilike.${term},direccion.ilike.${term}`);
+        if (fSearch && fSearch.trim()) {
+            const tokens = fSearch.trim().split(/\s+/).filter(Boolean);
+            tokens.forEach((token: string) => {
+                const cleanToken = token.replace(/"/g, '');
+                if (cleanToken) {
+                    const term = `"%${cleanToken}%"`;
+                    request = request.or(`nombre.ilike.${term},telefono.ilike.${term},localidad.ilike.${term},estado.ilike.${term},responsable.ilike.${term},direccion.ilike.${term}`);
+                }
+            });
         }
 
         const { data, count, error } = await request;

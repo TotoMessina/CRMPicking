@@ -506,9 +506,15 @@ export const exportarRepartidoresExcel = async (empresaActiva: any, filters: any
 
             if (filters.estado && filters.estado !== 'Todos') query = query.eq('estado', filters.estado);
             if (filters.responsable) query = query.eq('responsable', filters.responsable);
-            if (filters.search) {
-                const term = `%${filters.search}%`;
-                query = query.or(`nombre.ilike.${term},telefono.ilike.${term},localidad.ilike.${term}`);
+            if (filters.search && filters.search.trim()) {
+                const tokens = filters.search.trim().split(/\s+/).filter(Boolean);
+                tokens.forEach((token: string) => {
+                    const cleanToken = token.replace(/"/g, '');
+                    if (cleanToken) {
+                        const term = `"%${cleanToken}%"`;
+                        query = query.or(`nombre.ilike.${term},telefono.ilike.${term},localidad.ilike.${term}`);
+                    }
+                });
             }
 
             const { data, error } = await query;
@@ -1078,11 +1084,16 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             query = query.range(from, to);
 
             if (filters.busqueda && filters.busqueda.trim()) {
-                const rawTerm = filters.busqueda.trim().replace(/"/g, '');
-                const safeTerm = `"%${rawTerm}%"`;
-                query = query.or(
-                    `nombre.ilike.${safeTerm},apellido.ilike.${safeTerm},telefono.ilike.${safeTerm},nombre_comercio.ilike.${safeTerm},direccion.ilike.${safeTerm},localidad.ilike.${safeTerm},provincia.ilike.${safeTerm},mail.ilike.${safeTerm},nombre_operador.ilike.${safeTerm}`
-                );
+                const tokens = filters.busqueda.trim().split(/\s+/).filter(Boolean);
+                tokens.forEach((token: string) => {
+                    const cleanToken = token.replace(/"/g, '');
+                    if (cleanToken) {
+                        const safeTerm = `"%${cleanToken}%"`;
+                        query = query.or(
+                            `nombre.ilike.${safeTerm},apellido.ilike.${safeTerm},telefono.ilike.${safeTerm},nombre_comercio.ilike.${safeTerm},direccion.ilike.${safeTerm},localidad.ilike.${safeTerm},provincia.ilike.${safeTerm},mail.ilike.${safeTerm},nombre_operador.ilike.${safeTerm}`
+                        );
+                    }
+                });
             }
             if (filters.operador) {
                 query = query.ilike('nombre_operador', `%${filters.operador.trim()}%`);
@@ -1098,6 +1109,28 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             }
             if (filters.origen_contacto) {
                 query = query.eq('origen_contacto', filters.origen_contacto);
+            }
+            if (filters.cantidad_llamadas) {
+                switch (filters.cantidad_llamadas) {
+                    case '0':
+                        query = query.or('cantidad_llamadas.is.null,cantidad_llamadas.eq.0');
+                        break;
+                    case '1':
+                        query = query.eq('cantidad_llamadas', 1);
+                        break;
+                    case '1+':
+                        query = query.gte('cantidad_llamadas', 1);
+                        break;
+                    case '2+':
+                        query = query.gte('cantidad_llamadas', 2);
+                        break;
+                    case '3+':
+                        query = query.gte('cantidad_llamadas', 3);
+                        break;
+                    case '5+':
+                        query = query.gte('cantidad_llamadas', 5);
+                        break;
+                }
             }
 
             const { data, error } = await query;

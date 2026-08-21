@@ -294,11 +294,16 @@ export function useLlamadas({ empresaId, page, pageSize = 24, filters, sortBy = 
             }
 
             if (filters.busqueda && filters.busqueda.trim()) {
-                const rawTerm = filters.busqueda.trim().replace(/"/g, '');
-                const safeTerm = `"%${rawTerm}%"`;
-                query = query.or(
-                    `nombre.ilike.${safeTerm},apellido.ilike.${safeTerm},telefono.ilike.${safeTerm},nombre_comercio.ilike.${safeTerm},direccion.ilike.${safeTerm},localidad.ilike.${safeTerm},provincia.ilike.${safeTerm},mail.ilike.${safeTerm},nombre_operador.ilike.${safeTerm}`
-                );
+                const tokens = filters.busqueda.trim().split(/\s+/).filter(Boolean);
+                tokens.forEach((token: string) => {
+                    const cleanToken = token.replace(/"/g, '');
+                    if (cleanToken) {
+                        const safeTerm = `"%${cleanToken}%"`;
+                        query = query.or(
+                            `nombre.ilike.${safeTerm},apellido.ilike.${safeTerm},telefono.ilike.${safeTerm},nombre_comercio.ilike.${safeTerm},direccion.ilike.${safeTerm},localidad.ilike.${safeTerm},provincia.ilike.${safeTerm},mail.ilike.${safeTerm},nombre_operador.ilike.${safeTerm}`
+                        );
+                    }
+                });
             }
             if (filters.operador) {
                 query = query.ilike('nombre_operador', `%${filters.operador.trim()}%`);
@@ -321,6 +326,9 @@ export function useLlamadas({ empresaId, page, pageSize = 24, filters, sortBy = 
                 switch (filters.cantidad_llamadas) {
                     case '0':
                         query = query.or('cantidad_llamadas.is.null,cantidad_llamadas.eq.0');
+                        break;
+                    case '1':
+                        query = query.eq('cantidad_llamadas', 1);
                         break;
                     case '1+':
                         query = query.gte('cantidad_llamadas', 1);

@@ -39,6 +39,7 @@ const ORIGENES_CONTACTO = [
 const CANTIDADES_LLAMADAS = [
     { value: '', label: 'Cualquier cantidad de llamadas' },
     { value: '0', label: '⏳ Sin llamadas (0 - Pendientes)' },
+    { value: '1', label: '📞 Solo 1 llamada (= 1)' },
     { value: '1+', label: '📞 1 o más llamadas (≥ 1)' },
     { value: '2+', label: '📞 2 o más llamadas (≥ 2)' },
     { value: '3+', label: '📞 3 o más llamadas (≥ 3)' },
