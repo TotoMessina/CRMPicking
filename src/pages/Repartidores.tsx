@@ -13,6 +13,8 @@ import toast from 'react-hot-toast';
 import { RepartidorModal } from '../components/ui/RepartidorModal';
 import { ActividadRepartidorModal } from '../components/ui/ActividadRepartidorModal';
 import { importarRepartidoresExcel, descargarModeloRepartidores, exportarRepartidoresExcel } from '../lib/excelExport';
+import { ExcelImportModal } from '../components/ui/ExcelImportModal';
+import { useExcelImport } from '../hooks/useExcelImport';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RepartidorFilters } from '../components/repartidores/RepartidorFilters';
 import { BotoneraAudio } from '../components/repartidores/BotoneraAudio';
@@ -118,11 +120,19 @@ export default function Repartidores() {
         fetchRepartidores();
     }, [page, pageSize, fSearch, fEstado, fResponsable, empresaActiva]);
 
+    const { importState, startImport, updateProgress, closeImportModal } = useExcelImport();
+
     const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        await importarRepartidoresExcel(file, empresaActiva, () => fetchRepartidores());
+        startImport('Importando Repartidores desde Excel', file.name);
+        await importarRepartidoresExcel(
+            file,
+            empresaActiva,
+            () => fetchRepartidores(),
+            (prog) => updateProgress(prog)
+        );
         e.target.value = '';
     };
 
@@ -448,6 +458,7 @@ export default function Repartidores() {
             <style tabIndex={-1}>{`
                 .dropdown-item:hover { background: var(--bg-elevated); color: var(--accent) !important; }
             `}</style>
+            <ExcelImportModal state={importState} onClose={closeImportModal} />
         </div>
     );
 }

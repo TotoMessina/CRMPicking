@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Plus, ChevronLeft, ChevronRight, Download, Upload, MoreVertical, FileText } from 'lucide-react';
 import { ClienteModal } from '../components/ui/ClienteModal';
 import { ActividadClienteModal } from '../components/ui/ActividadClienteModal';
+import { ExcelImportModal } from '../components/ui/ExcelImportModal';
 import { ClienteCard } from '../components/ui/ClienteCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useClientsLogic } from '../hooks/useClientsLogic';
@@ -18,6 +19,7 @@ const Clientes: React.FC = () => {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
         filters, updateFilter, rubrosValidos, responsablesValidos, gruposValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
         exportLoading, handleDescargarExcel, handleImportExcel, handleDescargarModelo,
+        importState, closeImportModal,
         modalOpen, setModalOpen, editingId, handleCreate, handleEdit, handleDelete,
         actModalOpen, setActModalOpen, actTargetId, actTargetName, handleOpenActivity,
         handleQuickDate, handleRegistrarVisita, handleRegistrarLlamada, queryClient
@@ -233,6 +235,7 @@ const Clientes: React.FC = () => {
                 .dropdown-item:hover { background: var(--bg-elevated); color: var(--primary) !important; }
                 .text-accent { color: var(--primary); }
             `}</style>
+            <ExcelImportModal state={importState} onClose={closeImportModal} />
         </div>
     );
 }

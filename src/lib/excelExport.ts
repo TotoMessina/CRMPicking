@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { applyClientFilters, ClientFilters } from '../utils/filterUtils';
+import { validatePhoneNumber } from '../utils/phoneValidation';
+import { ImportProgressState, ImportRowResult } from '../types/excelImport';
 
 export const descargarModeloClientes = () => {
     const toastId = toast.loading("Generando modelo...");
@@ -95,11 +97,15 @@ export const importarClientesExcel = async (
     empresaActiva: any, 
     userName: string | null, 
     userEmail: string | null, 
-    onSuccess?: () => void
+    onSuccess?: () => void,
+    onProgress?: (progress: Partial<ImportProgressState>) => void
 ) => {
     if (!file) return;
 
-    const toastId = toast.loading('Procesando archivo...');
+    if (onProgress) {
+        onProgress({ status: 'reading', fileName: file.name, title: 'Importando Clientes desde Excel' });
+    }
+
     try {
         const reader = new FileReader();
         reader.onload = async (evt: any) => {
@@ -110,102 +116,189 @@ export const importarClientesExcel = async (
                 const ws = wb.Sheets[wsname];
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
 
-                if (data.length === 0) {
-                    toast.error('El archivo está vacío', { id: toastId });
+                if (!data || data.length === 0) {
+                    if (onProgress) {
+                        onProgress({ status: 'error', errorMessage: 'El archivo está vacío' });
+                    }
+                    toast.error('El archivo está vacío');
                     return;
                 }
 
-                const clientsPayload: any[] = [];
-                const rowsData: any[] = [];
+                const totalRows = data.length;
+                let processedRows = 0;
+                let successCount = 0;
+                let updatedCount = 0;
+                let errorCount = 0;
+                const items: ImportRowResult[] = [];
 
-                for (const row of data) {
-                    let rawFecha = row.fecha_creacion || row.created_at || row.fecha || row.Fecha || undefined;
-                    let fechaNorm = undefined;
-                    
-                    if (rawFecha) {
-                        if (typeof rawFecha === 'string') {
-                            if (rawFecha.includes('/')) {
-                                const parts = rawFecha.split(' ')[0].split('/');
-                                if (parts.length === 3) {
-                                    const day = parts[0].padStart(2, '0');
-                                    const month = parts[1].padStart(2, '0');
-                                    const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-                                    fechaNorm = `${year}-${month}-${day}T00:00:00Z`;
-                                }
-                            } else {
-                                const d = new Date(rawFecha);
-                                if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
-                            }
-                        } else if (typeof rawFecha === 'number') {
-                            const d = new Date((rawFecha - 25569) * 86400 * 1000);
-                            if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
+                if (onProgress) {
+                    onProgress({
+                        status: 'processing',
+                        totalRows,
+                        processedRows: 0,
+                        remainingRows: totalRows,
+                        successCount: 0,
+                        updatedCount: 0,
+                        errorCount: 0,
+                        items: []
+                    });
+                }
+
+                for (let i = 0; i < data.length; i++) {
+                    const row = data[i];
+                    const rowIndex = i + 1;
+                    const nombre = row.nombre || row.Nombre || row.nombre_local || row.Nombre_Local || 'Nuevo Cliente';
+                    const rawPhone = row.telefono || row.Telefono || row.tel || row.Tel || row.celular || '';
+
+                    // Validar formato de teléfono
+                    const phoneVal = validatePhoneNumber(rawPhone, false);
+
+                    if (!phoneVal.isValid) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(nombre),
+                            phone: String(rawPhone),
+                            status: 'error',
+                            reason: phoneVal.reason
+                        });
+                        processedRows++;
+                        if (onProgress) {
+                            onProgress({
+                                processedRows,
+                                remainingRows: totalRows - processedRows,
+                                errorCount,
+                                currentRowName: String(nombre),
+                                items: [...items]
+                            });
                         }
+                        await new Promise(r => setTimeout(r, 15));
+                        continue;
                     }
 
-                    clientsPayload.push({
-                        nombre: row.nombre || row.nombre_local || 'Nuevo Cliente',
-                        nombre_local: row.nombre_local || row.nombre || '',
-                        direccion: row.direccion || '',
-                        telefono: String(row.telefono || ''),
-                        mail: row.mail || '',
-                        cuit: String(row.cuit || ''),
-                        created_at: fechaNorm || undefined
-                    });
+                    try {
+                        let rawFecha = row.fecha_creacion || row.created_at || row.fecha || row.Fecha || undefined;
+                        let fechaNorm = undefined;
+                        
+                        if (rawFecha) {
+                            if (typeof rawFecha === 'string') {
+                                if (rawFecha.includes('/')) {
+                                    const parts = rawFecha.split(' ')[0].split('/');
+                                    if (parts.length === 3) {
+                                        const day = parts[0].padStart(2, '0');
+                                        const month = parts[1].padStart(2, '0');
+                                        const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                                        fechaNorm = `${year}-${month}-${day}T00:00:00Z`;
+                                    }
+                                } else {
+                                    const d = new Date(rawFecha);
+                                    if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
+                                }
+                            } else if (typeof rawFecha === 'number') {
+                                const d = new Date((rawFecha - 25569) * 86400 * 1000);
+                                if (!isNaN(d.getTime())) fechaNorm = d.toISOString();
+                            }
+                        }
 
-                    rowsData.push({
-                        row,
-                        fechaNorm
+                        // 1. Crear cliente base
+                        const { data: newC, error: cErr } = await supabase
+                            .from('clientes')
+                            .insert([{
+                                nombre: String(nombre),
+                                nombre_local: row.nombre_local || row.nombre || '',
+                                direccion: row.direccion || '',
+                                telefono: phoneVal.cleanPhone || '',
+                                mail: row.mail || '',
+                                cuit: String(row.cuit || ''),
+                                created_at: fechaNorm || undefined
+                            }])
+                            .select('id')
+                            .single();
+
+                        if (cErr) throw cErr;
+
+                        // 2. Asociar a empresa
+                        const { error: ecErr } = await supabase
+                            .from('empresa_cliente')
+                            .insert([{
+                                cliente_id: newC.id,
+                                empresa_id: empresaActiva.id,
+                                estado: row.estado || '1 - Cliente relevado',
+                                rubro: row.rubro || '',
+                                responsable: row.responsable || '',
+                                situacion: row.situacion || '',
+                                notas: row.notas || '',
+                                tipo_contacto: row.tipo_contacto || '',
+                                fecha_proximo_contacto: row.fecha_proximo_contacto || null,
+                                hora_proximo_contacto: row.hora_proximo_contacto || null,
+                                creado_por: userName || userEmail || 'Importación',
+                                activo: true,
+                                created_at: fechaNorm || undefined
+                            }]);
+
+                        if (ecErr) throw ecErr;
+
+                        successCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(nombre),
+                            phone: phoneVal.cleanPhone || undefined,
+                            status: 'success'
+                        });
+                    } catch (err: any) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(nombre),
+                            phone: phoneVal.cleanPhone || undefined,
+                            status: 'error',
+                            reason: err.message || 'Error al guardar el registro en la base de datos'
+                        });
+                    }
+
+                    processedRows++;
+                    if (onProgress) {
+                        onProgress({
+                            processedRows,
+                            remainingRows: totalRows - processedRows,
+                            successCount,
+                            errorCount,
+                            currentRowName: String(nombre),
+                            items: [...items]
+                        });
+                    }
+                    await new Promise(r => setTimeout(r, 15));
+                }
+
+                if (onProgress) {
+                    onProgress({
+                        status: 'completed',
+                        processedRows: totalRows,
+                        remainingRows: 0,
+                        successCount,
+                        updatedCount,
+                        errorCount,
+                        items: [...items]
                     });
                 }
 
-                // 1. Crear clientes base por lote
-                const { data: newClients, error: cErr } = await supabase
-                    .from('clientes')
-                    .insert(clientsPayload)
-                    .select('id');
-
-                if (cErr) throw cErr;
-                if (!newClients || newClients.length === 0) {
-                    throw new Error('No se pudieron crear los registros de clientes base.');
-                }
-
-                // 2. Asociar a empresa por lote
-                const empresaClientePayload = newClients.map((newC, index) => {
-                    const { row, fechaNorm } = rowsData[index];
-                    return {
-                        cliente_id: newC.id,
-                        empresa_id: empresaActiva.id,
-                        estado: row.estado || '1 - Cliente relevado',
-                        rubro: row.rubro || '',
-                        responsable: row.responsable || '',
-                        situacion: row.situacion || '',
-                        notas: row.notas || '',
-                        tipo_contacto: row.tipo_contacto || '',
-                        fecha_proximo_contacto: row.fecha_proximo_contacto || null,
-                        hora_proximo_contacto: row.hora_proximo_contacto || null,
-                        creado_por: userName || userEmail || 'Importación',
-                        activo: true,
-                        created_at: fechaNorm || undefined
-                    };
-                });
-
-                const { error: ecErr } = await supabase
-                    .from('empresa_cliente')
-                    .insert(empresaClientePayload);
-
-                if (ecErr) throw ecErr;
-
-                toast.success(`Importación finalizada: ${newClients.length} clientes cargados`, { id: toastId });
+                toast.success(`Importación finalizada: ${successCount} clientes cargados${errorCount > 0 ? `, ${errorCount} omitidos` : ''}`);
                 if (onSuccess) onSuccess();
-            } catch (err) {
+            } catch (err: any) {
                 console.error(err);
-                toast.error('Error al procesar el Excel', { id: toastId });
+                if (onProgress) {
+                    onProgress({ status: 'error', errorMessage: err.message || 'Error al procesar el Excel' });
+                }
+                toast.error('Error al procesar el Excel');
             }
         };
         reader.readAsBinaryString(file);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        toast.error('Error al leer el archivo', { id: toastId });
+        if (onProgress) {
+            onProgress({ status: 'error', errorMessage: error.message || 'Error al leer el archivo' });
+        }
+        toast.error('Error al leer el archivo');
     }
 };
 
@@ -472,10 +565,18 @@ export const exportarRepartidoresExcel = async (empresaActiva: any, filters: any
     }
 };
 
-export const importarConsumidoresExcel = async (file: File | null, empresaActiva: any, onSuccess?: () => void) => {
+export const importarConsumidoresExcel = async (
+    file: File | null, 
+    empresaActiva: any, 
+    onSuccess?: () => void,
+    onProgress?: (progress: Partial<ImportProgressState>) => void
+) => {
     if (!file) return;
 
-    const toastId = toast.loading('Procesando archivo...');
+    if (onProgress) {
+        onProgress({ status: 'reading', fileName: file.name, title: 'Importando Consumidores desde Excel' });
+    }
+
     try {
         const reader = new FileReader();
         reader.onload = async (evt: any) => {
@@ -486,38 +587,86 @@ export const importarConsumidoresExcel = async (file: File | null, empresaActiva
                 const ws = wb.Sheets[wsname];
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
 
-                if (data.length === 0) {
-                    toast.error('El archivo está vacío', { id: toastId });
+                if (!data || data.length === 0) {
+                    if (onProgress) {
+                        onProgress({ status: 'error', errorMessage: 'El archivo está vacío' });
+                    }
+                    toast.error('El archivo está vacío');
                     return;
                 }
 
+                const totalRows = data.length;
+                let processedRows = 0;
                 let successCount = 0;
-                let updateCount = 0;
+                let updatedCount = 0;
+                let errorCount = 0;
+                const items: ImportRowResult[] = [];
 
-                for (const row of data) {
+                if (onProgress) {
+                    onProgress({
+                        status: 'processing',
+                        totalRows,
+                        processedRows: 0,
+                        remainingRows: totalRows,
+                        successCount: 0,
+                        updatedCount: 0,
+                        errorCount: 0,
+                        items: []
+                    });
+                }
+
+                for (let i = 0; i < data.length; i++) {
+                    const row = data[i];
+                    const rowIndex = i + 1;
+                    const nombre = row.nombre || row.Nombre || row.nombre_local || row.Nombre_Local || 'Nuevo Consumidor';
+                    const telRaw = String(row.telefono || row.Telefono || row.Teléfono || row.tel || row.Tel || '').trim();
+                    const email = row.mail || row.Mail || row.email || row.Email || '';
+                    const localidad = row.localidad || row.Localidad || '';
+                    const barrio = row.barrio || row.Barrio || row.direccion || row.Dirección || '';
+                    const notas = row.notas || row.Notas || '';
+                    const lat = row.lat || row.Lat || row.latitud || row.Latitud || null;
+                    const lng = row.lng || row.Lng || row.longitud || row.Longitud || null;
+
+                    // Phone validation
+                    const phoneVal = validatePhoneNumber(telRaw, true);
+
+                    if (!phoneVal.isValid) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(nombre),
+                            phone: telRaw,
+                            status: 'error',
+                            reason: phoneVal.reason
+                        });
+                        processedRows++;
+                        if (onProgress) {
+                            onProgress({
+                                processedRows,
+                                remainingRows: totalRows - processedRows,
+                                errorCount,
+                                currentRowName: String(nombre),
+                                items: [...items]
+                            });
+                        }
+                        await new Promise(r => setTimeout(r, 15));
+                        continue;
+                    }
+
                     try {
-                        const nombre = row.nombre || row.Nombre || row.nombre_local || row.Nombre_Local || 'Nuevo Consumidor';
-                        const telRaw = String(row.telefono || row.Telefono || row.Teléfono || row.tel || row.Tel || '').trim();
-                        const email = row.mail || row.Mail || row.email || row.Email || '';
-                        const localidad = row.localidad || row.Localidad || '';
-                        const barrio = row.barrio || row.Barrio || row.direccion || row.Dirección || '';
-                        const notas = row.notas || row.Notas || '';
-                        const lat = row.lat || row.Lat || row.latitud || row.Latitud || null;
-                        const lng = row.lng || row.Lng || row.longitud || row.Longitud || null;
-
-                        if (!telRaw) continue; // Skip if no phone
+                        const cleanTel = phoneVal.cleanPhone || telRaw;
 
                         // Look for existing consumer by phone
                         const { data: existing } = await supabase
                             .from('consumidores')
                             .select('id')
                             .eq('empresa_id', empresaActiva.id)
-                            .eq('telefono', telRaw)
+                            .eq('telefono', cleanTel)
                             .maybeSingle();
 
                         const payload = {
-                            nombre,
-                            telefono: telRaw,
+                            nombre: String(nombre),
+                            telefono: cleanTel,
                             mail: email,
                             localidad: localidad || null,
                             barrio: barrio || null,
@@ -528,7 +677,6 @@ export const importarConsumidoresExcel = async (file: File | null, empresaActiva
                         };
 
                         if (existing) {
-                            // Update existing (don't touch created_at, don't overwrite with empty values)
                             const updatePayload: Record<string, any> = {};
                             for (const [key, value] of Object.entries(payload)) {
                                 if (key === 'empresa_id') continue;
@@ -538,9 +686,14 @@ export const importarConsumidoresExcel = async (file: File | null, empresaActiva
                             }
                             const { error } = await supabase.from('consumidores').update(updatePayload).eq('id', existing.id);
                             if (error) throw error;
-                            updateCount++;
+                            updatedCount++;
+                            items.push({
+                                rowIndex,
+                                name: String(nombre),
+                                phone: cleanTel,
+                                status: 'updated'
+                            });
                         } else {
-                            // Insert new
                             let rawFecha = row.fecha_creacion || row.Fecha_Creacion || row.created_at || row.Created_At || undefined;
                             let fechaNorm = rawFecha ? new Date(rawFecha).toISOString() : new Date().toISOString();
                             if (isNaN(new Date(fechaNorm).getTime())) fechaNorm = new Date().toISOString();
@@ -551,30 +704,83 @@ export const importarConsumidoresExcel = async (file: File | null, empresaActiva
                             } as any]);
                             if (error) throw error;
                             successCount++;
+                            items.push({
+                                rowIndex,
+                                name: String(nombre),
+                                phone: cleanTel,
+                                status: 'success'
+                            });
                         }
-                    } catch (err) {
-                        console.error('Error importando consumidor:', row, err);
+                    } catch (err: any) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(nombre),
+                            phone: phoneVal.cleanPhone || telRaw,
+                            status: 'error',
+                            reason: err.message || 'Error al guardar en base de datos'
+                        });
                     }
+
+                    processedRows++;
+                    if (onProgress) {
+                        onProgress({
+                            processedRows,
+                            remainingRows: totalRows - processedRows,
+                            successCount,
+                            updatedCount,
+                            errorCount,
+                            currentRowName: String(nombre),
+                            items: [...items]
+                        });
+                    }
+                    await new Promise(r => setTimeout(r, 15));
                 }
 
-                toast.success(`Carga finalizada: ${successCount} nuevos y ${updateCount} actualizados`, { id: toastId });
+                if (onProgress) {
+                    onProgress({
+                        status: 'completed',
+                        processedRows: totalRows,
+                        remainingRows: 0,
+                        successCount,
+                        updatedCount,
+                        errorCount,
+                        items: [...items]
+                    });
+                }
+
+                toast.success(`Carga finalizada: ${successCount} nuevos y ${updatedCount} actualizados${errorCount > 0 ? `, ${errorCount} omitidos` : ''}`);
                 if (onSuccess) onSuccess();
-            } catch (err) {
+            } catch (err: any) {
                 console.error(err);
-                toast.error('Error al procesar el Excel', { id: toastId });
+                if (onProgress) {
+                    onProgress({ status: 'error', errorMessage: err.message || 'Error al procesar el Excel' });
+                }
+                toast.error('Error al procesar el Excel');
             }
         };
         reader.readAsBinaryString(file);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        toast.error('Error al leer el archivo', { id: toastId });
+        if (onProgress) {
+            onProgress({ status: 'error', errorMessage: error.message || 'Error al leer el archivo' });
+        }
+        toast.error('Error al leer el archivo');
     }
 };
 
-export const importarRepartidoresExcel = async (file: File | null, empresaActiva: any, onSuccess?: () => void) => {
+export const importarRepartidoresExcel = async (
+    file: File | null, 
+    empresaActiva: any, 
+    onSuccess?: () => void,
+    onProgress?: (progress: Partial<ImportProgressState>) => void
+) => {
     if (!file) return;
 
-    const toastId = toast.loading('Procesando archivo...');
+    if (onProgress) {
+        onProgress({ status: 'reading', fileName: file.name, title: 'Importando Repartidores desde Excel' });
+    }
+
     try {
         const reader = new FileReader();
         reader.onload = async (evt: any) => {
@@ -585,40 +791,88 @@ export const importarRepartidoresExcel = async (file: File | null, empresaActiva
                 const ws = wb.Sheets[wsname];
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
 
-                if (data.length === 0) {
-                    toast.error('El archivo está vacío', { id: toastId });
+                if (!data || data.length === 0) {
+                    if (onProgress) {
+                        onProgress({ status: 'error', errorMessage: 'El archivo está vacío' });
+                    }
+                    toast.error('El archivo está vacío');
                     return;
                 }
 
+                const totalRows = data.length;
+                let processedRows = 0;
                 let successCount = 0;
-                let updateCount = 0;
+                let updatedCount = 0;
+                let errorCount = 0;
+                const items: ImportRowResult[] = [];
 
-                for (const row of data) {
+                if (onProgress) {
+                    onProgress({
+                        status: 'processing',
+                        totalRows,
+                        processedRows: 0,
+                        remainingRows: totalRows,
+                        successCount: 0,
+                        updatedCount: 0,
+                        errorCount: 0,
+                        items: []
+                    });
+                }
+
+                for (let i = 0; i < data.length; i++) {
+                    const row = data[i];
+                    const rowIndex = i + 1;
+                    const nombre = row.nombre || row.Nombre || 'Nuevo Repartidor';
+                    const telRaw = String(row.telefono || row.Telefono || row.Teléfono || row.tel || row.Tel || '').trim();
+                    const email = row.email || row.Email || row.mail || row.Mail || '';
+                    const localidad = row.localidad || row.Localidad || '';
+                    const direccion = row.direccion || row.Dirección || '';
+                    const responsable = row.responsable || row.Responsable || '';
+                    const notas = row.notas || row.Notas || '';
+                    const estado = row.estado || row.Estado || 'Activo';
+                    const lat = row.lat || row.Lat || row.latitud || row.Latitud || null;
+                    const lng = row.lng || row.Lng || row.longitud || row.Longitud || null;
+
+                    // Phone validation
+                    const phoneVal = validatePhoneNumber(telRaw, true);
+
+                    if (!phoneVal.isValid) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(nombre),
+                            phone: telRaw,
+                            status: 'error',
+                            reason: phoneVal.reason
+                        });
+                        processedRows++;
+                        if (onProgress) {
+                            onProgress({
+                                processedRows,
+                                remainingRows: totalRows - processedRows,
+                                errorCount,
+                                currentRowName: String(nombre),
+                                items: [...items]
+                            });
+                        }
+                        await new Promise(r => setTimeout(r, 15));
+                        continue;
+                    }
+
                     try {
-                        const nombre = row.nombre || row.Nombre || 'Nuevo Repartidor';
-                        const telRaw = String(row.telefono || row.Telefono || row.Teléfono || row.tel || row.Tel || '').trim();
-                        const email = row.email || row.Email || row.mail || row.Mail || '';
-                        const localidad = row.localidad || row.Localidad || '';
-                        const direccion = row.direccion || row.Dirección || '';
-                        const responsable = row.responsable || row.Responsable || '';
-                        const notas = row.notas || row.Notas || '';
-                        const estado = row.estado || row.Estado || 'Activo';
-                        const lat = row.lat || row.Lat || row.latitud || row.Latitud || null;
-                        const lng = row.lng || row.Lng || row.longitud || row.Longitud || null;
-
-                        if (!telRaw) continue;
+                        const cleanTel = phoneVal.cleanPhone || telRaw;
 
                         // Look for existing repartidor by phone
                         const { data: existing } = await supabase
                             .from('repartidores')
                             .select('id')
                             .eq('empresa_id', empresaActiva.id)
-                            .eq('telefono', telRaw)
+                            .eq('telefono', cleanTel)
                             .maybeSingle();
 
                         const payload = {
-                            nombre,
-                            telefono: telRaw,
+                            nombre: String(nombre),
+                            telefono: cleanTel,
                             email,
                             localidad: localidad || null,
                             direccion: direccion || null,
@@ -631,7 +885,6 @@ export const importarRepartidoresExcel = async (file: File | null, empresaActiva
                         };
 
                         if (existing) {
-                            // Update existing (don't touch created_at, don't overwrite with empty values)
                             const updatePayload: Record<string, any> = {};
                             for (const [key, value] of Object.entries(payload)) {
                                 if (key === 'empresa_id') continue;
@@ -641,9 +894,14 @@ export const importarRepartidoresExcel = async (file: File | null, empresaActiva
                             }
                             const { error } = await supabase.from('repartidores').update(updatePayload).eq('id', existing.id);
                             if (error) throw error;
-                            updateCount++;
+                            updatedCount++;
+                            items.push({
+                                rowIndex,
+                                name: String(nombre),
+                                phone: cleanTel,
+                                status: 'updated'
+                            });
                         } else {
-                            // Insert new
                             let rawFecha = row.fecha_creacion || row.Fecha_Creacion || row.created_at || row.Created_At || row.fecha || row.Fecha || undefined;
                             let fechaNorm = undefined;
                             
@@ -670,23 +928,68 @@ export const importarRepartidoresExcel = async (file: File | null, empresaActiva
                             } as any]);
                             if (error) throw error;
                             successCount++;
+                            items.push({
+                                rowIndex,
+                                name: String(nombre),
+                                phone: cleanTel,
+                                status: 'success'
+                            });
                         }
-                    } catch (err) {
-                        console.error('Error importando repartidor:', row, err);
+                    } catch (err: any) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(nombre),
+                            phone: phoneVal.cleanPhone || telRaw,
+                            status: 'error',
+                            reason: err.message || 'Error al guardar en base de datos'
+                        });
                     }
+
+                    processedRows++;
+                    if (onProgress) {
+                        onProgress({
+                            processedRows,
+                            remainingRows: totalRows - processedRows,
+                            successCount,
+                            updatedCount,
+                            errorCount,
+                            currentRowName: String(nombre),
+                            items: [...items]
+                        });
+                    }
+                    await new Promise(r => setTimeout(r, 15));
                 }
 
-                toast.success(`Carga finalizada: ${successCount} nuevos y ${updateCount} actualizados`, { id: toastId });
+                if (onProgress) {
+                    onProgress({
+                        status: 'completed',
+                        processedRows: totalRows,
+                        remainingRows: 0,
+                        successCount,
+                        updatedCount,
+                        errorCount,
+                        items: [...items]
+                    });
+                }
+
+                toast.success(`Carga finalizada: ${successCount} nuevos y ${updatedCount} actualizados${errorCount > 0 ? `, ${errorCount} omitidos` : ''}`);
                 if (onSuccess) onSuccess();
-            } catch (err) {
+            } catch (err: any) {
                 console.error(err);
-                toast.error('Error al procesar el Excel', { id: toastId });
+                if (onProgress) {
+                    onProgress({ status: 'error', errorMessage: err.message || 'Error al procesar el Excel' });
+                }
+                toast.error('Error al procesar el Excel');
             }
         };
         reader.readAsBinaryString(file);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        toast.error('Error al leer el archivo', { id: toastId });
+        if (onProgress) {
+            onProgress({ status: 'error', errorMessage: error.message || 'Error al leer el archivo' });
+        }
+        toast.error('Error al leer el archivo');
     }
 };
 
@@ -872,10 +1175,14 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
 export const importarLlamadasExcel = async (
     file: File | null,
     empresaActiva: any,
-    onSuccess?: () => void
+    onSuccess?: () => void,
+    onProgress?: (progress: Partial<ImportProgressState>) => void
 ) => {
     if (!file || !empresaActiva?.id) return;
-    const toastId = toast.loading("Leyendo archivo Excel...");
+
+    if (onProgress) {
+        onProgress({ status: 'reading', fileName: file.name, title: 'Importando Llamadas desde Excel' });
+    }
 
     try {
         const reader = new FileReader();
@@ -888,12 +1195,32 @@ export const importarLlamadasExcel = async (
                 const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
                 if (!json || json.length === 0) {
-                    toast.error("El archivo está vacío", { id: toastId });
+                    if (onProgress) {
+                        onProgress({ status: 'error', errorMessage: 'El archivo está vacío' });
+                    }
+                    toast.error("El archivo está vacío");
                     return;
                 }
 
+                const totalRows = json.length;
+                let processedRows = 0;
                 let insertCount = 0;
                 let updateCount = 0;
+                let errorCount = 0;
+                const items: ImportRowResult[] = [];
+
+                if (onProgress) {
+                    onProgress({
+                        status: 'processing',
+                        totalRows,
+                        processedRows: 0,
+                        remainingRows: totalRows,
+                        successCount: 0,
+                        updatedCount: 0,
+                        errorCount: 0,
+                        items: []
+                    });
+                }
 
                 const getVal = (row: any, ...possibleKeys: string[]) => {
                     if (!row) return null;
@@ -918,10 +1245,13 @@ export const importarLlamadasExcel = async (
                     return null;
                 };
 
-                for (const row of json) {
+                for (let i = 0; i < json.length; i++) {
+                    const row = json[i];
+                    const rowIndex = i + 1;
+
                     const nombre = getVal(row, "nombre", "Nombre");
                     const apellido = getVal(row, "apellido", "Apellido");
-                    const telefono = getVal(row, "telefono", "Teléfono", "TELÉFONO", "Telefono", "celular", "Phone", "Celular");
+                    const rawTelefono = getVal(row, "telefono", "Teléfono", "TELÉFONO", "Telefono", "celular", "Phone", "Celular");
                     const mail = getVal(row, "mail", "Mail", "email", "Email");
                     const direccion = getVal(row, "direccion", "Dirección", "Direccion");
                     const localidad = getVal(row, "localidad", "Localidad");
@@ -941,6 +1271,56 @@ export const importarLlamadasExcel = async (
                     const rawLlamadas = getVal(row, "cantidad_llamadas", "Cantidad de Llamadas", "llamadas", "Llamadas", "intentos", "Intentos");
                     const rawFechaLlamada = getVal(row, "fecha_ultima_llamada", "Fecha de Llamada", "Fecha Llamada", "Fecha de llamada", "Fecha Llamado", "fecha_llamada", "fecha");
 
+                    const rowName = [nombre, apellido].filter(Boolean).join(' ') || nombre_comercio || 'Registro sin Nombre';
+
+                    // 1. Phone validation
+                    const phoneVal = validatePhoneNumber(rawTelefono, false);
+
+                    if (!phoneVal.isValid) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(rowName),
+                            phone: rawTelefono ? String(rawTelefono) : undefined,
+                            status: 'error',
+                            reason: phoneVal.reason
+                        });
+                        processedRows++;
+                        if (onProgress) {
+                            onProgress({
+                                processedRows,
+                                remainingRows: totalRows - processedRows,
+                                errorCount,
+                                currentRowName: String(rowName),
+                                items: [...items]
+                            });
+                        }
+                        await new Promise(r => setTimeout(r, 15));
+                        continue;
+                    }
+
+                    if (!phoneVal.cleanPhone && !nombre && !nombre_comercio) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: 'Sin datos',
+                            status: 'skipped',
+                            reason: 'La fila no contiene ni teléfono, ni nombre, ni nombre de comercio.'
+                        });
+                        processedRows++;
+                        if (onProgress) {
+                            onProgress({
+                                processedRows,
+                                remainingRows: totalRows - processedRows,
+                                errorCount,
+                                currentRowName: 'Fila sin datos',
+                                items: [...items]
+                            });
+                        }
+                        await new Promise(r => setTimeout(r, 15));
+                        continue;
+                    }
+
                     let fechaLlamadaIso: string | null = null;
                     if (rawFechaLlamada) {
                         if (typeof rawFechaLlamada === 'string') {
@@ -952,9 +1332,7 @@ export const importarLlamadasExcel = async (
                         }
                     }
 
-                    if (!telefono && !nombre && !nombre_comercio) continue;
-
-                    const cleanPhone = telefono ? String(telefono).trim() : null;
+                    const cleanPhone = phoneVal.cleanPhone;
 
                     const payload: Record<string, any> = {
                         empresa_id: empresaActiva.id,
@@ -985,7 +1363,6 @@ export const importarLlamadasExcel = async (
                     if (cleanPhone) {
                         const digitsOnly = cleanPhone.replace(/\D/g, '');
                         
-                        // 1. Buscar en llamadas
                         const { data: foundExact } = await (supabase as any)
                             .from('llamadas')
                             .select('id, cantidad_llamadas')
@@ -1008,7 +1385,6 @@ export const importarLlamadasExcel = async (
                             }
                         }
 
-                        // 2. Buscar en empresa_cliente / clientes si no está en llamadas
                         if (!existingInLlamadas) {
                             const { data: foundEC } = await (supabase as any)
                                 .from('empresa_cliente')
@@ -1035,106 +1411,153 @@ export const importarLlamadasExcel = async (
                     const isExisting = !!(existingInLlamadas || existingInClientes);
                     const calculatedEtiqueta = isExisting ? 'cliente actualizado' : 'cliente nuevo';
 
-                    if (existingInLlamadas) {
-                        // Actualizar ficha existente sin alterar el contador de llamadas a menos que venga especificado en el Excel
-                        const currentCalls = Number(existingInLlamadas.cantidad_llamadas ?? 0);
-                        const parsedRaw = rawLlamadas !== null && rawLlamadas !== undefined && String(rawLlamadas).trim() !== '' ? parseInt(String(rawLlamadas)) : null;
-                        const newCalls = parsedRaw !== null && !isNaN(parsedRaw) ? Math.max(0, parsedRaw) : currentCalls;
+                    try {
+                        if (existingInLlamadas) {
+                            const currentCalls = Number(existingInLlamadas.cantidad_llamadas ?? 0);
+                            const parsedRaw = rawLlamadas !== null && rawLlamadas !== undefined && String(rawLlamadas).trim() !== '' ? parseInt(String(rawLlamadas)) : null;
+                            const newCalls = parsedRaw !== null && !isNaN(parsedRaw) ? Math.max(0, parsedRaw) : currentCalls;
 
-                        const updatePayload: Record<string, any> = {
-                            etiqueta: calculatedEtiqueta,
-                            cantidad_llamadas: newCalls,
-                            updated_at: new Date().toISOString()
-                        };
-                        if (fechaLlamadaIso) {
-                            updatePayload.fecha_ultima_llamada = fechaLlamadaIso;
-                        }
-
-                        for (const [key, value] of Object.entries(payload)) {
-                            if (key === 'empresa_id') continue;
-                            if (value !== null && value !== undefined && value !== '') {
-                                updatePayload[key] = value;
+                            const updatePayload: Record<string, any> = {
+                                etiqueta: calculatedEtiqueta,
+                                cantidad_llamadas: newCalls,
+                                updated_at: new Date().toISOString()
+                            };
+                            if (fechaLlamadaIso) {
+                                updatePayload.fecha_ultima_llamada = fechaLlamadaIso;
                             }
-                        }
 
-                        let updateRes = await (supabase as any)
-                            .from('llamadas')
-                            .update(updatePayload)
-                            .eq('id', existingInLlamadas.id);
+                            for (const [key, value] of Object.entries(payload)) {
+                                if (key === 'empresa_id') continue;
+                                if (value !== null && value !== undefined && value !== '') {
+                                    updatePayload[key] = value;
+                                }
+                            }
 
-                        if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas') || updateRes.error.message?.includes('origen_contacto') || updateRes.error.message?.includes('fecha_ultima_llamada'))) {
-                            // Fallback en caso de que alguna columna no esté presente en la BD
-                            if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
-                            if (updateRes.error.message?.includes('cantidad_llamadas')) delete updatePayload.cantidad_llamadas;
-                            if (updateRes.error.message?.includes('origen_contacto')) delete updatePayload.origen_contacto;
-                            if (updateRes.error.message?.includes('fecha_ultima_llamada')) delete updatePayload.fecha_ultima_llamada;
-                            updateRes = await (supabase as any)
+                            let updateRes = await (supabase as any)
                                 .from('llamadas')
                                 .update(updatePayload)
                                 .eq('id', existingInLlamadas.id);
-                        }
 
-                        if (updateRes.error) {
-                            console.error('Error al actualizar llamada:', updateRes.error);
-                        } else {
+                            if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas') || updateRes.error.message?.includes('origen_contacto') || updateRes.error.message?.includes('fecha_ultima_llamada'))) {
+                                if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
+                                if (updateRes.error.message?.includes('cantidad_llamadas')) delete updatePayload.cantidad_llamadas;
+                                if (updateRes.error.message?.includes('origen_contacto')) delete updatePayload.origen_contacto;
+                                if (updateRes.error.message?.includes('fecha_ultima_llamada')) delete updatePayload.fecha_ultima_llamada;
+                                updateRes = await (supabase as any)
+                                    .from('llamadas')
+                                    .update(updatePayload)
+                                    .eq('id', existingInLlamadas.id);
+                            }
+
+                            if (updateRes.error) throw updateRes.error;
                             updateCount++;
-                        }
-                    } else {
-                        // Crear nueva ficha con su etiqueta y cantidad de llamadas inicial (default 0)
-                        const parsedRaw = rawLlamadas ? parseInt(rawLlamadas) : null;
-                        const initialCalls = parsedRaw !== null && !isNaN(parsedRaw) ? Math.max(0, parsedRaw) : 0;
+                            items.push({
+                                rowIndex,
+                                name: String(rowName),
+                                phone: cleanPhone || undefined,
+                                status: 'updated'
+                            });
+                        } else {
+                            const parsedRaw = rawLlamadas ? parseInt(rawLlamadas) : null;
+                            const initialCalls = parsedRaw !== null && !isNaN(parsedRaw) ? Math.max(0, parsedRaw) : 0;
 
-                        const insertPayload: Record<string, any> = {
-                            ...payload,
-                            etiqueta: calculatedEtiqueta,
-                            cantidad_llamadas: initialCalls,
-                        };
-                        if (fechaLlamadaIso) {
-                            insertPayload.fecha_ultima_llamada = fechaLlamadaIso;
-                        }
+                            const insertPayload: Record<string, any> = {
+                                ...payload,
+                                etiqueta: calculatedEtiqueta,
+                                cantidad_llamadas: initialCalls,
+                            };
+                            if (fechaLlamadaIso) {
+                                insertPayload.fecha_ultima_llamada = fechaLlamadaIso;
+                            }
 
-                        let insertRes = await (supabase as any)
-                            .from('llamadas')
-                            .insert(insertPayload);
-
-                        if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas') || insertRes.error.message?.includes('origen_contacto') || insertRes.error.message?.includes('fecha_ultima_llamada'))) {
-                            // Fallback en caso de que alguna columna no esté presente en la BD
-                            if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
-                            if (insertRes.error.message?.includes('cantidad_llamadas')) delete insertPayload.cantidad_llamadas;
-                            if (insertRes.error.message?.includes('origen_contacto')) delete insertPayload.origen_contacto;
-                            if (insertRes.error.message?.includes('fecha_ultima_llamada')) delete insertPayload.fecha_ultima_llamada;
-                            insertRes = await (supabase as any)
+                            let insertRes = await (supabase as any)
                                 .from('llamadas')
                                 .insert(insertPayload);
-                        }
 
-                        if (insertRes.error) {
-                            console.error('Error al insertar llamada:', insertRes.error);
-                        } else {
+                            if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas') || insertRes.error.message?.includes('origen_contacto') || insertRes.error.message?.includes('fecha_ultima_llamada'))) {
+                                if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
+                                if (insertRes.error.message?.includes('cantidad_llamadas')) delete insertPayload.cantidad_llamadas;
+                                if (insertRes.error.message?.includes('origen_contacto')) delete insertPayload.origen_contacto;
+                                if (insertRes.error.message?.includes('fecha_ultima_llamada')) delete insertPayload.fecha_ultima_llamada;
+                                insertRes = await (supabase as any)
+                                    .from('llamadas')
+                                    .insert(insertPayload);
+                            }
+
+                            if (insertRes.error) throw insertRes.error;
+
                             if (isExisting) {
                                 updateCount++;
+                                items.push({
+                                    rowIndex,
+                                    name: String(rowName),
+                                    phone: cleanPhone || undefined,
+                                    status: 'updated'
+                                });
                             } else {
                                 insertCount++;
+                                items.push({
+                                    rowIndex,
+                                    name: String(rowName),
+                                    phone: cleanPhone || undefined,
+                                    status: 'success'
+                                });
                             }
                         }
+                    } catch (err: any) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: String(rowName),
+                            phone: cleanPhone || undefined,
+                            status: 'error',
+                            reason: err.message || 'Error guardando en base de datos'
+                        });
                     }
+
+                    processedRows++;
+                    if (onProgress) {
+                        onProgress({
+                            processedRows,
+                            remainingRows: totalRows - processedRows,
+                            successCount: insertCount,
+                            updatedCount: updateCount,
+                            errorCount,
+                            currentRowName: String(rowName),
+                            items: [...items]
+                        });
+                    }
+                    await new Promise(r => setTimeout(r, 15));
                 }
 
-                if (insertCount === 0 && updateCount === 0) {
-                    toast.error("No se procesaron registros válidos del Excel", { id: toastId });
-                    return;
+                if (onProgress) {
+                    onProgress({
+                        status: 'completed',
+                        processedRows: totalRows,
+                        remainingRows: 0,
+                        successCount: insertCount,
+                        updatedCount: updateCount,
+                        errorCount,
+                        items: [...items]
+                    });
                 }
 
-                toast.success(`Importación finalizada: ${insertCount} nuevos y ${updateCount} actualizados`, { id: toastId });
+                toast.success(`Importación finalizada: ${insertCount} nuevos y ${updateCount} actualizados${errorCount > 0 ? `, ${errorCount} omitidos` : ''}`);
                 if (onSuccess) onSuccess();
             } catch (err: any) {
                 console.error(err);
-                toast.error(err.message || 'Error al procesar el Excel', { id: toastId });
+                if (onProgress) {
+                    onProgress({ status: 'error', errorMessage: err.message || 'Error al procesar el Excel' });
+                }
+                toast.error(err.message || 'Error al procesar el Excel');
             }
         };
         reader.readAsBinaryString(file);
     } catch (error: any) {
         console.error(error);
-        toast.error('Error al leer el archivo', { id: toastId });
+        if (onProgress) {
+            onProgress({ status: 'error', errorMessage: error.message || 'Error al leer el archivo' });
+        }
+        toast.error('Error al leer el archivo');
     }
 };

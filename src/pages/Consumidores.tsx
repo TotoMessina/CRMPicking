@@ -14,6 +14,8 @@ import toast from 'react-hot-toast';
 import { ConsumidorModal } from '../components/ui/ConsumidorModal';
 import { ActividadConsumidorModal } from '../components/ui/ActividadConsumidorModal';
 import { importarConsumidoresExcel, descargarModeloConsumidores, exportarConsumidoresExcel } from '../lib/excelExport';
+import { ExcelImportModal } from '../components/ui/ExcelImportModal';
+import { useExcelImport } from '../hooks/useExcelImport';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConsumerFilters } from '../components/consumidores/ConsumerFilters';
 
@@ -124,11 +126,19 @@ export default function Consumidores() {
         fetchConsumidores();
     }, [page, pageSize, fNombre, fTelefono, fLocalidad, fEstado, fResponsable, empresaActiva]);
 
+    const { importState, startImport, updateProgress, closeImportModal } = useExcelImport();
+
     const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        await importarConsumidoresExcel(file, empresaActiva, () => fetchConsumidores());
+        startImport('Importando Consumidores desde Excel', file.name);
+        await importarConsumidoresExcel(
+            file,
+            empresaActiva,
+            () => fetchConsumidores(),
+            (prog) => updateProgress(prog)
+        );
         e.target.value = '';
     };
 
@@ -457,6 +467,7 @@ export default function Consumidores() {
             <style tabIndex={-1}>{`
                 .dropdown-item:hover { background: var(--bg-elevated); color: var(--accent) !important; }
             `}</style>
+            <ExcelImportModal state={importState} onClose={closeImportModal} />
         </div>
     );
 }

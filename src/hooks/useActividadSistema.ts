@@ -86,8 +86,13 @@ export function useActividadSistema() {
 
         let query = supabase
             .from('audit_logs')
-            .select('*, usuarios(nombre)', { count: 'exact' })
-            .eq('empresa_id', empresaActiva.id);
+            .select('*, usuarios(nombre)', { count: 'exact' });
+
+        if (isSuperAdmin && filterTable === 'usuarios') {
+            // Superadmin puede auditar usuarios globales
+        } else {
+            query = query.or(`empresa_id.eq.${empresaActiva.id},empresa_id.is.null`);
+        }
 
         if (filterTable !== 'Todos') query = query.eq('table_name', filterTable);
         if (filterAction !== 'Todas') query = query.eq('action_type', filterAction);

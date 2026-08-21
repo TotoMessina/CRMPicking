@@ -8,28 +8,122 @@ import {
 import { format, parseISO } from 'date-fns';
 import { useActividadSistema } from '../hooks/useActividadSistema';
 
-// Diccionario de humanización de auditoría
+// Diccionario de humanización de campos de auditoría para todos los módulos
 const FIELD_DICTIONARY: Record<string, string> = {
+    // Clientes & Locales
     'nombre_local': 'Nombre del Local',
     'nombre': 'Nombre',
+    'apellido': 'Apellido',
     'comentarios_admin': 'Nota Administrativa',
     'comentarios_vendedor': 'Nota del Vendedor',
-    'estado': 'Estado Técnico',
-    'activo': 'Habilitado',
-    'rubro': 'Rubro del Local',
+    'estado': 'Estado / Situación',
+    'activo': 'Habilitado / Activo',
+    'rubro': 'Rubro',
     'telefono': 'Teléfono',
     'direccion': 'Dirección',
+    'localidad': 'Localidad',
+    'provincia': 'Provincia',
     'email': 'Correo Electrónico',
+    'mail': 'Correo Electrónico',
     'role': 'Nivel de Rol',
-    'latitud': 'Ubicación Mapa',
-    'longitud': 'Ubicación Mapa',
     'notas': 'Notas Adicionales',
     'monto': 'Gestión de Monto ($)',
-    'precio': 'Precio de Producto',
+    'precio': 'Precio ($)',
     'stock': 'Unidades en Stock',
-    'estado_carga': 'Estado de Sincronización',
-    'avatar_emoji': 'Avatar/Pin Mapa',
-    '_sync_hash': 'Hash Local'
+    'responsable': 'Responsable Asignado',
+    'situacion': 'Situación Comercial',
+    'estilo_contacto': 'Estilo de Contacto',
+    'interes': 'Nivel de Interés',
+    'tipo_contacto': 'Tipo de Contacto',
+    'visitas': 'Visitas Realizadas',
+    'fecha_proximo_contacto': 'Fecha Próx. Contacto',
+    'hora_proximo_contacto': 'Hora Próx. Contacto',
+
+    // Llamadas Comerciales
+    'nombre_operador': 'Operador',
+    'respuesta_llamado': 'Respuesta del Llamado',
+    'tiempo_llamado': 'Tiempo de Llamada',
+    'envio_whatsapp': 'WhatsApp Enviado',
+    'siguio_redes': 'Siguió en Redes',
+    'completo_formulario': 'Completó Formulario',
+    'envio_listo': 'Envió "Listo"',
+    'etiqueta': 'Etiqueta',
+    'cantidad_llamadas': 'Cantidad de Llamadas',
+    'fecha_ultima_llamada': 'Fecha de Llamada',
+    'origen_contacto': 'Origen de Contacto',
+    'nombre_comercio': 'Nombre del Comercio',
+    'rol_contacto': 'Rol de Contacto',
+    'instagram': 'Instagram',
+
+    // Consumidores
+    'barrio': 'Barrio',
+    'edad': 'Edad',
+    'genero': 'Género',
+
+    // Tickets & Reclamos
+    'titulo': 'Título',
+    'descripcion': 'Descripción',
+    'prioridad': 'Prioridad',
+    'vencimiento': 'Fecha de Vencimiento',
+    'categoria': 'Categoría',
+    'asignado_a': 'Asignado a',
+    'creado_por': 'Creado por',
+    'resuelta': 'Resuelto',
+    'columna': 'Columna / Estado',
+
+    // Proveedores
+    'razon_social': 'Razón Social',
+    'contacto': 'Persona de Contacto',
+    'cuit': 'CUIT / Identificación',
+    'condicion_iva': 'Condición de IVA',
+
+    // Campañas
+    'tipo': 'Tipo de Campaña',
+    'presupuesto': 'Presupuesto ($)',
+    'costo': 'Costo Incurrido ($)',
+    'fecha_inicio': 'Fecha de Inicio',
+    'fecha_fin': 'Fecha de Fin',
+    'objetivo': 'Objetivo Comercial',
+    'canal': 'Canal de Difusión',
+
+    // Horarios & Repartidores
+    'dia': 'Día de Jornada',
+    'hora_desde': 'Hora Desde',
+    'hora_hasta': 'Hora Hasta',
+    'tipo_jornada': 'Tipo de Jornada',
+    'vehiculo': 'Vehículo',
+    'patente': 'Patente',
+
+    // Inventario & Marketing
+    'articulo': 'Artículo',
+    'unidad': 'Unidad de Medida',
+    'ubicacion': 'Ubicación',
+
+    // Grupos & Pipeline
+    'nombre_grupo': 'Nombre del Grupo',
+    'color': 'Color',
+    'icono': 'Ícono',
+    'nombre_situacion': 'Nombre de Situación',
+    'color_hex': 'Color Hexadecimal',
+    'orden': 'Orden de Visualización',
+};
+
+const TABLE_CONFIG: Record<string, { label: string; icon: string; bg: string; color: string; border: string }> = {
+    'clientes': { label: 'Clientes / Locales', icon: '🏪', bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
+    'empresa_cliente': { label: 'Ficha Comercial', icon: '🏢', bg: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', border: 'rgba(99, 102, 241, 0.3)' },
+    'llamadas': { label: 'Llamadas', icon: '📞', bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' },
+    'consumidores': { label: 'Consumidores', icon: '👥', bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
+    'repartidores': { label: 'Repartidores', icon: '🛵', bg: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4', border: 'rgba(6, 182, 212, 0.3)' },
+    'proveedores': { label: 'Proveedores', icon: '🏢', bg: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' },
+    'tickets': { label: 'Tickets', icon: '🎫', bg: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', border: 'rgba(244, 63, 94, 0.3)' },
+    'tareas': { label: 'Tareas', icon: '📋', bg: 'rgba(234, 179, 8, 0.1)', color: '#eab308', border: 'rgba(234, 179, 8, 0.3)' },
+    'campanas': { label: 'Campañas', icon: '📢', bg: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: 'rgba(236, 72, 153, 0.3)' },
+    'horarios': { label: 'Horarios', icon: '⏰', bg: 'rgba(20, 184, 166, 0.1)', color: '#14b8a6', border: 'rgba(20, 184, 166, 0.3)' },
+    'inventario_marketing': { label: 'Inventario Mkt', icon: '📦', bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' },
+    'grupos': { label: 'Grupos', icon: '🏷️', bg: 'rgba(14, 165, 233, 0.1)', color: '#0ea5e9', border: 'rgba(14, 165, 233, 0.3)' },
+    'pipeline_situations': { label: 'Pipeline', icon: '🎯', bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'rgba(249, 115, 22, 0.3)' },
+    'usuarios': { label: 'Usuarios', icon: '👤', bg: 'rgba(100, 116, 139, 0.1)', color: '#64748b', border: 'rgba(100, 116, 139, 0.3)' },
+    'visitas_diarias': { label: 'Rutas / Visitas', icon: '🗺️', bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
 };
 
 const IGNORED_FIELDS = ['lat', 'lng', 'latitud', 'longitud', '_sync_hash', 'updated_at', 'created_at', 'id'];
@@ -93,7 +187,7 @@ export const ActividadSistema: React.FC = () => {
         if (!oldData && !newData) return <div className="muted" style={{ fontSize: '0.85rem' }}>{t('audit.diff.silent')}</div>;
         
         if (!oldData && newData) {
-            const ident = newData.nombre_local || newData.nombre || newData.email || newData.titulo || t('common.reference', 'un registro');
+            const ident = newData.nombre_local || newData.nombre_comercio || newData.razon_social || newData.titulo || newData.nombre_grupo || newData.articulo || [newData.nombre, newData.apellido].filter(Boolean).join(' ') || newData.nombre || newData.email || newData.telefono || t('common.reference', 'un registro');
             return (
                 <div style={{ padding: '8px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--success)' }}>
@@ -104,7 +198,7 @@ export const ActividadSistema: React.FC = () => {
         }
         
         if (oldData && !newData) {
-            const ident = oldData.nombre_local || oldData.nombre || oldData.email || oldData.titulo || t('common.reference', 'un registro');
+            const ident = oldData.nombre_local || oldData.nombre_comercio || oldData.razon_social || oldData.titulo || oldData.nombre_grupo || oldData.articulo || [oldData.nombre, oldData.apellido].filter(Boolean).join(' ') || oldData.nombre || oldData.email || oldData.telefono || t('common.reference', 'un registro');
             return (
                 <div style={{ padding: '8px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--danger)' }}>
@@ -265,11 +359,22 @@ export const ActividadSistema: React.FC = () => {
                             </div>
                             <div style={{ display: 'flex', flex: '1 1 300px', gap: '8px' }}>
                                 <select className="input premium-input" style={{ flex: 1 }} value={filterTable} onChange={e => {setFilterTable(e.target.value); setPage(1);}}>
-                                    <option value="Todos">{t('audit.tables.all')}</option>
-                                    <option value="clientes">{t('audit.tables.clients')}</option>
-                                    <option value="visitas_diarias">{t('audit.tables.routes')}</option>
-                                    <option value="repartidores">{t('audit.tables.drivers')}</option>
-                                    <option value="usuarios">{t('audit.tables.users')}</option>
+                                    <option value="Todos">{t('audit.tables.all', 'Todas las categorías')}</option>
+                                    <option value="clientes">🏪 Clientes / Locales</option>
+                                    <option value="empresa_cliente">🏢 Fichas de Empresa</option>
+                                    <option value="llamadas">📞 Llamadas Comerciales</option>
+                                    <option value="consumidores">👥 Consumidores</option>
+                                    <option value="tickets">🎫 Tickets & Reclamos</option>
+                                    <option value="tareas">📋 Tareas & Tablero</option>
+                                    <option value="proveedores">🏢 Proveedores</option>
+                                    <option value="campanas">📢 Campañas</option>
+                                    <option value="repartidores">🛵 Repartidores</option>
+                                    <option value="horarios">⏰ Horarios & Jornadas</option>
+                                    <option value="inventario_marketing">📦 Inventario de Marketing</option>
+                                    <option value="grupos">🏷️ Grupos & Segmentos</option>
+                                    <option value="pipeline_situations">🎯 Situaciones Pipeline</option>
+                                    <option value="visitas_diarias">🗺️ Rutas y Visitas</option>
+                                    <option value="usuarios">👤 Usuarios del Sistema</option>
                                 </select>
                                 <select className="input premium-input" style={{ flex: 1 }} value={filterAction} onChange={e => {setFilterAction(e.target.value); setPage(1);}}>
                                     <option value="Todas">{t('audit.actions.all')}</option>
@@ -387,9 +492,27 @@ export const ActividadSistema: React.FC = () => {
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '16px', verticalAlign: 'top', width: '200px' }}>
-                                                    <div style={{ fontWeight: 800, fontSize: '0.7rem', background: 'var(--bg-body)', color: 'var(--text)', border: '1px solid var(--border)', padding: '4px 8px', borderRadius: '6px', display: 'inline-block', marginBottom: '6px' }}>
-                                                        {log.table_name.toUpperCase()}
-                                                    </div>
+                                                    {(() => {
+                                                        const conf = TABLE_CONFIG[log.table_name] || { label: log.table_name.toUpperCase(), icon: '📁', bg: 'var(--bg-body)', color: 'var(--text)', border: 'var(--border)' };
+                                                        return (
+                                                            <div style={{
+                                                                fontWeight: 700,
+                                                                fontSize: '0.74rem',
+                                                                background: conf.bg,
+                                                                color: conf.color,
+                                                                border: `1px solid ${conf.border}`,
+                                                                padding: '4px 10px',
+                                                                borderRadius: '8px',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '5px',
+                                                                marginBottom: '6px'
+                                                            }}>
+                                                                <span>{conf.icon}</span>
+                                                                <span>{conf.label}</span>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                     <div className="muted" style={{ fontSize: '0.65rem', fontFamily: 'monospace', wordBreak: 'break-all' }}>ID: {log.record_id.split('-')[0]}...</div>
                                                 </td>
                                                 <td style={{ padding: '16px', verticalAlign: 'top', width: '100px' }}>
@@ -424,7 +547,26 @@ export const ActividadSistema: React.FC = () => {
                                             <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{log.usuarios?.nombre || t('audit.workers.system').toUpperCase()}</span>
                                         </div>
                                         <div style={{ marginBottom: '16px' }}>
-                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.5px' }}>{log.table_name.toUpperCase()}</div>
+                                            {(() => {
+                                                const conf = TABLE_CONFIG[log.table_name] || { label: log.table_name.toUpperCase(), icon: '📁', bg: 'var(--bg-body)', color: 'var(--text)', border: 'var(--border)' };
+                                                return (
+                                                    <div style={{
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 700,
+                                                        color: conf.color,
+                                                        background: conf.bg,
+                                                        border: `1px solid ${conf.border}`,
+                                                        padding: '3px 8px',
+                                                        borderRadius: '6px',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}>
+                                                        <span>{conf.icon}</span>
+                                                        <span>{conf.label}</span>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                         <div style={{ background: 'var(--bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                                             {renderDiff(log.old_data, log.new_data)}

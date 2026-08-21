@@ -11,6 +11,8 @@ import { LlamadaFilters } from '../components/llamadas/LlamadaFilters';
 import { Button } from '../components/ui/Button';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { descargarModeloLlamadas, exportarLlamadasExcel, importarLlamadasExcel } from '../lib/excelExport';
+import { ExcelImportModal } from '../components/ui/ExcelImportModal';
+import { useExcelImport } from '../hooks/useExcelImport';
 
 const PAGE_SIZE = 24;
 
@@ -82,13 +84,21 @@ const Llamadas: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['llamadas'] });
     };
 
+    const { importState, startImport, updateProgress, closeImportModal } = useExcelImport();
+
     const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null;
         if (file && empresaActiva) {
-            importarLlamadasExcel(file, empresaActiva, () => {
-                queryClient.invalidateQueries({ queryKey: ['llamadas'] });
-                queryClient.invalidateQueries({ queryKey: ['clientes'] });
-            });
+            startImport('Importando Llamadas desde Excel', file.name);
+            importarLlamadasExcel(
+                file,
+                empresaActiva,
+                () => {
+                    queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
+                },
+                (prog) => updateProgress(prog)
+            );
         }
         e.target.value = '';
     };
@@ -308,6 +318,7 @@ const Llamadas: React.FC = () => {
                 </div>,
                 document.body
             )}
+            <ExcelImportModal state={importState} onClose={closeImportModal} />
         </div>
     );
 };

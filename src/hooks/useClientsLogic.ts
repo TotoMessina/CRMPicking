@@ -7,6 +7,7 @@ import { useRubros } from '../hooks/useRubros';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { descargarModeloClientes, importarClientesExcel, exportarClientesExcel } from '../lib/excelExport';
+import { useExcelImport } from './useExcelImport';
 import { Client, ClientActivity } from '../types/client';
 import { useGrupos } from './useGrupos';
 import { securityService } from '../lib/securityService';
@@ -151,10 +152,20 @@ export const useClientsLogic = () => {
         llamadaMutation.mutate({ clienteId, nombre, empresaActiva, userName, user });
     }, [empresaActiva, userName, user, llamadaMutation]);
 
+    const { importState, startImport, updateProgress, closeImportModal } = useExcelImport();
+
     const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        await importarClientesExcel(file, empresaActiva, userName, user?.email, () => fetchClientes());
+        startImport('Importando Clientes desde Excel', file.name);
+        await importarClientesExcel(
+            file,
+            empresaActiva,
+            userName,
+            user?.email,
+            () => fetchClientes(),
+            (prog) => updateProgress(prog)
+        );
         e.target.value = '';
     };
 
@@ -175,6 +186,7 @@ export const useClientsLogic = () => {
         isAgendaHoy, page, setPage, totalPages, loading, clientes, total, activities,
         filters, updateFilter, rubrosValidos, responsablesValidos, gruposValidos, sortBy, setSortBy, expandedActivities, toggleHistory,
         exportLoading, handleDescargarExcel, handleImportExcel, handleDescargarModelo: descargarModeloClientes,
+        importState, closeImportModal,
         modalOpen, setModalOpen, editingId, handleCreate, handleEdit, handleDelete,
         actModalOpen, setActModalOpen, actTargetId, actTargetName, handleOpenActivity,
         handleQuickDate, handleRegistrarVisita, handleRegistrarLlamada, queryClient
