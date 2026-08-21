@@ -1218,10 +1218,18 @@ export const importarLlamadasExcel = async (
     onProgress?: (progress: Partial<ImportProgressState>) => void,
     options?: { sinEtiqueta?: boolean }
 ) => {
-    if (!file || !empresaActiva?.id) return;
+    if (!file) return;
 
     if (onProgress) {
         onProgress({ status: 'reading', fileName: file.name, title: options?.sinEtiqueta ? 'Importando Clientes Sin Etiqueta desde Excel' : 'Importando Llamadas desde Excel' });
+    }
+
+    if (!empresaActiva?.id) {
+        if (onProgress) {
+            onProgress({ status: 'error', errorMessage: 'Debe seleccionar una empresa activa para importar' });
+        }
+        toast.error('Debe seleccionar una empresa activa para importar');
+        return;
     }
 
     try {

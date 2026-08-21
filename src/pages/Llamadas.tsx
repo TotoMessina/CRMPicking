@@ -93,36 +93,34 @@ const Llamadas: React.FC = () => {
 
     const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null;
-        if (file && empresaActiva) {
-            startImport('Importando Llamadas desde Excel', file.name);
-            importarLlamadasExcel(
-                file,
-                empresaActiva,
-                () => {
-                    queryClient.invalidateQueries({ queryKey: ['llamadas'] });
-                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
-                },
-                (prog) => updateProgress(prog)
-            );
-        }
+        if (!file) return;
+        startImport('Importando Llamadas desde Excel', file.name);
+        importarLlamadasExcel(
+            file,
+            empresaActiva,
+            () => {
+                queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+                queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            },
+            (prog) => updateProgress(prog)
+        );
         e.target.value = '';
     };
 
     const handleImportFileSinEtiqueta = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null;
-        if (file && empresaActiva) {
-            startImport('Importando Clientes sin Etiqueta desde Excel', file.name);
-            importarLlamadasExcel(
-                file,
-                empresaActiva,
-                () => {
-                    queryClient.invalidateQueries({ queryKey: ['llamadas'] });
-                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
-                },
-                (prog) => updateProgress(prog),
-                { sinEtiqueta: true }
-            );
-        }
+        if (!file) return;
+        startImport('Importando Clientes sin Etiqueta desde Excel', file.name);
+        importarLlamadasExcel(
+            file,
+            empresaActiva,
+            () => {
+                queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+                queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            },
+            (prog) => updateProgress(prog),
+            { sinEtiqueta: true }
+        );
         e.target.value = '';
     };
 
