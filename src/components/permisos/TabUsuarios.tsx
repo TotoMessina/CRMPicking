@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Edit2, Hexagon, Plus, X, UserPlus, FileSpreadsheet, Download, Upload, AlertCircle, CheckCircle, Loader2, Trash2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Edit2, Hexagon, Plus, X, UserPlus, FileSpreadsheet, Download, Upload, AlertCircle, CheckCircle, Loader2, Trash2, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -44,6 +44,20 @@ export function TabUsuarios({
     const [bulkProcessing, setBulkProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState({ total: 0, processed: 0, success: 0, errors: [] as string[] });
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (bulkProcessing) {
+            const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+                e.preventDefault();
+                e.returnValue = 'La creación de usuarios en lote desde Excel está en proceso. Si sales o recargas la página, la operación se cancelará.';
+                return e.returnValue;
+            };
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            return () => {
+                window.removeEventListener('beforeunload', handleBeforeUnload);
+            };
+        }
+    }, [bulkProcessing]);
 
     // Opción A: Carga Individual Submit
     const handleIndividualSubmit = async (e: React.FormEvent) => {
@@ -375,7 +389,7 @@ export function TabUsuarios({
 
             <AnimatePresence>
                 {isCreateUserModalOpen && (
-                    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => !bulkProcessing && setIsCreateUserModalOpen(false)}>
+                    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: bulkProcessing ? 99999 : 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: bulkProcessing ? 'rgba(2, 6, 23, 0.85)' : 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', pointerEvents: 'auto', userSelect: bulkProcessing ? 'none' : 'auto' }} onClick={() => !bulkProcessing && setIsCreateUserModalOpen(false)}>
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="modal-content glass-card" style={{ width: '95%', maxWidth: '480px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                             
                             {/* Encabezado Modal */}

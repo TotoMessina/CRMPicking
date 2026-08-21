@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,7 +11,8 @@ import {
     PhoneOff,
     Check,
     Layers,
-    ListFilter
+    ListFilter,
+    Lock
 } from 'lucide-react';
 import { ImportProgressState, ImportRowResult } from '../../types/excelImport';
 
@@ -23,13 +24,27 @@ interface Props {
 export const ExcelImportModal: React.FC<Props> = ({ state, onClose }) => {
     const [filterTab, setFilterTab] = useState<'all' | 'success' | 'errors'>('all');
 
+    const isDone = state.status === 'completed' || state.status === 'error';
+
+    useEffect(() => {
+        if (state.isOpen && !isDone) {
+            const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+                e.preventDefault();
+                e.returnValue = 'Hay una carga de datos en proceso. Si sales o recargas la página, la importación se cancelará.';
+                return e.returnValue;
+            };
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            return () => {
+                window.removeEventListener('beforeunload', handleBeforeUnload);
+            };
+        }
+    }, [state.isOpen, isDone]);
+
     if (!state.isOpen) return null;
 
     const percent = state.totalRows > 0
         ? Math.min(100, Math.round((state.processedRows / state.totalRows) * 100))
         : 0;
-
-    const isDone = state.status === 'completed' || state.status === 'error';
 
     const filteredItems = state.items.filter(item => {
         if (filterTab === 'success') return item.status === 'success' || item.status === 'updated';
@@ -63,7 +78,7 @@ export const ExcelImportModal: React.FC<Props> = ({ state, onClose }) => {
 
     return createPortal(
         <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md pointer-events-auto select-none">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 15 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -90,10 +105,15 @@ export const ExcelImportModal: React.FC<Props> = ({ state, onClose }) => {
                             </div>
                         </div>
 
-                        {isDone && (
+                        {!isDone ? (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-semibold animate-pulse">
+                                <Lock className="w-3.5 h-3.5" />
+                                <span>Carga en proceso — No cierre ni recargue la pestaña</span>
+                            </div>
+                        ) : (
                             <button
                                 onClick={onClose}
-                                className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
+                                className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                                 title="Cerrar"
                             >
                                 <X className="w-5 h-5" />

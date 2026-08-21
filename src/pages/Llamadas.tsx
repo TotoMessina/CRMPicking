@@ -33,11 +33,14 @@ const DEFAULT_FILTERS: Filters = {
 };
 
 const Llamadas: React.FC = () => {
-    const { empresaActiva } = useAuth();
+    const { empresaActiva, role } = useAuth();
     const queryClient = useQueryClient();
     const askConfirm = useConfirm();
     const deleteMutation = useDeleteLlamada();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputSinEtiquetaRef = useRef<HTMLInputElement>(null);
+
+    const isSuperAdmin = role === 'super-admin';
 
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -105,12 +108,37 @@ const Llamadas: React.FC = () => {
         e.target.value = '';
     };
 
+    const handleImportFileSinEtiqueta = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] || null;
+        if (file && empresaActiva) {
+            startImport('Importando Clientes sin Etiqueta desde Excel', file.name);
+            importarLlamadasExcel(
+                file,
+                empresaActiva,
+                () => {
+                    queryClient.invalidateQueries({ queryKey: ['llamadas'] });
+                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
+                },
+                (prog) => updateProgress(prog),
+                { sinEtiqueta: true }
+            );
+        }
+        e.target.value = '';
+    };
+
     return (
         <div className="page-container" style={{ padding: '0', maxWidth: '100%', margin: '0 auto', position: 'relative' }}>
             <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleImportFile}
+                accept=".xlsx, .xls, .csv"
+                style={{ display: 'none' }}
+            />
+            <input
+                type="file"
+                ref={fileInputSinEtiquetaRef}
+                onChange={handleImportFileSinEtiqueta}
                 accept=".xlsx, .xls, .csv"
                 style={{ display: 'none' }}
             />
@@ -150,6 +178,22 @@ const Llamadas: React.FC = () => {
                         >
                             <Upload size={15} /> Cargar Excel
                         </Button>
+                        {isSuperAdmin && (
+                            <Button
+                                variant="secondary"
+                                onClick={() => fileInputSinEtiquetaRef.current?.click()}
+                                title="Cargar fichas desde Excel sin asignar etiqueta (Exclusivo Super-Admin)"
+                                style={{
+                                    gap: '6px',
+                                    fontSize: '0.84rem',
+                                    borderColor: 'rgba(234, 179, 8, 0.4)',
+                                    color: '#eab308',
+                                    background: 'rgba(234, 179, 8, 0.08)'
+                                }}
+                            >
+                                <Upload size={15} /> Cargar Excel (Sin Etiqueta)
+                            </Button>
+                        )}
                         <Button
                             variant="secondary"
                             onClick={() => exportarLlamadasExcel(empresaActiva, filters, undefined, sortBy)}

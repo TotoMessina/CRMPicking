@@ -1215,12 +1215,13 @@ export const importarLlamadasExcel = async (
     file: File | null,
     empresaActiva: any,
     onSuccess?: () => void,
-    onProgress?: (progress: Partial<ImportProgressState>) => void
+    onProgress?: (progress: Partial<ImportProgressState>) => void,
+    options?: { sinEtiqueta?: boolean }
 ) => {
     if (!file || !empresaActiva?.id) return;
 
     if (onProgress) {
-        onProgress({ status: 'reading', fileName: file.name, title: 'Importando Llamadas desde Excel' });
+        onProgress({ status: 'reading', fileName: file.name, title: options?.sinEtiqueta ? 'Importando Clientes Sin Etiqueta desde Excel' : 'Importando Llamadas desde Excel' });
     }
 
     try {
@@ -1448,7 +1449,7 @@ export const importarLlamadasExcel = async (
                     }
 
                     const isExisting = !!(existingInLlamadas || existingInClientes);
-                    const calculatedEtiqueta = isExisting ? 'cliente actualizado' : 'cliente nuevo';
+                    const calculatedEtiqueta = options?.sinEtiqueta ? null : (isExisting ? 'cliente actualizado' : 'cliente nuevo');
 
                     try {
                         if (existingInLlamadas) {
