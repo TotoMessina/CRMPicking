@@ -1,6 +1,6 @@
 import React from 'react';
 import { Llamada, useIncrementLlamadaCount } from '../../hooks/useLlamadas';
-import { Pencil, Trash2, Phone, Mail, MapPin, Store, User, Clock, MessageCircle, Instagram, Facebook, CheckCircle2, XCircle, FileText, Sparkles, RefreshCw, PhoneCall, Plus, Minus, Compass } from 'lucide-react';
+import { Pencil, Trash2, Phone, Mail, MapPin, Store, User, Clock, MessageCircle, Instagram, Facebook, CheckCircle2, XCircle, FileText, Sparkles, RefreshCw, PhoneCall, Plus, Minus, Compass, Video, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // ── Color tokens ──────────────────────────────────────────
@@ -55,6 +55,7 @@ const RESPUESTA_LABELS: Record<string, string> = {
     otro_momento: 'Llamar otro momento',
     sin_interes: 'Sin Interés',
     exitosa: 'Llamada Exitosa',
+    catalogo_video_enviado: 'Catálogo / Video Enviado',
     sin_comercio: 'Sin Comercio',
 };
 
@@ -64,6 +65,7 @@ const RESPUESTA_COLORS: Record<string, string> = {
     otro_momento: '#f59e0b',
     sin_interes: '#ef4444',
     exitosa: '#10b981',
+    catalogo_video_enviado: '#06b6d4',
     sin_comercio: '#64748b',
 };
 
@@ -270,6 +272,26 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                         <BoolBadge value={l.envio_whatsapp} label="WhatsApp enviado" />
                         <BoolBadge value={l.completo_formulario} label="Completó formulario" />
                         <BoolBadge value={l.envio_listo} label='Envió "Listo"' />
+                        <BoolBadge value={l.solicito_video ?? null} label="Solicitó Video" />
+                        <BoolBadge value={l.envio_catalogo_video ?? null} label="Catálogo Video enviado" />
+                        {l.video_url && l.video_url.trim() && (
+                            <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed rgba(6,182,212,0.3)' }}>
+                                <a
+                                    href={l.video_url.startsWith('http') ? l.video_url : `https://${l.video_url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                        padding: '4px 10px', borderRadius: '8px',
+                                        background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.35)',
+                                        color: '#06b6d4', fontSize: '0.78rem', fontWeight: 700,
+                                        textDecoration: 'none', transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <Video size={13} /> Ver Video / Catálogo <ExternalLink size={11} />
+                                </a>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

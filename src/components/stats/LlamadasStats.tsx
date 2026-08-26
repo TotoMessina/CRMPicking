@@ -3,7 +3,7 @@ import { useLlamadasStats } from '../../hooks/useLlamadasStats';
 import {
     PhoneCall, Users, CheckCircle2, RefreshCw, Sparkles,
     MessageCircle, FileText, User, Compass, Clock, Search,
-    TrendingUp, Store, ChevronRight, Activity, Calendar, AlertCircle, BarChart3, Award, PhoneMissed
+    TrendingUp, Store, ChevronRight, Activity, Calendar, AlertCircle, BarChart3, Award, PhoneMissed, Video
 } from 'lucide-react';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
 import { motion } from 'framer-motion';
@@ -708,13 +708,29 @@ export const LlamadasStats: React.FC<Props> = ({ dateFrom, dateTo }) => {
                                                         fontWeight: 700,
                                                         padding: '3px 8px',
                                                         borderRadius: '12px',
-                                                        background: m.respuesta_llamado === 'exitosa' ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)',
-                                                        color: m.respuesta_llamado === 'exitosa' ? '#10b981' : 'var(--text)',
+                                                        background: m.respuesta_llamado === 'exitosa' ? 'rgba(16,185,129,0.15)' : m.respuesta_llamado === 'catalogo_video_enviado' ? 'rgba(6,182,212,0.15)' : 'rgba(100,116,139,0.15)',
+                                                        color: m.respuesta_llamado === 'exitosa' ? '#10b981' : m.respuesta_llamado === 'catalogo_video_enviado' ? '#06b6d4' : 'var(--text)',
                                                         border: '1px solid var(--border)'
                                                     }}>
-                                                        {m.respuesta_llamado}
+                                                        {m.respuesta_llamado === 'catalogo_video_enviado' ? '🎥 Catálogo / Video' : m.respuesta_llamado}
                                                     </span>
                                                 ) : '—'}
+                                                {(m.envio_catalogo_video || m.video_url) && m.respuesta_llamado !== 'catalogo_video_enviado' && (
+                                                    <span style={{
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: 700,
+                                                        padding: '2px 6px',
+                                                        borderRadius: '10px',
+                                                        background: 'rgba(6,182,212,0.15)',
+                                                        color: '#06b6d4',
+                                                        marginLeft: '4px',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '2px'
+                                                    }}>
+                                                        <Video size={10} /> Video
+                                                    </span>
+                                                )}
                                             </td>
                                             <td style={{ padding: '12px 14px' }}>
                                                 <span style={{

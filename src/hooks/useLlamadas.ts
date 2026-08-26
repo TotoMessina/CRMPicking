@@ -28,6 +28,9 @@ export interface Llamada {
     siguio_redes: string | null;
     completo_formulario: boolean | null;
     envio_listo: boolean | null;
+    envio_catalogo_video?: boolean | null;
+    solicito_video?: boolean | null;
+    video_url?: string | null;
     etiqueta?: string | null;
     cantidad_llamadas?: number | null;
     fecha_ultima_llamada?: string | null;
@@ -389,6 +392,12 @@ export function useLlamadas({ empresaId, page, pageSize = 24, filters, sortBy = 
                         break;
                     case 'redes':
                         query = query.not('siguio_redes', 'is', null).neq('siguio_redes', 'no');
+                        break;
+                    case 'video':
+                        query = query.or('envio_catalogo_video.eq.true,respuesta_llamado.eq.catalogo_video_enviado,video_url.not.is.null');
+                        break;
+                    case 'solicito_video':
+                        query = query.eq('solicito_video', true);
                         break;
                 }
             }

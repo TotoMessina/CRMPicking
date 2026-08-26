@@ -20,6 +20,7 @@ const RESPUESTAS = [
     { value: 'otro_momento', label: 'Llamada en otro momento' },
     { value: 'sin_interes', label: 'Sin Interés' },
     { value: 'exitosa', label: 'Llamada Exitosa' },
+    { value: 'catalogo_video_enviado', label: 'Catálogo / Video Enviado' },
     { value: 'sin_comercio', label: 'Sin Comercio' },
 ];
 
@@ -60,6 +61,8 @@ const ESTADOS_CONVERSION = [
     { value: 'formulario', label: '📝 Formulario completado' },
     { value: 'listo', label: '✅ Envió "Listo"' },
     { value: 'redes', label: '✨ Siguió en redes' },
+    { value: 'video', label: '🎥 Catálogo / Video Enviado' },
+    { value: 'solicito_video', label: '📹 Solicitó Video' },
 ];
 
 interface Props {

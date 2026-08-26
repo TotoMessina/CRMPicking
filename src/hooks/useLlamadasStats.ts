@@ -46,6 +46,10 @@ export interface LlamadasStatsData {
         listoPct: number;
         redesCount: number;
         redesPct: number;
+        videoCount: number;
+        videoPct: number;
+        solicitoVideoCount: number;
+        solicitoVideoPct: number;
     };
     evolucionDiaria: {
         labels: string[];
@@ -64,6 +68,7 @@ const RESPUESTA_LABELS: Record<string, { label: string; color: string }> = {
     otro_momento: { label: 'Llamar en otro momento', color: '#f59e0b' },
     sin_interes: { label: 'Sin Interés', color: '#8b5cf6' },
     sin_comercio: { label: 'Sin Comercio', color: '#ec4899' },
+    catalogo_video_enviado: { label: 'Catálogo / Video Enviado', color: '#06b6d4' },
 };
 
 const RUBRO_LABELS: Record<string, string> = {
@@ -98,7 +103,9 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                     whatsappCount: 0, whatsappPct: 0,
                     formularioCount: 0, formularioPct: 0,
                     listoCount: 0, listoPct: 0,
-                    redesCount: 0, redesPct: 0
+                    redesCount: 0, redesPct: 0,
+                    videoCount: 0, videoPct: 0,
+                    solicitoVideoCount: 0, solicitoVideoPct: 0
                 },
                 evolucionDiaria: { labels: [], creados: [], modificados: [] },
                 llamadasPorDia: {
@@ -173,6 +180,8 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
             let formularioCount = 0;
             let listoCount = 0;
             let redesCount = 0;
+            let videoCount = 0;
+            let solicitoVideoCount = 0;
 
             for (const r of rows) {
                 const calls = Number(r.cantidad_llamadas ?? 0);
@@ -230,6 +239,8 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                 if (r.completo_formulario) formularioCount++;
                 if (r.envio_listo) listoCount++;
                 if (r.siguio_redes && r.siguio_redes !== 'no') redesCount++;
+                if (r.envio_catalogo_video || r.respuesta_llamado === 'catalogo_video_enviado' || r.video_url) videoCount++;
+                if (r.solicito_video) solicitoVideoCount++;
 
                 // Agrupación de actividad de llamadas usando fecha_ultima_llamada real
                 const callDateStr = r.fecha_ultima_llamada || (hasBeenCalled ? (r.updated_at || r.created_at) : null);
@@ -362,6 +373,10 @@ export function useLlamadasStats({ dateFrom, dateTo, useDateFilter = false }: { 
                     listoPct: totalFichas > 0 ? Math.round((listoCount / totalFichas) * 100) : 0,
                     redesCount,
                     redesPct: totalFichas > 0 ? Math.round((redesCount / totalFichas) * 100) : 0,
+                    videoCount,
+                    videoPct: totalFichas > 0 ? Math.round((videoCount / totalFichas) * 100) : 0,
+                    solicitoVideoCount,
+                    solicitoVideoPct: totalFichas > 0 ? Math.round((solicitoVideoCount / totalFichas) * 100) : 0
                 },
                 evolucionDiaria,
                 llamadasPorDia,

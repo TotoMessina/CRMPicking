@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Database, FileText, User, Sparkles, RefreshCw } from 'lucide-react';
+import { X, Database, FileText, User, Sparkles, RefreshCw, Video, ExternalLink } from 'lucide-react';
 import { Llamada, useCreateLlamada, useUpdateLlamada, findClientByPhone } from '../../hooks/useLlamadas';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,6 +29,7 @@ const RESPUESTAS = [
     { value: 'otro_momento', label: 'Llamada en otro momento' },
     { value: 'sin_interes', label: 'Sin Interés' },
     { value: 'exitosa', label: 'Llamada Exitosa' },
+    { value: 'catalogo_video_enviado', label: 'Catálogo / Video Enviado' },
     { value: 'sin_comercio', label: 'Sin Comercio' },
 ];
 
@@ -72,6 +73,7 @@ const EMPTY_FORM: Partial<Llamada> = {
     rubro: '', nombre_operador: '', respuesta_llamado: '',
     tiempo_llamado: '', siguio_redes: '',
     envio_whatsapp: null, completo_formulario: null, envio_listo: null,
+    envio_catalogo_video: null, solicito_video: null, video_url: '',
     etiqueta: null,
     cantidad_llamadas: 0,
     fecha_ultima_llamada: null,
@@ -557,15 +559,49 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                         </Field>
                                     </div>
 
+                                    {/* Campo URL del Video */}
+                                    <div style={{ marginTop: '12px' }}>
+                                        <Field label="URL del Video / Catálogo Enviado">
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                <div style={{ position: 'relative', flex: 1 }}>
+                                                    <Video size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#06b6d4' }} />
+                                                    <input
+                                                        id="llamada-video-url"
+                                                        style={{ ...inputSt, paddingLeft: '36px' }}
+                                                        value={form.video_url || ''}
+                                                        onChange={e => set('video_url', e.target.value)}
+                                                        placeholder="https://youtube.com/... o enlace de video"
+                                                    />
+                                                </div>
+                                                {form.video_url && form.video_url.trim() && (
+                                                    <a
+                                                        href={form.video_url.startsWith('http') ? form.video_url : `https://${form.video_url}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            padding: '9px 14px', borderRadius: '10px',
+                                                            background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.3)',
+                                                            color: '#06b6d4', textDecoration: 'none', display: 'flex',
+                                                            alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600,
+                                                            whiteSpace: 'nowrap'
+                                                        }}
+                                                    >
+                                                        <ExternalLink size={14} /> Abrir Video
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </Field>
+                                    </div>
+
                                     {/* Booleanos */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 14px', marginTop: '4px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px 10px', marginTop: '8px' }}>
                                         <BoolField
                                             label="Envío de WhatsApp"
                                             value={form.envio_whatsapp ?? null}
                                             onChange={v => set('envio_whatsapp', v)}
                                         />
                                         <BoolField
-                                            label='Completó el formulario'
+                                            label='Completó formulario'
                                             value={form.completo_formulario ?? null}
                                             onChange={v => set('completo_formulario', v)}
                                         />
@@ -573,6 +609,16 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             label='Envió "Listo"'
                                             value={form.envio_listo ?? null}
                                             onChange={v => set('envio_listo', v)}
+                                        />
+                                        <BoolField
+                                            label='Solicitó Video'
+                                            value={form.solicito_video ?? null}
+                                            onChange={v => set('solicito_video', v)}
+                                        />
+                                        <BoolField
+                                            label='Envío Catálogo Video'
+                                            value={form.envio_catalogo_video ?? null}
+                                            onChange={v => set('envio_catalogo_video', v)}
                                         />
                                     </div>
                                 </SectionBlock>

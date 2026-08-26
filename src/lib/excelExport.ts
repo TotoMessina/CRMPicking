@@ -1316,6 +1316,9 @@ export const importarLlamadasExcel = async (
                     const siguio_redes = getVal(row, "siguio_redes", "Siguió en Redes", "Siguio en Redes", "redes");
                     const completo_formulario = parseBool(getVal(row, "completo_formulario", "Completó Formulario", "Completo Formulario", "formulario"));
                     const envio_listo = parseBool(getVal(row, "envio_listo", "Envió Listo", "Envio Listo", "listo"));
+                    const envio_catalogo_video = parseBool(getVal(row, "envio_catalogo_video", "Envío de Catálogo Video", "Envio Catalogo Video", "Catálogo Video", "video_enviado"));
+                    const solicito_video = parseBool(getVal(row, "solicito_video", "Solicitó Video", "Solicito Video", "solicito_video"));
+                    const video_url = getVal(row, "video_url", "URL del Video", "Video URL", "video", "Video");
                     const rawLlamadas = getVal(row, "cantidad_llamadas", "Cantidad de Llamadas", "llamadas", "Llamadas", "intentos", "Intentos");
                     const rawFechaLlamada = getVal(row, "fecha_ultima_llamada", "Fecha de Llamada", "Fecha Llamada", "Fecha de llamada", "Fecha Llamado", "fecha_llamada", "fecha");
 
@@ -1403,6 +1406,9 @@ export const importarLlamadasExcel = async (
                         siguio_redes: siguio_redes ? String(siguio_redes).trim() : null,
                         completo_formulario,
                         envio_listo,
+                        envio_catalogo_video,
+                        solicito_video,
+                        video_url: video_url ? String(video_url).trim() : null,
                     };
 
                     let existingInLlamadas: any = null;
@@ -1486,11 +1492,14 @@ export const importarLlamadasExcel = async (
                                 .update(updatePayload)
                                 .eq('id', existingInLlamadas.id);
 
-                            if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas') || updateRes.error.message?.includes('origen_contacto') || updateRes.error.message?.includes('fecha_ultima_llamada'))) {
+                            if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas') || updateRes.error.message?.includes('origen_contacto') || updateRes.error.message?.includes('fecha_ultima_llamada') || updateRes.error.message?.includes('video_url') || updateRes.error.message?.includes('envio_catalogo_video') || updateRes.error.message?.includes('solicito_video'))) {
                                 if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
                                 if (updateRes.error.message?.includes('cantidad_llamadas')) delete updatePayload.cantidad_llamadas;
                                 if (updateRes.error.message?.includes('origen_contacto')) delete updatePayload.origen_contacto;
                                 if (updateRes.error.message?.includes('fecha_ultima_llamada')) delete updatePayload.fecha_ultima_llamada;
+                                if (updateRes.error.message?.includes('video_url')) delete updatePayload.video_url;
+                                if (updateRes.error.message?.includes('envio_catalogo_video')) delete updatePayload.envio_catalogo_video;
+                                if (updateRes.error.message?.includes('solicito_video')) delete updatePayload.solicito_video;
                                 updateRes = await (supabase as any)
                                     .from('llamadas')
                                     .update(updatePayload)
@@ -1522,11 +1531,14 @@ export const importarLlamadasExcel = async (
                                 .from('llamadas')
                                 .insert(insertPayload);
 
-                            if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas') || insertRes.error.message?.includes('origen_contacto') || insertRes.error.message?.includes('fecha_ultima_llamada'))) {
+                            if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas') || insertRes.error.message?.includes('origen_contacto') || insertRes.error.message?.includes('fecha_ultima_llamada') || insertRes.error.message?.includes('video_url') || insertRes.error.message?.includes('envio_catalogo_video') || insertRes.error.message?.includes('solicito_video'))) {
                                 if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
                                 if (insertRes.error.message?.includes('cantidad_llamadas')) delete insertPayload.cantidad_llamadas;
                                 if (insertRes.error.message?.includes('origen_contacto')) delete insertPayload.origen_contacto;
                                 if (insertRes.error.message?.includes('fecha_ultima_llamada')) delete insertPayload.fecha_ultima_llamada;
+                                if (insertRes.error.message?.includes('video_url')) delete insertPayload.video_url;
+                                if (insertRes.error.message?.includes('envio_catalogo_video')) delete insertPayload.envio_catalogo_video;
+                                if (insertRes.error.message?.includes('solicito_video')) delete insertPayload.solicito_video;
                                 insertRes = await (supabase as any)
                                     .from('llamadas')
                                     .insert(insertPayload);
