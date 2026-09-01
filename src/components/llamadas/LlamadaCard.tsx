@@ -76,6 +76,13 @@ const REDES_LABELS: Record<string, string> = {
     no: 'No siguió',
 };
 
+const ROL_LABELS: Record<string, string> = {
+    'dueño': 'Dueño / Propietario',
+    'dueno': 'Dueño / Propietario',
+    'empleado': 'Empleado / Encargado',
+    'otro': 'Otro',
+};
+
 function SectionHeader({ color, label }: { color: typeof COLOR_BD; label: string }) {
     return (
         <div style={{
@@ -249,7 +256,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                             <InfoRow icon={MapPin} label="Localidad" value={l.localidad} color={COLOR_FORMS.text} />
                             <InfoRow icon={MapPin} label="Provincia" value={l.provincia} color={COLOR_FORMS.text} />
                             <InfoRow icon={Store} label="Comercio" value={l.nombre_comercio} color={COLOR_FORMS.text} />
-                            <InfoRow icon={User} label="Rol" value={l.rol_contacto} color={COLOR_FORMS.text} />
+                            <InfoRow icon={User} label="Rol" value={ROL_LABELS[l.rol_contacto?.toLowerCase() || ''] || l.rol_contacto} color={COLOR_FORMS.text} />
                             <InfoRow icon={Instagram} label="Instagram" value={l.instagram} color={COLOR_FORMS.text} />
                             <InfoRow icon={Compass} label="Origen BD" value={l.origen_contacto} color={COLOR_FORMS.text} />
                         </div>

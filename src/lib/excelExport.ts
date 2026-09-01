@@ -1108,7 +1108,7 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
                 query = query.eq('etiqueta', filters.etiqueta);
             }
             if (filters.origen_contacto) {
-                query = query.eq('origen_contacto', filters.origen_contacto);
+                query = query.ilike('origen_contacto', `%${filters.origen_contacto.trim()}%`);
             }
             if (filters.localidad && filters.localidad.trim()) {
                 query = query.ilike('localidad', `%${filters.localidad.trim()}%`);
@@ -1270,57 +1270,278 @@ export const importarLlamadasExcel = async (
                     });
                 }
 
+                const normalizeKey = (str: string): string => {
+                    if (!str) return '';
+                    return String(str)
+                        .toLowerCase()
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "") // remove accents
+                        .replace(/[^a-z0-9]/g, "");     // remove all spaces, symbols, punctuation, quotes, question marks, slashes, newlines
+                };
+
                 const getVal = (row: any, ...possibleKeys: string[]) => {
-                    if (!row) return null;
+                    if (!row || typeof row !== 'object') return null;
                     const rowKeys = Object.keys(row);
+                    
+                    // 1. Direct match (exact key name)
                     for (const key of possibleKeys) {
-                        if (row[key] !== undefined && row[key] !== null) return row[key];
+                        if (row[key] !== undefined && row[key] !== null) {
+                            const strVal = String(row[key]).trim();
+                            if (strVal !== '') return row[key];
+                        }
                     }
-                    const normPossible = possibleKeys.map(k => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim());
+                    
+                    // 2. Normalized match (accents, spaces, punctuation removed)
+                    const normPossible = possibleKeys.map(k => normalizeKey(k)).filter(Boolean);
                     for (const rKey of rowKeys) {
-                        const normRKey = rKey.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                        const normRKey = normalizeKey(rKey);
+                        if (!normRKey) continue;
                         if (normPossible.includes(normRKey)) {
                             const val = row[rKey];
-                            if (val !== undefined && val !== null) return val;
+                            if (val !== undefined && val !== null) {
+                                const strVal = String(val).trim();
+                                if (strVal !== '') return val;
+                            }
+                        }
+                    }
+
+                    // 3. Substring / contains match for compound headers
+                    for (const rKey of rowKeys) {
+                        const normRKey = normalizeKey(rKey);
+                        if (!normRKey) continue;
+                        for (const pKey of normPossible) {
+                            if (pKey.length >= 4 && (normRKey.includes(pKey) || (normPossible.length <= 3 && pKey.includes(normRKey)))) {
+                                const val = row[rKey];
+                                if (val !== undefined && val !== null) {
+                                    const strVal = String(val).trim();
+                                    if (strVal !== '') return val;
+                                }
+                            }
                         }
                     }
                     return null;
                 };
 
-                const parseBool = (v: any) => {
-                    if (v === true || v === 'Sí' || v === 'si' || v === 'SI' || v === '1' || v === 1) return true;
-                    if (v === false || v === 'No' || v === 'no' || v === 'NO' || v === '0' || v === 0) return false;
+                const parseBool = (v: any): boolean | null => {
+                    if (v === true) return true;
+                    if (v === false) return false;
+                    if (v === null || v === undefined) return null;
+                    const str = String(v).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (['si', 's', 'true', '1', 'x', 'ok', 'yes', 'y'].includes(str)) return true;
+                    if (['no', 'n', 'false', '0'].includes(str)) return false;
                     return null;
+                };
+
+                const normalizeRolValue = (v: any): string | null => {
+                    if (!v) return null;
+                    const str = String(v).trim();
+                    const lower = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (lower.includes('duen') || lower.includes('propietari') || lower.includes('titular') || lower.includes('socio')) {
+                        return 'dueño';
+                    }
+                    if (lower.includes('emplead') || lower.includes('encargad') || lower.includes('gerente') || lower.includes('cajer') || lower.includes('vendedor') || lower.includes('administrador')) {
+                        return 'empleado';
+                    }
+                    if (lower.includes('otro')) {
+                        return 'otro';
+                    }
+                    return str;
+                };
+
+                const normalizeOrigenValue = (v: any): string | null => {
+                    if (!v) return null;
+                    const str = String(v).trim();
+                    const lower = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (lower.includes('llamada') || lower.includes('contactaron por llamada') || lower.includes('telefono') || lower.includes('telefonico')) {
+                        return 'Me contactaron por llamada';
+                    }
+                    if (lower.includes('instagram') || lower.includes('ig') || lower.includes('publicidad en instagram') || lower.includes('redes')) {
+                        return 'Publicidad en instagram';
+                    }
+                    if (lower.includes('instalshop') || lower.includes('ya conocia') || lower.includes('ya conocia instalshop') || lower.includes('conocido')) {
+                        return 'Ya conocia Instalshop';
+                    }
+                    return str;
+                };
+
+                const normalizeRubroValue = (v: any): string | null => {
+                    if (!v) return null;
+                    const str = String(v).trim();
+                    const lower = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (lower.includes('kiosco') || lower.includes('almacen')) return 'kiosco';
+                    if (lower.includes('autoservicio') || lower.includes('supermercado') || lower.includes('mercado')) return 'autoservicio';
+                    if (lower.includes('sin comercio') || lower.includes('sin_comercio') || lower.includes('sin negocio')) return 'sin_comercio';
+                    if (lower.includes('otro')) return 'otro';
+                    return str;
+                };
+
+                const normalizeRespuestaValue = (v: any): string | null => {
+                    if (!v) return null;
+                    const str = String(v).trim();
+                    const lower = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (lower.includes('exitosa') || lower.includes('exitoso') || lower.includes('concretada') || lower.includes('positiva')) return 'exitosa';
+                    if (lower.includes('sin respuesta') || lower.includes('no contesta') || lower.includes('no responde') || lower.includes('ocupado') || lower.includes('buzon')) return 'sin_respuesta';
+                    if (lower.includes('incorrecto') || lower.includes('inexistente') || lower.includes('equivocado') || lower.includes('invalido')) return 'numero_incorrecto';
+                    if (lower.includes('otro momento') || lower.includes('llamar despues') || lower.includes('reagendar') || lower.includes('despues')) return 'otro_momento';
+                    if (lower.includes('sin interes') || lower.includes('no interesado') || lower.includes('rechazado') || lower.includes('no le interesa')) return 'sin_interes';
+                    if (lower.includes('catalogo') || lower.includes('video') || lower.includes('material')) return 'catalogo_video_enviado';
+                    if (lower.includes('sin comercio') || lower.includes('sin negocio')) return 'sin_comercio';
+                    return str;
+                };
+
+                const normalizeTiempoValue = (v: any): string | null => {
+                    if (!v) return null;
+                    const str = String(v).trim();
+                    const lower = str.toLowerCase();
+                    if (lower === '1' || lower.startsWith('1 min') || lower.startsWith('1min') || lower === '1 minuto') return '1';
+                    if (lower === '2' || lower.startsWith('2 min') || lower.startsWith('2min') || lower === '2 minutos') return '2';
+                    if (lower === '3' || lower.startsWith('3 min') || lower.startsWith('3min') || lower === '3 minutos') return '3';
+                    if (lower === '4' || lower.startsWith('4 min') || lower.startsWith('4min') || lower === '4 minutos') return '4';
+                    if (lower === '5' || lower.startsWith('5 min') || lower.startsWith('5min') || lower === '5 minutos') return '5';
+                    if (lower.includes('mayor') || lower.includes('>') || lower.includes('mas de 5') || lower.includes('más de 5') || lower.includes('+5')) return 'mayor_5';
+                    const num = parseInt(str);
+                    if (!isNaN(num)) {
+                        if (num >= 1 && num <= 5) return String(num);
+                        if (num > 5) return 'mayor_5';
+                    }
+                    return str;
+                };
+
+                const normalizeRedesValue = (v: any): string | null => {
+                    if (!v) return null;
+                    const str = String(v).trim();
+                    const lower = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (lower.includes('ambas') || lower.includes('ambos') || (lower.includes('instagram') && lower.includes('facebook'))) return 'ambas';
+                    if (lower.includes('instagram') || lower.includes('ig')) return 'instagram';
+                    if (lower.includes('facebook') || lower.includes('fb')) return 'facebook';
+                    if (lower === 'no' || lower.includes('no')) return 'no';
+                    return str;
                 };
 
                 for (let i = 0; i < json.length; i++) {
                     const row = json[i];
                     const rowIndex = i + 1;
 
-                    const nombre = getVal(row, "nombre", "Nombre");
-                    const apellido = getVal(row, "apellido", "Apellido");
-                    const rawTelefono = getVal(row, "telefono", "Teléfono", "TELÉFONO", "Telefono", "celular", "Phone", "Celular");
-                    const mail = getVal(row, "mail", "Mail", "email", "Email");
-                    const direccion = getVal(row, "direccion", "Dirección", "Direccion");
-                    const localidad = getVal(row, "localidad", "Localidad");
-                    const provincia = getVal(row, "provincia", "Provincia");
-                    const nombre_comercio = getVal(row, "nombre_comercio", "Nombre del Comercio", "comercio", "Comercio");
-                    const rol_contacto = getVal(row, "rol_contacto", "Rol Contacto", "Dueño/Empleado", "rol");
-                    const instagram = getVal(row, "instagram", "Instagram", "IG");
-                    const origen_contacto = getVal(row, "origen_contacto", "Cómo llegaron a la BD", "Como llegaron a la BD", "origen", "Origen", "como_llegaron", "Como llegaron", "como_nos_conocio", "Como nos conocio");
-                    const rubro = getVal(row, "rubro", "Rubro");
-                    const nombre_operador = getVal(row, "nombre_operador", "Operador", "Nombre del Operador");
-                    const respuesta_llamado = getVal(row, "respuesta_llamado", "Respuesta del Llamado", "respuesta", "Respuesta");
-                    const tiempo_llamado = getVal(row, "tiempo_llamado", "Tiempo Llamado", "tiempo", "Tiempo");
-                    const envio_whatsapp = parseBool(getVal(row, "envio_whatsapp", "Envío WhatsApp", "Envio WhatsApp", "whatsapp"));
-                    const siguio_redes = getVal(row, "siguio_redes", "Siguió en Redes", "Siguio en Redes", "redes");
-                    const completo_formulario = parseBool(getVal(row, "completo_formulario", "Completó Formulario", "Completo Formulario", "formulario"));
-                    const envio_listo = parseBool(getVal(row, "envio_listo", "Envió Listo", "Envio Listo", "listo"));
+                    const nombre = getVal(
+                        row, 
+                        "nombre", "Nombre", "nombre_contacto", "Nombre Contacto", "first_name", "First Name",
+                        "contacto", "Contacto", "cliente", "Cliente", "Nombre Cliente", "Nombre del Cliente",
+                        "Nombre y Apellido", "Nombre Completo"
+                    );
+                    const apellido = getVal(
+                        row, 
+                        "apellido", "Apellido", "last_name", "Last Name", "apellidos", "Apellidos"
+                    );
+                    const rawTelefono = getVal(
+                        row, 
+                        "telefono", "Teléfono", "TELÉFONO", "Telefono", "celular", "Celular", "phone", "Phone",
+                        "mobile", "Mobile", "tel", "Tel", "whatsapp", "WhatsApp", "Teléfono Móvil", "Telefono Movil",
+                        "Teléfono Contacto", "Telefono Contacto", "numero", "Numero", "Número"
+                    );
+                    const mail = getVal(
+                        row, 
+                        "mail", "Mail", "email", "Email", "correo", "Correo", "Correo Electrónico",
+                        "Correo Electronico", "E-mail", "e-mail"
+                    );
+                    const direccion = getVal(
+                        row, 
+                        "direccion", "Dirección", "Direccion", "Calle", "calle", "Domicilio", "domicilio",
+                        "Address", "address", "Direccion del Local", "Dirección del Local"
+                    );
+                    const localidad = getVal(
+                        row, 
+                        "localidad", "Localidad", "Ciudad", "ciudad", "Municipio", "municipio",
+                        "City", "city", "Zona", "zona", "Barrio", "barrio"
+                    );
+                    const provincia = getVal(
+                        row, 
+                        "provincia", "Provincia", "State", "state", "Region", "region",
+                        "Departamento", "departamento"
+                    );
+                    const nombre_comercio_raw = getVal(
+                        row, 
+                        "nombre_comercio", "Nombre del Comercio", "Nombre de Comercio", "Nombre Comercio",
+                        "comercio", "Comercio",
+                        "nombre_local", "Nombre Local", "Nombre del Local", "Nombre de Local",
+                        "local", "Local",
+                        "nombre_negocio", "Nombre Negocio", "Nombre del Negocio", "Nombre de Negocio",
+                        "negocio", "Negocio",
+                        "nombre_empresa", "Nombre Empresa", "Nombre de la Empresa",
+                        "empresa", "Empresa",
+                        "razon_social", "Razon Social", "Razón Social",
+                        "nombre_fantasia", "Nombre Fantasia", "Nombre de Fantasía", "Fantasia", "Fantasía",
+                        "store", "Store", "shop", "Shop", "business", "Business", "business_name"
+                    );
+                    const rol_contacto_raw = getVal(
+                        row, 
+                        "rol_contacto", "Rol Contacto", "Rol del Contacto", "Rol de Contacto", "Rol en el negocio", "Rol en la empresa",
+                        "rol", "Rol",
+                        "Dueño/Empleado", "Dueño / Empleado", "Dueño o Empleado", "Dueno/Empleado", "Dueno o Empleado", "dueño/empleado", "dueno/empleado",
+                        "¿Sos dueño o empleado?", "Sos dueño o empleado?", "Sos dueño o empleado", "Sos dueno o empleado?", "Sos dueno o empleado",
+                        "Sos dueño/empleado", "Sos dueno/empleado", "Sos el dueño o empleado", "¿Sos el dueño o empleado?",
+                        "cargo", "Cargo", "puesto", "Puesto", "posicion", "Posición", "Posicion",
+                        "¿Cuál es tu rol?", "Cual es tu rol?", "Cual es tu rol",
+                        "tipo_contacto", "Tipo de contacto", "relacion_con_el_comercio", "Relación con el comercio", "dueño", "dueno", "empleado"
+                    );
+                    const instagram = getVal(
+                        row, 
+                        "instagram", "Instagram", "IG", "ig", "Instagram (Negocio o Personal)", "Instagram Negocio",
+                        "Instagram Personal", "Cuenta de Instagram", "Redes Sociales", "Usuario IG", "Usuario Instagram"
+                    );
+                    const origen_contacto_raw = getVal(
+                        row, 
+                        "origen_contacto", "Cómo llegaron a la BD", "Como llegaron a la BD", "¿Cómo llegaron a la BD?", "Como llegaron a la BD?",
+                        "¿Cómo llegaron a la base de datos?", "Como llegaron a la base de datos?", "Como llegaron a la base de datos", "Cómo llegaron a la base de datos",
+                        "¿Cómo nos conociste?", "Como nos conociste?", "Cómo nos conociste?", "Como nos conociste", "Cómo nos conociste",
+                        "¿Cómo nos conoció?", "Como nos conoció?", "Como nos conocio?", "Como nos conocio", "Cómo nos conoció",
+                        "¿Cómo nos conocieron?", "Como nos conocieron?", "Como nos conocieron",
+                        "¿Cómo te enteraste de nosotros?", "Como te enteraste de nosotros?", "Como te enteraste de nosotros",
+                        "¿Cómo llegaste a nosotros?", "Como llegaste a nosotros?", "Como llegaste a nosotros",
+                        "¿Cómo llegaron a nosotros?", "Como llegaron a nosotros",
+                        "origen", "Origen", "Origen Contacto", "Origen de Contacto", "Origen del Contacto",
+                        "como_llegaron", "Como llegaron", "como_nos_conocio", "Como nos conocio",
+                        "canal", "Canal", "Canal de ingreso", "Canal de contacto",
+                        "medio", "Medio", "procedencia", "Procedencia",
+                        "fuente", "Fuente", "Fuente de contacto", "Fuente del contacto",
+                        "campaña", "Campana", "publicidad", "Publicidad"
+                    );
+                    const rubro_raw = getVal(
+                        row, 
+                        "rubro", "Rubro", "Actividad", "actividad", "Giro", "giro", "Sector", "sector",
+                        "Categoria", "Categoría", "Tipo de Negocio", "Tipo de Comercio"
+                    );
+                    const nombre_operador = getVal(
+                        row, 
+                        "nombre_operador", "Operador", "operador", "Nombre del Operador", "Nombre Operador",
+                        "Responsable", "responsable", "Agente", "agente", "Vendedor", "vendedor", "Asesor", "asesor"
+                    );
+                    const respuesta_llamado_raw = getVal(
+                        row, 
+                        "respuesta_llamado", "Respuesta del Llamado", "Respuesta de Llamado", "Respuesta Llamado",
+                        "respuesta", "Respuesta", "Resultado", "resultado", "Estado de la llamada", "Estado llamada"
+                    );
+                    const tiempo_llamado_raw = getVal(
+                        row, 
+                        "tiempo_llamado", "Tiempo Llamado", "Tiempo del Llamado", "tiempo", "Tiempo",
+                        "Duración", "Duracion", "duracion"
+                    );
+                    const envio_whatsapp = parseBool(getVal(row, "envio_whatsapp", "Envío WhatsApp", "Envio WhatsApp", "whatsapp", "WhatsApp"));
+                    const siguio_redes_raw = getVal(row, "siguio_redes", "Siguió en Redes", "Siguio en Redes", "Nos siguió en redes", "redes", "Redes");
+                    const completo_formulario = parseBool(getVal(row, "completo_formulario", "Completó Formulario", "Completo Formulario", "formulario", "Formulario"));
+                    const envio_listo = parseBool(getVal(row, "envio_listo", "Envió Listo", "Envio Listo", "listo", "Listo"));
                     const envio_catalogo_video = parseBool(getVal(row, "envio_catalogo_video", "Envío de Catálogo Video", "Envio Catalogo Video", "Catálogo Video", "video_enviado"));
                     const solicito_video = parseBool(getVal(row, "solicito_video", "Solicitó Video", "Solicito Video", "solicito_video"));
-                    const video_url = getVal(row, "video_url", "URL del Video", "Video URL", "video", "Video");
-                    const rawLlamadas = getVal(row, "cantidad_llamadas", "Cantidad de Llamadas", "llamadas", "Llamadas", "intentos", "Intentos");
-                    const rawFechaLlamada = getVal(row, "fecha_ultima_llamada", "Fecha de Llamada", "Fecha Llamada", "Fecha de llamada", "Fecha Llamado", "fecha_llamada", "fecha");
+                    const video_url = getVal(row, "video_url", "URL del Video", "Video URL", "Enlace Video", "Link Video", "video", "Video");
+                    const rawLlamadas = getVal(row, "cantidad_llamadas", "Cantidad de Llamadas", "Cantidad de llamadas", "llamadas", "Llamadas", "intentos", "Intentos");
+                    const rawFechaLlamada = getVal(row, "fecha_ultima_llamada", "Fecha de Llamada", "Fecha Llamada", "Fecha de llamada", "Fecha Llamado", "fecha_llamada", "Fecha y hora de la llamada", "fecha", "Fecha");
+
+                    const nombre_comercio = nombre_comercio_raw ? String(nombre_comercio_raw).trim() : null;
+                    const rol_contacto = normalizeRolValue(rol_contacto_raw);
+                    const origen_contacto = normalizeOrigenValue(origen_contacto_raw);
+                    const rubro = normalizeRubroValue(rubro_raw);
+                    const respuesta_llamado = normalizeRespuestaValue(respuesta_llamado_raw);
+                    const tiempo_llamado = normalizeTiempoValue(tiempo_llamado_raw);
+                    const siguio_redes = normalizeRedesValue(siguio_redes_raw);
 
                     const rowName = [nombre, apellido].filter(Boolean).join(' ') || nombre_comercio || 'Registro sin Nombre';
 
@@ -1492,18 +1713,21 @@ export const importarLlamadasExcel = async (
                                 .update(updatePayload)
                                 .eq('id', existingInLlamadas.id);
 
-                            if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('cantidad_llamadas') || updateRes.error.message?.includes('origen_contacto') || updateRes.error.message?.includes('fecha_ultima_llamada') || updateRes.error.message?.includes('video_url') || updateRes.error.message?.includes('envio_catalogo_video') || updateRes.error.message?.includes('solicito_video'))) {
-                                if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
-                                if (updateRes.error.message?.includes('cantidad_llamadas')) delete updatePayload.cantidad_llamadas;
-                                if (updateRes.error.message?.includes('origen_contacto')) delete updatePayload.origen_contacto;
-                                if (updateRes.error.message?.includes('fecha_ultima_llamada')) delete updatePayload.fecha_ultima_llamada;
-                                if (updateRes.error.message?.includes('video_url')) delete updatePayload.video_url;
-                                if (updateRes.error.message?.includes('envio_catalogo_video')) delete updatePayload.envio_catalogo_video;
-                                if (updateRes.error.message?.includes('solicito_video')) delete updatePayload.solicito_video;
-                                updateRes = await (supabase as any)
-                                    .from('llamadas')
-                                    .update(updatePayload)
-                                    .eq('id', existingInLlamadas.id);
+                            if (updateRes.error) {
+                                const optionalCols = ['etiqueta', 'cantidad_llamadas', 'origen_contacto', 'fecha_ultima_llamada', 'video_url', 'envio_catalogo_video', 'solicito_video', 'rol_contacto', 'provincia', 'instagram', 'nombre_comercio'];
+                                let hasRemoved = false;
+                                for (const col of optionalCols) {
+                                    if (updateRes.error.message?.includes(col)) {
+                                        delete updatePayload[col];
+                                        hasRemoved = true;
+                                    }
+                                }
+                                if (hasRemoved) {
+                                    updateRes = await (supabase as any)
+                                        .from('llamadas')
+                                        .update(updatePayload)
+                                        .eq('id', existingInLlamadas.id);
+                                }
                             }
 
                             if (updateRes.error) throw updateRes.error;
@@ -1531,17 +1755,20 @@ export const importarLlamadasExcel = async (
                                 .from('llamadas')
                                 .insert(insertPayload);
 
-                            if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('cantidad_llamadas') || insertRes.error.message?.includes('origen_contacto') || insertRes.error.message?.includes('fecha_ultima_llamada') || insertRes.error.message?.includes('video_url') || insertRes.error.message?.includes('envio_catalogo_video') || insertRes.error.message?.includes('solicito_video'))) {
-                                if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
-                                if (insertRes.error.message?.includes('cantidad_llamadas')) delete insertPayload.cantidad_llamadas;
-                                if (insertRes.error.message?.includes('origen_contacto')) delete insertPayload.origen_contacto;
-                                if (insertRes.error.message?.includes('fecha_ultima_llamada')) delete insertPayload.fecha_ultima_llamada;
-                                if (insertRes.error.message?.includes('video_url')) delete insertPayload.video_url;
-                                if (insertRes.error.message?.includes('envio_catalogo_video')) delete insertPayload.envio_catalogo_video;
-                                if (insertRes.error.message?.includes('solicito_video')) delete insertPayload.solicito_video;
-                                insertRes = await (supabase as any)
-                                    .from('llamadas')
-                                    .insert(insertPayload);
+                            if (insertRes.error) {
+                                const optionalCols = ['etiqueta', 'cantidad_llamadas', 'origen_contacto', 'fecha_ultima_llamada', 'video_url', 'envio_catalogo_video', 'solicito_video', 'rol_contacto', 'provincia', 'instagram', 'nombre_comercio'];
+                                let hasRemoved = false;
+                                for (const col of optionalCols) {
+                                    if (insertRes.error.message?.includes(col)) {
+                                        delete insertPayload[col];
+                                        hasRemoved = true;
+                                    }
+                                }
+                                if (hasRemoved) {
+                                    insertRes = await (supabase as any)
+                                        .from('llamadas')
+                                        .insert(insertPayload);
+                                }
                             }
 
                             if (insertRes.error) throw insertRes.error;

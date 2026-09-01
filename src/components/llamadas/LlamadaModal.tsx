@@ -65,6 +65,69 @@ const ORIGENES_CONTACTO = [
     { value: 'Ya conocia Instalshop', label: 'Ya conocia Instalshop' },
 ];
 
+const normalizeRol = (val?: string | null) => {
+    if (!val) return '';
+    const lower = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (lower.includes('duen') || lower.includes('propietari') || lower.includes('titular') || lower.includes('socio')) return 'dueño';
+    if (lower.includes('emplead') || lower.includes('encargad') || lower.includes('gerente') || lower.includes('cajer') || lower.includes('vendedor')) return 'empleado';
+    if (lower.includes('otro')) return 'otro';
+    return val;
+};
+
+const normalizeOrigen = (val?: string | null) => {
+    if (!val) return '';
+    const lower = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (lower.includes('llamada') || lower.includes('contactaron por llamada') || lower.includes('telefono')) return 'Me contactaron por llamada';
+    if (lower.includes('instagram') || lower.includes('ig') || lower.includes('publicidad en instagram')) return 'Publicidad en instagram';
+    if (lower.includes('instalshop') || lower.includes('ya conocia')) return 'Ya conocia Instalshop';
+    return val;
+};
+
+const normalizeRubro = (val?: string | null) => {
+    if (!val) return '';
+    const lower = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (lower.includes('kiosco') || lower.includes('almacen')) return 'kiosco';
+    if (lower.includes('autoservicio') || lower.includes('supermercado')) return 'autoservicio';
+    if (lower.includes('sin_comercio') || lower.includes('sin comercio') || lower.includes('sin negocio')) return 'sin_comercio';
+    if (lower.includes('otro')) return 'otro';
+    return val;
+};
+
+const normalizeRespuesta = (val?: string | null) => {
+    if (!val) return '';
+    const lower = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (lower.includes('exitosa') || lower.includes('exitoso')) return 'exitosa';
+    if (lower.includes('sin_respuesta') || lower.includes('sin respuesta') || lower.includes('no contesta') || lower.includes('no responde')) return 'sin_respuesta';
+    if (lower.includes('numero_incorrecto') || lower.includes('incorrecto') || lower.includes('inexistente')) return 'numero_incorrecto';
+    if (lower.includes('otro_momento') || lower.includes('otro momento') || lower.includes('llamar despues')) return 'otro_momento';
+    if (lower.includes('sin_interes') || lower.includes('sin interes') || lower.includes('no interesa')) return 'sin_interes';
+    if (lower.includes('catalogo') || lower.includes('video')) return 'catalogo_video_enviado';
+    if (lower.includes('sin_comercio') || lower.includes('sin comercio')) return 'sin_comercio';
+    return val;
+};
+
+const normalizeTiempo = (val?: string | null) => {
+    if (!val) return '';
+    const lower = String(val).toLowerCase().trim();
+    if (lower === '1' || lower.startsWith('1')) return '1';
+    if (lower === '2' || lower.startsWith('2')) return '2';
+    if (lower === '3' || lower.startsWith('3')) return '3';
+    if (lower === '4' || lower.startsWith('4')) return '4';
+    if (lower === '5' || lower.startsWith('5')) return '5';
+    if (lower.includes('mayor') || lower.includes('>') || lower.includes('mas de 5')) return 'mayor_5';
+    return val;
+};
+
+const normalizeRedes = (val?: string | null) => {
+    if (!val) return '';
+    const lower = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (lower.includes('ambas') || lower.includes('ambos')) return 'ambas';
+    if (lower.includes('instagram') || lower.includes('ig')) return 'instagram';
+    if (lower.includes('facebook') || lower.includes('fb')) return 'facebook';
+    if (lower === 'no' || lower.includes('no')) return 'no';
+    return val;
+};
+
 // ── Helpers ───────────────────────────────────────────────
 const EMPTY_FORM: Partial<Llamada> = {
     nombre: '', apellido: '', telefono: '', mail: '',
@@ -434,8 +497,16 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             <input id="llamada-provincia" style={inputSt} value={form.provincia || ''} onChange={e => set('provincia', e.target.value)} placeholder="Provincia..." />
                                         </Field>
                                         <Field label="Dueño / Empleado">
-                                            <select id="llamada-rol" style={inputSt} value={form.rol_contacto || ''} onChange={e => set('rol_contacto', e.target.value)}>
+                                            <select
+                                                id="llamada-rol"
+                                                style={inputSt}
+                                                value={normalizeRol(form.rol_contacto) || ''}
+                                                onChange={e => set('rol_contacto', e.target.value)}
+                                            >
                                                 {ROLES_CONTACTO.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                                {form.rol_contacto && !ROLES_CONTACTO.some(r => r.value === normalizeRol(form.rol_contacto)) && (
+                                                    <option value={form.rol_contacto}>{form.rol_contacto}</option>
+                                                )}
                                             </select>
                                         </Field>
                                     </div>
@@ -447,8 +518,16 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             <input id="llamada-instagram" style={inputSt} value={form.instagram || ''} onChange={e => set('instagram', e.target.value)} placeholder="@usuario..." />
                                         </Field>
                                         <Field label="Cómo llegaron a la BD">
-                                            <select id="llamada-origen-contacto" style={inputSt} value={form.origen_contacto || ''} onChange={e => set('origen_contacto', e.target.value)}>
+                                            <select
+                                                id="llamada-origen-contacto"
+                                                style={inputSt}
+                                                value={normalizeOrigen(form.origen_contacto) || ''}
+                                                onChange={e => set('origen_contacto', e.target.value)}
+                                            >
                                                 {ORIGENES_CONTACTO.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                                {form.origen_contacto && !ORIGENES_CONTACTO.some(o => o.value === normalizeOrigen(form.origen_contacto)) && (
+                                                    <option value={form.origen_contacto}>{form.origen_contacto}</option>
+                                                )}
                                             </select>
                                         </Field>
                                     </div>
@@ -458,8 +537,16 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                 <SectionBlock color={COLOR_OP} icon={User} title="Operador – Datos de la Llamada">
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
                                         <Field label="Rubro">
-                                            <select id="llamada-rubro" style={inputSt} value={form.rubro || ''} onChange={e => set('rubro', e.target.value)}>
+                                            <select
+                                                id="llamada-rubro"
+                                                style={inputSt}
+                                                value={normalizeRubro(form.rubro) || ''}
+                                                onChange={e => set('rubro', e.target.value)}
+                                            >
                                                 {RUBROS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                                {form.rubro && !RUBROS.some(r => r.value === normalizeRubro(form.rubro)) && (
+                                                    <option value={form.rubro}>{form.rubro}</option>
+                                                )}
                                             </select>
                                         </Field>
                                         <Field label="Nombre del Operador" required>
@@ -479,18 +566,42 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             </select>
                                         </Field>
                                         <Field label="Respuesta del Llamado" required>
-                                            <select id="llamada-respuesta" style={inputSt} value={form.respuesta_llamado || ''} onChange={e => set('respuesta_llamado', e.target.value)}>
+                                            <select
+                                                id="llamada-respuesta"
+                                                style={inputSt}
+                                                value={normalizeRespuesta(form.respuesta_llamado) || ''}
+                                                onChange={e => set('respuesta_llamado', e.target.value)}
+                                            >
                                                 {RESPUESTAS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                                {form.respuesta_llamado && !RESPUESTAS.some(r => r.value === normalizeRespuesta(form.respuesta_llamado)) && (
+                                                    <option value={form.respuesta_llamado}>{form.respuesta_llamado}</option>
+                                                )}
                                             </select>
                                         </Field>
                                         <Field label="Tiempo del Llamado">
-                                            <select id="llamada-tiempo" style={inputSt} value={form.tiempo_llamado || ''} onChange={e => set('tiempo_llamado', e.target.value)}>
+                                            <select
+                                                id="llamada-tiempo"
+                                                style={inputSt}
+                                                value={normalizeTiempo(form.tiempo_llamado) || ''}
+                                                onChange={e => set('tiempo_llamado', e.target.value)}
+                                            >
                                                 {TIEMPOS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                                {form.tiempo_llamado && !TIEMPOS.some(r => r.value === normalizeTiempo(form.tiempo_llamado)) && (
+                                                    <option value={form.tiempo_llamado}>{form.tiempo_llamado}</option>
+                                                )}
                                             </select>
                                         </Field>
                                         <Field label="Nos siguió en redes">
-                                            <select id="llamada-redes" style={inputSt} value={form.siguio_redes || ''} onChange={e => set('siguio_redes', e.target.value)}>
+                                            <select
+                                                id="llamada-redes"
+                                                style={inputSt}
+                                                value={normalizeRedes(form.siguio_redes) || ''}
+                                                onChange={e => set('siguio_redes', e.target.value)}
+                                            >
                                                 {REDES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                                {form.siguio_redes && !REDES.some(r => r.value === normalizeRedes(form.siguio_redes)) && (
+                                                    <option value={form.siguio_redes}>{form.siguio_redes}</option>
+                                                )}
                                             </select>
                                         </Field>
                                         <Field label="Cantidad de llamadas realizadas">

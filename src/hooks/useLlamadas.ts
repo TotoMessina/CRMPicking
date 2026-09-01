@@ -323,7 +323,7 @@ export function useLlamadas({ empresaId, page, pageSize = 24, filters, sortBy = 
                 query = query.eq('etiqueta', filters.etiqueta);
             }
             if (filters.origen_contacto) {
-                query = query.eq('origen_contacto', filters.origen_contacto);
+                query = query.ilike('origen_contacto', `%${filters.origen_contacto.trim()}%`);
             }
             if (filters.localidad && filters.localidad.trim()) {
                 query = query.ilike('localidad', `%${filters.localidad.trim()}%`);
