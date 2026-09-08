@@ -1918,6 +1918,7 @@ export const importarDescargasPickingUpExcel = async (
         };
 
         let processedRows = 0;
+        let insertCount = 0;
         let updatedCount = 0;
         let errorCount = 0;
         const items: ImportRowResult[] = [];
@@ -1970,18 +1971,27 @@ export const importarDescargasPickingUpExcel = async (
                     updatedCount++;
                     items.push({ rowIndex: index + 1, name: 'Descarga actualizada', phone: phone.cleanPhone, status: 'updated' });
                 } else {
-                    errorCount++;
-                    items.push({ rowIndex: index + 1, name: 'Número no encontrado', phone: phone.cleanPhone, status: 'skipped', reason: 'No existe en la página de llamadas.' });
+                    const { error } = await (supabase as any)
+                        .from('llamadas')
+                        .insert({
+                            empresa_id: empresaActiva.id,
+                            telefono: phone.cleanPhone,
+                            descargo_picking_up: true,
+                            etiqueta: 'cliente nuevo',
+                        });
+                    if (error) throw error;
+                    insertCount++;
+                    items.push({ rowIndex: index + 1, name: 'Nueva llamada cargada', phone: phone.cleanPhone, status: 'success' });
                 }
             }
 
             processedRows++;
-            onProgress?.({ processedRows, remainingRows: rows.length - processedRows, updatedCount, errorCount, items: [...items] });
+            onProgress?.({ processedRows, remainingRows: rows.length - processedRows, successCount: insertCount, updatedCount, errorCount, items: [...items] });
         }
 
-        onProgress?.({ status: 'success', processedRows, remainingRows: 0, updatedCount, errorCount, items });
+        onProgress?.({ status: 'completed', processedRows, remainingRows: 0, successCount: insertCount, updatedCount, errorCount, items });
         onSuccess?.();
-        toast.success(`${updatedCount} llamada(s) actualizada(s)`);
+        toast.success(`${updatedCount} actualizada(s) y ${insertCount} nueva(s)`);
     } catch (error: any) {
         onProgress?.({ status: 'error', errorMessage: error.message || 'Error al actualizar las descargas' });
         toast.error(error.message || 'Error al actualizar las descargas');
