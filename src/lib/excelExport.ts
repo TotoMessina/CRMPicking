@@ -1037,6 +1037,34 @@ export const descargarModeloLlamadas = () => {
     }
 };
 
+export const descargarModeloDescargasPickingUp = () => {
+    const toastId = toast.loading('Generando plantilla de descargas...');
+    try {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([
+            ['telefono'],
+            ['+54 11 2345-6789'],
+            ['+54 9 11 9876-5432'],
+        ]);
+        XLSX.utils.book_append_sheet(wb, ws, 'Descargas Picking Up');
+
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const url = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + b64;
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'plantilla_descargas_picking_up.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            if (document.body.contains(link)) document.body.removeChild(link);
+        }, 1000);
+        toast.success('Plantilla descargada correctamente', { id: toastId });
+    } catch (error: any) {
+        console.error('Error al generar plantilla de descargas:', error);
+        toast.error(error.message || 'Error al generar la plantilla', { id: toastId });
+    }
+};
+
 export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {}, onFinally?: () => void, sortBy: string = 'created_desc') => {
     const toastId = toast.loading('Generando Excel de llamadas...');
     try {

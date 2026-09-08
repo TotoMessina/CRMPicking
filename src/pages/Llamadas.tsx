@@ -10,7 +10,7 @@ import { LlamadaModal } from '../components/llamadas/LlamadaModal';
 import { LlamadaFilters } from '../components/llamadas/LlamadaFilters';
 import { Button } from '../components/ui/Button';
 import { useConfirm } from '../contexts/ConfirmContext';
-import { descargarModeloLlamadas, exportarLlamadasExcel, importarLlamadasExcel, importarDescargasPickingUpExcel } from '../lib/excelExport';
+import { descargarModeloLlamadas, descargarModeloDescargasPickingUp, exportarLlamadasExcel, importarLlamadasExcel, importarDescargasPickingUpExcel } from '../lib/excelExport';
 import { ExcelImportModal } from '../components/ui/ExcelImportModal';
 import { useExcelImport } from '../hooks/useExcelImport';
 
@@ -204,6 +204,14 @@ const Llamadas: React.FC = () => {
                             style={{ gap: '6px', fontSize: '0.84rem', borderColor: 'rgba(16,185,129,0.4)', color: '#10b981' }}
                         >
                             <Upload size={15} /> Marcar descargas
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            onClick={descargarModeloDescargasPickingUp}
+                            title="Descargar plantilla para marcar descargas de Picking Up"
+                            style={{ gap: '6px', fontSize: '0.84rem' }}
+                        >
+                            <FileSpreadsheet size={15} /> Plantilla descargas
                         </Button>
                         {isSuperAdmin && (
                             <Button
