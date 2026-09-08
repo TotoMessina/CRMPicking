@@ -1851,3 +1851,111 @@ export const importarLlamadasExcel = async (
         toast.error('Error al leer el archivo');
     }
 };
+
+export const importarDescargasPickingUpExcel = async (
+    file: File | null,
+    empresaActiva: any,
+    onSuccess?: () => void,
+    onProgress?: (progress: Partial<ImportProgressState>) => void
+) => {
+    if (!file) return;
+
+    if (!empresaActiva?.id) {
+        onProgress?.({ status: 'error', errorMessage: 'Debe seleccionar una empresa activa para importar' });
+        toast.error('Debe seleccionar una empresa activa para importar');
+        return;
+    }
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        if (!rows.length) {
+            onProgress?.({ status: 'error', errorMessage: 'El archivo está vacío' });
+            toast.error('El archivo está vacío');
+            return;
+        }
+
+        const normalizeKey = (value: string) => String(value || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]/g, '');
+        const phoneKeys = ['telefono', 'teléfono', 'phone', 'celular', 'mobile', 'tel', 'numero', 'número'];
+        const getPhone = (row: any) => {
+            const key = Object.keys(row).find(rowKey => phoneKeys.some(phoneKey => normalizeKey(rowKey) === normalizeKey(phoneKey)));
+            return key ? row[key] : null;
+        };
+
+        let processedRows = 0;
+        let updatedCount = 0;
+        let errorCount = 0;
+        const items: ImportRowResult[] = [];
+        onProgress?.({
+            status: 'processing',
+            title: 'Actualizando descargas de Picking Up',
+            fileName: file.name,
+            totalRows: rows.length,
+            processedRows: 0,
+            remainingRows: rows.length,
+            successCount: 0,
+            updatedCount: 0,
+            errorCount: 0,
+            items: []
+        });
+
+        for (const [index, row] of rows.entries()) {
+            const rawPhone = getPhone(row);
+            const phone = validatePhoneNumber(rawPhone, false);
+            const phoneText = rawPhone ? String(rawPhone) : '';
+
+            if (!phone.isValid || !phone.cleanPhone) {
+                errorCount++;
+                items.push({ rowIndex: index + 1, name: 'Sin teléfono válido', phone: phoneText || undefined, status: 'skipped', reason: phone.reason || 'No se encontró un teléfono válido.' });
+            } else {
+                const digitsOnly = phone.cleanPhone.replace(/\D/g, '');
+                let query = (supabase as any)
+                    .from('llamadas')
+                    .select('id')
+                    .eq('empresa_id', empresaActiva.id)
+                    .eq('telefono', phone.cleanPhone);
+                let { data: matches } = await query;
+
+                if ((!matches || !matches.length) && digitsOnly.length >= 6) {
+                    const result = await (supabase as any)
+                        .from('llamadas')
+                        .select('id')
+                        .eq('empresa_id', empresaActiva.id)
+                        .ilike('telefono', `%${digitsOnly}%`)
+                        .limit(1);
+                    matches = result.data;
+                }
+
+                if (matches?.length) {
+                    const { error } = await (supabase as any)
+                        .from('llamadas')
+                        .update({ descargo_picking_up: true, updated_at: new Date().toISOString() })
+                        .in('id', matches.map((match: any) => match.id));
+                    if (error) throw error;
+                    updatedCount++;
+                    items.push({ rowIndex: index + 1, name: 'Descarga actualizada', phone: phone.cleanPhone, status: 'updated' });
+                } else {
+                    errorCount++;
+                    items.push({ rowIndex: index + 1, name: 'Número no encontrado', phone: phone.cleanPhone, status: 'skipped', reason: 'No existe en la página de llamadas.' });
+                }
+            }
+
+            processedRows++;
+            onProgress?.({ processedRows, remainingRows: rows.length - processedRows, updatedCount, errorCount, items: [...items] });
+        }
+
+        onProgress?.({ status: 'success', processedRows, remainingRows: 0, updatedCount, errorCount, items });
+        onSuccess?.();
+        toast.success(`${updatedCount} llamada(s) actualizada(s)`);
+    } catch (error: any) {
+        onProgress?.({ status: 'error', errorMessage: error.message || 'Error al actualizar las descargas' });
+        toast.error(error.message || 'Error al actualizar las descargas');
+    }
+};

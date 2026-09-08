@@ -10,7 +10,7 @@ import { LlamadaModal } from '../components/llamadas/LlamadaModal';
 import { LlamadaFilters } from '../components/llamadas/LlamadaFilters';
 import { Button } from '../components/ui/Button';
 import { useConfirm } from '../contexts/ConfirmContext';
-import { descargarModeloLlamadas, exportarLlamadasExcel, importarLlamadasExcel } from '../lib/excelExport';
+import { descargarModeloLlamadas, exportarLlamadasExcel, importarLlamadasExcel, importarDescargasPickingUpExcel } from '../lib/excelExport';
 import { ExcelImportModal } from '../components/ui/ExcelImportModal';
 import { useExcelImport } from '../hooks/useExcelImport';
 
@@ -39,6 +39,7 @@ const Llamadas: React.FC = () => {
     const deleteMutation = useDeleteLlamada();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fileInputSinEtiquetaRef = useRef<HTMLInputElement>(null);
+    const fileInputDescargasRef = useRef<HTMLInputElement>(null);
 
     const isSuperAdmin = role === 'super-admin';
 
@@ -124,6 +125,19 @@ const Llamadas: React.FC = () => {
         e.target.value = '';
     };
 
+    const handleImportDescargas = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] || null;
+        if (!file) return;
+        startImport('Actualizando descargas de Picking Up', file.name);
+        importarDescargasPickingUpExcel(
+            file,
+            empresaActiva,
+            () => queryClient.invalidateQueries({ queryKey: ['llamadas'] }),
+            (prog) => updateProgress(prog)
+        );
+        e.target.value = '';
+    };
+
     return (
         <div className="page-container" style={{ padding: '0', maxWidth: '100%', margin: '0 auto', position: 'relative' }}>
             <input
@@ -137,6 +151,13 @@ const Llamadas: React.FC = () => {
                 type="file"
                 ref={fileInputSinEtiquetaRef}
                 onChange={handleImportFileSinEtiqueta}
+                accept=".xlsx, .xls, .csv"
+                style={{ display: 'none' }}
+            />
+            <input
+                type="file"
+                ref={fileInputDescargasRef}
+                onChange={handleImportDescargas}
                 accept=".xlsx, .xls, .csv"
                 style={{ display: 'none' }}
             />
@@ -175,6 +196,14 @@ const Llamadas: React.FC = () => {
                             style={{ gap: '6px', fontSize: '0.84rem' }}
                         >
                             <Upload size={15} /> Cargar Excel
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            onClick={() => fileInputDescargasRef.current?.click()}
+                            title="Marcar como descargados los teléfonos que ya existen en llamadas"
+                            style={{ gap: '6px', fontSize: '0.84rem', borderColor: 'rgba(16,185,129,0.4)', color: '#10b981' }}
+                        >
+                            <Upload size={15} /> Marcar descargas
                         </Button>
                         {isSuperAdmin && (
                             <Button
