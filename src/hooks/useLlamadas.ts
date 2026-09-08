@@ -25,6 +25,7 @@ export interface Llamada {
     respuesta_llamado: string | null;
     tiempo_llamado: string | null;
     envio_whatsapp: boolean | null;
+    descargo_picking_up: boolean | null;
     siguio_redes: string | null;
     completo_formulario: boolean | null;
     envio_listo: boolean | null;

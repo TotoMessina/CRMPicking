@@ -1009,13 +1009,13 @@ export const descargarModeloLlamadas = () => {
             "nombre", "apellido", "telefono", "mail",
             "direccion", "localidad", "provincia", "nombre_comercio", "rol_contacto", "instagram",
             "origen_contacto", "rubro", "nombre_operador", "respuesta_llamado", "tiempo_llamado",
-            "envio_whatsapp", "siguio_redes", "completo_formulario", "envio_listo", "cantidad_llamadas", "fecha_ultima_llamada"
+            "envio_whatsapp", "descargo_picking_up", "siguio_redes", "completo_formulario", "envio_listo", "cantidad_llamadas", "fecha_ultima_llamada"
         ];
         const sampleRow = [
             "Juan", "Pérez", "+54 11 2345-6789", "juan@ejemplo.com",
             "Av. Rivadavia 1234", "Morón", "Buenos Aires", "Kiosco Juan", "Dueño", "@kioscojuan",
             "Publicidad en instagram", "Kiosco / Almacén", "Operador 1", "Llamada Exitosa", "3 minutos",
-            "Sí", "Instagram", "Sí", "Sí", 0, "2026-08-18 15:30"
+            "Sí", "Sí", "Instagram", "Sí", "Sí", 0, "2026-08-18 15:30"
         ];
         const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
         XLSX.utils.book_append_sheet(wb, ws, "Modelo Llamadas");
@@ -1178,6 +1178,7 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             "Respuesta del Llamado": l.respuesta_llamado || '',
             "Tiempo Llamado": l.tiempo_llamado || '',
             "Envío WhatsApp": l.envio_whatsapp ? 'Sí' : l.envio_whatsapp === false ? 'No' : '',
+            "Descargó Picking Up": l.descargo_picking_up ? 'Sí' : l.descargo_picking_up === false ? 'No' : '',
             "Siguió en Redes": l.siguio_redes || '',
             "Completó Formulario": l.completo_formulario ? 'Sí' : l.completo_formulario === false ? 'No' : '',
             "Envió Listo": l.envio_listo ? 'Sí' : l.envio_listo === false ? 'No' : '',
@@ -1526,6 +1527,7 @@ export const importarLlamadasExcel = async (
                         "Duración", "Duracion", "duracion"
                     );
                     const envio_whatsapp = parseBool(getVal(row, "envio_whatsapp", "Envío WhatsApp", "Envio WhatsApp", "whatsapp", "WhatsApp"));
+                    const descargo_picking_up = parseBool(getVal(row, "descargo_picking_up", "Descargó Picking Up", "Descargo Picking Up", "Descargó PickingUp", "Descargo PickingUp"));
                     const siguio_redes_raw = getVal(row, "siguio_redes", "Siguió en Redes", "Siguio en Redes", "Nos siguió en redes", "redes", "Redes");
                     const completo_formulario = parseBool(getVal(row, "completo_formulario", "Completó Formulario", "Completo Formulario", "formulario", "Formulario"));
                     const envio_listo = parseBool(getVal(row, "envio_listo", "Envió Listo", "Envio Listo", "listo", "Listo"));
@@ -1624,6 +1626,7 @@ export const importarLlamadasExcel = async (
                         respuesta_llamado: respuesta_llamado ? String(respuesta_llamado).trim() : null,
                         tiempo_llamado: tiempo_llamado ? String(tiempo_llamado).trim() : null,
                         envio_whatsapp,
+                        descargo_picking_up,
                         siguio_redes: siguio_redes ? String(siguio_redes).trim() : null,
                         completo_formulario,
                         envio_listo,

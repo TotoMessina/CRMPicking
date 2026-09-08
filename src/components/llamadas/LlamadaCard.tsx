@@ -277,6 +277,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                             <InfoRow icon={Instagram} label="Siguió en redes" value={REDES_LABELS[l.siguio_redes] || l.siguio_redes} color={COLOR_OP.text} />
                         )}
                         <BoolBadge value={l.envio_whatsapp} label="WhatsApp enviado" />
+                        <BoolBadge value={l.descargo_picking_up} label="Descargó Picking Up" />
                         <BoolBadge value={l.completo_formulario} label="Completó formulario" />
                         <BoolBadge value={l.envio_listo} label='Envió "Listo"' />
                         <BoolBadge value={l.solicito_video ?? null} label="Solicitó Video" />

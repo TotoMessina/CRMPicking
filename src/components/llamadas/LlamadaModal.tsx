@@ -135,7 +135,7 @@ const EMPTY_FORM: Partial<Llamada> = {
     rol_contacto: '', instagram: '', origen_contacto: '',
     rubro: '', nombre_operador: '', respuesta_llamado: '',
     tiempo_llamado: '', siguio_redes: '',
-    envio_whatsapp: null, completo_formulario: null, envio_listo: null,
+    envio_whatsapp: null, descargo_picking_up: null, completo_formulario: null, envio_listo: null,
     envio_catalogo_video: null, solicito_video: null, video_url: '',
     etiqueta: null,
     cantidad_llamadas: 0,
@@ -710,6 +710,11 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             label="Envío de WhatsApp"
                                             value={form.envio_whatsapp ?? null}
                                             onChange={v => set('envio_whatsapp', v)}
+                                        />
+                                        <BoolField
+                                            label="Descargó Picking Up"
+                                            value={form.descargo_picking_up ?? null}
+                                            onChange={v => set('descargo_picking_up', v)}
                                         />
                                         <BoolField
                                             label='Completó formulario'
