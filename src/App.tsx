@@ -15,6 +15,7 @@ import { CoqueBot } from './components/ui/CoqueBot';
 import { useSecurityMonitor } from './hooks/useSecurityMonitor';
 
 const Clientes = lazy(() => import('./pages/Clientes'));
+const Distribuidores = lazy(() => import('./pages/Distribuidores'));
 const Pipeline = lazy(() => import('./pages/Pipeline'));
 const Consumidores = lazy(() => import('./pages/Consumidores'));
 const Repartidores = lazy(() => import('./pages/Repartidores'));
@@ -91,6 +92,7 @@ function App(): React.JSX.Element {
             <Route path="/chat" element={<Suspense fallback={<GlobalLoader />}><Chat /></Suspense>} />
             <Route path="/tablero" element={<Suspense fallback={<GlobalLoader />}><TableroTareas /></Suspense>} />
             <Route path="/clientes" element={<Suspense fallback={<GlobalLoader />}><Clientes /></Suspense>} />
+            <Route path="/distribuidores" element={<Suspense fallback={<GlobalLoader />}><Distribuidores /></Suspense>} />
             <Route path="/pipeline" element={<Suspense fallback={<GlobalLoader />}><Pipeline /></Suspense>} />
             <Route path="/consumidores" element={<Suspense fallback={<GlobalLoader />}><Consumidores /></Suspense>} />
             <Route path="/repartidores" element={<Suspense fallback={<GlobalLoader />}><Repartidores /></Suspense>} />

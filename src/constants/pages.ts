@@ -31,6 +31,7 @@ export const ALL_PAGES: PageItem[] = [
     { to: '/asignador-rutas', icon: ClipboardList, label: 'Asignador de Rutas', group: 'Activaciones', adminOnly: true },
 
     // --- Grupo: Operaciones ---
+    { to: '/distribuidores', icon: Building2, label: 'Distribuidores', group: 'Operaciones' },
     { to: '/consumidores', icon: Users, label: 'Consumidores', group: 'Operaciones' },
     { to: '/repartidores', icon: Truck, label: 'Repartidores', group: 'Operaciones' },
     { to: '/proveedores', icon: ShoppingCart, label: 'Proveedores', group: 'Operaciones' },

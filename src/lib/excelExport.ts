@@ -92,6 +92,75 @@ export const descargarModeloRepartidores = () => {
     }
 };
 
+export const descargarModeloDistribuidores = () => {
+    const toastId = toast.loading("Generando modelo de distribuidores...");
+    try {
+        const wb = XLSX.utils.book_new();
+        const headers = [
+            "nombre",
+            "direccion",
+            "categorias_productos",
+            "canal_comercializacion",
+            "cartera_clientes",
+            "cantidad_sku",
+            "vendedores",
+            "salones",
+            "pedido_minimo",
+            "tiempo_entrega",
+            "zona_entrega",
+            "medio_pago",
+            "erp_sistema_gestion",
+            "experiencia_digital",
+            "ejecutivo_cuenta",
+            "telefono",
+            "email",
+            "notas",
+            "estado"
+        ];
+        const data = [
+            headers,
+            [
+                "Distribuidora Central SRL",
+                "Av. Libertador 4500, Munro",
+                "Bebidas, Lácteos, Golosinas",
+                "Minorista y Kioscos",
+                "450 comercios activos",
+                "600",
+                "6 vendedores de calle",
+                "2 salones mayoristas",
+                "$100.000 / 15 bultos",
+                "24 a 48 horas",
+                "GBA Norte y CABA",
+                "Transferencia, Cheque 30 días",
+                "SAP Business One",
+                "E-commerce B2B y pedidos WhatsApp",
+                "Federico Rossi",
+                "11-4567-8900",
+                "ventas@distribuidoracentral.com",
+                "Excelente predisposición para sumar nuevas líneas",
+                "Activo"
+            ]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Modelo Distribuidores");
+
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "modelo_distribuidores_crm.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+        }, 1000);
+        toast.success("Modelo descargado correctamente", { id: toastId });
+    } catch (error: any) {
+        console.error("Error al generar modelo distribuidores:", error);
+        toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
+    }
+};
+
 export const importarClientesExcel = async (
     file: File | null, 
     empresaActiva: any, 
@@ -1984,5 +2053,311 @@ export const importarDescargasPickingUpExcel = async (
     } catch (error: any) {
         onProgress?.({ status: 'error', errorMessage: error.message || 'Error al actualizar las descargas' });
         toast.error(error.message || 'Error al actualizar las descargas');
+    }
+};
+
+export const exportarDistribuidoresExcel = async (empresaActiva: any, filters: any = {}) => {
+    const toastId = toast.loading("Exportando distribuidores...");
+    try {
+        if (!empresaActiva?.id) throw new Error("No hay empresa activa seleccionada");
+
+        let query = supabase
+            .from('distribuidores')
+            .select('*')
+            .eq('empresa_id', empresaActiva.id)
+            .order('created_at', { ascending: false });
+
+        if (filters.estado && filters.estado !== 'Todos') {
+            query = query.eq('estado', filters.estado);
+        }
+        if (filters.ejecutivo && filters.ejecutivo !== 'Todos') {
+            query = query.eq('ejecutivo_cuenta', filters.ejecutivo);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            toast.error("No hay distribuidores para exportar con los filtros actuales", { id: toastId });
+            return;
+        }
+
+        const exportData = data.map((d: any) => ({
+            "Nombre Distribuidor": d.nombre || "",
+            "Dirección": d.direccion || "",
+            "Categorías de Productos": d.categorias_productos || "",
+            "Canal de Comercialización": d.canal_comercializacion || "",
+            "Cartera de Clientes": d.cartera_clientes || "",
+            "Cantidad SKU": d.cantidad_sku || "",
+            "Vendedores": d.vendedores || "",
+            "Salones": d.salones || "",
+            "Pedido Mínimo": d.pedido_minimo || "",
+            "Tiempo de Entrega": d.tiempo_entrega || "",
+            "Zona de Entrega": d.zona_entrega || "",
+            "Medio de Pago": d.medio_pago || "",
+            "ERP / Sistema de Gestión": d.erp_sistema_gestion || "",
+            "Experiencia Digital": d.experiencia_digital || "",
+            "Ejecutivo de Cuenta": d.ejecutivo_cuenta || "",
+            "Teléfono": d.telefono || "",
+            "Email": d.email || "",
+            "Estado": d.estado || "Activo",
+            "Notas": d.notas || "",
+            "Última Actividad": d.ultima_actividad ? new Date(d.ultima_actividad).toLocaleDateString() : "",
+            "Fecha Creación": d.created_at ? new Date(d.created_at).toLocaleDateString() : ""
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        XLSX.utils.book_append_sheet(wb, ws, "Distribuidores");
+
+        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `distribuidores_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+        }, 1000);
+
+        toast.success(`${exportData.length} distribuidores exportados exitosamente`, { id: toastId });
+    } catch (error: any) {
+        console.error("Error al exportar distribuidores:", error);
+        toast.error(error.message || "Error al exportar distribuidores", { id: toastId });
+    }
+};
+
+export const importarDistribuidoresExcel = async (
+    file: File | null,
+    empresaActiva: any,
+    onSuccess?: () => void,
+    onProgress?: (progress: Partial<ImportProgressState>) => void
+) => {
+    if (!file) return;
+
+    if (onProgress) {
+        onProgress({ status: 'reading', fileName: file.name, title: 'Importando Distribuidores desde Excel' });
+    }
+
+    try {
+        const reader = new FileReader();
+        reader.onload = async (evt: any) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data: any[] = XLSX.utils.sheet_to_json(ws);
+
+                if (!data || data.length === 0) {
+                    if (onProgress) {
+                        onProgress({ status: 'error', errorMessage: 'El archivo está vacío' });
+                    }
+                    toast.error('El archivo está vacío');
+                    return;
+                }
+
+                const totalRows = data.length;
+                let processedRows = 0;
+                let successCount = 0;
+                let updatedCount = 0;
+                let errorCount = 0;
+                const items: ImportRowResult[] = [];
+
+                if (onProgress) {
+                    onProgress({
+                        status: 'processing',
+                        totalRows,
+                        processedRows: 0,
+                        remainingRows: totalRows,
+                        successCount: 0,
+                        updatedCount: 0,
+                        errorCount: 0,
+                        items: []
+                    });
+                }
+
+                for (let i = 0; i < data.length; i++) {
+                    const row = data[i];
+                    const rowIndex = i + 1;
+
+                    // El ÚNICO campo obligatorio es el nombre
+                    const rawNombre = row.nombre ?? row.Nombre ?? row['nombre de distribuidor'] ?? row['Nombre de Distribuidor'] ?? row['Nombre de distribuidor'] ?? row['Nombre Distribuidor'] ?? row['Distribuidor'] ?? row.distribuidor;
+                    const nombre = rawNombre ? String(rawNombre).trim() : '';
+
+                    if (!nombre) {
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: 'Sin nombre',
+                            phone: '',
+                            status: 'error',
+                            reason: 'El nombre del distribuidor es obligatorio'
+                        });
+                        processedRows++;
+                        if (onProgress) {
+                            onProgress({
+                                processedRows,
+                                remainingRows: totalRows - processedRows,
+                                errorCount,
+                                currentRowName: 'Fila sin nombre',
+                                items: [...items]
+                            });
+                        }
+                        continue;
+                    }
+
+                    // Campos opcionales solicitados
+                    const direccion = String(row.direccion ?? row.Direccion ?? row['dirección'] ?? row['Dirección'] ?? '').trim();
+                    const categorias_productos = String(row.categorias_productos ?? row['categorias de productos'] ?? row['Categorías de productos'] ?? row['Categorias de productos'] ?? row.categorias ?? row.Categorias ?? row.categoria ?? '').trim();
+                    const canal_comercializacion = String(row.canal_comercializacion ?? row['canal de comercializacion'] ?? row['Canal de comercialización'] ?? row.canal ?? row.Canal ?? '').trim();
+                    const cartera_clientes = String(row.cartera_clientes ?? row['cartera de clientes'] ?? row['Cartera de clientes'] ?? row.cartera ?? row.Cartera ?? '').trim();
+                    const cantidad_sku = String(row.cantidad_sku ?? row['cantidad de sku'] ?? row['Cantidad de SKU'] ?? row.sku ?? row.SKU ?? row.skus ?? '').trim();
+                    const vendedores = String(row.vendedores ?? row.Vendedores ?? row['fuerza de ventas'] ?? row['Fuerza de ventas'] ?? '').trim();
+                    const salones = String(row.salones ?? row.Salones ?? row['salones de venta'] ?? row['Salones de venta'] ?? row.sucursales ?? '').trim();
+                    const pedido_minimo = String(row.pedido_minimo ?? row['pedido minimo'] ?? row['Pedido mínimo'] ?? row['Pedido Minimo'] ?? '').trim();
+                    const tiempo_entrega = String(row.tiempo_entrega ?? row['tiempo de entrega'] ?? row['Tiempo de entrega'] ?? row.plazo ?? '').trim();
+                    const zona_entrega = String(row.zona_entrega ?? row['zona de entrega'] ?? row['Zona de entrega'] ?? row.zona ?? row.Zona ?? '').trim();
+                    const medio_pago = String(row.medio_pago ?? row['medio de pago'] ?? row['Medio de pago'] ?? row['forma de pago'] ?? '').trim();
+                    const erp_sistema_gestion = String(row.erp_sistema_gestion ?? row['erp/sistema de gestion'] ?? row['ERP/Sistema de gestión'] ?? row.erp ?? row.ERP ?? row.sistema ?? '').trim();
+                    const experiencia_digital = String(row.experiencia_digital ?? row['experiencia digital'] ?? row['Experiencia digital'] ?? '').trim();
+                    const ejecutivo_cuenta = String(row.ejecutivo_cuenta ?? row['ejecutivo de cuenta'] ?? row['Ejecutivo de cuenta'] ?? row.ejecutivo ?? row.Ejecutivo ?? row.responsable ?? row.Responsable ?? '').trim();
+
+                    // Contacto y notas adicionales
+                    const telefono = String(row.telefono ?? row.Telefono ?? row['teléfono'] ?? row['Teléfono'] ?? row.tel ?? '').trim();
+                    const email = String(row.email ?? row.Email ?? row.mail ?? row.Mail ?? '').trim();
+                    const notas = String(row.notas ?? row.Notas ?? row.observaciones ?? '').trim();
+                    const estado = String(row.estado ?? row.Estado ?? 'Activo').trim();
+
+                    try {
+                        // Buscar si existe un distribuidor con el mismo nombre para esta empresa
+                        const { data: existing } = await supabase
+                            .from('distribuidores')
+                            .select('id')
+                            .eq('empresa_id', empresaActiva.id)
+                            .ilike('nombre', nombre)
+                            .maybeSingle();
+
+                        const payload: Record<string, any> = {
+                            nombre,
+                            direccion: direccion || null,
+                            categorias_productos: categorias_productos || null,
+                            canal_comercializacion: canal_comercializacion || null,
+                            cartera_clientes: cartera_clientes || null,
+                            cantidad_sku: cantidad_sku || null,
+                            vendedores: vendedores || null,
+                            salones: salones || null,
+                            pedido_minimo: pedido_minimo || null,
+                            tiempo_entrega: tiempo_entrega || null,
+                            zona_entrega: zona_entrega || null,
+                            medio_pago: medio_pago || null,
+                            erp_sistema_gestion: erp_sistema_gestion || null,
+                            experiencia_digital: experiencia_digital || null,
+                            ejecutivo_cuenta: ejecutivo_cuenta || null,
+                            telefono: telefono || null,
+                            email: email || null,
+                            notas: notas || null,
+                            estado: estado || 'Activo',
+                            empresa_id: empresaActiva.id
+                        };
+
+                        if (existing) {
+                            const updatePayload: Record<string, any> = {};
+                            for (const [k, v] of Object.entries(payload)) {
+                                if (k === 'empresa_id') continue;
+                                if (v !== null && v !== undefined && v !== '') {
+                                    updatePayload[k] = v;
+                                }
+                            }
+                            const { error: updateError } = await supabase
+                                .from('distribuidores')
+                                .update(updatePayload)
+                                .eq('id', existing.id);
+
+                            if (updateError) throw updateError;
+
+                            updatedCount++;
+                            items.push({
+                                rowIndex,
+                                name: nombre,
+                                phone: telefono,
+                                status: 'updated'
+                            });
+                        } else {
+                            const { error: insertError } = await supabase
+                                .from('distribuidores')
+                                .insert([payload]);
+
+                            if (insertError) throw insertError;
+
+                            successCount++;
+                            items.push({
+                                rowIndex,
+                                name: nombre,
+                                phone: telefono,
+                                status: 'success'
+                            });
+                        }
+                    } catch (rowErr: any) {
+                        console.error(`Error procesando fila ${rowIndex}:`, rowErr);
+                        errorCount++;
+                        items.push({
+                            rowIndex,
+                            name: nombre,
+                            phone: telefono,
+                            status: 'error',
+                            reason: rowErr.message || 'Error al guardar en base de datos'
+                        });
+                    }
+
+                    processedRows++;
+                    if (onProgress) {
+                        onProgress({
+                            processedRows,
+                            remainingRows: totalRows - processedRows,
+                            successCount,
+                            updatedCount,
+                            errorCount,
+                            currentRowName: nombre,
+                            items: [...items]
+                        });
+                    }
+
+                    // Pausa breve para mantener fluida la interfaz
+                    await new Promise(r => setTimeout(r, 10));
+                }
+
+                if (onProgress) {
+                    onProgress({
+                        status: 'completed',
+                        processedRows: totalRows,
+                        remainingRows: 0,
+                        successCount,
+                        updatedCount,
+                        errorCount,
+                        items
+                    });
+                }
+
+                toast.success(`Importación finalizada: ${successCount} nuevos, ${updatedCount} actualizados, ${errorCount} errores`);
+                if (onSuccess) onSuccess();
+
+            } catch (err: any) {
+                console.error("Error al procesar archivo Excel:", err);
+                if (onProgress) {
+                    onProgress({ status: 'error', errorMessage: err.message || 'Error al procesar el archivo Excel' });
+                }
+                toast.error(err.message || 'Error al procesar el archivo Excel');
+            }
+        };
+
+        reader.readAsBinaryString(file);
+    } catch (err: any) {
+        console.error("Error en FileReader:", err);
+        if (onProgress) {
+            onProgress({ status: 'error', errorMessage: err.message || 'Error al leer el archivo' });
+        }
+        toast.error(err.message || 'Error al leer el archivo');
     }
 };
