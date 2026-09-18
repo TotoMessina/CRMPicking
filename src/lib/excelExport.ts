@@ -1,9 +1,42 @@
 import { supabase } from './supabase';
+import { downloadFile } from './downloadFile';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { applyClientFilters, ClientFilters } from '../utils/filterUtils';
 import { validatePhoneNumber } from '../utils/phoneValidation';
 import { ImportProgressState, ImportRowResult } from '../types/excelImport';
+
+export const downloadDataUri = (url: string, fileName: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.setAttribute("download", fileName);
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+        if (link.parentNode) document.body.removeChild(link);
+    }, 1000);
+};
+
+export const saveFileUniversal = async (blobOrData: Blob | string, fileName: string) => {
+    if (typeof blobOrData === 'string') {
+        const url = blobOrData.startsWith('data:') 
+            ? blobOrData 
+            : ('data:text/plain;charset=utf-8,' + encodeURIComponent(blobOrData));
+        downloadDataUri(url, fileName);
+        return;
+    }
+    return new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64data = reader.result as string;
+            downloadDataUri(base64data, fileName);
+            resolve();
+        };
+        reader.readAsDataURL(blobOrData);
+    });
+};
 
 export const descargarModeloClientes = () => {
     const toastId = toast.loading("Generando modelo...");
@@ -144,20 +177,73 @@ export const descargarModeloDistribuidores = () => {
         const ws = XLSX.utils.aoa_to_sheet(data);
         XLSX.utils.book_append_sheet(wb, ws, "Modelo Distribuidores");
 
-        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "modelo_distribuidores_crm.xlsx";
-        document.body.appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.body.removeChild(link);
-        }, 1000);
-        toast.success("Modelo descargado correctamente", { id: toastId });
+        downloadFile(
+            [XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
+            "modelo_distribuidores_crm.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+
+        toast.success("Modelo Excel descargado correctamente", { id: toastId });
     } catch (error: any) {
         console.error("Error al generar modelo distribuidores:", error);
         toast.error(error.message || "Error al generar el archivo Excel", { id: toastId });
+    }
+};
+
+export const descargarModeloDistribuidoresCSV = () => {
+    const toastId = toast.loading("Generando plantilla CSV...");
+    try {
+        const headers = [
+            "nombre",
+            "direccion",
+            "categorias_productos",
+            "canal_comercializacion",
+            "cartera_clientes",
+            "cantidad_sku",
+            "vendedores",
+            "salones",
+            "pedido_minimo",
+            "tiempo_entrega",
+            "zona_entrega",
+            "medio_pago",
+            "erp_sistema_gestion",
+            "experiencia_digital",
+            "ejecutivo_cuenta",
+            "telefono",
+            "email",
+            "notas",
+            "estado"
+        ];
+        const row = [
+            "Distribuidora Central SRL",
+            "Av. Libertador 4500, Munro",
+            "Bebidas, Lácteos, Golosinas",
+            "Minorista y Kioscos",
+            "450 comercios activos",
+            "600",
+            "6 vendedores de calle",
+            "2 salones mayoristas",
+            "$100.000 / 15 bultos",
+            "24 a 48 horas",
+            "GBA Norte y CABA",
+            "Transferencia, Cheque 30 días",
+            "SAP Business One",
+            "E-commerce B2B y pedidos WhatsApp",
+            "Federico Rossi",
+            "11-4567-8900",
+            "ventas@distribuidoracentral.com",
+            "Excelente predisposición para sumar nuevas líneas",
+            "Activo"
+        ];
+
+        const escapeCsv = (val: string) => `"${(val || '').replace(/"/g, '""')}"`;
+        const csvContent = "\uFEFF" + headers.map(escapeCsv).join(";") + "\r\n" + row.map(escapeCsv).join(";") + "\r\n";
+        downloadFile([csvContent], "modelo_distribuidores_crm.csv", "text/csv;charset=utf-8");
+
+        toast.success("Plantilla CSV descargada correctamente", { id: toastId });
+    } catch (error: any) {
+        console.error("Error al generar plantilla CSV:", error);
+        toast.error(error.message || "Error al generar plantilla CSV", { id: toastId });
     }
 };
 
@@ -2077,8 +2163,42 @@ export const exportarDistribuidoresExcel = async (empresaActiva: any, filters: a
         const { data, error } = await query;
         if (error) throw error;
 
+        const wb = XLSX.utils.book_new();
+
         if (!data || data.length === 0) {
-            toast.error("No hay distribuidores para exportar con los filtros actuales", { id: toastId });
+            // Si aún no hay registros, exportar la estructura con las columnas para que el usuario siempre reciba el archivo
+            const emptyHeaders = [{
+                "Nombre Distribuidor": "Ejemplo SRL",
+                "Dirección": "Av. Libertador 4500",
+                "Categorías de Productos": "Bebidas, Lácteos",
+                "Canal de Comercialización": "Minorista",
+                "Cartera de Clientes": "300 comercios",
+                "Cantidad SKU": "400",
+                "Vendedores": "4",
+                "Salones": "1",
+                "Pedido Mínimo": "$100.000",
+                "Tiempo de Entrega": "24 a 48 hs",
+                "Zona de Entrega": "CABA y GBA",
+                "Medio de Pago": "Transferencia / Cheque",
+                "ERP / Sistema de Gestión": "SAP",
+                "Experiencia Digital": "WhatsApp y Web",
+                "Ejecutivo de Cuenta": "Responsable",
+                "Teléfono": "11-2345-6789",
+                "Email": "info@ejemplo.com",
+                "Estado": "Activo",
+                "Notas": "Registro de ejemplo",
+                "Última Actividad": "",
+                "Fecha Creación": new Date().toLocaleDateString()
+            }];
+            const ws = XLSX.utils.json_to_sheet(emptyHeaders);
+            XLSX.utils.book_append_sheet(wb, ws, "Distribuidores");
+            const fileName = `distribuidores_${new Date().toISOString().split('T')[0]}.xlsx`;
+            downloadFile(
+                [XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
+                fileName,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            );
+            toast.success("Planilla de distribuidores descargada correctamente", { id: toastId });
             return;
         }
 
@@ -2106,25 +2226,95 @@ export const exportarDistribuidoresExcel = async (empresaActiva: any, filters: a
             "Fecha Creación": d.created_at ? new Date(d.created_at).toLocaleDateString() : ""
         }));
 
-        const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(exportData);
         XLSX.utils.book_append_sheet(wb, ws, "Distribuidores");
 
-        const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-        const url = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `distribuidores_${new Date().toISOString().split('T')[0]}.xlsx`;
-        document.body.appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.body.removeChild(link);
-        }, 1000);
+        const fileName = `distribuidores_${new Date().toISOString().split('T')[0]}.xlsx`;
+        downloadFile(
+            [XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
+            fileName,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
 
         toast.success(`${exportData.length} distribuidores exportados exitosamente`, { id: toastId });
     } catch (error: any) {
         console.error("Error al exportar distribuidores:", error);
         toast.error(error.message || "Error al exportar distribuidores", { id: toastId });
+    }
+};
+
+export const exportarDistribuidoresCSV = async (empresaActiva: any, filters: any = {}) => {
+    const toastId = toast.loading("Exportando distribuidores a CSV...");
+    try {
+        if (!empresaActiva?.id) throw new Error("No hay empresa activa seleccionada");
+
+        let query = supabase
+            .from('distribuidores')
+            .select('*')
+            .eq('empresa_id', empresaActiva.id)
+            .order('created_at', { ascending: false });
+
+        if (filters.estado && filters.estado !== 'Todos') {
+            query = query.eq('estado', filters.estado);
+        }
+        if (filters.ejecutivo && filters.ejecutivo !== 'Todos') {
+            query = query.eq('ejecutivo_cuenta', filters.ejecutivo);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const headers = [
+            "Nombre Distribuidor", "Dirección", "Categorías de Productos", "Canal de Comercialización",
+            "Cartera de Clientes", "Cantidad SKU", "Vendedores", "Salones", "Pedido Mínimo",
+            "Tiempo de Entrega", "Zona de Entrega", "Medio de Pago", "ERP / Sistema de Gestión",
+            "Experiencia Digital", "Ejecutivo de Cuenta", "Teléfono", "Email", "Estado", "Notas",
+            "Última Actividad", "Fecha Creación"
+        ];
+
+        const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+        let rows = "";
+
+        if (!data || data.length === 0) {
+            rows = [
+                "Ejemplo SRL", "Av. Libertador 4500", "Bebidas, Lácteos", "Minorista",
+                "300 comercios", "400", "4", "1", "$100.000", "24 a 48 hs", "CABA y GBA",
+                "Transferencia / Cheque", "SAP", "WhatsApp y Web", "Responsable",
+                "11-2345-6789", "info@ejemplo.com", "Activo", "Registro de ejemplo", "", new Date().toLocaleDateString()
+            ].map(escapeCsv).join(";") + "\r\n";
+        } else {
+            rows = data.map((d: any) => [
+                d.nombre || "",
+                d.direccion || "",
+                d.categorias_productos || "",
+                d.canal_comercializacion || "",
+                d.cartera_clientes || "",
+                d.cantidad_sku || "",
+                d.vendedores || "",
+                d.salones || "",
+                d.pedido_minimo || "",
+                d.tiempo_entrega || "",
+                d.zona_entrega || "",
+                d.medio_pago || "",
+                d.erp_sistema_gestion || "",
+                d.experiencia_digital || "",
+                d.ejecutivo_cuenta || "",
+                d.telefono || "",
+                d.email || "",
+                d.estado || "Activo",
+                d.notas || "",
+                d.ultima_actividad ? new Date(d.ultima_actividad).toLocaleDateString() : "",
+                d.created_at ? new Date(d.created_at).toLocaleDateString() : ""
+            ].map(escapeCsv).join(";")).join("\r\n") + "\r\n";
+        }
+
+        const csvContent = "\uFEFF" + headers.map(escapeCsv).join(";") + "\r\n" + rows;
+        const fileName = `distribuidores_${new Date().toISOString().split('T')[0]}.csv`;
+        downloadFile([csvContent], fileName, "text/csv;charset=utf-8");
+        toast.success("Archivo CSV exportado exitosamente", { id: toastId });
+    } catch (error: any) {
+        console.error("Error al exportar CSV:", error);
+        toast.error(error.message || "Error al exportar CSV", { id: toastId });
     }
 };
 

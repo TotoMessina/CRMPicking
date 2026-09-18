@@ -21,8 +21,10 @@ import { ExcelImportModal } from '../components/ui/ExcelImportModal';
 import { useExcelImport } from '../hooks/useExcelImport';
 import { 
     descargarModeloDistribuidores, 
+    descargarModeloDistribuidoresCSV,
     importarDistribuidoresExcel, 
-    exportarDistribuidoresExcel 
+    exportarDistribuidoresExcel,
+    exportarDistribuidoresCSV 
 } from '../lib/excelExport';
 
 const INITIAL_FILTERS: DistribuidorFiltersState = {
@@ -266,8 +268,16 @@ export default function Distribuidores() {
         await exportarDistribuidoresExcel(empresaActiva, filters);
     };
 
+    const handleDescargarCSV = async () => {
+        await exportarDistribuidoresCSV(empresaActiva, filters);
+    };
+
     const handleDescargarModelo = () => {
         descargarModeloDistribuidores();
+    };
+
+    const handleDescargarModeloCSV = () => {
+        descargarModeloDistribuidoresCSV();
     };
 
     const handleResetFilters = () => {
@@ -289,65 +299,110 @@ export default function Distribuidores() {
                     </p>
                 </div>
 
-                {/* ACCIONES SECUNDARIAS (EXCEL Y PLANTILLA) */}
-                <div style={{ position: 'relative', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                {/* ACCIONES EXCEL Y PLANTILLA */}
+                <div style={{ position: 'relative', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <Button 
                         variant="secondary" 
-                        onClick={() => setActionsOpen(!actionsOpen)} 
+                        type="button"
+                        onClick={handleDescargarModelo} 
                         style={{ borderRadius: '14px', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)' }}
+                        title="Descargar plantilla Excel para carga de distribuidores"
                     >
-                        <MoreVertical size={18} />
-                        <span className="hide-mobile">Acciones Excel</span>
+                        <FileText size={18} style={{ color: 'var(--primary)' }} />
+                        <span className="hide-mobile">Descargar Plantilla</span>
                     </Button>
 
-                    <AnimatePresence>
-                        {actionsOpen && (
-                            <>
-                                <div 
-                                    style={{ position: 'fixed', inset: 0, zIndex: 998 }} 
-                                    onClick={() => setActionsOpen(false)} 
-                                />
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    style={{
-                                        position: 'absolute', top: '50px', right: 0, zIndex: 999,
-                                        minWidth: '240px', background: 'var(--bg-card)', border: '1px solid var(--border)',
-                                        borderRadius: '16px', boxShadow: 'var(--shadow-xl)', padding: '8px',
-                                        backdropFilter: 'blur(16px)'
-                                    }}
-                                >
-                                    <button 
-                                        className="dropdown-item" 
-                                        onClick={() => { handleDescargarModelo(); setActionsOpen(false); }}
-                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    <Button 
+                        variant="secondary" 
+                        type="button"
+                        onClick={handleDescargarExcel} 
+                        style={{ borderRadius: '14px', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)' }}
+                        title="Exportar listado de distribuidores a Excel"
+                    >
+                        <Download size={18} style={{ color: 'var(--primary)' }} />
+                        <span className="hide-mobile">Exportar Excel</span>
+                    </Button>
+
+                    <div style={{ position: 'relative' }}>
+                        <Button 
+                            variant="secondary" 
+                            type="button"
+                            onClick={() => setActionsOpen(!actionsOpen)} 
+                            style={{ borderRadius: '14px', height: '44px', padding: '0 14px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-glass)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)' }}
+                        >
+                            <MoreVertical size={18} />
+                            <span className="hide-mobile">Más</span>
+                        </Button>
+
+                        <AnimatePresence>
+                            {actionsOpen && (
+                                <>
+                                    <div 
+                                        style={{ position: 'fixed', inset: 0, zIndex: 998 }} 
+                                        onClick={() => setActionsOpen(false)} 
+                                    />
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        style={{
+                                            position: 'absolute', top: '50px', right: 0, zIndex: 999,
+                                            minWidth: '250px', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                            borderRadius: '16px', boxShadow: 'var(--shadow-xl)', padding: '8px',
+                                            backdropFilter: 'blur(16px)'
+                                        }}
                                     >
-                                        <FileText size={16} style={{ color: 'var(--primary)' }} /> Descargar Plantilla Excel
-                                    </button>
-                                    <button 
-                                        className="dropdown-item" 
-                                        onClick={() => { handleDescargarExcel(); setActionsOpen(false); }}
-                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer' }}
-                                    >
-                                        <Download size={16} style={{ color: 'var(--primary)' }} /> Exportar Distribuidores
-                                    </button>
-                                    <label 
-                                        className="dropdown-item" 
-                                        style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
-                                    >
-                                        <Upload size={16} style={{ color: 'var(--primary)' }} /> Importar desde Excel
-                                        <input 
-                                            type="file" 
-                                            accept=".xlsx,.xls" 
-                                            style={{ display: 'none' }} 
-                                            onChange={(e) => { handleImportExcel(e); setActionsOpen(false); }} 
-                                        />
-                                    </label>
-                                </motion.div>
-                            </>
-                        )}
-                    </AnimatePresence>
+                                        <button 
+                                            type="button"
+                                            className="dropdown-item" 
+                                            onClick={(e) => { e.stopPropagation(); setActionsOpen(false); handleDescargarModelo(); }}
+                                            style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                        >
+                                            <FileText size={16} style={{ color: 'var(--primary)' }} /> Descargar Plantilla Excel (.xlsx)
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            className="dropdown-item" 
+                                            onClick={(e) => { e.stopPropagation(); setActionsOpen(false); handleDescargarModeloCSV(); }}
+                                            style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                        >
+                                            <FileText size={16} style={{ color: '#10b981' }} /> Descargar Plantilla CSV (.csv)
+                                        </button>
+                                        <div style={{ height: '1px', background: 'var(--border)', margin: '6px 0' }} />
+                                        <button 
+                                            type="button"
+                                            className="dropdown-item" 
+                                            onClick={(e) => { e.stopPropagation(); setActionsOpen(false); handleDescargarExcel(); }}
+                                            style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                        >
+                                            <Download size={16} style={{ color: 'var(--primary)' }} /> Exportar a Excel (.xlsx)
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            className="dropdown-item" 
+                                            onClick={(e) => { e.stopPropagation(); setActionsOpen(false); handleDescargarCSV(); }}
+                                            style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                        >
+                                            <Download size={16} style={{ color: '#10b981' }} /> Exportar a CSV (.csv)
+                                        </button>
+                                        <div style={{ height: '1px', background: 'var(--border)', margin: '6px 0' }} />
+                                        <label 
+                                            className="dropdown-item" 
+                                            style={{ width: '100%', padding: '10px 14px', textAlign: 'left', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}
+                                        >
+                                            <Upload size={16} style={{ color: 'var(--primary)' }} /> Importar desde Excel / CSV
+                                            <input 
+                                                type="file" 
+                                                accept=".xlsx,.xls,.csv" 
+                                                style={{ display: 'none' }} 
+                                                onChange={(e) => { handleImportExcel(e); setActionsOpen(false); }} 
+                                            />
+                                        </label>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </header>
 

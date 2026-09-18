@@ -30,6 +30,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
 // Cliente secundario en memoria (sin persistencia) para gestionar registros sin cerrar sesión local
 export const authClient = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
+        storageKey: 'auth-client-memory',
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false
