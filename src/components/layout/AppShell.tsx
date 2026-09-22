@@ -10,7 +10,9 @@ import { LogOut, Sun, Moon, Bell, Building2, ChevronDown, Navigation, Bot, Lucid
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTenant } from '../../contexts/TenantContext';
 import { applyBrandingToDOM } from '../../hooks/useBranding';
-import { Empresa } from '../../contexts/AuthContext';
+import { Empresa, useAuth } from '../../contexts/AuthContext';
+import { isPathAllowed } from '../../utils/permissionUtils';
+import { GlobalLoader } from '../ui/GlobalLoader';
 
 interface SidebarBrandProps {
     setIsMobileMenuOpen: (open: boolean) => void;
@@ -189,7 +191,7 @@ function getActiveGroup(pathname: string, navItems: any[], defaultGroup = 'Activ
 export function AppShell() {
     const { t } = useTranslation();
     const {
-        user, userName, avatarUrl, empresaActiva, empresasDisponibles, setEmpresaActiva,
+        user, role, userName, avatarUrl, empresaActiva, empresasDisponibles, setEmpresaActiva,
         theme, toggleTheme, location, navigate,
         isMobileMenuOpen, setIsMobileMenuOpen,
         pushEnabled, unreadChatCount,
@@ -198,6 +200,7 @@ export function AppShell() {
         handleLogout, handleSubscribePush, handleForceUpdate,
         navItems
     } = useAppShell();
+    const { paginasPermitidas } = useAuth();
 
     const routerLocation = useLocation();
     const { tenantConfig } = useTenant();
@@ -395,7 +398,24 @@ export function AppShell() {
                             transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                             <ErrorBoundary>
-                                <Outlet />
+                                {location.pathname !== '/' && !isPathAllowed(location.pathname, role, empresaActiva, paginasPermitidas) ? (
+                                    role !== 'super-admin' && paginasPermitidas === null && empresaActiva ? (
+                                        <GlobalLoader />
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', padding: '24px' }}>
+                                            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🚫</div>
+                                            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Acceso No Autorizado</h2>
+                                            <p style={{ color: 'var(--text-muted)', maxWidth: '420px', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px' }}>
+                                                Tu rol actual no tiene permisos para acceder a esta sección.
+                                            </p>
+                                            <button className="btn-primario" onClick={() => navigate('/')}>
+                                                Ir a mi pantalla principal
+                                            </button>
+                                        </div>
+                                    )
+                                ) : (
+                                    <Outlet />
+                                )}
                             </ErrorBoundary>
                         </motion.div>
                     </AnimatePresence>

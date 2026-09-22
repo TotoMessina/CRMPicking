@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { ALL_PAGES, PageItem } from '../constants/pages';
+import { isPathAllowed } from '../utils/permissionUtils';
 
 function urlBase64ToUint8Array(base64String: string) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -203,12 +204,6 @@ export const useAppShell = (): UseAppShellReturn => {
     };
 
     const navItems = (() => {
-        const isSuperAdmin = role === 'super-admin';
-        const effectiveRole = (isSuperAdmin ? 'super-admin' : (empresaActiva?.role_en_empresa?.toLowerCase() || role || 'user')) as string;
-        const isActivador = effectiveRole?.includes('activador');
-        const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super-admin';
-        const activadorRoutes = new Set(['/', '/clientes', '/calendario', '/mapa', '/configuracion', '/chat', '/tablero', '/historial', '/ruta', '/inventario-marketing']);
-
         const customPageGroups = empresaActiva?.config?.pageGroups || {};
         const allItems = ALL_PAGES.map(item => {
             if (item.to && customPageGroups[item.to]) {
@@ -216,31 +211,12 @@ export const useAppShell = (): UseAppShellReturn => {
             }
             return item;
         });
-        let filteredItems: PageItem[] = [];
 
-        if (isSuperAdmin) {
-            filteredItems = allItems;
-        } else if (paginasPermitidas && Object.keys(paginasPermitidas).length > 0) {
-            filteredItems = allItems.filter(item => {
-                if (item.spacer) return true;
-                if (item.superAdminOnly) return false;
-
-                // SAFE ESCAPES: Evitar lockouts absolutos para los administradores locales
-                if (isAdmin && (item.to === '/permisos-empresa' || item.to === '/configuracion' || item.to === '/' || item.to === '/usuarios')) {
-                    return true;
-                }
-
-                const perm = paginasPermitidas[item.to || ''];
-                return perm && perm.includes(effectiveRole);
-            });
-        } else if (isActivador) {
-            filteredItems = allItems.filter(item => !!item.spacer || activadorRoutes.has(item.to || ''));
-        } else {
-            filteredItems = allItems.filter(item => (!item.adminOnly && !item.superAdminOnly) || isAdmin);
-        }
-
-
-        return filteredItems;
+        return allItems.filter(item => {
+            if (item.spacer) return true;
+            if (!item.to) return false;
+            return isPathAllowed(item.to, role, empresaActiva, paginasPermitidas);
+        });
     })();
 
     const handleForceUpdate = async () => {

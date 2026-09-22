@@ -70,6 +70,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const fetchPermisosPaginas = useCallback(async (
+        empresaId: string | undefined, 
+        userRole: string | null,
+        isCurrent?: () => boolean
+    ) => {
+        if (userRole === 'super-admin') {
+            if (!isCurrent || isCurrent()) setPaginasPermitidas(null);
+            return;
+        }
+        if (!empresaId) {
+            if (!isCurrent || isCurrent()) setPaginasPermitidas({});
+            return;
+        }
+
+        if (!navigator.onLine) return;
+
+        const { data } = await supabase
+            .from('empresa_permisos_pagina')
+            .select('pagina, habilitada, roles_permitidos')
+            .eq('empresa_id', empresaId)
+            .eq('habilitada', true);
+
+        if (isCurrent && !isCurrent()) return;
+
+        const map: PaginasPermitidas = {};
+        (data || []).forEach(row => {
+            map[row.pagina] = row.roles_permitidos || [];
+        });
+        setPaginasPermitidas(map);
+    }, []);
+
     const fetchRoleAndName = useCallback(async (authUser: User | null) => {
         if (!authUser) {
             setRole(null);
@@ -77,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAvatarUrl(null);
             setEmpresasDisponibles([]);
             setEmpresaActivaState(null);
+            setPaginasPermitidas(null);
             localStorage.removeItem(USER_CACHE_KEY);
             return;
         }
@@ -138,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setEmpresasDisponibles(empresas);
 
         // Auto-select
+        let selectedEmpresa: Empresa | null = null;
         const stored = localStorage.getItem(EMPRESA_KEY);
         if (stored) {
             try {
@@ -146,15 +179,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (!stillValid && empresas.some(e => e.id === parsed.id)) {
                     // Si existe pero no está activo, forzar logout de esa empresa
                     toast.error('Tu acceso a esta empresa ha sido revocado.');
-                    setEmpresaActivaState(null);
+                    selectedEmpresa = null;
                 } else {
-                    setEmpresaActivaState(stillValid || empresas.find(e => e.activo !== false) || null);
+                    selectedEmpresa = stillValid || empresas.find(e => e.activo !== false) || null;
                 }
             } catch {
-                setEmpresaActivaState(empresas.find(e => e.activo !== false) || null);
+                selectedEmpresa = empresas.find(e => e.activo !== false) || null;
             }
         } else if (empresas.length === 1 && empresas[0].activo !== false) {
-            setEmpresaActivaState(empresas[0]);
+            selectedEmpresa = empresas[0];
             localStorage.setItem(EMPRESA_KEY, JSON.stringify(empresas[0]));
         } else {
             // Filtrar solo las activas para la selección manual
@@ -162,9 +195,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (activas.length === 0 && empresas.length > 0) {
                  toast.error('No tienes empresas activas asociadas.');
             }
-            setEmpresaActivaState(null);
+            selectedEmpresa = null;
         }
-    }, []);
+        setEmpresaActivaState(selectedEmpresa);
+
+        if (selectedEmpresa?.id) {
+            await fetchPermisosPaginas(selectedEmpresa.id, resolvedRole);
+        } else if (resolvedRole === 'super-admin') {
+            setPaginasPermitidas(null);
+        } else {
+            setPaginasPermitidas({});
+        }
+    }, [fetchPermisosPaginas]);
 
     // Sincronizar TenantStore cuando cambia la empresa activa
     useEffect(() => {
@@ -221,36 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
     }, [user, empresaActiva, signOut]);
 
-    const fetchPermisosPaginas = async (
-        empresaId: string | undefined, 
-        userRole: string | null,
-        isCurrent?: () => boolean
-    ) => {
-        if (userRole === 'super-admin') {
-            if (!isCurrent || isCurrent()) setPaginasPermitidas(null);
-            return;
-        }
-        if (!empresaId) {
-            if (!isCurrent || isCurrent()) setPaginasPermitidas({});
-            return;
-        }
 
-        if (!navigator.onLine) return;
-
-        const { data } = await supabase
-            .from('empresa_permisos_pagina')
-            .select('pagina, habilitada, roles_permitidos')
-            .eq('empresa_id', empresaId)
-            .eq('habilitada', true);
-
-        if (isCurrent && !isCurrent()) return;
-
-        const map: PaginasPermitidas = {};
-        (data || []).forEach(row => {
-            map[row.pagina] = row.roles_permitidos || [];
-        });
-        setPaginasPermitidas(map);
-    };
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {

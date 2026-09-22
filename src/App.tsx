@@ -6,6 +6,7 @@ import { NetworkStatusHandler } from './components/ui/NetworkStatusHandler';
 import { UpdateNotifier } from './components/ui/UpdateNotifier';
 import { AppShell } from './components/layout/AppShell';
 import { GlobalLoader } from './components/ui/GlobalLoader';
+import { getLandingPageRoute } from './utils/permissionUtils';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -51,14 +52,31 @@ function SecurityMonitorHelper() {
 }
 
 function HomeRedirect() {
-  const { empresaActiva } = useAuth();
-  const landingPage = empresaActiva?.config?.landingPage;
+  const { role, empresaActiva, paginasPermitidas, loading } = useAuth();
 
-  if (landingPage && landingPage !== '/') {
-    return <Navigate to={landingPage} replace />;
+  if (loading || (role !== 'super-admin' && paginasPermitidas === null && empresaActiva)) {
+    return <GlobalLoader />;
   }
 
-  return <Dashboard />;
+  const destination = getLandingPageRoute(role, empresaActiva, paginasPermitidas);
+
+  if (destination === '/') {
+    return <Dashboard />;
+  }
+
+  if (destination) {
+    return <Navigate to={destination} replace />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', padding: '24px' }}>
+      <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔒</div>
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Sin módulos asignados</h2>
+      <p style={{ color: 'var(--text-muted)', maxWidth: '420px', fontSize: '0.9rem', lineHeight: 1.5 }}>
+        Tu rol actual no tiene acceso asignado a la pantalla de inicio ni a otros módulos de esta empresa. Por favor, solicita a un administrador que configure tus permisos.
+      </p>
+    </div>
+  );
 }
 
 function App(): React.JSX.Element {
@@ -88,7 +106,7 @@ function App(): React.JSX.Element {
 
           <Route element={<AppShell />}>
             <Route path="/" element={<Suspense fallback={<GlobalLoader />}><HomeRedirect /></Suspense>} />
-            <Route path="/dashboard" element={<Suspense fallback={<GlobalLoader />}><Dashboard /></Suspense>} />
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
             <Route path="/chat" element={<Suspense fallback={<GlobalLoader />}><Chat /></Suspense>} />
             <Route path="/tablero" element={<Suspense fallback={<GlobalLoader />}><TableroTareas /></Suspense>} />
             <Route path="/clientes" element={<Suspense fallback={<GlobalLoader />}><Clientes /></Suspense>} />
@@ -121,6 +139,7 @@ function App(): React.JSX.Element {
             <Route path="/configuracion" element={<Suspense fallback={<GlobalLoader />}><Configuracion /></Suspense>} />
             <Route path="/inventario-marketing" element={<Suspense fallback={<GlobalLoader />}><InventarioMarketing /></Suspense>} />
             <Route path="/llamadas" element={<Suspense fallback={<GlobalLoader />}><Llamadas /></Suspense>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </Router>
