@@ -2,6 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { applyLlamadasFilters, LlamadaFilters } from '../utils/filterUtils';
+
+export type { LlamadaFilters };
+export { applyLlamadasFilters };
 
 export interface Llamada {
     id: number;
@@ -37,22 +41,6 @@ export interface Llamada {
     fecha_ultima_llamada?: string | null;
     created_at: string;
     updated_at: string;
-}
-
-export interface LlamadaFilters {
-    busqueda: string;
-    operador: string;
-    rubro: string;
-    respuesta: string;
-    etiqueta?: string;
-    origen_contacto?: string;
-    cantidad_llamadas?: string;
-    fecha_modificacion?: string;
-    fecha_desde?: string;
-    fecha_hasta?: string;
-    estado_conversion?: string;
-    localidad?: string;
-    provincia?: string;
 }
 
 export interface UseLlamadasParams {
@@ -255,154 +243,7 @@ export function useLlamadas({ empresaId, page, pageSize = 24, filters, sortBy = 
                 .select('*', { count: 'exact' })
                 .eq('empresa_id', empresaId);
 
-            // Ordenamiento
-            switch (sortBy) {
-                case 'updated_desc':
-                    query = query.order('updated_at', { ascending: false, nullsFirst: false });
-                    break;
-                case 'updated_asc':
-                    query = query.order('updated_at', { ascending: true, nullsFirst: false });
-                    break;
-                case 'llamadas_desc':
-                    query = query.order('cantidad_llamadas', { ascending: false, nullsFirst: false });
-                    break;
-                case 'llamadas_asc':
-                    query = query.order('cantidad_llamadas', { ascending: true, nullsFirst: false });
-                    break;
-                case 'created_asc':
-                    query = query.order('created_at', { ascending: true });
-                    break;
-                case 'nombre_asc':
-                    query = query.order('nombre', { ascending: true, nullsFirst: false }).order('apellido', { ascending: true, nullsFirst: false });
-                    break;
-                case 'nombre_desc':
-                    query = query.order('nombre', { ascending: false, nullsFirst: false }).order('apellido', { ascending: false, nullsFirst: false });
-                    break;
-                case 'comercio_asc':
-                    query = query.order('nombre_comercio', { ascending: true, nullsFirst: false });
-                    break;
-                case 'comercio_desc':
-                    query = query.order('nombre_comercio', { ascending: false, nullsFirst: false });
-                    break;
-                case 'operador_asc':
-                    query = query.order('nombre_operador', { ascending: true, nullsFirst: false });
-                    break;
-                case 'fecha_llamada_desc':
-                    query = query.order('fecha_ultima_llamada', { ascending: false, nullsLast: true });
-                    break;
-                case 'fecha_llamada_asc':
-                    query = query.order('fecha_ultima_llamada', { ascending: true, nullsLast: true });
-                    break;
-                case 'created_desc':
-                default:
-                    query = query.order('created_at', { ascending: false });
-                    break;
-            }
-
-            if (filters.busqueda && filters.busqueda.trim()) {
-                const tokens = filters.busqueda.trim().split(/\s+/).filter(Boolean);
-                tokens.forEach((token: string) => {
-                    const cleanToken = token.replace(/"/g, '');
-                    if (cleanToken) {
-                        const safeTerm = `"%${cleanToken}%"`;
-                        query = query.or(
-                            `nombre.ilike.${safeTerm},apellido.ilike.${safeTerm},telefono.ilike.${safeTerm},nombre_comercio.ilike.${safeTerm},direccion.ilike.${safeTerm},localidad.ilike.${safeTerm},provincia.ilike.${safeTerm},mail.ilike.${safeTerm},nombre_operador.ilike.${safeTerm}`
-                        );
-                    }
-                });
-            }
-            if (filters.operador) {
-                query = query.ilike('nombre_operador', `%${filters.operador.trim()}%`);
-            }
-            if (filters.rubro) {
-                query = query.eq('rubro', filters.rubro);
-            }
-            if (filters.respuesta) {
-                query = query.eq('respuesta_llamado', filters.respuesta);
-            }
-            if (filters.etiqueta) {
-                query = query.eq('etiqueta', filters.etiqueta);
-            }
-            if (filters.origen_contacto) {
-                query = query.ilike('origen_contacto', `%${filters.origen_contacto.trim()}%`);
-            }
-            if (filters.localidad && filters.localidad.trim()) {
-                query = query.ilike('localidad', `%${filters.localidad.trim()}%`);
-            }
-            if (filters.provincia && filters.provincia.trim()) {
-                query = query.ilike('provincia', `%${filters.provincia.trim()}%`);
-            }
-
-            // Filtro por cantidad de llamadas
-            if (filters.cantidad_llamadas) {
-                switch (filters.cantidad_llamadas) {
-                    case '0':
-                        query = query.or('cantidad_llamadas.is.null,cantidad_llamadas.eq.0');
-                        break;
-                    case '1':
-                        query = query.eq('cantidad_llamadas', 1);
-                        break;
-                    case '1+':
-                        query = query.gte('cantidad_llamadas', 1);
-                        break;
-                    case '2+':
-                        query = query.gte('cantidad_llamadas', 2);
-                        break;
-                    case '3+':
-                        query = query.gte('cantidad_llamadas', 3);
-                        break;
-                    case '5+':
-                        query = query.gte('cantidad_llamadas', 5);
-                        break;
-                }
-            }
-
-            // Filtro por fecha de última modificación
-            if (filters.fecha_modificacion) {
-                const now = new Date();
-                if (filters.fecha_modificacion === 'hoy') {
-                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-                    query = query.gte('updated_at', today);
-                } else if (filters.fecha_modificacion === '7d') {
-                    const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-                    query = query.gte('updated_at', d7);
-                } else if (filters.fecha_modificacion === '30d') {
-                    const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-                    query = query.gte('updated_at', d30);
-                } else if (filters.fecha_modificacion === 'custom') {
-                    if (filters.fecha_desde) {
-                        query = query.gte('updated_at', new Date(filters.fecha_desde + 'T00:00:00').toISOString());
-                    }
-                    if (filters.fecha_hasta) {
-                        query = query.lte('updated_at', new Date(filters.fecha_hasta + 'T23:59:59.999').toISOString());
-                    }
-                }
-            }
-
-            // Filtro por estado de conversión
-            if (filters.estado_conversion) {
-                switch (filters.estado_conversion) {
-                    case 'whatsapp':
-                        query = query.eq('envio_whatsapp', true);
-                        break;
-                    case 'formulario':
-                        query = query.eq('completo_formulario', true);
-                        break;
-                    case 'listo':
-                        query = query.eq('envio_listo', true);
-                        break;
-                    case 'redes':
-                        query = query.not('siguio_redes', 'is', null).neq('siguio_redes', 'no');
-                        break;
-                    case 'video':
-                        query = query.or('envio_catalogo_video.eq.true,respuesta_llamado.eq.catalogo_video_enviado,video_url.not.is.null');
-                        break;
-                    case 'solicito_video':
-                        query = query.eq('solicito_video', true);
-                        break;
-                }
-            }
-
+            query = applyLlamadasFilters(query, filters, sortBy);
             query = query.range((page - 1) * pageSize, page * pageSize - 1);
 
             const { data, count, error } = await query;

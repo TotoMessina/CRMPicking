@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { applyClientFilters } from '../utils/filterUtils';
+import { applyClientFilters, applyLlamadasFilters } from '../utils/filterUtils';
 import { forecastingService } from '../lib/forecastingService';
 import { queueMutation, getPendingCount } from '../lib/offlineManager';
 
@@ -63,6 +63,70 @@ describe('CRMPickingUp — Tests de Integración', () => {
 
             applyClientFilters(mockQuery, filters);
             expect(mockQuery.in).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('1b. filterUtils — applyLlamadasFilters', () => {
+        it('debe aplicar filtros de búsqueda, estado de conversión y fechas de llamadas', () => {
+            const mockQuery = {
+                order: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                ilike: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                lte: vi.fn().mockReturnThis(),
+                not: vi.fn().mockReturnThis(),
+            } as any;
+
+            const filters = {
+                busqueda: 'kiosco central',
+                rubro: 'kiosco',
+                estado_conversion: 'whatsapp',
+                fecha_modificacion: 'custom',
+                fecha_desde: '2026-10-01',
+                fecha_hasta: '2026-10-20',
+            };
+
+            const result = applyLlamadasFilters(mockQuery, filters, 'updated_desc');
+
+            expect(result.order).toHaveBeenCalledWith('updated_at', { ascending: false, nullsFirst: false });
+            expect(result.or).toHaveBeenCalledTimes(2); // 'kiosco' and 'central'
+            expect(result.eq).toHaveBeenCalledWith('rubro', 'kiosco');
+            expect(result.eq).toHaveBeenCalledWith('envio_whatsapp', true);
+            expect(result.gte).toHaveBeenCalledWith('updated_at', new Date('2026-10-01T00:00:00').toISOString());
+            expect(result.lte).toHaveBeenCalledWith('updated_at', new Date('2026-10-20T23:59:59.999').toISOString());
+        });
+
+        it('debe ignorar filtros de llamadas vacíos', () => {
+            const mockQuery = {
+                order: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                ilike: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                lte: vi.fn().mockReturnThis(),
+            } as any;
+
+            const emptyFilters = {
+                busqueda: '',
+                operador: '',
+                rubro: '',
+                respuesta: '',
+                etiqueta: '',
+                cantidad_llamadas: '',
+                fecha_modificacion: '',
+                estado_conversion: '',
+                localidad: '',
+                provincia: '',
+            };
+
+            applyLlamadasFilters(mockQuery, emptyFilters);
+
+            expect(mockQuery.or).not.toHaveBeenCalled();
+            expect(mockQuery.eq).not.toHaveBeenCalled();
+            expect(mockQuery.ilike).not.toHaveBeenCalled();
+            expect(mockQuery.gte).not.toHaveBeenCalled();
+            expect(mockQuery.lte).not.toHaveBeenCalled();
         });
     });
 

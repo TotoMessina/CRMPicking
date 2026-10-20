@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { downloadFile } from './downloadFile';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { applyClientFilters, ClientFilters } from '../utils/filterUtils';
+import { applyClientFilters, ClientFilters, applyLlamadasFilters, LlamadaFilters } from '../utils/filterUtils';
 import { validatePhoneNumber } from '../utils/phoneValidation';
 import { ImportProgressState, ImportRowResult } from '../types/excelImport';
 
@@ -1221,7 +1221,7 @@ export const descargarModeloDescargasPickingUp = () => {
 };
 
 export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {}, onFinally?: () => void, sortBy: string = 'created_desc') => {
-    const toastId = toast.loading('Generando Excel de llamadas...');
+    const toastId = toast.loading('Generando Excel de llamadas conforme a los filtros...');
     try {
         if (!empresaActiva?.id) throw new Error('No hay empresa activa');
 
@@ -1231,96 +1231,14 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
         let hasMore = true;
 
         while (hasMore) {
+            toast.loading(`Descargando registros ${allRows.length}...`, { id: toastId });
             let query = (supabase as any)
                 .from('llamadas')
                 .select('*')
                 .eq('empresa_id', empresaActiva.id);
 
-            switch (sortBy) {
-                case 'updated_desc':
-                    query = query.order('updated_at', { ascending: false, nullsFirst: false });
-                    break;
-                case 'created_asc':
-                    query = query.order('created_at', { ascending: true });
-                    break;
-                case 'nombre_asc':
-                    query = query.order('nombre', { ascending: true, nullsFirst: false }).order('apellido', { ascending: true, nullsFirst: false });
-                    break;
-                case 'nombre_desc':
-                    query = query.order('nombre', { ascending: false, nullsFirst: false }).order('apellido', { ascending: false, nullsFirst: false });
-                    break;
-                case 'comercio_asc':
-                    query = query.order('nombre_comercio', { ascending: true, nullsFirst: false });
-                    break;
-                case 'comercio_desc':
-                    query = query.order('nombre_comercio', { ascending: false, nullsFirst: false });
-                    break;
-                case 'operador_asc':
-                    query = query.order('nombre_operador', { ascending: true, nullsFirst: false });
-                    break;
-                case 'created_desc':
-                default:
-                    query = query.order('created_at', { ascending: false });
-                    break;
-            }
-
+            query = applyLlamadasFilters(query, filters, sortBy);
             query = query.range(from, to);
-
-            if (filters.busqueda && filters.busqueda.trim()) {
-                const tokens = filters.busqueda.trim().split(/\s+/).filter(Boolean);
-                tokens.forEach((token: string) => {
-                    const cleanToken = token.replace(/"/g, '');
-                    if (cleanToken) {
-                        const safeTerm = `"%${cleanToken}%"`;
-                        query = query.or(
-                            `nombre.ilike.${safeTerm},apellido.ilike.${safeTerm},telefono.ilike.${safeTerm},nombre_comercio.ilike.${safeTerm},direccion.ilike.${safeTerm},localidad.ilike.${safeTerm},provincia.ilike.${safeTerm},mail.ilike.${safeTerm},nombre_operador.ilike.${safeTerm}`
-                        );
-                    }
-                });
-            }
-            if (filters.operador) {
-                query = query.ilike('nombre_operador', `%${filters.operador.trim()}%`);
-            }
-            if (filters.rubro) {
-                query = query.eq('rubro', filters.rubro);
-            }
-            if (filters.respuesta) {
-                query = query.eq('respuesta_llamado', filters.respuesta);
-            }
-            if (filters.etiqueta) {
-                query = query.eq('etiqueta', filters.etiqueta);
-            }
-            if (filters.origen_contacto) {
-                query = query.ilike('origen_contacto', `%${filters.origen_contacto.trim()}%`);
-            }
-            if (filters.localidad && filters.localidad.trim()) {
-                query = query.ilike('localidad', `%${filters.localidad.trim()}%`);
-            }
-            if (filters.provincia && filters.provincia.trim()) {
-                query = query.ilike('provincia', `%${filters.provincia.trim()}%`);
-            }
-            if (filters.cantidad_llamadas) {
-                switch (filters.cantidad_llamadas) {
-                    case '0':
-                        query = query.or('cantidad_llamadas.is.null,cantidad_llamadas.eq.0');
-                        break;
-                    case '1':
-                        query = query.eq('cantidad_llamadas', 1);
-                        break;
-                    case '1+':
-                        query = query.gte('cantidad_llamadas', 1);
-                        break;
-                    case '2+':
-                        query = query.gte('cantidad_llamadas', 2);
-                        break;
-                    case '3+':
-                        query = query.gte('cantidad_llamadas', 3);
-                        break;
-                    case '5+':
-                        query = query.gte('cantidad_llamadas', 5);
-                        break;
-                }
-            }
 
             const { data, error } = await query;
             if (error) throw error;
@@ -1339,7 +1257,7 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
         }
 
         if (allRows.length === 0) {
-            toast.error('No hay fichas de llamada para exportar', { id: toastId });
+            toast.error('No se encontraron fichas de llamadas con los filtros aplicados', { id: toastId });
             if (onFinally) onFinally();
             return;
         }
@@ -1365,10 +1283,14 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             "Siguió en Redes": l.siguio_redes || '',
             "Completó Formulario": l.completo_formulario ? 'Sí' : l.completo_formulario === false ? 'No' : '',
             "Envió Listo": l.envio_listo ? 'Sí' : l.envio_listo === false ? 'No' : '',
+            "Catálogo / Video Enviado": l.envio_catalogo_video ? 'Sí' : l.envio_catalogo_video === false ? 'No' : '',
+            "Solicitó Video": l.solicito_video ? 'Sí' : l.solicito_video === false ? 'No' : '',
+            "URL Video": l.video_url || '',
             "Cantidad de Llamadas": l.cantidad_llamadas ?? 0,
             "Fecha Última Llamada": l.fecha_ultima_llamada ? new Date(l.fecha_ultima_llamada).toLocaleString() : '',
             "Etiqueta": l.etiqueta ? (l.etiqueta.toLowerCase() === 'cliente nuevo' ? 'Cliente Nuevo' : l.etiqueta.toLowerCase() === 'cliente actualizado' ? 'Cliente Actualizado' : l.etiqueta) : '',
-            "Fecha Creación": l.created_at ? new Date(l.created_at).toLocaleString() : ''
+            "Fecha Creación": l.created_at ? new Date(l.created_at).toLocaleString() : '',
+            "Fecha Modificación": l.updated_at ? new Date(l.updated_at).toLocaleString() : ''
         }));
 
         const wb = XLSX.utils.book_new();
@@ -1386,7 +1308,7 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             if (document.body.contains(link)) document.body.removeChild(link);
         }, 1000);
 
-        toast.success(`Exportadas ${allRows.length} llamadas a Excel`, { id: toastId });
+        toast.success(`Exportadas ${allRows.length} llamadas filtradas a Excel`, { id: toastId });
     } catch (error: any) {
         console.error('Error al exportar llamadas:', error);
         toast.error(error.message || 'Error al exportar llamadas', { id: toastId });

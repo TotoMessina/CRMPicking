@@ -48,6 +48,7 @@ const Llamadas: React.FC = () => {
     const [sortBy, setSortBy] = useState('updated_desc');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     const updateFilter = useCallback((key: keyof Filters, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -231,11 +232,19 @@ const Llamadas: React.FC = () => {
                         )}
                         <Button
                             variant="secondary"
-                            onClick={() => exportarLlamadasExcel(empresaActiva, filters, undefined, sortBy)}
+                            onClick={async () => {
+                                setIsExporting(true);
+                                try {
+                                    await exportarLlamadasExcel(empresaActiva, filters, undefined, sortBy);
+                                } finally {
+                                    setIsExporting(false);
+                                }
+                            }}
+                            disabled={isExporting}
                             title="Exportar todas las llamadas filtradas a Excel"
                             style={{ gap: '6px', fontSize: '0.84rem' }}
                         >
-                            <Download size={15} /> Exportar Excel
+                            <Download size={15} /> {isExporting ? 'Exportando...' : 'Exportar Excel'}
                         </Button>
                     </div>
 
