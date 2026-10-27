@@ -20,7 +20,6 @@ const RESPUESTAS = [
     { value: 'otro_momento', label: 'Llamada en otro momento' },
     { value: 'sin_interes', label: 'Sin Interés' },
     { value: 'exitosa', label: 'Llamada Exitosa' },
-    { value: 'catalogo_video_enviado', label: 'Catálogo / Video Enviado' },
     { value: 'sin_comercio', label: 'Sin Comercio' },
 ];
 

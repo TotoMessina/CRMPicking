@@ -69,12 +69,6 @@ const RESPUESTA_COLORS: Record<string, string> = {
     sin_comercio: '#64748b',
 };
 
-const REDES_LABELS: Record<string, string> = {
-    instagram: 'Instagram',
-    facebook: 'Facebook',
-    ambas: 'Instagram + Facebook',
-    no: 'No siguió',
-};
 
 const ROL_LABELS: Record<string, string> = {
     'dueño': 'Dueño / Propietario',
@@ -248,7 +242,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                 </div>
 
                 {/* 🟢 FORMULARIO */}
-                {(l.direccion || l.localidad || l.provincia || l.nombre_comercio || l.rol_contacto || l.instagram || l.origen_contacto) && (
+                {(l.direccion || l.localidad || l.provincia || l.nombre_comercio || l.rubro || l.rol_contacto || l.instagram || l.origen_contacto) && (
                     <div style={{ border: `1px solid ${COLOR_FORMS.border}`, borderRadius: '12px', overflow: 'hidden', background: COLOR_FORMS.bg }}>
                         <SectionHeader color={COLOR_FORMS} label="Formulario" />
                         <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -256,6 +250,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                             <InfoRow icon={MapPin} label="Localidad" value={l.localidad} color={COLOR_FORMS.text} />
                             <InfoRow icon={MapPin} label="Provincia" value={l.provincia} color={COLOR_FORMS.text} />
                             <InfoRow icon={Store} label="Comercio" value={l.nombre_comercio} color={COLOR_FORMS.text} />
+                            <InfoRow icon={Store} label="Rubro" value={RUBRO_LABELS[l.rubro] || l.rubro} color={COLOR_FORMS.text} />
                             <InfoRow icon={User} label="Rol" value={ROL_LABELS[l.rol_contacto?.toLowerCase() || ''] || l.rol_contacto} color={COLOR_FORMS.text} />
                             <InfoRow icon={Instagram} label="Instagram" value={l.instagram} color={COLOR_FORMS.text} />
                             <InfoRow icon={Compass} label="Origen BD" value={l.origen_contacto} color={COLOR_FORMS.text} />
@@ -267,18 +262,9 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                 <div style={{ border: `1px solid ${COLOR_OP.border}`, borderRadius: '12px', overflow: 'hidden', background: COLOR_OP.bg }}>
                     <SectionHeader color={COLOR_OP} label="Operador" />
                     <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        {l.rubro && (
-                            <InfoRow icon={Store} label="Rubro" value={RUBRO_LABELS[l.rubro] || l.rubro} color={COLOR_OP.text} />
-                        )}
-                        {l.tiempo_llamado && (
-                            <InfoRow icon={Clock} label="Tiempo (min)" value={l.tiempo_llamado === 'mayor_5' ? '> 5 min' : `${l.tiempo_llamado} min`} color={COLOR_OP.text} />
-                        )}
-                        {l.siguio_redes && (
-                            <InfoRow icon={Instagram} label="Siguió en redes" value={REDES_LABELS[l.siguio_redes] || l.siguio_redes} color={COLOR_OP.text} />
-                        )}
-                        <BoolBadge value={l.envio_whatsapp} label="WhatsApp enviado" />
                         <BoolBadge value={l.descargo_picking_up} label="Descargó Picking Up" />
                         <BoolBadge value={l.completo_formulario} label="Completó formulario" />
+                        <BoolBadge value={l.envio_whatsapp} label="WhatsApp enviado" />
                         <BoolBadge value={l.envio_listo} label='Envió "Listo"' />
                         <BoolBadge value={l.solicito_video ?? null} label="Solicitó Video" />
                         <BoolBadge value={l.envio_catalogo_video ?? null} label="Catálogo Video enviado" />

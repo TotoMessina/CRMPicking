@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Database, FileText, User, Sparkles, RefreshCw, Video, ExternalLink } from 'lucide-react';
+import { X, Database, FileText, User, Sparkles, RefreshCw } from 'lucide-react';
 import { Llamada, useCreateLlamada, useUpdateLlamada, findClientByPhone } from '../../hooks/useLlamadas';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,26 +29,7 @@ const RESPUESTAS = [
     { value: 'otro_momento', label: 'Llamada en otro momento' },
     { value: 'sin_interes', label: 'Sin Interés' },
     { value: 'exitosa', label: 'Llamada Exitosa' },
-    { value: 'catalogo_video_enviado', label: 'Catálogo / Video Enviado' },
     { value: 'sin_comercio', label: 'Sin Comercio' },
-];
-
-const TIEMPOS = [
-    { value: '', label: 'Seleccionar...' },
-    { value: '1', label: '1 minuto' },
-    { value: '2', label: '2 minutos' },
-    { value: '3', label: '3 minutos' },
-    { value: '4', label: '4 minutos' },
-    { value: '5', label: '5 minutos' },
-    { value: 'mayor_5', label: 'Mayor a 5 minutos' },
-];
-
-const REDES = [
-    { value: '', label: 'Seleccionar...' },
-    { value: 'instagram', label: 'Instagram' },
-    { value: 'facebook', label: 'Facebook' },
-    { value: 'ambas', label: 'Ambas' },
-    { value: 'no', label: 'No' },
 ];
 
 const ROLES_CONTACTO = [
@@ -106,27 +87,7 @@ const normalizeRespuesta = (val?: string | null) => {
     return val;
 };
 
-const normalizeTiempo = (val?: string | null) => {
-    if (!val) return '';
-    const lower = String(val).toLowerCase().trim();
-    if (lower === '1' || lower.startsWith('1')) return '1';
-    if (lower === '2' || lower.startsWith('2')) return '2';
-    if (lower === '3' || lower.startsWith('3')) return '3';
-    if (lower === '4' || lower.startsWith('4')) return '4';
-    if (lower === '5' || lower.startsWith('5')) return '5';
-    if (lower.includes('mayor') || lower.includes('>') || lower.includes('mas de 5')) return 'mayor_5';
-    return val;
-};
 
-const normalizeRedes = (val?: string | null) => {
-    if (!val) return '';
-    const lower = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    if (lower.includes('ambas') || lower.includes('ambos')) return 'ambas';
-    if (lower.includes('instagram') || lower.includes('ig')) return 'instagram';
-    if (lower.includes('facebook') || lower.includes('fb')) return 'facebook';
-    if (lower === 'no' || lower.includes('no')) return 'no';
-    return val;
-};
 
 // ── Helpers ───────────────────────────────────────────────
 const EMPTY_FORM: Partial<Llamada> = {
@@ -487,6 +448,22 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                 {/* 🟢 FORMULARIO */}
                                 <SectionBlock color={COLOR_FORMS} icon={FileText} title="Formulario – Datos del Cliente">
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+                                        <Field label="Nombre del Comercio">
+                                            <input id="llamada-nombre-comercio" style={inputSt} value={form.nombre_comercio || ''} onChange={e => set('nombre_comercio', e.target.value)} placeholder="Nombre del comercio..." />
+                                        </Field>
+                                        <Field label="Rubro">
+                                            <select
+                                                id="llamada-rubro"
+                                                style={inputSt}
+                                                value={normalizeRubro(form.rubro) || ''}
+                                                onChange={e => set('rubro', e.target.value)}
+                                            >
+                                                {RUBROS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                                {form.rubro && !RUBROS.some(r => r.value === normalizeRubro(form.rubro)) && (
+                                                    <option value={form.rubro}>{form.rubro}</option>
+                                                )}
+                                            </select>
+                                        </Field>
                                         <Field label="Dirección">
                                             <input id="llamada-direccion" style={inputSt} value={form.direccion || ''} onChange={e => set('direccion', e.target.value)} placeholder="Calle y número..." />
                                         </Field>
@@ -508,11 +485,6 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                                     <option value={form.rol_contacto}>{form.rol_contacto}</option>
                                                 )}
                                             </select>
-                                        </Field>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 14px' }}>
-                                        <Field label="Nombre del Comercio">
-                                            <input id="llamada-nombre-comercio" style={inputSt} value={form.nombre_comercio || ''} onChange={e => set('nombre_comercio', e.target.value)} placeholder="Nombre del comercio..." />
                                         </Field>
                                         <Field label="Instagram (Negocio o Personal)">
                                             <input id="llamada-instagram" style={inputSt} value={form.instagram || ''} onChange={e => set('instagram', e.target.value)} placeholder="@usuario..." />
@@ -536,19 +508,6 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                 {/* 🟠 OPERADOR */}
                                 <SectionBlock color={COLOR_OP} icon={User} title="Operador – Datos de la Llamada">
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
-                                        <Field label="Rubro">
-                                            <select
-                                                id="llamada-rubro"
-                                                style={inputSt}
-                                                value={normalizeRubro(form.rubro) || ''}
-                                                onChange={e => set('rubro', e.target.value)}
-                                            >
-                                                {RUBROS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                                                {form.rubro && !RUBROS.some(r => r.value === normalizeRubro(form.rubro)) && (
-                                                    <option value={form.rubro}>{form.rubro}</option>
-                                                )}
-                                            </select>
-                                        </Field>
                                         <Field label="Nombre del Operador" required>
                                             <select
                                                 id="llamada-operador"
@@ -575,32 +534,6 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                                 {RESPUESTAS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                                                 {form.respuesta_llamado && !RESPUESTAS.some(r => r.value === normalizeRespuesta(form.respuesta_llamado)) && (
                                                     <option value={form.respuesta_llamado}>{form.respuesta_llamado}</option>
-                                                )}
-                                            </select>
-                                        </Field>
-                                        <Field label="Tiempo del Llamado">
-                                            <select
-                                                id="llamada-tiempo"
-                                                style={inputSt}
-                                                value={normalizeTiempo(form.tiempo_llamado) || ''}
-                                                onChange={e => set('tiempo_llamado', e.target.value)}
-                                            >
-                                                {TIEMPOS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                                                {form.tiempo_llamado && !TIEMPOS.some(r => r.value === normalizeTiempo(form.tiempo_llamado)) && (
-                                                    <option value={form.tiempo_llamado}>{form.tiempo_llamado}</option>
-                                                )}
-                                            </select>
-                                        </Field>
-                                        <Field label="Nos siguió en redes">
-                                            <select
-                                                id="llamada-redes"
-                                                style={inputSt}
-                                                value={normalizeRedes(form.siguio_redes) || ''}
-                                                onChange={e => set('siguio_redes', e.target.value)}
-                                            >
-                                                {REDES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                                                {form.siguio_redes && !REDES.some(r => r.value === normalizeRedes(form.siguio_redes)) && (
-                                                    <option value={form.siguio_redes}>{form.siguio_redes}</option>
                                                 )}
                                             </select>
                                         </Field>
@@ -670,47 +603,8 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                         </Field>
                                     </div>
 
-                                    {/* Campo URL del Video */}
-                                    <div style={{ marginTop: '12px' }}>
-                                        <Field label="URL del Video / Catálogo Enviado">
-                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                <div style={{ position: 'relative', flex: 1 }}>
-                                                    <Video size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#06b6d4' }} />
-                                                    <input
-                                                        id="llamada-video-url"
-                                                        style={{ ...inputSt, paddingLeft: '36px' }}
-                                                        value={form.video_url || ''}
-                                                        onChange={e => set('video_url', e.target.value)}
-                                                        placeholder="https://youtube.com/... o enlace de video"
-                                                    />
-                                                </div>
-                                                {form.video_url && form.video_url.trim() && (
-                                                    <a
-                                                        href={form.video_url.startsWith('http') ? form.video_url : `https://${form.video_url}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        style={{
-                                                            padding: '9px 14px', borderRadius: '10px',
-                                                            background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.3)',
-                                                            color: '#06b6d4', textDecoration: 'none', display: 'flex',
-                                                            alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600,
-                                                            whiteSpace: 'nowrap'
-                                                        }}
-                                                    >
-                                                        <ExternalLink size={14} /> Abrir Video
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </Field>
-                                    </div>
-
                                     {/* Booleanos */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px 10px', marginTop: '8px' }}>
-                                        <BoolField
-                                            label="Envío de WhatsApp"
-                                            value={form.envio_whatsapp ?? null}
-                                            onChange={v => set('envio_whatsapp', v)}
-                                        />
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px 10px', marginTop: '14px' }}>
                                         <BoolField
                                             label="Descargó Picking Up"
                                             value={form.descargo_picking_up ?? null}
@@ -720,21 +614,6 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                             label='Completó formulario'
                                             value={form.completo_formulario ?? null}
                                             onChange={v => set('completo_formulario', v)}
-                                        />
-                                        <BoolField
-                                            label='Envió "Listo"'
-                                            value={form.envio_listo ?? null}
-                                            onChange={v => set('envio_listo', v)}
-                                        />
-                                        <BoolField
-                                            label='Solicitó Video'
-                                            value={form.solicito_video ?? null}
-                                            onChange={v => set('solicito_video', v)}
-                                        />
-                                        <BoolField
-                                            label='Envío Catálogo Video'
-                                            value={form.envio_catalogo_video ?? null}
-                                            onChange={v => set('envio_catalogo_video', v)}
                                         />
                                     </div>
                                 </SectionBlock>
