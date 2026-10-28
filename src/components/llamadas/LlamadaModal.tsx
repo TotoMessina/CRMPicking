@@ -13,13 +13,16 @@ const COLOR_BD = { bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.3)', 
 const COLOR_FORMS = { bg: 'rgba(16,185,129,0.06)', border: 'rgba(16,185,129,0.3)', text: '#10b981', dot: '#10b981' };
 const COLOR_OP = { bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.3)', text: '#f59e0b', dot: '#f59e0b' };
 
+import { RUBROS_APP, ESTADOS_CONTACTO } from '../../constants/rubros';
+
 const RUBROS = [
-    { value: '', label: 'Seleccionar...' },
-    { value: 'kiosco', label: 'Kiosco / Almacén' },
-    { value: 'almacen', label: 'Almacén' },
-    { value: 'autoservicio', label: 'Autoservicio' },
-    { value: 'otro', label: 'Otro' },
-    { value: 'sin_comercio', label: 'Sin Comercio' },
+    { value: '', label: 'Seleccionar rubro...' },
+    ...RUBROS_APP.map(r => ({ value: r, label: r })),
+];
+
+const ESTADOS_CONTACTO_LIST = [
+    { value: '', label: 'Seleccionar estado...' },
+    ...ESTADOS_CONTACTO.map(ec => ({ value: ec, label: ec })),
 ];
 
 const RESPUESTAS = [
@@ -66,12 +69,9 @@ const normalizeOrigen = (val?: string | null) => {
 
 const normalizeRubro = (val?: string | null) => {
     if (!val) return '';
-    const lower = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    if (lower.includes('kiosco') || lower.includes('almacen')) return 'kiosco';
-    if (lower.includes('autoservicio') || lower.includes('supermercado')) return 'autoservicio';
-    if (lower.includes('sin_comercio') || lower.includes('sin comercio') || lower.includes('sin negocio')) return 'sin_comercio';
-    if (lower.includes('otro')) return 'otro';
-    return val;
+    const trimmed = val.trim();
+    const found = RUBROS_APP.find(r => r.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === trimmed.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+    return found || trimmed;
 };
 
 const normalizeRespuesta = (val?: string | null) => {
@@ -99,6 +99,7 @@ const EMPTY_FORM: Partial<Llamada> = {
     envio_whatsapp: null, descargo_picking_up: null, completo_formulario: null, envio_listo: null,
     envio_catalogo_video: null, solicito_video: null, video_url: '',
     etiqueta: null,
+    estado_contacto: '',
     cantidad_llamadas: 0,
     fecha_ultima_llamada: null,
 };
@@ -483,6 +484,21 @@ export function LlamadaModal({ isOpen, onClose, llamadaId, onSaved }: Props) {
                                                 {ROLES_CONTACTO.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                                                 {form.rol_contacto && !ROLES_CONTACTO.some(r => r.value === normalizeRol(form.rol_contacto)) && (
                                                     <option value={form.rol_contacto}>{form.rol_contacto}</option>
+                                                )}
+                                            </select>
+                                        </Field>
+                                        <Field label="Estado del Contacto">
+                                            <select
+                                                id="llamada-estado-contacto"
+                                                style={inputSt}
+                                                value={form.estado_contacto || ''}
+                                                onChange={e => set('estado_contacto', e.target.value)}
+                                            >
+                                                {ESTADOS_CONTACTO_LIST.map(ec => (
+                                                    <option key={ec.value} value={ec.value}>{ec.label}</option>
+                                                ))}
+                                                {form.estado_contacto && !ESTADOS_CONTACTO_LIST.some(ec => ec.value === form.estado_contacto) && (
+                                                    <option value={form.estado_contacto}>{form.estado_contacto}</option>
                                                 )}
                                             </select>
                                         </Field>

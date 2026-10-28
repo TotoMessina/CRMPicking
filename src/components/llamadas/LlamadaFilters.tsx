@@ -3,14 +3,16 @@ import { LlamadaFilters as Filters } from '../../hooks/useLlamadas';
 import { Search, Filter, PhoneCall, Calendar, Sparkles, MessageCircle, X, MapPin } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompanyUsers } from '../../hooks/useCompanyUsers';
+import { RUBROS_APP, ESTADOS_CONTACTO } from '../../constants/rubros';
 
 const RUBROS = [
     { value: '', label: 'Todos los rubros' },
-    { value: 'kiosco', label: 'Kiosco / Almacén' },
-    { value: 'almacen', label: 'Almacén' },
-    { value: 'autoservicio', label: 'Autoservicio' },
-    { value: 'otro', label: 'Otro' },
-    { value: 'sin_comercio', label: 'Sin Comercio' },
+    ...RUBROS_APP.map(r => ({ value: r, label: r })),
+];
+
+const ESTADOS_CONTACTO_OPTIONS = [
+    { value: '', label: 'Todos los estados de contacto' },
+    ...ESTADOS_CONTACTO.map(ec => ({ value: ec, label: ec })),
 ];
 
 const RESPUESTAS = [
@@ -98,6 +100,7 @@ export function LlamadaFilters({ filters, updateFilter, onReset }: Props) {
         filters.fecha_desde,
         filters.fecha_hasta,
         filters.estado_conversion,
+        filters.estado_contacto,
         filters.localidad,
         filters.provincia
     ].filter(Boolean).length;
@@ -111,6 +114,7 @@ export function LlamadaFilters({ filters, updateFilter, onReset }: Props) {
             updateFilter('rubro', '');
             updateFilter('respuesta', '');
             updateFilter('etiqueta', '');
+            updateFilter('estado_contacto', '');
             updateFilter('origen_contacto', '');
             updateFilter('cantidad_llamadas', '');
             updateFilter('fecha_modificacion', '');
@@ -283,6 +287,20 @@ export function LlamadaFilters({ filters, updateFilter, onReset }: Props) {
                     >
                         {ETIQUETAS.map(e => (
                             <option key={e.value} value={e.value}>{e.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Estado del Contacto */}
+                <div>
+                    <select
+                        id="llamadas-filter-estado-contacto"
+                        value={filters.estado_contacto || ''}
+                        onChange={e => updateFilter('estado_contacto', e.target.value)}
+                        style={inputStyle}
+                    >
+                        {ESTADOS_CONTACTO_OPTIONS.map(ec => (
+                            <option key={ec.value} value={ec.value}>{ec.label}</option>
                         ))}
                     </select>
                 </div>

@@ -81,6 +81,7 @@ describe('CRMPickingUp — Tests de Integración', () => {
             const filters = {
                 busqueda: 'kiosco central',
                 rubro: 'kiosco',
+                estado_contacto: 'Contacto Latente',
                 estado_conversion: 'whatsapp',
                 fecha_modificacion: 'custom',
                 fecha_desde: '2026-10-01',
@@ -92,6 +93,7 @@ describe('CRMPickingUp — Tests de Integración', () => {
             expect(result.order).toHaveBeenCalledWith('updated_at', { ascending: false, nullsFirst: false });
             expect(result.or).toHaveBeenCalledTimes(2); // 'kiosco' and 'central'
             expect(result.eq).toHaveBeenCalledWith('rubro', 'kiosco');
+            expect(result.eq).toHaveBeenCalledWith('estado_contacto', 'Contacto Latente');
             expect(result.eq).toHaveBeenCalledWith('envio_whatsapp', true);
             expect(result.gte).toHaveBeenCalledWith('updated_at', new Date('2026-10-01T00:00:00').toISOString());
             expect(result.lte).toHaveBeenCalledWith('updated_at', new Date('2026-10-20T23:59:59.999').toISOString());

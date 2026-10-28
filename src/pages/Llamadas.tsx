@@ -28,6 +28,7 @@ const DEFAULT_FILTERS: Filters = {
     fecha_desde: '',
     fecha_hasta: '',
     estado_conversion: '',
+    estado_contacto: '',
     localidad: '',
     provincia: '',
 };

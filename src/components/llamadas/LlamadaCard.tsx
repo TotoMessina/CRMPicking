@@ -70,6 +70,13 @@ const RESPUESTA_COLORS: Record<string, string> = {
 };
 
 
+const ESTADO_CONTACTO_BADGES: Record<string, { bg: string; border: string; text: string }> = {
+    'Contacto Latente': { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', text: '#f59e0b' },
+    'Primer ingreso': { bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.3)', text: '#06b6d4' },
+    'Usuario con tienda no configurada': { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)', text: '#ef4444' },
+    'Usuario con tienda configurada': { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', text: '#10b981' },
+};
+
 const ROL_LABELS: Record<string, string> = {
     'dueño': 'Dueño / Propietario',
     'dueno': 'Dueño / Propietario',
@@ -217,6 +224,21 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                             {etiquetaConfig.label}
                         </span>
                     )}
+                    {l.estado_contacto && (
+                        <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '3px 9px',
+                            borderRadius: '20px',
+                            background: ESTADO_CONTACTO_BADGES[l.estado_contacto]?.bg || 'rgba(99,102,241,0.12)',
+                            color: ESTADO_CONTACTO_BADGES[l.estado_contacto]?.text || '#6366f1',
+                            border: `1px solid ${ESTADO_CONTACTO_BADGES[l.estado_contacto]?.border || 'rgba(99,102,241,0.3)'}`,
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                        }}>
+                            {l.estado_contacto}
+                        </span>
+                    )}
                     {l.respuesta_llamado && (
                         <span style={{
                             fontSize: '0.7rem', fontWeight: 700, padding: '3px 9px', borderRadius: '20px',
@@ -242,7 +264,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                 </div>
 
                 {/* 🟢 FORMULARIO */}
-                {(l.direccion || l.localidad || l.provincia || l.nombre_comercio || l.rubro || l.rol_contacto || l.instagram || l.origen_contacto) && (
+                {(l.direccion || l.localidad || l.provincia || l.nombre_comercio || l.rubro || l.estado_contacto || l.rol_contacto || l.instagram || l.origen_contacto) && (
                     <div style={{ border: `1px solid ${COLOR_FORMS.border}`, borderRadius: '12px', overflow: 'hidden', background: COLOR_FORMS.bg }}>
                         <SectionHeader color={COLOR_FORMS} label="Formulario" />
                         <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -251,6 +273,7 @@ export function LlamadaCard({ llamada: l, onEdit, onDelete }: Props) {
                             <InfoRow icon={MapPin} label="Provincia" value={l.provincia} color={COLOR_FORMS.text} />
                             <InfoRow icon={Store} label="Comercio" value={l.nombre_comercio} color={COLOR_FORMS.text} />
                             <InfoRow icon={Store} label="Rubro" value={RUBRO_LABELS[l.rubro] || l.rubro} color={COLOR_FORMS.text} />
+                            <InfoRow icon={Sparkles} label="Estado Contacto" value={l.estado_contacto} color={COLOR_FORMS.text} />
                             <InfoRow icon={User} label="Rol" value={ROL_LABELS[l.rol_contacto?.toLowerCase() || ''] || l.rol_contacto} color={COLOR_FORMS.text} />
                             <InfoRow icon={Instagram} label="Instagram" value={l.instagram} color={COLOR_FORMS.text} />
                             <InfoRow icon={Compass} label="Origen BD" value={l.origen_contacto} color={COLOR_FORMS.text} />

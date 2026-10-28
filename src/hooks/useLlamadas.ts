@@ -37,6 +37,7 @@ export interface Llamada {
     solicito_video?: boolean | null;
     video_url?: string | null;
     etiqueta?: string | null;
+    estado_contacto?: string | null;
     cantidad_llamadas?: number | null;
     fecha_ultima_llamada?: string | null;
     created_at: string;
@@ -304,10 +305,11 @@ export function useCreateLlamada() {
                     .select()
                     .single();
 
-                if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('fecha_ultima_llamada'))) {
+                if (updateRes.error && (updateRes.error.message?.includes('etiqueta') || updateRes.error.message?.includes('fecha_ultima_llamada') || updateRes.error.message?.includes('estado_contacto'))) {
                     // Fallback si la columna no existe aún en la base de datos
                     if (updateRes.error.message?.includes('etiqueta')) delete updatePayload.etiqueta;
                     if (updateRes.error.message?.includes('fecha_ultima_llamada')) delete updatePayload.fecha_ultima_llamada;
+                    if (updateRes.error.message?.includes('estado_contacto')) delete updatePayload.estado_contacto;
                     updateRes = await (supabase as any)
                         .from('llamadas')
                         .update(updatePayload)
@@ -336,10 +338,11 @@ export function useCreateLlamada() {
                     .select()
                     .single();
 
-                if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('fecha_ultima_llamada'))) {
+                if (insertRes.error && (insertRes.error.message?.includes('etiqueta') || insertRes.error.message?.includes('fecha_ultima_llamada') || insertRes.error.message?.includes('estado_contacto'))) {
                     // Fallback si la columna no existe aún en la base de datos
                     if (insertRes.error.message?.includes('etiqueta')) delete insertPayload.etiqueta;
                     if (insertRes.error.message?.includes('fecha_ultima_llamada')) delete insertPayload.fecha_ultima_llamada;
+                    if (insertRes.error.message?.includes('estado_contacto')) delete insertPayload.estado_contacto;
                     insertRes = await (supabase as any)
                         .from('llamadas')
                         .insert(insertPayload)
@@ -395,10 +398,11 @@ export function useUpdateLlamada() {
                 .select()
                 .single();
 
-            if (res.error && (res.error.message?.includes('etiqueta') || res.error.message?.includes('fecha_ultima_llamada'))) {
+            if (res.error && (res.error.message?.includes('etiqueta') || res.error.message?.includes('fecha_ultima_llamada') || res.error.message?.includes('estado_contacto'))) {
                 // Fallback si la columna no existe aún
                 if (res.error.message?.includes('etiqueta')) delete payload.etiqueta;
                 if (res.error.message?.includes('fecha_ultima_llamada')) delete payload.fecha_ultima_llamada;
+                if (res.error.message?.includes('estado_contacto')) delete payload.estado_contacto;
                 res = await (supabase as any)
                     .from('llamadas')
                     .update(payload)

@@ -83,6 +83,7 @@ export interface LlamadaFilters {
     fecha_desde?: string;
     fecha_hasta?: string;
     estado_conversion?: string;
+    estado_contacto?: string;
     localidad?: string;
     provincia?: string;
 }
@@ -167,6 +168,10 @@ export function applyLlamadasFilters(
 
     if (filters.etiqueta && filters.etiqueta.trim()) {
         q = q.eq('etiqueta', filters.etiqueta.trim());
+    }
+
+    if (filters.estado_contacto && filters.estado_contacto.trim()) {
+        q = q.eq('estado_contacto', filters.estado_contacto.trim());
     }
 
     if (filters.origen_contacto && filters.origen_contacto.trim()) {

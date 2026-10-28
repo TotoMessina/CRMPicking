@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { applyClientFilters, ClientFilters, applyLlamadasFilters, LlamadaFilters } from '../utils/filterUtils';
 import { validatePhoneNumber } from '../utils/phoneValidation';
 import { ImportProgressState, ImportRowResult } from '../types/excelImport';
+import { RUBROS_APP, ESTADOS_CONTACTO } from '../constants/rubros';
 
 export const downloadDataUri = (url: string, fileName: string) => {
     const link = document.createElement("a");
@@ -1163,13 +1164,13 @@ export const descargarModeloLlamadas = () => {
         const headers = [
             "nombre", "apellido", "telefono", "mail",
             "direccion", "localidad", "provincia", "nombre_comercio", "rol_contacto", "instagram",
-            "origen_contacto", "rubro", "nombre_operador", "respuesta_llamado", "tiempo_llamado",
+            "origen_contacto", "rubro", "estado_contacto", "nombre_operador", "respuesta_llamado", "tiempo_llamado",
             "envio_whatsapp", "descargo_picking_up", "siguio_redes", "completo_formulario", "envio_listo", "cantidad_llamadas", "fecha_ultima_llamada"
         ];
         const sampleRow = [
             "Juan", "Pérez", "+54 11 2345-6789", "juan@ejemplo.com",
             "Av. Rivadavia 1234", "Morón", "Buenos Aires", "Kiosco Juan", "Dueño", "@kioscojuan",
-            "Publicidad en instagram", "Kiosco / Almacén", "Operador 1", "Llamada Exitosa", "3 minutos",
+            "Publicidad en instagram", "Kiosco", "Contacto Latente", "Operador 1", "Llamada Exitosa", "3 minutos",
             "Sí", "Sí", "Instagram", "Sí", "Sí", 0, "2026-08-18 15:30"
         ];
         const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
@@ -1275,6 +1276,7 @@ export const exportarLlamadasExcel = async (empresaActiva: any, filters: any = {
             "Instagram": l.instagram || '',
             "Cómo llegaron a la BD": l.origen_contacto || '',
             "Rubro": l.rubro || '',
+            "Estado del Contacto": l.estado_contacto || '',
             "Operador": l.nombre_operador || '',
             "Respuesta del Llamado": l.respuesta_llamado || '',
             "Tiempo Llamado": l.tiempo_llamado || '',
@@ -1474,11 +1476,23 @@ export const importarLlamadasExcel = async (
                     if (!v) return null;
                     const str = String(v).trim();
                     const lower = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                    if (lower.includes('kiosco') || lower.includes('almacen')) return 'kiosco';
-                    if (lower.includes('autoservicio') || lower.includes('supermercado') || lower.includes('mercado')) return 'autoservicio';
-                    if (lower.includes('sin comercio') || lower.includes('sin_comercio') || lower.includes('sin negocio')) return 'sin_comercio';
-                    if (lower.includes('otro')) return 'otro';
+                    const found = RUBROS_APP.find(r => r.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === lower);
+                    if (found) return found;
+                    if (lower.includes('kiosco') && lower.includes('almacen')) return 'Kiosco con Almacén';
+                    if (lower.includes('kiosco') && lower.includes('libreria')) return 'Kiosco Librería';
+                    if (lower.includes('kiosco')) return 'Kiosco';
+                    if (lower.includes('almacen')) return 'Almacén';
+                    if (lower.includes('autoservicio') || lower.includes('supermercado') || lower.includes('mercado')) return 'Autoservicios';
+                    if (lower.includes('sin comercio') || lower.includes('sin_comercio') || lower.includes('sin negocio')) return 'Sin comercio';
                     return str;
+                };
+
+                const normalizeEstadoContactoValue = (v: any): string | null => {
+                    if (!v) return null;
+                    const str = String(v).trim();
+                    const lower = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    const found = ESTADOS_CONTACTO.find(ec => ec.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === lower);
+                    return found || str;
                 };
 
                 const normalizeRespuestaValue = (v: any): string | null => {
@@ -1616,6 +1630,10 @@ export const importarLlamadasExcel = async (
                         "rubro", "Rubro", "Actividad", "actividad", "Giro", "giro", "Sector", "sector",
                         "Categoria", "Categoría", "Tipo de Negocio", "Tipo de Comercio"
                     );
+                    const estado_contacto_raw = getVal(
+                        row,
+                        "estado_contacto", "Estado Contacto", "Estado del Contacto", "Estado de Contacto", "estado", "Estado"
+                    );
                     const nombre_operador = getVal(
                         row, 
                         "nombre_operador", "Operador", "operador", "Nombre del Operador", "Nombre Operador",
@@ -1646,6 +1664,7 @@ export const importarLlamadasExcel = async (
                     const rol_contacto = normalizeRolValue(rol_contacto_raw);
                     const origen_contacto = normalizeOrigenValue(origen_contacto_raw);
                     const rubro = normalizeRubroValue(rubro_raw);
+                    const estado_contacto = normalizeEstadoContactoValue(estado_contacto_raw);
                     const respuesta_llamado = normalizeRespuestaValue(respuesta_llamado_raw);
                     const tiempo_llamado = normalizeTiempoValue(tiempo_llamado_raw);
                     const siguio_redes = normalizeRedesValue(siguio_redes_raw);
@@ -1727,6 +1746,7 @@ export const importarLlamadasExcel = async (
                         instagram: instagram ? String(instagram).trim() : null,
                         origen_contacto: origen_contacto ? String(origen_contacto).trim() : null,
                         rubro: rubro ? String(rubro).trim() : null,
+                        estado_contacto: estado_contacto ? String(estado_contacto).trim() : null,
                         nombre_operador: nombre_operador ? String(nombre_operador).trim() : null,
                         respuesta_llamado: respuesta_llamado ? String(respuesta_llamado).trim() : null,
                         tiempo_llamado: tiempo_llamado ? String(tiempo_llamado).trim() : null,
@@ -1822,7 +1842,7 @@ export const importarLlamadasExcel = async (
                                 .eq('id', existingInLlamadas.id);
 
                             if (updateRes.error) {
-                                const optionalCols = ['etiqueta', 'cantidad_llamadas', 'origen_contacto', 'fecha_ultima_llamada', 'video_url', 'envio_catalogo_video', 'solicito_video', 'rol_contacto', 'provincia', 'instagram', 'nombre_comercio'];
+                                const optionalCols = ['etiqueta', 'estado_contacto', 'cantidad_llamadas', 'origen_contacto', 'fecha_ultima_llamada', 'video_url', 'envio_catalogo_video', 'solicito_video', 'rol_contacto', 'provincia', 'instagram', 'nombre_comercio'];
                                 let hasRemoved = false;
                                 for (const col of optionalCols) {
                                     if (updateRes.error.message?.includes(col)) {
@@ -1864,7 +1884,7 @@ export const importarLlamadasExcel = async (
                                 .insert(insertPayload);
 
                             if (insertRes.error) {
-                                const optionalCols = ['etiqueta', 'cantidad_llamadas', 'origen_contacto', 'fecha_ultima_llamada', 'video_url', 'envio_catalogo_video', 'solicito_video', 'rol_contacto', 'provincia', 'instagram', 'nombre_comercio'];
+                                const optionalCols = ['etiqueta', 'estado_contacto', 'cantidad_llamadas', 'origen_contacto', 'fecha_ultima_llamada', 'video_url', 'envio_catalogo_video', 'solicito_video', 'rol_contacto', 'provincia', 'instagram', 'nombre_comercio'];
                                 let hasRemoved = false;
                                 for (const col of optionalCols) {
                                     if (insertRes.error.message?.includes(col)) {
